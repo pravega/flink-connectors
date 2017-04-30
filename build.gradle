@@ -1,0 +1,203 @@
+/**
+ *
+ *  Copyright (c) 2017 Dell Inc., or its subsidiaries.
+ *
+ */
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
+    }
+}
+
+apply plugin: 'java'
+apply plugin: 'idea'
+apply plugin: 'eclipse'
+apply plugin: 'maven'
+apply plugin: 'signing'
+apply plugin: 'checkstyle'
+apply plugin: 'findbugs'
+apply plugin: 'maven-publish'
+apply plugin: 'jacoco'
+
+checkstyle {
+    toolVersion = checkstyleToolVersion
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled true
+        html.enabled false
+    }
+}
+
+test {
+    finalizedBy jacocoTestReport
+}
+
+tasks.withType(FindBugs) {
+    effort = "default"
+    includeFilter = file("$rootDir/checkstyle/findbugs-include.xml")
+    excludeFilter = file("$rootDir/checkstyle/findbugs-exclude.xml")
+    reports {
+        xml.enabled false
+        html.enabled true
+    }
+}
+compileJava {
+    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:divzero" << "-Xlint:empty" << "-Xlint:fallthrough" << "-Xlint:finally" << "-Xlint:overrides" << "-Xlint:path" << "-Werror"
+}
+
+repositories {
+    // Use 'jcenter' for resolving your dependencies.
+    // You can declare any Maven/Ivy/file repository here.
+    jcenter()
+    mavenCentral()
+    mavenLocal()
+    maven {
+        url "https://repository.apache.org/snapshots"
+    }
+    maven {
+        url "https://raw.github.com/twitter/bookkeeper/mvn-repo/"+ twitterMvnRepoVersion
+    }
+    maven {
+        url "http://maven.twttr.com"
+    }
+}
+
+configurations.all {
+    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    all*.exclude group: 'log4j', module: 'log4j'
+}
+
+checkstyle {
+    configFile = new File(rootDir, "checkstyle/checkstyle.xml")
+    configProperties = [importControlFile: "$rootDir/checkstyle/import-control.xml"]
+}
+
+publishing {
+    repositories {
+        maven {
+            credentials {
+                username = "$repoUser"
+                password = "$repoPass"
+            }
+            url = "$repoUrl"
+        }
+    }
+    publications {
+        shadow(MavenPublication) {
+            groupId = System.properties['groupId'] ? System.properties['groupId'].toString() : "io.pravega"
+            artifactId 'pravega-connectors-flink_2.11'
+            version = connectorVersion
+            from components.shadow
+        }
+    }
+}
+
+tasks.withType(Test) {
+    systemProperties 'logback.configurationFile' : new File(buildDir,'test/resources/logback.xml').absolutePath
+    testLogging.showStandardStreams = false
+    testLogging.exceptionFormat = "FULL"
+    testLogging.showCauses = true
+    testLogging.showExceptions = true
+    testLogging.showStackTraces = true
+    testLogging.events = ["PASSED", "FAILED"]
+    maxParallelForks = System.properties['maxParallelForks'] ? System.properties['maxParallelForks'].toInteger() : 1
+    minHeapSize = "128m"
+    maxHeapSize = "512m"
+}
+
+apply plugin: 'com.github.johnrengelman.shadow'
+
+dependencies {
+    compile group: 'io.pravega', name: 'pravega-clients', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-controller-contract', version: pravegaVersion
+    compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    testCompile group: 'junit', name: 'junit', version: junitVersion
+    testCompile group: 'org.apache.flink', name: 'flink-tests_2.11', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-test-utils_2.11', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-streaming-contrib_2.11', version: flinkVersion
+    testCompile group: 'io.pravega', name: 'pravega-singlenode', version: pravegaVersion
+
+    //  configuring the shaded pom dependencies
+    shadow group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    shadow group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+}
+
+shadowJar {
+    dependencies {
+        // 'include' specific dependencies in the shadow jar
+        // IMPORTANT: transitive dependencies must be manually listed here!
+        include dependency("com.google.guava:guava")
+        include dependency("commons-lang:commons-lang")
+        include dependency("org.apache.commons:commons-lang3")
+        include dependency("commons-io:commons-io")
+        include dependency("io.netty:netty-common")
+        include dependency("io.netty:netty-buffer")
+        include dependency("io.netty:netty-resolver")
+        include dependency("io.netty:netty-transport")
+        include dependency("io.netty:netty-codec")
+        include dependency("io.netty:netty-codec-http")
+        include dependency("io.netty:netty-codec-http2")
+        include dependency("io.netty:netty-codec-socks")
+        include dependency("io.netty:netty-handler")
+        include dependency("io.netty:netty-handler-proxy")
+        include dependency("io.grpc:grpc-core")
+        include dependency("io.grpc:grpc-protobuf")
+        include dependency("io.grpc:grpc-stub")
+        include dependency("io.grpc:grpc-context")
+        include dependency("io.grpc:grpc-netty")
+        include dependency("io.grpc:grpc-protobuf-lite")
+        include dependency("com.google.protobuf:protobuf-java-util")
+        include dependency("com.google.protobuf:protobuf-java")
+        include dependency("com.google.code.gson:gson")
+        include dependency("com.google.instrumentation:instrumentation-api")
+        include dependency("io.pravega:pravega-common")
+        include dependency("io.pravega:pravega-shared")
+        include dependency("io.pravega:pravega-controller-contract")
+        include dependency("io.pravega:pravega-clients")
+        include dependency("io.pravega:singlenode")
+    }
+
+    // Shading the libraries which could cause potential version conflicts with flink.
+    relocate "com.google", "io.pravega.shaded.com.google"
+    relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+    relocate "io.grpc", "io.pravega.shaded.io.grpc"
+    relocate "io.netty", "io.pravega.shaded.io.netty"
+
+    mergeServiceFiles()
+}
+
+javadoc {
+    title = "Pravega Flink Connector"
+    failOnError = false
+    exclude "**/impl/**";
+    source = sourceSets.main.java
+    def javadocs = new File(rootDir, "javadocs")
+    javadocs.mkdirs()
+    destinationDir = javadocs
+}
+
+subprojects {
+    task allDeps(type: DependencyReportTask) {}
+}
+
+task sourceCopy(type: Copy) {
+    from rootDir
+    into 'source'
+}
+
+task sourceTar(type: Tar) {
+    dependsOn 'sourceCopy'
+    from  'source'
+    destinationDir = file('sourceArtifacts')
+    extension = 'tgz'
+    compression = Compression.GZIP
+}
