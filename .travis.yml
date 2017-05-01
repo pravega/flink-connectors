@@ -1,0 +1,28 @@
+#
+#  Copyright (c) 2017 Dell Inc., or its subsidiaries.
+#
+language: java
+jdk:
+  - oraclejdk8
+env:
+  global:
+    - GRADLE_OPTS="-Xms128m"
+
+sudo: required
+
+services:
+  - docker
+
+cache:
+  directories:
+  - .gradle
+  - $HOME/.gradle
+  - $HOME/.m2
+  
+notifications:
+  slack: emcnautilus:UZK3F72LSRYWXUuvlzSilFyy
+  email:
+    - tom.kaitchuck@dell.com
+    - bhargav.gulavani@dell.com
+    - sandeep.shridhar@dell.com
+    - Flavio.Junqueira@emc.com
