@@ -24,5 +24,4 @@ notifications:
   email:
     - tom.kaitchuck@dell.com
     - bhargav.gulavani@dell.com
-    - sandeep.shridhar@dell.com
     - Flavio.Junqueira@emc.com
