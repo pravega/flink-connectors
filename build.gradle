@@ -117,7 +117,9 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-clients', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-controller-contract', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-shared-controller', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
     testCompile group: 'junit', name: 'junit', version: junitVersion
@@ -159,10 +161,12 @@ shadowJar {
         include dependency("com.google.protobuf:protobuf-java")
         include dependency("com.google.code.gson:gson")
         include dependency("com.google.instrumentation:instrumentation-api")
+        include dependency("io.pravega:pravega-clients")
         include dependency("io.pravega:pravega-common")
         include dependency("io.pravega:pravega-shared")
-        include dependency("io.pravega:pravega-controller-contract")
-        include dependency("io.pravega:pravega-clients")
+        include dependency("io.pravega:pravega-shared-metrics")
+        include dependency("io.pravega:pravega-shared-protocol")
+        include dependency("io.pravega:pravega-shared-controller")
         include dependency("io.pravega:singlenode")
     }
 
