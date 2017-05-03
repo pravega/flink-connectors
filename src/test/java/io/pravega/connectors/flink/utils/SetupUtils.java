@@ -3,17 +3,17 @@
  */
 package io.pravega.connectors.flink.utils;
 
-import io.pravega.ClientFactory;
-import io.pravega.ReaderGroupManager;
-import io.pravega.StreamManager;
+import io.pravega.client.ClientFactory;
+import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.admin.StreamManager;
 import io.pravega.local.InProcPravegaCluster;
-import io.pravega.stream.EventStreamReader;
-import io.pravega.stream.EventStreamWriter;
-import io.pravega.stream.EventWriterConfig;
-import io.pravega.stream.ReaderConfig;
-import io.pravega.stream.ReaderGroupConfig;
-import io.pravega.stream.ScalingPolicy;
-import io.pravega.stream.StreamConfiguration;
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.EventWriterConfig;
+import io.pravega.client.stream.ReaderConfig;
+import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ScalingPolicy;
+import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.test.common.TestUtils;
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;

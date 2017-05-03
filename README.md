@@ -15,8 +15,13 @@ $./gradlew publishMavenPublicationToMavenLocal
 Use the built-in gradle wrapper to build the connector.
 ```
 $ git clone https://github.com/pravega/flink-connectors.git
-$ ./gradlew build
+$ ./gradlew clean build
 ...
 BUILD SUCCESSFUL
 ```
 
+### Creating the shaded connector jar
+Use the following command to publish the shaded connector jar file. The jar file created is named as - pravega-connectors-flink_2.11-<version>.jar
+```
+$ ./gradlew publishShadowPublicationToMavenLocal
+```

@@ -7,8 +7,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.stream.EventStreamReader;
-import io.pravega.stream.EventStreamWriter;
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.test.common.AssertExtensions;
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;

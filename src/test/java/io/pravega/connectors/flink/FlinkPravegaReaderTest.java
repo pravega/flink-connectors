@@ -6,7 +6,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.stream.EventStreamWriter;
+import io.pravega.client.stream.EventStreamWriter;
 import com.google.common.collect.Lists;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
