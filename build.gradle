@@ -22,6 +22,7 @@ apply plugin: 'checkstyle'
 apply plugin: 'findbugs'
 apply plugin: 'maven-publish'
 apply plugin: 'jacoco'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 checkstyle {
     toolVersion = checkstyleToolVersion
@@ -47,6 +48,7 @@ tasks.withType(FindBugs) {
         html.enabled true
     }
 }
+
 compileJava {
     options.compilerArgs << "-Xlint:deprecation" << "-Xlint:divzero" << "-Xlint:empty" << "-Xlint:fallthrough" << "-Xlint:finally" << "-Xlint:overrides" << "-Xlint:path" << "-Werror"
 }
@@ -60,17 +62,6 @@ repositories {
     maven {
         url "https://repository.apache.org/snapshots"
     }
-    maven {
-        url "https://raw.github.com/twitter/bookkeeper/mvn-repo/"+ twitterMvnRepoVersion
-    }
-    maven {
-        url "http://maven.twttr.com"
-    }
-}
-
-configurations.all {
-    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-    all*.exclude group: 'log4j', module: 'log4j'
 }
 
 checkstyle {
@@ -111,11 +102,13 @@ tasks.withType(Test) {
     maxHeapSize = "512m"
 }
 
-apply plugin: 'com.github.johnrengelman.shadow'
+configurations.all {
+    all*.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    all*.exclude group: 'log4j', module: 'log4j'
+}
 
 dependencies {
     compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-client-admin', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
@@ -163,7 +156,6 @@ shadowJar {
         include dependency("com.google.code.gson:gson")
         include dependency("com.google.instrumentation:instrumentation-api")
         include dependency("io.pravega:pravega-client")
-        include dependency("io.pravega:pravega-client-admin")
         include dependency("io.pravega:pravega-common")
         include dependency("io.pravega:pravega-shared")
         include dependency("io.pravega:pravega-shared-metrics")
@@ -178,6 +170,7 @@ shadowJar {
     relocate "io.grpc", "io.pravega.shaded.io.grpc"
     relocate "io.netty", "io.pravega.shaded.io.netty"
 
+    classifier = null
     mergeServiceFiles()
 }
 
