@@ -31,7 +31,7 @@ repositories {
         url "https://repository.apache.org/snapshots"
     }
     maven {
-        url "https://oss.sonatype.org/content/groups/staging/"
+        url "https://oss.sonatype.org/content/repositories/snapshots"
     }
     mavenLocal()
 }
