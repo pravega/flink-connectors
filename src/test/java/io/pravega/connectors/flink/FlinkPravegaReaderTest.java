@@ -44,9 +44,9 @@ public class FlinkPravegaReaderTest extends StreamingMultipleProgramsTestBase {
     // Setup utility.
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
-    //Ensure each test completes within 60 seconds.
+    //Ensure each test completes within 120 seconds.
     @Rule
-    public final Timeout globalTimeout = new Timeout(60, TimeUnit.SECONDS);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
     
     @BeforeClass
     public static void setupPravega() throws Exception {

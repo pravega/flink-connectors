@@ -43,7 +43,7 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     @Rule
-    public final Timeout globalTimeout = new Timeout(60, TimeUnit.SECONDS);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     // ------------------------------------------------------------------------
 
