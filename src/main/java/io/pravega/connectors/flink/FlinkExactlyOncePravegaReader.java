@@ -5,14 +5,14 @@ package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
 
-import io.pravega.ClientFactory;
-import io.pravega.ReaderGroupManager;
-import io.pravega.stream.Checkpoint;
-import io.pravega.stream.EventRead;
-import io.pravega.stream.EventStreamReader;
-import io.pravega.stream.ReaderConfig;
-import io.pravega.stream.ReaderGroupConfig;
-import io.pravega.stream.Serializer;
+import io.pravega.client.ClientFactory;
+import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.stream.Checkpoint;
+import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.ReaderConfig;
+import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.Serializer;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -161,7 +161,7 @@ public class FlinkExactlyOncePravegaReader<T>
      * Sets the timeout for initiating a checkpoint in Pravega.
      *
      * <p>This timeout if applied to the future returned by
-     * {@link io.pravega.stream.ReaderGroup#initiateCheckpoint(String, ScheduledExecutorService)}.
+     * {@link io.pravega.client.stream.ReaderGroup#initiateCheckpoint(String, ScheduledExecutorService)}.
      *
      * @param checkpointInitiateTimeout The timeout, in milliseconds
      */
@@ -174,7 +174,7 @@ public class FlinkExactlyOncePravegaReader<T>
      * Gets the timeout for initiating a checkpoint in Pravega.
      *
      * <p>This timeout if applied to the future returned by
-     * {@link io.pravega.stream.ReaderGroup#initiateCheckpoint(String, ScheduledExecutorService)}.
+     * {@link io.pravega.client.stream.ReaderGroup#initiateCheckpoint(String, ScheduledExecutorService)}.
      *
      * @return The timeout, in milliseconds
      */

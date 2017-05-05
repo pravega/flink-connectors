@@ -5,12 +5,12 @@ package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
 
-import io.pravega.ClientFactory;
+import io.pravega.client.ClientFactory;
 import io.pravega.common.Exceptions;
-import io.pravega.stream.EventStreamWriter;
-import io.pravega.stream.EventWriterConfig;
-import io.pravega.stream.Serializer;
-import io.pravega.stream.Transaction;
+import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.EventWriterConfig;
+import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.Transaction;
 
 import lombok.extern.slf4j.Slf4j;
 

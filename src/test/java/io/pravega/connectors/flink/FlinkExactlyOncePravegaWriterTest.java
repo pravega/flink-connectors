@@ -5,8 +5,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.stream.EventRead;
-import io.pravega.stream.EventStreamReader;
+import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.EventStreamReader;
 
 import lombok.extern.slf4j.Slf4j;
 

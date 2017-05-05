@@ -3,7 +3,7 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.stream.Checkpoint;
+import io.pravega.client.stream.Checkpoint;
 import org.apache.commons.lang3.SerializationUtils;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 

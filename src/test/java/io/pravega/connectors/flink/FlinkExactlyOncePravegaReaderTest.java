@@ -9,7 +9,7 @@ import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-import io.pravega.stream.EventStreamWriter;
+import io.pravega.client.stream.EventStreamWriter;
 
 import lombok.extern.slf4j.Slf4j;
 

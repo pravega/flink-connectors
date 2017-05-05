@@ -3,7 +3,7 @@
  */
 package io.pravega.connectors.flink.utils;
 
-import io.pravega.stream.EventStreamWriter;
+import io.pravega.client.stream.EventStreamWriter;
 import org.apache.flink.core.testutils.CheckedThread;
 
 /**

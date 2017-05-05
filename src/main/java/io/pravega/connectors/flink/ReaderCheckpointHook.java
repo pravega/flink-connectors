@@ -4,9 +4,9 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.ReaderGroupManager;
-import io.pravega.stream.Checkpoint;
-import io.pravega.stream.ReaderGroup;
+import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.stream.Checkpoint;
+import io.pravega.client.stream.ReaderGroup;
 
 import lombok.extern.slf4j.Slf4j;
 
