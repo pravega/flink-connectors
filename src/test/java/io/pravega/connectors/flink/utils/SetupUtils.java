@@ -14,7 +14,6 @@ import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.StreamConfiguration;
-import io.pravega.test.common.TestUtils;
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;
 import lombok.Getter;

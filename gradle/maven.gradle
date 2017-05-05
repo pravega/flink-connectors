@@ -1,0 +1,74 @@
+apply plugin: 'maven'
+apply plugin: 'signing'
+
+if (project.hasProperty("doSigning")) {
+    signing {
+        sign shadowJar
+    }
+    // Default the secretKeyRingFile to the current user's home
+    if (!project.property("signing.secretKeyRingFile")) {
+        def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
+        project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+    }
+}
+
+// Disable the normal jar, only publish the shadow jar
+jar.enabled = false
+install.dependsOn(shadowJar)
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            // Only configure publishing if a URL was provided
+            if (project.hasProperty("publishUrl")) {
+                if (publishUrl == "mavenCentral") {
+                    repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                        authentication(userName: publishUsername, password: publishPassword)
+                    }
+                    snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                        authentication(userName: publishUsername, password: publishPassword)
+                    }
+                }
+                else {
+                    repository(url: publishUrl) {
+                        // Only configure credentials if they are provided (allows publishing to the filesystem)
+                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+tasks.withType(Upload) {
+    repositories.withType(MavenResolver) {
+        pom.project {
+            name "Pravega Flink Connectors"
+            url "http://pravega.io"
+            description "Streaming Storage Platform"
+            scm {
+                url 'https://github.com/pravega/flink-connectors/tree/master'
+                connection 'scm:git:git://github.com/pravega/flink-connectors.git'
+                developerConnection 'scm:git:https://github.com/pravega/flink-connectors.git'
+            }
+            licenses {
+                license {
+                    name 'The Apache License, Version 2.0'
+                    url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                }
+            }
+            developers {
+                developer {
+                    id 'fpj'
+                    name 'Flavio Junqueira'
+                }
+            }
+        }
+
+        if (project.hasProperty('doSigning')) {
+            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+        }
+    }
+}

@@ -9,7 +9,6 @@ import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
-import io.pravega.test.common.AssertExtensions;
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
@@ -120,7 +119,8 @@ public class FlinkPravegaWriterTest {
                 countElem++;
                 i++;
             }
-            AssertExtensions.assertGreaterThanOrEqual("Repeated events", jobParallelism, countElem);
+            Assert.assertTrue(String.format("Repeated events Expected: greater than or equal to %d. Actual: %d.",
+                    jobParallelism, countElem), jobParallelism <= countElem);
             expectedEventValue++;
         }
         Assert.assertEquals(expectedEventValue, eventCountPerSource);
