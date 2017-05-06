@@ -13,93 +13,27 @@ buildscript {
     }
 }
 
-apply plugin: 'java'
-apply plugin: 'idea'
+group = "io.pravega"
+version = connectorVersion
+
 apply plugin: 'eclipse'
-apply plugin: 'maven'
-apply plugin: 'signing'
-apply plugin: 'checkstyle'
-apply plugin: 'findbugs'
-apply plugin: 'maven-publish'
-apply plugin: 'jacoco'
-apply plugin: 'com.github.johnrengelman.shadow'
-
-checkstyle {
-    toolVersion = checkstyleToolVersion
-}
-
-jacocoTestReport {
-    reports {
-        xml.enabled true
-        html.enabled false
-    }
-}
-
-test {
-    finalizedBy jacocoTestReport
-}
-
-tasks.withType(FindBugs) {
-    effort = "default"
-    includeFilter = file("$rootDir/checkstyle/findbugs-include.xml")
-    excludeFilter = file("$rootDir/checkstyle/findbugs-exclude.xml")
-    reports {
-        xml.enabled false
-        html.enabled true
-    }
-}
-
-compileJava {
-    options.compilerArgs << "-Xlint:deprecation" << "-Xlint:divzero" << "-Xlint:empty" << "-Xlint:fallthrough" << "-Xlint:finally" << "-Xlint:overrides" << "-Xlint:path" << "-Werror"
-}
+apply from: 'gradle/idea.gradle'
+apply from: 'gradle/java.gradle'
+apply from: 'gradle/checkstyle.gradle'
+apply from: 'gradle/findbugs.gradle'
+apply from: 'gradle/jacoco.gradle'
+apply from: 'gradle/maven.gradle'
 
 repositories {
-    // Use 'jcenter' for resolving your dependencies.
-    // You can declare any Maven/Ivy/file repository here.
     jcenter()
     mavenCentral()
-    mavenLocal()
     maven {
         url "https://repository.apache.org/snapshots"
     }
-}
-
-checkstyle {
-    configFile = new File(rootDir, "checkstyle/checkstyle.xml")
-    configProperties = [importControlFile: "$rootDir/checkstyle/import-control.xml"]
-}
-
-publishing {
-    repositories {
-        maven {
-            credentials {
-                username = "$repoUser"
-                password = "$repoPass"
-            }
-            url = "$repoUrl"
-        }
+    maven {
+        url "https://oss.sonatype.org/content/repositories/snapshots"
     }
-    publications {
-        shadow(MavenPublication) {
-            groupId = System.properties['groupId'] ? System.properties['groupId'].toString() : "io.pravega"
-            artifactId 'pravega-connectors-flink_2.11'
-            version = connectorVersion
-            from components.shadow
-        }
-    }
-}
-
-tasks.withType(Test) {
-    systemProperties 'logback.configurationFile' : new File(buildDir,'test/resources/logback.xml').absolutePath
-    testLogging.showStandardStreams = false
-    testLogging.exceptionFormat = "FULL"
-    testLogging.showCauses = true
-    testLogging.showExceptions = true
-    testLogging.showStackTraces = true
-    testLogging.events = ["PASSED", "FAILED"]
-    maxParallelForks = System.properties['maxParallelForks'] ? System.properties['maxParallelForks'].toInteger() : 1
-    minHeapSize = "128m"
-    maxHeapSize = "512m"
+    mavenLocal()
 }
 
 configurations.all {
@@ -120,7 +54,7 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-tests_2.11', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_2.11', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-contrib_2.11', version: flinkVersion
-    testCompile group: 'io.pravega', name: 'pravega-singlenode', version: pravegaVersion
+    testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies
     shadow group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
@@ -161,7 +95,7 @@ shadowJar {
         include dependency("io.pravega:pravega-shared-metrics")
         include dependency("io.pravega:pravega-shared-protocol")
         include dependency("io.pravega:pravega-shared-controller")
-        include dependency("io.pravega:singlenode")
+        include dependency("io.pravega:pravega-standalone")
     }
 
     // Shading the libraries which could cause potential version conflicts with flink.
@@ -178,25 +112,4 @@ javadoc {
     title = "Pravega Flink Connector"
     failOnError = false
     exclude "**/impl/**";
-    source = sourceSets.main.java
-    def javadocs = new File(rootDir, "javadocs")
-    javadocs.mkdirs()
-    destinationDir = javadocs
-}
-
-subprojects {
-    task allDeps(type: DependencyReportTask) {}
-}
-
-task sourceCopy(type: Copy) {
-    from rootDir
-    into 'source'
-}
-
-task sourceTar(type: Tar) {
-    dependsOn 'sourceCopy'
-    from  'source'
-    destinationDir = file('sourceArtifacts')
-    extension = 'tgz'
-    compression = Compression.GZIP
 }

@@ -4,7 +4,6 @@
 
 package io.pravega.connectors.flink.utils;
 
-import io.pravega.test.common.IntentionalException;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 
