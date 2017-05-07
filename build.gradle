@@ -95,7 +95,6 @@ shadowJar {
         include dependency("io.pravega:pravega-shared-metrics")
         include dependency("io.pravega:pravega-shared-protocol")
         include dependency("io.pravega:pravega-shared-controller")
-        include dependency("io.pravega:pravega-standalone")
     }
 
     // Shading the libraries which could cause potential version conflicts with flink.
