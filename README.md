@@ -23,7 +23,7 @@ BUILD SUCCESSFUL
 ### Creating the shaded connector jar
 Use the following command to publish the shaded connector jar file. The jar file created is named as - pravega-connectors-flink_2.11-<version>.jar
 ```
-$ ./gradlew publishShadowPublicationToMavenLocal
+$ ./gradlew install
 ```
 
 **Note:** This connector is built against flink version 1.3-SNAPSHOT
