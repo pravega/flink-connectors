@@ -19,4 +19,7 @@
     <allow pkg="lombok"/>
     <allow pkg="org.apache"/>
 
+    <!-- flink dependencies -->
+    <allow pkg="scala"/>
+    
 </import-control>
