@@ -8,7 +8,7 @@ Connectors for Pravega to be used with Flink jobs.
 Install the Pravega client libraries to your local Maven repository.
 ```
 $ git clone https://github.com/pravega/pravega.git
-$./gradlew publishMavenPublicationToMavenLocal
+$./gradlew install
 ```
 
 ### Building the Connector
