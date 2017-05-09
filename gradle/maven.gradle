@@ -5,6 +5,10 @@ if (project.hasProperty("doSigning")) {
     signing {
         sign shadowJar
     }
+    artifacts {
+        shadow signShadowJar.singleSignature
+    }
+
     // Default the secretKeyRingFile to the current user's home
     if (!project.property("signing.secretKeyRingFile")) {
         def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
@@ -12,11 +16,8 @@ if (project.hasProperty("doSigning")) {
     }
 }
 
-// Disable the normal jar, only publish the shadow jar
-jar.enabled = false
-install.dependsOn(shadowJar)
-
-uploadArchives {
+uploadArchives.enabled = false
+uploadShadow {
     repositories {
         mavenDeployer {
             // Only configure publishing if a URL was provided
@@ -67,8 +68,16 @@ tasks.withType(Upload) {
             }
         }
 
+        pom.scopeMappings.mappings.remove(configurations.testCompile)
         if (project.hasProperty('doSigning')) {
             beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
         }
     }
 }
+
+// Configure install task to use the shadow jar/pom
+install.configuration = configurations.shadow
+MavenPom pom = install.repositories.mavenInstaller.pom
+pom.scopeMappings.mappings.remove(configurations.compile)
+pom.scopeMappings.mappings.remove(configurations.runtime)
+pom.scopeMappings.addMapping(MavenPlugin.RUNTIME_PRIORITY, configurations.shadow, Conf2ScopeMappingContainer.RUNTIME)
