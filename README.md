@@ -33,13 +33,16 @@ Instantiate a FlinkPravegaReader instance and add it as a source to the Flink st
 The source does a tail read of the supplied set of streams.
 
 ```
+// Define your event deserializer 
+AbstractDeserializationSchema<EventType> deserializer = ...
+
 // Set startTime to 0 to read from the beginning of the streams
 FlinkPravegaReader<EventType> pravegaSource = new FlinkPravegaReader<>(
         "tcp://localhost:9090",
         scopeName,
         listOfStreams,
         startTime,
-        new AbstractDeserializationSchema<EventType>());
+        deserializer);
 DataStreamSource<EventType> dataStream = flinkEnv
                                             .addSource(pravegaSource)
                                             .setParallelism(2)
@@ -59,11 +62,17 @@ The usage is the same for both the connectors. Example:
 ```
 DataStreamSource<EventType> dataStream = ...
 ...
+// Define Event Serializer.
+SerializationSchema<EventType> serializer = ...
+
+// Define the event router for selecting the keys to route events within pravega.
+PravegaEventRouter router = ...  
+
 FlinkPravegaWriter<EventType> pravegaSink = new FlinkPravegaWriter<>(
         "tcp://localhost:9090", 
         scopeName, 
         streamName, 
-        new SerializationSchema(), 
-        new PravegaEventRouter())
+        serializer, 
+        router)
 dataStream.addSink(pravegaSink);
 ```
