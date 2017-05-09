@@ -68,6 +68,7 @@ tasks.withType(Upload) {
             }
         }
 
+        pom.scopeMappings.mappings.remove(configurations.testCompile)
         if (project.hasProperty('doSigning')) {
             beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
         }
