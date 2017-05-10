@@ -36,6 +36,13 @@ repositories {
     mavenLocal()
 }
 
+configurations.all {
+    resolutionStrategy {
+        cacheDynamicVersionsFor 60, 'minutes'
+        cacheChangingModulesFor 60, 'minutes'
+    }
+}
+
 configurations {
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -47,7 +54,7 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-controller', version: pravegaVersion
+    compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
     testCompile group: 'junit', name: 'junit', version: junitVersion
@@ -94,7 +101,7 @@ shadowJar {
         include dependency("io.pravega:pravega-shared")
         include dependency("io.pravega:pravega-shared-metrics")
         include dependency("io.pravega:pravega-shared-protocol")
-        include dependency("io.pravega:pravega-shared-controller")
+        include dependency("io.pravega:pravega-shared-controller-api")
     }
 
     // Shading the libraries which could cause potential version conflicts with flink.
