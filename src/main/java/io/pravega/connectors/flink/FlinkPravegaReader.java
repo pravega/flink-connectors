@@ -154,18 +154,9 @@ public class FlinkPravegaReader<T>
         //       See https://github.com/pravega/pravega/issues/553.
         log.info("Creating reader group: {} for the Flink job", this.readerGroupName);
 
-        //Issue-24 Reader Group uses grpc which uses thread context loader that causes some dependencies not getting
-        //loaded properly https://github.com/grpc/grpc-java/blob/v1.3.0/core/src/main/java/io/grpc/ManagedChannelProvider.java#L132
-        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
-        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
-
-        try {
-            ReaderGroupManager.withScope(scope, controllerURI)
-                    .createReaderGroup(this.readerGroupName, ReaderGroupConfig.builder().startingTime(startTime).build(),
-                            streamNames);
-        } finally {
-            Thread.currentThread().setContextClassLoader(originalClassLoader);
-        }
+        ReaderGroupManager.withScope(scope, controllerURI)
+                .createReaderGroup(this.readerGroupName, ReaderGroupConfig.builder().startingTime(startTime).build(),
+                        streamNames);
     }
 
     // ------------------------------------------------------------------------
