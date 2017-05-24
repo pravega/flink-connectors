@@ -279,8 +279,15 @@ public class FlinkPravegaReader<T>
 
     @Override
     public MasterTriggerRestoreHook<Checkpoint> createMasterTriggerRestoreHook() {
-        return new ReaderCheckpointHook(this.readerName, this.readerGroupName,
-                this.scopeName, this.controllerURI, this.checkpointInitiateTimeout);
+        //Issue-24
+        ClassLoader originalClassLoader = Thread.currentThread().getContextClassLoader();
+        Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
+        try {
+            return new ReaderCheckpointHook(this.readerName, this.readerGroupName,
+                    this.scopeName, this.controllerURI, this.checkpointInitiateTimeout);
+        } finally {
+            Thread.currentThread().setContextClassLoader(originalClassLoader);
+        }
     }
 
     @Override
