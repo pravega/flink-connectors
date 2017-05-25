@@ -40,6 +40,7 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.stream.Collectors;
 
 /**
  * Flink source implementation for reading from pravega storage.
@@ -110,7 +111,7 @@ public class FlinkPravegaReader<T>
     public FlinkPravegaReader(final URI controllerURI, final String scope, final Set<String> streamNames,
                               final long startTime, final DeserializationSchema<T> deserializationSchema) {
 
-        this(controllerURI, scope, streamNames, startTime, deserializationSchema, UUID.randomUUID().toString());
+        this(controllerURI, scope, streamNames, startTime, deserializationSchema, null);
     }
 
     /**
@@ -142,13 +143,16 @@ public class FlinkPravegaReader<T>
         Preconditions.checkNotNull(streamNames, "streamNames");
         Preconditions.checkArgument(startTime >= 0, "start time must be >= 0");
         Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
-        Preconditions.checkNotNull(readerName, "readerName");
+        if (readerName == null) {
+            this.readerName = getDefaultReaderName(scope, streamNames);
+        } else {
+            this.readerName = readerName;
+        }
 
         this.controllerURI = controllerURI;
         this.scopeName = scope;
         this.deserializationSchema = deserializationSchema;
         this.readerGroupName = "flink" + RandomStringUtils.randomAlphanumeric(20).toLowerCase();
-        this.readerName = readerName;
 
         // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
         //       See https://github.com/pravega/pravega/issues/553.
@@ -338,5 +342,18 @@ public class FlinkPravegaReader<T>
         public T deserialize(ByteBuffer serializedValue) {
             return deserializationSchema.deserialize(serializedValue.array());
         }
+    }
+
+    /*
+     * Helper method that derives default reader name from stream and scope name
+     */
+    private static String getDefaultReaderName(final String scope, final Set<String> streamNames) {
+        final String delimiter = "-";
+        final String reader = streamNames.stream().collect(Collectors.joining(delimiter)) + delimiter + scope;
+        int hash = 0;
+        for (int i = 0; i < reader.length(); i++) {
+            hash = reader.charAt(i) + (31 * hash);
+        }
+        return Integer.toString(hash);
     }
 }
