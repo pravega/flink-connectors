@@ -340,7 +340,7 @@ public class FlinkPravegaReader<T>
     /*
      * Helper method that derives default reader name from stream and scope name
      */
-    private String getDefaultReaderName(final String scope, final Set<String> streamNames) {
+    private static String getDefaultReaderName(final String scope, final Set<String> streamNames) {
         final String delimiter = "-";
         final String reader = streamNames.stream().collect(Collectors.joining(delimiter)) + delimiter + scope;
         int hash = 0;
