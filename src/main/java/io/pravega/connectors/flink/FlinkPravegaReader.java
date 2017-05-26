@@ -221,7 +221,7 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
-        // the reader ID is random unique per source task
+
         final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
 
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
