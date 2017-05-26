@@ -17,7 +17,6 @@ import com.google.common.base.Preconditions;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.junit.After;
@@ -150,7 +149,7 @@ public class FlinkPravegaWriterTest {
                 setParallelism(jobParallelism);
         execEnv.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
-        DataStreamSource<Integer> dataStream = execEnv.enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE)
+        DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(withFailure, EVENT_COUNT_PER_SOURCE));
 
         FlinkPravegaWriter<Integer> pravegaSink = new FlinkPravegaWriter<>(
@@ -163,7 +162,6 @@ public class FlinkPravegaWriterTest {
                     return result.array();
                 },
                 event -> "fixedkey");
-        pravegaSink.setPravegaWriterMode(PravegaWriterMode.ATLEAST_ONCE);
 
         dataStream.addSink(pravegaSink);
         execEnv.execute();

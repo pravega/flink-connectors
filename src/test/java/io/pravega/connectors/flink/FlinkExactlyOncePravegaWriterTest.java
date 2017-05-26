@@ -113,7 +113,7 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
                 .addSource(new ThrottledIntegerGeneratingSource(numElements))
                 .map(new FailingMapper<>(numElements / sinkParallelism / 2))
                 .rebalance()
-                .addSink(new FlinkExactlyOncePravegaWriter<>(
+                .addSink(new FlinkPravegaWriter<>(
                         SETUP_UTILS.getControllerUri(),
                         SETUP_UTILS.getScope(),
                         streamName,
