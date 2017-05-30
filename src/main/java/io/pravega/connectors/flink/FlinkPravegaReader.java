@@ -38,7 +38,6 @@ import org.apache.flink.util.FlinkException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -222,8 +221,8 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
-        // the reader ID is random unique per source task
-        final String readerId = "flink-reader-" + UUID.randomUUID();
+
+        final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
 
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
                 getRuntimeContext().getTaskNameWithSubtasks(), readerId, this.controllerURI);
