@@ -77,29 +77,15 @@ public class FlinkPravegaWriter<T>
     private final long txnMaxTimeMillis;
     private final long txnGracePeriodMillis;
 
-    // ----------- runtime fields -----------
+    // Writer interface to assist exactly-once and atleast-once functionality
+    private transient InternalWriter<T> writerImpl = null;
 
-    /** The pravega writer client. Used only to create transactions. */
-    private transient EventStreamWriter<T> pravegaWriter;
+    /** The pravega writerImpl client. Used only to create transactions. */
+    private transient EventStreamWriter<T> pravegaWriter = null;
 
-    /** The currently running transaction to which we write */
-    private transient Transaction<T> currentTxn;
-
-    /** The transactions that are complete from Flink's view (their checkpoint was triggered),
-     * but not fully committed, because their corresponding checkpoint is not yet confirmed */
-    private transient ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
-
-    // Error which will be detected asynchronously and reported to flink.
-    private transient AtomicReference<Exception> writeError = null;
-
-    // Used to track confirmation from all writes to ensure guaranteed writes.
-    private transient AtomicInteger pendingWritesCount = null;
-
-    // Thread pool for handling callbacks from write events.
-    private transient ExecutorService executorService = null;
 
     /**
-     * The flink pravega writer instance which can be added as a sink to a flink job.
+     * The flink pravega writerImpl instance which can be added as a sink to a flink job.
      *
      * @param controllerURI         The pravega controller endpoint address.
      * @param scope                 The destination stream's scope name.
@@ -120,7 +106,7 @@ public class FlinkPravegaWriter<T>
 
 
     /**
-     * The flink pravega writer instance which can be added as a sink to a flink job.
+     * The flink pravega writerImpl instance which can be added as a sink to a flink job.
      *
      * @param controllerURI         The pravega controller endpoint address.
      * @param scope                 The destination stream's scope name.
@@ -168,65 +154,45 @@ public class FlinkPravegaWriter<T>
     @Override
     public void open(Configuration parameters) throws Exception {
 
+        // Pravega transaction writerImpl (exactly-once) implementation can be used only when checkpoint is enabled
+        if (isCheckpointEnabled()) {
+            this.writerImpl = new TransactionWriter();
+        } else {
+            this.writerImpl = new StandardWriter();
+        }
+
         final Serializer<T> serializer = new FlinkSerializer<>(serializationSchema);
 
-        ClientFactory clientFactory = ClientFactory.withScope(this.scopeName, this.controllerURI);
+        ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
+
         this.pravegaWriter = clientFactory.createEventWriter(
-                this.streamName,
+                streamName,
                 serializer,
                 EventWriterConfig.builder().build());
 
-        log.info("Initialized pravega writer for stream: {}/{} with controller URI: {}", this.scopeName,
-                this.streamName, this.controllerURI);
+        log.info("Initialized pravega writerImpl for stream: {}/{} with controller URI: {}", scopeName,
+                streamName, controllerURI);
 
-        if (isCheckpointEnabled()) {
-            initializePravegaTx();
-        } else {
-            this.writeError = new AtomicReference<>(null);
-            this.pendingWritesCount = new AtomicInteger(0);
-            this.executorService = Executors.newFixedThreadPool(5);
-        }
-
+        writerImpl.initialize();
     }
 
     @Override
     public void invoke(T event) throws Exception {
-
-        if (isCheckpointEnabled()) {
-            this.currentTxn.writeEvent(this.eventRouter.getRoutingKey(event), event);
-        } else {
-            writeUsingStandardWriter(event);
-        }
+        writerImpl.write(event);
     }
 
     @Override
     public void close() throws Exception {
-
-        // close() is the general cleanup method, called on successful and
-        // unsuccessful termination
-
-        if (isCheckpointEnabled()) {
-            abortTransactionAndClose();
-        } else {
-            flushAndVerify();
-            this.pravegaWriter.close();
-        }
-
+        writerImpl.close();
     }
 
     // ------------------------------------------------------------------------
 
     @Override
     public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
-
-        if (isCheckpointEnabled()) {
-            return snapshotTxState(checkpointId, checkpointTime);
-        } else {
-            log.debug("Snapshot triggered, wait for all pending writes to complete");
-            flushAndVerify();
-            return new ArrayList<>();
-        }
+        return writerImpl.snapshotState(checkpointId, checkpointTime);
     }
+
 
     /**
      * Restores the state, which here means the IDs of transaction for which we have
@@ -234,68 +200,18 @@ public class FlinkPravegaWriter<T>
      */
     @Override
     public void restoreState(List<UUID> list) throws Exception {
-
-        // for the standard writer we don' need to do anything
-        if (!isCheckpointEnabled()) {
-            return;
+        // restore will be called before open. Create a local internal writer only to assist the restore functionality
+        InternalWriter<T> writerImpl;
+        if (isCheckpointEnabled()) {
+            writerImpl = new TransactionWriter();
+        } else {
+            writerImpl = new StandardWriter();
         }
-
-        // when we are restored with a UUID, we don't really know whether the
-        // transaction was already committed, or whether there was a failure between
-        // completing the checkpoint on the master, and notifying the writer here.
-
-        // (the common case is actually that is was already committed, the window
-        // between the commit on the master and the notification here is very small)
-
-        // it is possible to not have any transactions at all if there was a failure before
-        // the first completed checkpoint, or in case of a scale-out event, where some of the
-        // new task do not have and transactions assigned to check)
-
-        // we can have more than one transaction to check in case of a scale-in event, or
-        // for the reasons discussed in the 'notifyCheckpointComplete()' method.
-
-        if (list != null && list.size() > 0) {
-
-            final Serializer<?> dummySerializer = new FlinkSerializer<>(null);
-            final ClientFactory clientFactory = ClientFactory.withScope(this.scopeName, this.controllerURI);
-
-            final EventStreamWriter<?> pravegaWriter = clientFactory.createEventWriter(
-                    this.streamName,
-                    dummySerializer,
-                    EventWriterConfig.builder().build());
-
-            // go over all transactions that we got. there may be more than one in case of
-            // a scale-in and
-            for (UUID txnId : list) {
-                if (txnId != null) {
-                    final Transaction<?> txn = pravegaWriter.getTxn(txnId);
-                    final Transaction.Status status = txn.checkStatus();
-
-                    if (status == Transaction.Status.OPEN) {
-                        // that is the case when a crash happened between when the master committed
-                        // the checkpoint, and the sink could be notified
-                        log.info("{} - committing completed checkpoint transaction {} after task restore",
-                                name(), txnId);
-
-                        txn.commit();
-
-                        log.debug("{} - committed checkpoint transaction {}", name(), txnId);
-
-                    } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
-                        // that the common case
-                        log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
-
-                    } else {
-                        log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
-                                "Transaction probably timed out between failure and restore. ", name(), status, txnId);
-                    }
-                }
-            }
-        }
+        writerImpl.restoreState(list);
     }
 
     /**
-     * Notifies the writer that a checkpoint is complete.
+     * Notifies the writerImpl that a checkpoint is complete.
      *
      * <p>This call happens when the checkpoint has been fully committed
      * (= second part of a two phase commit).
@@ -306,186 +222,21 @@ public class FlinkPravegaWriter<T>
      */
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
-
-        // for the standard writer we don' need to do anything
-        if (!isCheckpointEnabled()) {
-            return;
-        }
-
-        // the following scenarios are possible here
-        // 
-        //  (1) there is exactly one transaction from the latest checkpoint that
-        //      was triggered and completed. That should be the common case.
-        //      Simply commit that transaction in that case.
-        //
-        //  (2) there are multiple pending transactions because one previous
-        //      checkpoint was skipped. That is a rare case, but can happen
-        //      for example when:
-        // 
-        //        - the master cannot persist the metadata of the last
-        //          checkpoint (temporary outage in the storage system) but
-        //          could persist a successive checkpoint (the one notified here)
-        //
-        //        - other (non Pravega sink) tasks could not persist their status during
-        //          the previous checkpoint, but did not trigger a failure because they
-        //          could hold onto their state and could successfully persist it in
-        //          a successive checkpoint (the one notified here)
-        //
-        //      In both cases, the prior checkpoint never reach a committed state, but 
-        //      this checkpoint is always expected to subsume the prior one and cover all
-        //      changes since the last successful one As a consequence, we need to commit
-        //      all pending transactions.
-        //
-        //  (3) Multiple transactions are pending, but the checkpoint complete notification
-        //      relates not to the latest. That is possible, because notification messages
-        //      can be delayed (in an extreme case till arrive after a succeeding checkpoint
-        //      was triggered) and because there can be concurrent overlapping checkpoints
-        //      (a new one is started before the previous fully finished).
-        //
-        // ==> There should never be a case where we have no pending transaction here
-        //
-
-        Preconditions.checkState(!txnsPendingCommit.isEmpty(), "checkpoint completed, but no transaction pending");
-
-        TransactionAndCheckpoint<T> txn;
-        while ((txn = txnsPendingCommit.peekFirst()) != null && txn.checkpointId() <= checkpointId) {
-            txnsPendingCommit.removeFirst();
-
-            log.info("{} - checkpoint {} complete, committing completed checkpoint transaction {}",
-                    name(), checkpointId, txn.transaction().getTxnId());
-
-            // the big assumption is that this now actually works and that the transaction has not timed out, yet
-
-            // TODO: currently, if this fails, there is actually data loss
-            // see https://github.com/pravega/flink-connectors/issues/5
-            txn.transaction().commit();
-
-            log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
-
-        }
+        writerImpl.notifyCheckpointComplete(checkpointId);
     }
 
-    private String name() {
-        return getRuntimeContext().getTaskNameWithSubtasks();
-    }
-
-    private void initializePravegaTx() {
-
-        // start the transaction that will hold the elements till the first checkpoint
-        this.currentTxn = this.pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
-
-        log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
-
-        this.txnsPendingCommit = new ArrayDeque<>();
-
-    }
-
-    private void writeUsingStandardWriter(T event) throws Exception {
-
-        Exception error = this.writeError.getAndSet(null);
-        if (error != null) {
-            log.error("Failure detected, not writing any more events");
-            throw error;
-        }
-
-        this.pendingWritesCount.incrementAndGet();
-        final AckFuture ackFuture = this.pravegaWriter.writeEvent(this.eventRouter.getRoutingKey(event), event);
-        ackFuture.addListener(
-                () -> {
-                    try {
-                        ackFuture.get();
-                        synchronized (this) {
-                            pendingWritesCount.decrementAndGet();
-                            this.notify();
-                        }
-                    } catch (Exception e) {
-                        log.warn("Detected a write failure: {}", e);
-
-                        // We will record only the first error detected, since this will mostly likely help with
-                        // finding the root cause. Storing all errors will not be feasible.
-                        writeError.compareAndSet(null, e);
-                    }
-                },
-                executorService
-        );
-    }
-
-    public List<UUID> snapshotTxState(long checkpointId, long checkpointTime) throws Exception {
-
-        // this is like the pre-commit of a 2-phase-commit transaction
-        // we are ready to commit and remember the transaction
-
-        final Transaction<T> txn = this.currentTxn;
-        Preconditions.checkState(txn != null, "bug: no transaction object when performing state snapshot");
-
-        log.debug("{} - checkpoint {} triggered, flushing transaction '{}'", name(), checkpointId, txn.getTxnId());
-
-        // make sure all events go out
-        txn.flush();
-
-        // remember the transaction to be committed when the checkpoint is confirmed
-        this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
-
-        // start the next transaction for what comes after this checkpoint
-        this.currentTxn = this.pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
-
-        log.debug("{} - started new transaction '{}'", name(), this.currentTxn.getTxnId());
-        log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
-
-        // store all pending transactions in the checkpoint state
-        return txnsPendingCommit.stream().map( (v) -> v.transaction().getTxnId() ).collect(Collectors.toList());
-    }
-
-    private void abortTransactionAndClose() throws Exception {
-
-        Exception exception = null;
-
-        Transaction<?> txn = this.currentTxn;
-        if (txn != null) {
-            try {
-                Exceptions.handleInterrupted( txn::abort );
-            } catch (Exception e) {
-                exception = e;
-            }
-        }
-
-        EventStreamWriter<T> pravegaWriter = this.pravegaWriter;
-        if (pravegaWriter != null) {
-            try {
-                pravegaWriter.close();
-            } catch (Exception e) {
-                exception = ExceptionUtils.firstOrSuppressed(e, exception);
-            }
-        }
-
-        if (exception != null) {
-            throw exception;
-        }
-
-    }
-
-    // Wait until all pending writes are completed and throw any errors detected.
-    private void flushAndVerify() throws Exception {
-        this.pravegaWriter.flush();
-
-        // Wait until all errors, if any, have been recorded.
-        synchronized (this) {
-            while (this.pendingWritesCount.get() > 0) {
-                this.wait();
-            }
-        }
-
-        // Verify that no events have been lost so far.
-        Exception error = this.writeError.getAndSet(null);
-        if (error != null) {
-            log.error("Write failure detected: " + error);
-            throw error;
-        }
-    }
+    // ------------------------------------------------------------------------
+    //  helper methods
+    // ------------------------------------------------------------------------
 
     private boolean isCheckpointEnabled() {
         return ((StreamingRuntimeContext) getRuntimeContext()).isCheckpointingEnabled();
     }
+
+    protected String name() {
+        return getRuntimeContext().getTaskNameWithSubtasks();
+    }
+
 
     // ------------------------------------------------------------------------
     //  serializer
@@ -535,6 +286,311 @@ public class FlinkPravegaWriter<T>
         @Override
         public String toString() {
             return "(checkpoint: " + checkpointId + ", transaction: " + transaction.getTxnId() + ')';
+        }
+    }
+
+    /*
+     * Interface for exactly once and at least once writerImpl implementation
+     */
+    private interface InternalWriter<T> {
+
+        void initialize() throws Exception;
+
+        void write(T event) throws Exception;
+
+        void close() throws Exception;
+
+        List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+
+        void restoreState(List<UUID> list) throws Exception;
+
+        void notifyCheckpointComplete(long checkpointId) throws Exception;
+
+    }
+
+    /*
+     * Exactly-Once Pravega Writer implementation
+     */
+    private class TransactionWriter implements InternalWriter<T> {
+
+        /** The currently running transaction to which we write */
+        private transient Transaction<T> currentTxn;
+
+        /** The transactions that are complete from Flink's view (their checkpoint was triggered),
+         * but not fully committed, because their corresponding checkpoint is not yet confirmed */
+        private transient ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
+
+        @Override
+        public void initialize() throws Exception {
+
+            // start the transaction that will hold the elements till the first checkpoint
+            this.currentTxn = pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
+
+            log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
+
+            this.txnsPendingCommit = new ArrayDeque<>();
+        }
+
+        @Override
+        public void write(T event) throws Exception {
+            this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
+        }
+
+        @Override
+        public void close() throws Exception {
+            Exception exception = null;
+
+            Transaction<?> txn = this.currentTxn;
+            if (txn != null) {
+                try {
+                    Exceptions.handleInterrupted( txn::abort );
+                } catch (Exception e) {
+                    exception = e;
+                }
+            }
+
+            if (pravegaWriter != null) {
+                try {
+                    pravegaWriter.close();
+                } catch (Exception e) {
+                    exception = ExceptionUtils.firstOrSuppressed(e, exception);
+                }
+            }
+
+            if (exception != null) {
+                throw exception;
+            }
+        }
+
+        @Override
+        public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+            // this is like the pre-commit of a 2-phase-commit transaction
+            // we are ready to commit and remember the transaction
+
+            final Transaction<T> txn = this.currentTxn;
+            Preconditions.checkState(txn != null, "bug: no transaction object when performing state snapshot");
+
+            log.debug("{} - checkpoint {} triggered, flushing transaction '{}'", name(), checkpointId, txn.getTxnId());
+
+            // make sure all events go out
+            txn.flush();
+
+            // remember the transaction to be committed when the checkpoint is confirmed
+            this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
+
+            // start the next transaction for what comes after this checkpoint
+            this.currentTxn = pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
+
+            log.debug("{} - started new transaction '{}'", name(), this.currentTxn.getTxnId());
+            log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
+
+            // store all pending transactions in the checkpoint state
+            return txnsPendingCommit.stream().map( (v) -> v.transaction().getTxnId() ).collect(Collectors.toList());
+        }
+
+        @Override
+        public void notifyCheckpointComplete(long checkpointId) throws Exception {
+            // the following scenarios are possible here
+            //
+            //  (1) there is exactly one transaction from the latest checkpoint that
+            //      was triggered and completed. That should be the common case.
+            //      Simply commit that transaction in that case.
+            //
+            //  (2) there are multiple pending transactions because one previous
+            //      checkpoint was skipped. That is a rare case, but can happen
+            //      for example when:
+            //
+            //        - the master cannot persist the metadata of the last
+            //          checkpoint (temporary outage in the storage system) but
+            //          could persist a successive checkpoint (the one notified here)
+            //
+            //        - other (non Pravega sink) tasks could not persist their status during
+            //          the previous checkpoint, but did not trigger a failure because they
+            //          could hold onto their state and could successfully persist it in
+            //          a successive checkpoint (the one notified here)
+            //
+            //      In both cases, the prior checkpoint never reach a committed state, but
+            //      this checkpoint is always expected to subsume the prior one and cover all
+            //      changes since the last successful one As a consequence, we need to commit
+            //      all pending transactions.
+            //
+            //  (3) Multiple transactions are pending, but the checkpoint complete notification
+            //      relates not to the latest. That is possible, because notification messages
+            //      can be delayed (in an extreme case till arrive after a succeeding checkpoint
+            //      was triggered) and because there can be concurrent overlapping checkpoints
+            //      (a new one is started before the previous fully finished).
+            //
+            // ==> There should never be a case where we have no pending transaction here
+            //
+
+            Preconditions.checkState(!txnsPendingCommit.isEmpty(), "checkpoint completed, but no transaction pending");
+
+            TransactionAndCheckpoint<T> txn;
+            while ((txn = txnsPendingCommit.peekFirst()) != null && txn.checkpointId() <= checkpointId) {
+                txnsPendingCommit.removeFirst();
+
+                log.info("{} - checkpoint {} complete, committing completed checkpoint transaction {}",
+                        name(), checkpointId, txn.transaction().getTxnId());
+
+                // the big assumption is that this now actually works and that the transaction has not timed out, yet
+
+                // TODO: currently, if this fails, there is actually data loss
+                // see https://github.com/pravega/flink-connectors/issues/5
+                txn.transaction().commit();
+
+                log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
+
+            }
+        }
+
+        @Override
+        public void restoreState(List<UUID> list) throws Exception {
+            // when we are restored with a UUID, we don't really know whether the
+            // transaction was already committed, or whether there was a failure between
+            // completing the checkpoint on the master, and notifying the writerImpl here.
+
+            // (the common case is actually that is was already committed, the window
+            // between the commit on the master and the notification here is very small)
+
+            // it is possible to not have any transactions at all if there was a failure before
+            // the first completed checkpoint, or in case of a scale-out event, where some of the
+            // new task do not have and transactions assigned to check)
+
+            // we can have more than one transaction to check in case of a scale-in event, or
+            // for the reasons discussed in the 'notifyCheckpointComplete()' method.
+
+            if (list != null && list.size() > 0) {
+
+                final Serializer<?> dummySerializer = new FlinkSerializer<>(null);
+                final ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
+
+                final EventStreamWriter<?> pravegaWriter = clientFactory.createEventWriter(
+                        streamName,
+                        dummySerializer,
+                        EventWriterConfig.builder().build());
+
+                // go over all transactions that we got. there may be more than one in case of
+                // a scale-in and
+                for (UUID txnId : list) {
+                    if (txnId != null) {
+                        final Transaction<?> txn = pravegaWriter.getTxn(txnId);
+                        final Transaction.Status status = txn.checkStatus();
+
+                        if (status == Transaction.Status.OPEN) {
+                            // that is the case when a crash happened between when the master committed
+                            // the checkpoint, and the sink could be notified
+                            log.info("{} - committing completed checkpoint transaction {} after task restore",
+                                    name(), txnId);
+
+                            txn.commit();
+
+                            log.debug("{} - committed checkpoint transaction {}", name(), txnId);
+
+                        } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
+                            // that the common case
+                            log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
+
+                        } else {
+                            log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
+                                    "Transaction probably timed out between failure and restore. ", name(), status, txnId);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * At least-Once Pravega Writer implementation
+     */
+    private class StandardWriter implements InternalWriter<T> {
+
+        // Error which will be detected asynchronously and reported to flink.
+        private transient AtomicReference<Exception> writeError = null;
+
+        // Used to track confirmation from all writes to ensure guaranteed writes.
+        private transient AtomicInteger pendingWritesCount = null;
+
+        // Thread pool for handling callbacks from write events.
+        private transient ExecutorService executorService = null;
+
+        @Override
+        public void initialize() throws Exception {
+            this.writeError = new AtomicReference<>(null);
+            this.pendingWritesCount = new AtomicInteger(0);
+            this.executorService = Executors.newFixedThreadPool(5);
+        }
+
+        @Override
+        public void write(T event) throws Exception {
+            Exception error = this.writeError.getAndSet(null);
+            if (error != null) {
+                log.error("Failure detected, not writing any more events");
+                throw error;
+            }
+
+            this.pendingWritesCount.incrementAndGet();
+            final AckFuture ackFuture = pravegaWriter.writeEvent(eventRouter.getRoutingKey(event), event);
+            ackFuture.addListener(
+                    () -> {
+                        try {
+                            ackFuture.get();
+                            synchronized (this) {
+                                pendingWritesCount.decrementAndGet();
+                                this.notify();
+                            }
+                        } catch (Exception e) {
+                            log.warn("Detected a write failure: {}", e);
+
+                            // We will record only the first error detected, since this will mostly likely help with
+                            // finding the root cause. Storing all errors will not be feasible.
+                            writeError.compareAndSet(null, e);
+                        }
+                    },
+                    executorService
+            );
+        }
+
+        @Override
+        public void close() throws Exception {
+            flushAndVerify();
+            pravegaWriter.close();
+        }
+
+        @Override
+        public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+            log.debug("Snapshot triggered, wait for all pending writes to complete");
+            flushAndVerify();
+            return new ArrayList<>();
+        }
+
+        @Override
+        public void notifyCheckpointComplete(long checkpointId) throws Exception {
+            //do nothing
+        }
+
+        @Override
+        public void restoreState(List<UUID> list) throws Exception {
+            //do nothing
+        }
+
+        // Wait until all pending writes are completed and throw any errors detected.
+        private void flushAndVerify() throws Exception {
+            pravegaWriter.flush();
+
+            // Wait until all errors, if any, have been recorded.
+            synchronized (this) {
+                while (this.pendingWritesCount.get() > 0) {
+                    this.wait();
+                }
+            }
+
+            // Verify that no events have been lost so far.
+            Exception error = this.writeError.getAndSet(null);
+            if (error != null) {
+                log.error("Write failure detected: " + error);
+                throw error;
+            }
         }
     }
 }
