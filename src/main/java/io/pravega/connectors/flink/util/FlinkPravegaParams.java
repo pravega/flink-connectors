@@ -32,7 +32,7 @@ import org.apache.flink.streaming.util.serialization.SerializationSchema;
  * Operations are provided to create streams, readers and writers based on stream names as
  * parameters.
  *
- * @see StreamInfo
+ * @see StreamId
  */
 public class FlinkPravegaParams {
     public static final String DEFAULT_CONTROLLER_URI = "tcp://127.0.0.1:9090";
@@ -53,14 +53,14 @@ public class FlinkPravegaParams {
     }
 
     /**
-     * Gets a stream information from a stream specification.
+     * Gets a StreamId from the flink job parameters.
      *
-     * @param streamParam Parameter name that contains the stream
-     * @param defaultStreamSpec Default stream in the format [scope]/[stream]
+     * @param streamParamName Parameter name that contains the stream
+     * @param defaultStreamSpec Default stream in the format [scope]/[stream] if the parameter was not found.
      * @return stream found in the parameter or the default if no parameter is found.
      */
-    public StreamInfo getStreamFromParam(final String streamParam, final String defaultStreamSpec) {
-        return StreamInfo.fromSpec(params.get(streamParam, defaultStreamSpec));
+    public StreamId getStreamFromParam(final String streamParamName, final String defaultStreamSpec) {
+        return StreamId.fromSpec(params.get(streamParamName, defaultStreamSpec));
     }
 
     /**
@@ -68,7 +68,7 @@ public class FlinkPravegaParams {
      * event class type to be specified.
      * @see PravegaSerialization
      */
-    public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamInfo stream,
+    public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamId stream,
                                                                     final long startTime,
                                                                     final Class<T> eventType) {
         return newReader(stream, startTime, PravegaSerialization.deserializationFor(eventType));
@@ -77,7 +77,7 @@ public class FlinkPravegaParams {
     /**
      * Constructs a new reader using stream/scope name from job parameters.
      */
-    public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamInfo stream,
+    public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamId stream,
                                                                     final long startTime,
                                                                     final DeserializationSchema<T> deserializationSchema) {
         return new FlinkPravegaReader<>(getControllerUri(), stream.getScope(), Sets.newHashSet(stream.getName()),
@@ -89,7 +89,7 @@ public class FlinkPravegaParams {
      * event class type to be specified.
      * @see PravegaSerialization
      */
-    public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamInfo stream,
+    public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamId stream,
                                                                     final Class<T> eventType,
                                                                     final PravegaEventRouter<T> router) {
         return newWriter(stream, PravegaSerialization.serializationFor(eventType), router);
@@ -98,7 +98,7 @@ public class FlinkPravegaParams {
     /**
      * Constructs a new writer using stream/scope name from job parameters.
      */
-    public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamInfo stream,
+    public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamId stream,
                                                                     final SerializationSchema<T> serializationSchema,
                                                                     final PravegaEventRouter<T> router) {
         return new FlinkPravegaWriter<>(getControllerUri(), stream.getScope(), stream.getName(),
@@ -108,24 +108,24 @@ public class FlinkPravegaParams {
     /**
      * Ensures a stream is created.
      *
-     * @param streamParam Parameter name that contains the stream
+     * @param streamParamName Parameter name that contains the stream
      * @param defaultStreamSpec Default stream in the format [scope]/[stream]
      */
-    public StreamInfo createStreamFromParam(final String streamParam, final String defaultStreamSpec) {
-        StreamInfo streamInfo = getStreamFromParam(streamParam, defaultStreamSpec);
-        createStream(streamInfo);
-        return streamInfo;
+    public StreamId createStreamFromParam(final String streamParamName, final String defaultStreamSpec) {
+        StreamId streamId = getStreamFromParam(streamParamName, defaultStreamSpec);
+        createStream(streamId);
+        return streamId;
     }
 
-    public void createStream(final StreamInfo streamInfo) {
-        createStream(streamInfo, ScalingPolicy.fixed(1));
+    public void createStream(final StreamId streamId) {
+        createStream(streamId, ScalingPolicy.fixed(1));
     }
 
-    public void createStream(final StreamInfo streamInfo, final ScalingPolicy scalingPolicy) {
+    public void createStream(final StreamId streamId, final ScalingPolicy scalingPolicy) {
         StreamManager streamManager = StreamManager.create(getControllerUri());
-        streamManager.createScope(streamInfo.getScope());
+        streamManager.createScope(streamId.getScope());
 
         StreamConfiguration streamConfig = StreamConfiguration.builder().scalingPolicy(scalingPolicy).build();
-        streamManager.createStream(streamInfo.getScope(), streamInfo.getName(), streamConfig);
+        streamManager.createStream(streamId.getScope(), streamId.getName(), streamConfig);
     }
 }

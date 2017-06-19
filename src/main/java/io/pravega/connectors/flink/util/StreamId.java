@@ -16,13 +16,13 @@ import org.apache.commons.lang3.StringUtils;
  * Captures the fully qualified name of a stream. The convention to represent this as a
  * single string is using [scope]/[stream].
  */
-public class StreamInfo {
+public class StreamId {
     public static final char STREAM_SPEC_SEPARATOR = '/';
 
     private String scope;
     private String name;
 
-    public StreamInfo(String scope, String name) {
+    public StreamId(String scope, String name) {
         this.scope = scope;
         this.name = name;
     }
@@ -36,17 +36,17 @@ public class StreamInfo {
     }
 
     /**
-     * Creates a StreamInfo from a stream specification (
+     * Creates a StreamId from a stream specification (
      * ).
      *
-     * @param streamSpec StreamInfo
+     * @param streamSpec StreamId
      */
-    public static StreamInfo fromSpec(String streamSpec) {
+    public static StreamId fromSpec(String streamSpec) {
         String[] parts = StringUtils.split(streamSpec, STREAM_SPEC_SEPARATOR);
         if (parts.length != 2) {
             throw new IllegalArgumentException("Stream spec must be in the form [scope]/[stream]");
         }
-        return new StreamInfo(parts[0], parts[1]);
+        return new StreamId(parts[0], parts[1]);
     }
 
     @Override

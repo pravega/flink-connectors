@@ -35,12 +35,11 @@ public class FlinkPravegaParamsTest {
     public void testStreamParam() {
         String input = "testScope/exampleStream";
         FlinkPravegaParams helper = new FlinkPravegaParams(ParameterTool.fromArgs(
-                new String[] { "--input-stream", input}
+            new String[] { "--input", input}
         ));
-        assertEquals(input, helper.getStreamFromParam("input-stream", "default/value").toString());
+        assertEquals(input, helper.getStreamFromParam("input", "default/value").toString());
 
         helper = new FlinkPravegaParams(ParameterTool.fromMap(new HashMap<>()));
-        assertEquals("default/value", helper.getStreamFromParam("input-stream", "default/value").toString());
+        assertEquals("default/value", helper.getStreamFromParam("input", "default/value").toString());
     }
-
 }

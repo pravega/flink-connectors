@@ -13,28 +13,27 @@ import java.io.IOException;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
-public class StreamInfoTest {
+public class StreamIdTest {
 
     @Test
     public void testToString() throws IOException {
-        StreamInfo stream = new StreamInfo("testScope", "exampleStream");
+        StreamId stream = new StreamId("testScope", "exampleStream");
         assertEquals("testScope/exampleStream", stream.toString());
     }
 
     @Test
     public void testFromSpec() {
         String input = "testScope/exampleStream";
-        assertEquals(input, StreamInfo.fromSpec(input).toString());
+        assertEquals(input, StreamId.fromSpec(input).toString());
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testNotEnoughArgs() {
-        StreamInfo.fromSpec("a");
+        StreamId.fromSpec("a");
     }
 
     @Test(expected=IllegalArgumentException.class)
     public void testTooManyArgs() {
-        StreamInfo.fromSpec("a/b/c");
+        StreamId.fromSpec("a/b/c");
     }
-
 }

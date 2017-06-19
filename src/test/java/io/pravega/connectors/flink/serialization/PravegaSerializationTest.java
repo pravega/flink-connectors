@@ -23,6 +23,4 @@ public class PravegaSerializationTest {
         byte[] serialized = serializer.serialize(input);
         assertEquals(input, deserializer.deserialize(serialized));
     }
-
-
 }
