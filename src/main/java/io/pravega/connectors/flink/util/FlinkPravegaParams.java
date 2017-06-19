@@ -25,7 +25,7 @@ import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 
 /**
- * Convience class for working with pravega parameters coming in as parameters.
+ * Convenience class for extracting pravega parameters from flink job parameters.
  *
  * As a convention, the pravega controller uri will be passed as a parameter named 'controller'.
  *
