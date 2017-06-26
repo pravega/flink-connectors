@@ -1,12 +1,11 @@
-/*
+/**
  * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
+ *     http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.pravega.connectors.flink.util;
 
@@ -66,6 +65,11 @@ public class FlinkPravegaParams {
     /**
      * Constructs a new reader using stream/scope name from job parameters. Uses PravegaSerialization to only require
      * event class type to be specified.
+     *
+     * @param stream Stream to read from.
+     * @param startTime The start time from when to read events from. Use 0 to read all stream events from the beginning.
+     * @param eventType Class type for events on this stream.
+     * @param <T> Type for events on this stream.
      * @see PravegaSerialization
      */
     public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamId stream,
@@ -76,6 +80,11 @@ public class FlinkPravegaParams {
 
     /**
      * Constructs a new reader using stream/scope name from job parameters.
+     *
+     * @param stream Stream to read from.
+     * @param startTime The start time from when to read events from. Use 0 to read all stream events from the beginning.
+     * @param deserializationSchema The implementation to deserialize events from pravega streams.
+     * @param <T> Type for events on this stream.
      */
     public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamId stream,
                                                                     final long startTime,
@@ -87,6 +96,11 @@ public class FlinkPravegaParams {
     /**
      * Constructs a new writer using stream/scope name from job parameters. Uses PravegaSerialization to only require
      * event class type to be specified.
+     *
+     * @param stream Stream to read from.
+     * @param eventType Class type for events on this stream.
+     * @param router The implementation to extract the partition key from the event.
+     * @param <T> Type for events on this stream.
      * @see PravegaSerialization
      */
     public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamId stream,
@@ -97,6 +111,11 @@ public class FlinkPravegaParams {
 
     /**
      * Constructs a new writer using stream/scope name from job parameters.
+     *
+     * @param stream Stream to read from.
+     * @param serializationSchema The implementation for serializing every event into pravega's storage format.
+     * @param router The implementation to extract the partition key from the event.
+     * @param <T> Type for events on this stream.
      */
     public <T extends Serializable> FlinkPravegaWriter<T> newWriter(final StreamId stream,
                                                                     final SerializationSchema<T> serializationSchema,

@@ -27,12 +27,12 @@ public class StreamIdTest {
         assertEquals(input, StreamId.fromSpec(input).toString());
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testNotEnoughArgs() {
         StreamId.fromSpec("a");
     }
 
-    @Test(expected=IllegalArgumentException.class)
+    @Test(expected = IllegalArgumentException.class)
     public void testTooManyArgs() {
         StreamId.fromSpec("a/b/c");
     }
