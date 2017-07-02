@@ -38,4 +38,8 @@ public class PravegaDeserializationSchema<T extends Serializable> extends Abstra
     public TypeInformation<T> getProducedType() {
         return TypeInformation.of(typeClass);
     }
+
+    public Serializer<T> getSerializer() {
+        return serializer;
+    }
 }
