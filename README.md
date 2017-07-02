@@ -1,6 +1,24 @@
 # Pravega Flink Connectors
 
-Connectors for Pravega to be used with Flink jobs.
+Connectors to read and write [Pravega](http://pravega.io/) streams with [Apache Flink](http://flink.apache.org/) stream processing applications.
+
+Build end-to-end stream processing pipelines that use Pravega as the stream storage and message bus, and Apache Flink for computation over the streams.
+
+
+## Features & Highlights
+
+  - **Exactly-once processing guarantees** for both reader and writer, supporting **end-to-end exactly-once processing pipelines**
+
+  - Seamless integration with Flink's checkpoints & savepoints
+
+  - Parallel readers and writers supporting high throughput and low latency processing
+
+
+## Versions
+
+The connectors require Apache Flink version **1.3** or newer.
+The latest release of these connectors are linked against Flink release *1.3.1*, which should be compatible with all Flink *1.3.x* versions.
+
 
 ## Getting Started
 ### Building Pravega
@@ -26,13 +44,11 @@ Use the following command to publish the shaded connector jar file. The jar file
 $ ./gradlew install
 ```
 
-**Note:** This connector is built against flink version 1.3-SNAPSHOT
-
 ## Pravega Source
 Instantiate a FlinkPravegaReader instance and add it as a source to the Flink streaming job. 
 The source does a tail read of the supplied set of streams.
 
-```
+```java
 // Define your event deserializer 
 AbstractDeserializationSchema<EventType> deserializer = ...
 
@@ -58,15 +74,15 @@ We currently have 2 implementations of the sink. These will be merged into Flink
 * FlinkPravegaWriter
   * Should be used by flink jobs which have disabled checkpointing.
   
-The usage is the same for both the connectors. Example:  
-```
+The usage is the same for both the connectors. Example:
+```java
 DataStreamSource<EventType> dataStream = ...
 ...
 // Define Event Serializer.
 SerializationSchema<EventType> serializer = ...
 
 // Define the event router for selecting the keys to route events within pravega.
-PravegaEventRouter router = ...  
+PravegaEventRouter router = ...
 
 FlinkPravegaWriter<EventType> pravegaSink = new FlinkPravegaWriter<>(
         "tcp://localhost:9090", 
