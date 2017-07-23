@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
+
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -17,7 +18,7 @@ import java.nio.ByteBuffer;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.streaming.util.serialization.AbstractDeserializationSchema;
+import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -29,7 +30,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * exposes the produced type (TypeInformation) to allow Flink to configure its internal
  * serialization and persistence stack.
  */
-public class PravegaDeserializationSchema<T extends Serializable> extends AbstractDeserializationSchema<T> {
+public class PravegaDeserializationSchema<T> 
+        implements DeserializationSchema<T>, WrappingSerializer<T> {
 
     // The TypeInformation of the produced type
     private final TypeInformation<T> typeInfo;
@@ -57,7 +59,12 @@ public class PravegaDeserializationSchema<T extends Serializable> extends Abstra
         try {
             this.typeInfo = TypeInformation.of(typeClass);
         } catch (InvalidTypesException e) {
-            throw new IllegalArgumentException("Cannot Due to Java's type erasure, the generic type information cannot Cannot determine generric runtime");
+            throw new IllegalArgumentException(
+                    "Due to Java's type erasure, the generic type information cannot be properly inferred. " + 
+                    "Please pass a 'TypeHint' instead of a class to describe the type. " +
+                    "For example, to describe 'Tuple2<String, String>' as a generic type, use " +
+                    "'new PravegaDeserializationSchema<>(new TypeHint<Tuple2<String, String>>(){}, serializer);'"
+            );
         }
     }
 
@@ -71,7 +78,7 @@ public class PravegaDeserializationSchema<T extends Serializable> extends Abstra
      * 
      * <pre>{@code
      * DeserializationSchema<Tuple2<String, String>> schema = 
-     *     new PravegaDeserializationSchema(new TypeHint<Tuple2<String, String>>(){}, serializer);
+     *     new PravegaDeserializationSchema<>(new TypeHint<Tuple2<String, String>>(){}, serializer);
      * }</pre>
      * 
      * @param typeHint The Type Hint describing the deserialized type.
@@ -105,11 +112,17 @@ public class PravegaDeserializationSchema<T extends Serializable> extends Abstra
     }
 
     @Override
+    public boolean isEndOfStream(T nextElement) {
+        return false;
+    }
+
+    @Override
     public TypeInformation<T> getProducedType() {
         return typeInfo;
     }
 
-    public Serializer<T> getSerializer() {
+    @Override
+    public Serializer<T> getWrappedSerializer() {
         return serializer;
     }
 

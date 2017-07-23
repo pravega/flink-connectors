@@ -21,6 +21,7 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Serializer;
 
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
+import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -229,8 +230,9 @@ public class FlinkPravegaReader<T>
                 getRuntimeContext().getTaskNameWithSubtasks(), readerId, this.controllerURI);
 
         // create the adapter between Pravega's serializers and Flink's serializers
-        final Serializer<T> deserializer = this.deserializationSchema instanceof PravegaDeserializationSchema ?
-                ((PravegaDeserializationSchema) this.deserializationSchema).getSerializer() :
+        @SuppressWarnings("unchecked")
+        final Serializer<T> deserializer = this.deserializationSchema instanceof WrappingSerializer ?
+                ((WrappingSerializer<T>) this.deserializationSchema).getWrappedSerializer() :
                 new FlinkDeserializer<>(this.deserializationSchema);
 
         // build the reader
