@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import io.pravega.client.ClientFactory;
@@ -19,9 +20,8 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Serializer;
-
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
+
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 
@@ -328,7 +328,8 @@ public class FlinkPravegaReader<T>
     //  serializer
     // ------------------------------------------------------------------------
 
-    private static final class FlinkDeserializer<T> implements Serializer<T> {
+    @VisibleForTesting
+    static final class FlinkDeserializer<T> implements Serializer<T> {
 
         private final DeserializationSchema<T> deserializationSchema;
 
@@ -343,8 +344,16 @@ public class FlinkPravegaReader<T>
 
         @Override
         @SneakyThrows
-        public T deserialize(ByteBuffer serializedValue) {
-            return deserializationSchema.deserialize(serializedValue.array());
+        public T deserialize(ByteBuffer buffer) {
+            byte[] array;
+            if (buffer.hasArray() && buffer.arrayOffset() == 0 && buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
+                array = buffer.array();
+            } else {
+                array = new byte[buffer.remaining()];
+                buffer.get(array);
+            }
+
+            return deserializationSchema.deserialize(array);
         }
     }
 

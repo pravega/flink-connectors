@@ -29,8 +29,14 @@ public class PravegaSerializationSchema<T>
     @Override
     public byte[] serialize(T element) {
         ByteBuffer buf = serializer.serialize(element);
-        assert buf.hasArray();
-        return buf.array();
+        
+        if (buf.hasArray() && buf.arrayOffset() == 0 && buf.position() == 0 && buf.limit() == buf.capacity()) {
+            return buf.array();
+        } else {
+            byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            return bytes;
+        }
     }
 
     @Override
