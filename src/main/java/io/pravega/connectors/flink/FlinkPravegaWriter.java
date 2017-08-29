@@ -100,6 +100,13 @@ public class FlinkPravegaWriter<T> extends RichSinkFunction<T> implements Checkp
     }
 
     /**
+     * Gets the associated event router.
+     */
+    public PravegaEventRouter<T> getEventRouter() {
+        return this.eventRouter;
+    }
+
+    /**
      * Set this writer's operating mode.
      *
      * @param writerMode    The mode of operation.
