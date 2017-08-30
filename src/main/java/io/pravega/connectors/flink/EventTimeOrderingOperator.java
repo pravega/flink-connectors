@@ -35,6 +35,8 @@ import java.util.List;
 import java.util.PriorityQueue;
 
 /**
+ * Orders elements into event time order using the watermark and managed state to buffer elements.
+ *
  * @param <K>  Type of the keys
  * @param <IN> The input type of the operator
  */
