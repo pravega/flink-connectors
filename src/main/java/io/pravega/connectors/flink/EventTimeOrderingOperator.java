@@ -38,19 +38,26 @@ import java.util.PriorityQueue;
  * Orders elements into event time order using the watermark and managed state to buffer elements.
  *
  * @param <K>  Type of the keys
- * @param <IN> The input type of the operator
+ * @param <T> The input type of the operator
  */
-public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
-        implements OneInputStreamOperator<IN, IN>, Triggerable<K, VoidNamespace>, InputTypeConfigurable {
+public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
+        implements OneInputStreamOperator<T, T>, Triggerable<K, VoidNamespace>, InputTypeConfigurable {
 
     private static final long serialVersionUID = 1L;
 
     private static final String EVENT_QUEUE_STATE_NAME = "eventQueue";
 
     /**
+     * The last seen watermark. This will be used to
+     * decide if an incoming element is late or not.
+     */
+    @VisibleForTesting
+    long lastWatermark = Long.MIN_VALUE;
+
+    /**
      * The input type serializer for buffering events to managed state.
      */
-    private TypeSerializer<IN> inputSerializer;
+    private TypeSerializer<T> inputSerializer;
 
     /**
      * The timer service.
@@ -60,14 +67,7 @@ public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
     /**
      * The queue of input elements keyed by event timestamp.
      */
-    private transient MapState<Long, List<IN>> elementQueueState;
-
-    /**
-     * The last seen watermark. This will be used to
-     * decide if an incoming element is late or not.
-     */
-    @VisibleForTesting
-    long lastWatermark = Long.MIN_VALUE;
+    private transient MapState<Long, List<T>> elementQueueState;
 
     /**
      * Creates an event time-based reordering operator.
@@ -79,7 +79,7 @@ public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
     @Override
     @SuppressWarnings("unchecked")
     public void setInputType(TypeInformation<?> type, ExecutionConfig executionConfig) {
-        this.inputSerializer = (TypeSerializer<IN>) type.createSerializer(executionConfig);
+        this.inputSerializer = (TypeSerializer<T>) type.createSerializer(executionConfig);
     }
 
     @Override
@@ -105,7 +105,7 @@ public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
     }
 
     @Override
-    public void processElement(StreamRecord<IN> element) throws Exception {
+    public void processElement(StreamRecord<T> element) throws Exception {
         if (!element.hasTimestamp()) {
             // elements with no time component are simply forwarded.
             // likely cause: the time characteristic of the program is not event-time.
@@ -137,12 +137,12 @@ public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
      * @param element the element to buffer.
      * @throws Exception if any error occurs.
      */
-    private void bufferEvent(StreamRecord<IN> element) throws Exception {
+    private void bufferEvent(StreamRecord<T> element) throws Exception {
 
-        assert (element.hasTimestamp());
+        assert element.hasTimestamp();
         long timestamp = element.getTimestamp();
 
-        List<IN> elementsForTimestamp = elementQueueState.get(timestamp);
+        List<T> elementsForTimestamp = elementQueueState.get(timestamp);
         if (elementsForTimestamp == null) {
             elementsForTimestamp = new ArrayList<>(1);
         }
@@ -182,7 +182,7 @@ public class EventTimeOrderingOperator<K, IN> extends AbstractStreamOperator<IN>
         PriorityQueue<Long> sortedTimestamps = getSortedTimestamps();
         while (!sortedTimestamps.isEmpty() && sortedTimestamps.peek() <= currentWatermark) {
             long timestamp = sortedTimestamps.poll();
-            for (IN event : elementQueueState.get(timestamp)) {
+            for (T event : elementQueueState.get(timestamp)) {
                 output.collect(new StreamRecord<>(event, timestamp));
             }
             elementQueueState.remove(timestamp);

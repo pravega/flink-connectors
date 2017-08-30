@@ -1,3 +1,12 @@
+/**
+ * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.pravega.connectors.flink.util;
 
 import io.pravega.connectors.flink.EventTimeOrderingOperator;
@@ -6,6 +15,9 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 
 public class FlinkPravegaUtils {
+
+    private FlinkPravegaUtils() {
+    }
 
     /**
      * Writes a stream of elements to a Pravega stream with event time ordering.
@@ -27,8 +39,5 @@ public class FlinkPravegaUtils {
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
                 .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism)
                 .addSink(writer).setParallelism(parallelism);
-    }
-
-    private FlinkPravegaUtils() {
     }
 }

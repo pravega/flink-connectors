@@ -56,6 +56,9 @@ public class EventTimeOrderingOperatorTest {
     @Test
     public void testOrdering() throws Exception {
 
+        Queue<Object> actual;
+        Queue<Object> expected;
+
         // emit some out of order events for a given key.
         // numerous events are emitted for timestamp 2 to validate support for having
         // more than one event at a given timestamp.
@@ -66,39 +69,33 @@ public class EventTimeOrderingOperatorTest {
         testHarness.processElement(record(K1, 4L));
 
         // advance to timestamp 3, expecting a subset of elements to be emitted.
-        {
-            testHarness.processWatermark(3L);
-            Queue<Object> actual = testHarness.getOutput();
-            Queue<Object> expected = new ConcurrentLinkedQueue<>();
-            expected.add(record(K1, 1L));
-            expected.add(record(K1, 2L));
-            expected.add(record(K1, 2L));
-            expected.add(record(K1, 3L));
-            expected.add(watermark(3L));
-            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
-            actual.clear();
-        }
+        testHarness.processWatermark(3L);
+        actual = testHarness.getOutput();
+        expected = new ConcurrentLinkedQueue<>();
+        expected.add(record(K1, 1L));
+        expected.add(record(K1, 2L));
+        expected.add(record(K1, 2L));
+        expected.add(record(K1, 3L));
+        expected.add(watermark(3L));
+        TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
+        actual.clear();
 
         // advance to timestamp 4, expecting the final element to be emitted.
-        {
-            testHarness.processWatermark(4L);
-            Queue<Object> actual = testHarness.getOutput();
-            Queue<Object> expected = new ConcurrentLinkedQueue<>();
-            expected.add(record(K1, 4L));
-            expected.add(watermark(4L));
-            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
-            actual.clear();
-        }
+        testHarness.processWatermark(4L);
+        actual = testHarness.getOutput();
+        expected = new ConcurrentLinkedQueue<>();
+        expected.add(record(K1, 4L));
+        expected.add(watermark(4L));
+        TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
+        actual.clear();
 
         // advance to timestamp 5, expecting no elements to be emitted.
-        {
-            testHarness.processWatermark(5L);
-            Queue<Object> actual = testHarness.getOutput();
-            Queue<Object> expected = new ConcurrentLinkedQueue<>();
-            expected.add(watermark(5L));
-            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
-            actual.clear();
-        }
+        testHarness.processWatermark(5L);
+        actual = testHarness.getOutput();
+        expected = new ConcurrentLinkedQueue<>();
+        expected.add(watermark(5L));
+        TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
+        actual.clear();
     }
 
     @Test
