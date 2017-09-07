@@ -10,14 +10,16 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 
 /**
  * A serialization schema adapter for a Pravega serializer.
  */
-public class PravegaSerializationSchema<T extends Serializable> implements SerializationSchema<T> {
+public class PravegaSerializationSchema<T> 
+        implements SerializationSchema<T>, WrappingSerializer<T> {
+
+    // the Pravega serializer
     private final Serializer<T> serializer;
 
     public PravegaSerializationSchema(Serializer<T> serializer) {
@@ -27,7 +29,18 @@ public class PravegaSerializationSchema<T extends Serializable> implements Seria
     @Override
     public byte[] serialize(T element) {
         ByteBuffer buf = serializer.serialize(element);
-        assert buf.hasArray();
-        return buf.array();
+        
+        if (buf.hasArray() && buf.arrayOffset() == 0 && buf.position() == 0 && buf.limit() == buf.capacity()) {
+            return buf.array();
+        } else {
+            byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            return bytes;
+        }
+    }
+
+    @Override
+    public Serializer<T> getWrappedSerializer() {
+        return serializer;
     }
 }
