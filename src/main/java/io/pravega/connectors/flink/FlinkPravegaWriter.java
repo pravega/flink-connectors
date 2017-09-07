@@ -154,6 +154,13 @@ public class FlinkPravegaWriter<T>
 
 
     /**
+     * Gets the associated event router.
+     */
+    public PravegaEventRouter<T> getEventRouter() {
+        return this.eventRouter;
+    }
+
+    /**
      * Set this writer's operating mode.
      *
      * @param writerMode    The mode of operation.

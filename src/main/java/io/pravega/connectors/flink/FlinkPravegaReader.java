@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 
 import io.pravega.client.ClientFactory;
@@ -19,6 +20,7 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.serialization.WrappingSerializer;
 
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +40,6 @@ import org.apache.flink.util.FlinkException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.stream.Collectors;
 
@@ -222,14 +223,17 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
-        // the reader ID is random unique per source task
-        final String readerId = "flink-reader-" + UUID.randomUUID();
+
+        final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
 
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
                 getRuntimeContext().getTaskNameWithSubtasks(), readerId, this.controllerURI);
 
         // create the adapter between Pravega's serializers and Flink's serializers
-        final Serializer<T> deserializer = new FlinkDeserializer<>(this.deserializationSchema);
+        @SuppressWarnings("unchecked")
+        final Serializer<T> deserializer = this.deserializationSchema instanceof WrappingSerializer ?
+                ((WrappingSerializer<T>) this.deserializationSchema).getWrappedSerializer() :
+                new FlinkDeserializer<>(this.deserializationSchema);
 
         // build the reader
         try (EventStreamReader<T> pravegaReader = ClientFactory.withScope(this.scopeName, this.controllerURI)
@@ -324,7 +328,8 @@ public class FlinkPravegaReader<T>
     //  serializer
     // ------------------------------------------------------------------------
 
-    private static final class FlinkDeserializer<T> implements Serializer<T> {
+    @VisibleForTesting
+    static final class FlinkDeserializer<T> implements Serializer<T> {
 
         private final DeserializationSchema<T> deserializationSchema;
 
@@ -339,8 +344,16 @@ public class FlinkPravegaReader<T>
 
         @Override
         @SneakyThrows
-        public T deserialize(ByteBuffer serializedValue) {
-            return deserializationSchema.deserialize(serializedValue.array());
+        public T deserialize(ByteBuffer buffer) {
+            byte[] array;
+            if (buffer.hasArray() && buffer.arrayOffset() == 0 && buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
+                array = buffer.array();
+            } else {
+                array = new byte[buffer.remaining()];
+                buffer.get(array);
+            }
+
+            return deserializationSchema.deserialize(array);
         }
     }
 
