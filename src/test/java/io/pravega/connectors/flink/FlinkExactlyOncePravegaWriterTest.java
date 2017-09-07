@@ -109,20 +109,22 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
         env.enableCheckpointing(100);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
+        FlinkPravegaWriter pravegaWriter = new FlinkPravegaWriter<>(
+                SETUP_UTILS.getControllerUri(),
+                SETUP_UTILS.getScope(),
+                streamName,
+                new IntSerializer(),
+                new IdentityRouter<>(),
+                30 * 1000,  // 30 secs timeout
+                30 * 1000,
+                30 * 1000);
+        pravegaWriter.setPravegaWriterMode(PravegaWriterMode.EXACTLY_ONCE);
+
         env
                 .addSource(new ThrottledIntegerGeneratingSource(numElements))
                 .map(new FailingMapper<>(numElements / sinkParallelism / 2))
                 .rebalance()
-                .addSink(new FlinkPravegaWriter<>(
-                        SETUP_UTILS.getControllerUri(),
-                        SETUP_UTILS.getScope(),
-                        streamName,
-                        new IntSerializer(),
-                        new IdentityRouter<>(),
-                        30 * 1000,  // 30 secs timeout
-                        30 * 1000,
-                        30 * 1000)
-                );
+                .addSink(pravegaWriter);
 
         final long executeStart = System.nanoTime();
         env.execute();

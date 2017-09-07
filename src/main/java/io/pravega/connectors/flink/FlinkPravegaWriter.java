@@ -78,14 +78,17 @@ public class FlinkPravegaWriter<T>
     private final long txnGracePeriodMillis;
 
     // Writer interface to assist exactly-once and atleast-once functionality
-    private transient InternalWriter<T> writerImpl = null;
+    private transient InternalWriter<T> writer = null;
 
-    /** The pravega writerImpl client. Used only to create transactions. */
+    /** The pravega writer client. Used only to create transactions. */
     private transient EventStreamWriter<T> pravegaWriter = null;
+
+    // The sink's mode of operation. This is used to provide different guarantees for the written events.
+    private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
 
 
     /**
-     * The flink pravega writerImpl instance which can be added as a sink to a flink job.
+     * The flink pravega writer instance which can be added as a sink to a flink job.
      *
      * @param controllerURI         The pravega controller endpoint address.
      * @param scope                 The destination stream's scope name.
@@ -106,7 +109,7 @@ public class FlinkPravegaWriter<T>
 
 
     /**
-     * The flink pravega writerImpl instance which can be added as a sink to a flink job.
+     * The flink pravega writer instance which can be added as a sink to a flink job.
      *
      * @param controllerURI         The pravega controller endpoint address.
      * @param scope                 The destination stream's scope name.
@@ -149,17 +152,23 @@ public class FlinkPravegaWriter<T>
         this.txnGracePeriodMillis = txnGracePeriodMillis;
     }
 
+
+    /**
+     * Set this writer's operating mode.
+     *
+     * @param writerMode    The mode of operation.
+    */
+    public void setPravegaWriterMode(PravegaWriterMode writerMode) {
+        Preconditions.checkNotNull(writerMode);
+        this.writerMode = writerMode;
+    }
+
     // ------------------------------------------------------------------------
 
     @Override
     public void open(Configuration parameters) throws Exception {
 
-        // Pravega transaction writerImpl (exactly-once) implementation can be used only when checkpoint is enabled
-        if (isCheckpointEnabled()) {
-            this.writerImpl = new TransactionWriter();
-        } else {
-            this.writerImpl = new StandardWriter();
-        }
+        invokeWriter();
 
         final Serializer<T> serializer = new FlinkSerializer<>(serializationSchema);
 
@@ -170,27 +179,27 @@ public class FlinkPravegaWriter<T>
                 serializer,
                 EventWriterConfig.builder().build());
 
-        log.info("Initialized pravega writerImpl for stream: {}/{} with controller URI: {}", scopeName,
+        log.info("Initialized pravega writer for stream: {}/{} with controller URI: {}", scopeName,
                 streamName, controllerURI);
 
-        writerImpl.initialize();
+        writer.initialize();
     }
 
     @Override
     public void invoke(T event) throws Exception {
-        writerImpl.write(event);
+        writer.write(event);
     }
 
     @Override
     public void close() throws Exception {
-        writerImpl.close();
+        writer.close();
     }
 
     // ------------------------------------------------------------------------
 
     @Override
     public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
-        return writerImpl.snapshotState(checkpointId, checkpointTime);
+        return writer.snapshotState(checkpointId, checkpointTime);
     }
 
 
@@ -201,17 +210,12 @@ public class FlinkPravegaWriter<T>
     @Override
     public void restoreState(List<UUID> list) throws Exception {
         // restore will be called before open. Create a local internal writer only to assist the restore functionality
-        InternalWriter<T> writerImpl;
-        if (isCheckpointEnabled()) {
-            writerImpl = new TransactionWriter();
-        } else {
-            writerImpl = new StandardWriter();
-        }
-        writerImpl.restoreState(list);
+        invokeWriter();
+        writer.restoreState(list);
     }
 
     /**
-     * Notifies the writerImpl that a checkpoint is complete.
+     * Notifies the writer that a checkpoint is complete.
      *
      * <p>This call happens when the checkpoint has been fully committed
      * (= second part of a two phase commit).
@@ -222,12 +226,26 @@ public class FlinkPravegaWriter<T>
      */
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
-        writerImpl.notifyCheckpointComplete(checkpointId);
+        writer.notifyCheckpointComplete(checkpointId);
     }
 
     // ------------------------------------------------------------------------
     //  helper methods
     // ------------------------------------------------------------------------
+
+    private void invokeWriter() {
+        // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
+        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            if (!isCheckpointEnabled()) {
+                throw new RuntimeException("Pravega exactly once support requires checkpoint to be enabled");
+            }
+            log.debug("initializing pravega writer with transaction support");
+            this.writer = new TransactionWriter();
+        } else {
+            log.debug("initializing standard pravega writer");
+            this.writer = new StandardWriter();
+        }
+    }
 
     private boolean isCheckpointEnabled() {
         return ((StreamingRuntimeContext) getRuntimeContext()).isCheckpointingEnabled();
@@ -290,7 +308,7 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * Interface for exactly once and at least once writerImpl implementation
+     * Interface for exactly once and at least once writer implementation
      */
     private interface InternalWriter<T> {
 
@@ -314,11 +332,11 @@ public class FlinkPravegaWriter<T>
     private class TransactionWriter implements InternalWriter<T> {
 
         /** The currently running transaction to which we write */
-        private transient Transaction<T> currentTxn;
+        private Transaction<T> currentTxn;
 
         /** The transactions that are complete from Flink's view (their checkpoint was triggered),
          * but not fully committed, because their corresponding checkpoint is not yet confirmed */
-        private transient ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
+        private ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
 
         @Override
         public void initialize() throws Exception {
@@ -447,7 +465,7 @@ public class FlinkPravegaWriter<T>
         public void restoreState(List<UUID> list) throws Exception {
             // when we are restored with a UUID, we don't really know whether the
             // transaction was already committed, or whether there was a failure between
-            // completing the checkpoint on the master, and notifying the writerImpl here.
+            // completing the checkpoint on the master, and notifying the writer here.
 
             // (the common case is actually that is was already committed, the window
             // between the commit on the master and the notification here is very small)
@@ -506,13 +524,13 @@ public class FlinkPravegaWriter<T>
     private class StandardWriter implements InternalWriter<T> {
 
         // Error which will be detected asynchronously and reported to flink.
-        private transient AtomicReference<Exception> writeError = null;
+        private AtomicReference<Exception> writeError = null;
 
         // Used to track confirmation from all writes to ensure guaranteed writes.
-        private transient AtomicInteger pendingWritesCount = null;
+        private AtomicInteger pendingWritesCount = null;
 
         // Thread pool for handling callbacks from write events.
-        private transient ExecutorService executorService = null;
+        private ExecutorService executorService = null;
 
         @Override
         public void initialize() throws Exception {
