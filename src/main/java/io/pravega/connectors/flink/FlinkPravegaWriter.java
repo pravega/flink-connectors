@@ -237,7 +237,7 @@ public class FlinkPravegaWriter<T>
         // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             if (!isCheckpointEnabled()) {
-                throw new RuntimeException("Pravega exactly once support requires checkpoint to be enabled");
+                throw new UnsupportedOperationException("Pravega exactly once support requires checkpoint to be enabled");
             }
             log.debug("initializing pravega writer with transaction support");
             this.writer = new TransactionWriter();
