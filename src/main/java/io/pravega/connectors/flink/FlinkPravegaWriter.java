@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientFactory;
-import io.pravega.client.stream.AckFuture;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
@@ -23,9 +22,11 @@ import org.apache.flink.streaming.api.checkpoint.CheckpointedFunction;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -67,7 +68,7 @@ public class FlinkPravegaWriter<T> extends RichSinkFunction<T> implements Checkp
     private transient Serializer<T> eventSerializer = null;
 
     // Error which will be detected asynchronously and reported to flink.
-    private transient AtomicReference<Exception> writeError = null;
+    private transient AtomicReference<Throwable> writeError = null;
 
     // Used to track confirmation from all writes to ensure guaranteed writes.
     private transient AtomicInteger pendingWritesCount = null;
@@ -152,25 +153,20 @@ public class FlinkPravegaWriter<T> extends RichSinkFunction<T> implements Checkp
     @Override
     public void invoke(T event) throws Exception {
         if (this.writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            Exception error = this.writeError.getAndSet(null);
-            if (error != null) {
-                log.error("Failure detected, not writing any more events");
-                throw error;
-            }
+            checkWriteError();
         }
 
         this.pendingWritesCount.incrementAndGet();
-        final AckFuture ackFuture = this.pravegaWriter.writeEvent(this.eventRouter.getRoutingKey(event), event);
+        final CompletableFuture<Void> future = this.pravegaWriter.writeEvent(this.eventRouter.getRoutingKey(event), event);
         if (writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            ackFuture.addListener(
-                    () -> {
-                        try {
-                            ackFuture.get();
+            future.whenCompleteAsync(
+                    (result, e) -> {
+                        if (e == null) {
                             synchronized (this) {
                                 pendingWritesCount.decrementAndGet();
                                 this.notify();
                             }
-                        } catch (Exception e) {
+                        } else {
                             log.warn("Detected a write failure: {}", e);
 
                             // We will record only the first error detected, since this will mostly likely help with
@@ -208,10 +204,13 @@ public class FlinkPravegaWriter<T> extends RichSinkFunction<T> implements Checkp
         }
 
         // Verify that no events have been lost so far.
-        Exception error = this.writeError.getAndSet(null);
+        checkWriteError();
+    }
+
+    private void checkWriteError() throws Exception {
+        Throwable error = this.writeError.getAndSet(null);
         if (error != null) {
-            log.error("Write failure detected: " + error);
-            throw error;
+            throw new IOException("Write failure", error);
         }
     }
 }
