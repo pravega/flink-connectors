@@ -68,7 +68,7 @@ public final class SetupUtils {
                 .isInMemStorage(true)
                 .isInProcController(true)
                 .controllerCount(1)
-                .restServerPort(8000)
+                .restServerPort(TestUtils.getAvailableListenPort())
                 .isInProcSegmentStore(true)
                 .segmentStoreCount(1)
                 .containerCount(4)
