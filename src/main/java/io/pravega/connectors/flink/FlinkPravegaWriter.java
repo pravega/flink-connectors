@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientFactory;
-import io.pravega.client.stream.AckFuture;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
@@ -26,6 +25,7 @@ import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import java.io.Serializable;
 import java.net.URI;
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -160,12 +160,12 @@ public class FlinkPravegaWriter<T> extends RichSinkFunction<T> implements Checkp
         }
 
         this.pendingWritesCount.incrementAndGet();
-        final AckFuture ackFuture = this.pravegaWriter.writeEvent(this.eventRouter.getRoutingKey(event), event);
+        final CompletableFuture future = this.pravegaWriter.writeEvent(this.eventRouter.getRoutingKey(event), event);
         if (writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            ackFuture.addListener(
+            future.thenRunAsync(
                     () -> {
                         try {
-                            ackFuture.get();
+                            future.get();
                             synchronized (this) {
                                 pendingWritesCount.decrementAndGet();
                                 this.notify();
