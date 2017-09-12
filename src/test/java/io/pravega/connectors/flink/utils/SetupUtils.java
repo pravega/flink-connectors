@@ -30,6 +30,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
+import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Utility functions for creating the test setup.
@@ -45,7 +46,7 @@ public final class SetupUtils {
 
     // The test Scope name.
     @Getter
-    private final String scope = "scope";
+    private final String scope = RandomStringUtils.randomAlphabetic(20);
 
     /**
      * Start all pravega related services required for the test deployment.
@@ -61,6 +62,7 @@ public final class SetupUtils {
         int zkPort = TestUtils.getAvailableListenPort();
         int controllerPort = TestUtils.getAvailableListenPort();
         int hostPort = TestUtils.getAvailableListenPort();
+        int restPort = TestUtils.getAvailableListenPort();
         this.inProcPravegaCluster = InProcPravegaCluster.builder()
                 .isInProcZK(true)
                 .zkUrl("localhost:" + zkPort)
@@ -68,6 +70,7 @@ public final class SetupUtils {
                 .isInMemStorage(true)
                 .isInProcController(true)
                 .controllerCount(1)
+                .restServerPort(restPort)
                 .isInProcSegmentStore(true)
                 .segmentStoreCount(1)
                 .containerCount(4)
@@ -76,6 +79,9 @@ public final class SetupUtils {
         this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
         this.inProcPravegaCluster.start();
         log.info("Initialized Pravega Cluster");
+        log.info("Controller port is {}", controllerPort);
+        log.info("Host port is {}", hostPort);
+        log.info("REST server port is {}", restPort);
     }
 
     /**

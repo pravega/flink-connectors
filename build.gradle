@@ -30,6 +30,7 @@ apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
 
 repositories {
+    mavenLocal()
     jcenter()
     mavenCentral()
     maven {
@@ -38,7 +39,6 @@ repositories {
     maven {
         url "https://oss.sonatype.org/content/repositories/snapshots"
     }
-    mavenLocal()
 }
 
 configurations.all {

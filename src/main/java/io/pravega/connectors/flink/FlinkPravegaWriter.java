@@ -11,7 +11,6 @@ package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
 import io.pravega.client.ClientFactory;
-import io.pravega.client.stream.AckFuture;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
@@ -26,12 +25,14 @@ import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.util.serialization.SerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 
+import java.io.IOException;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -82,6 +83,9 @@ public class FlinkPravegaWriter<T>
 
     /** The pravega writer client. Used only to create transactions. */
     private transient EventStreamWriter<T> pravegaWriter = null;
+
+    // The event serializer implementation for the pravega writer.
+    private transient Serializer<T> eventSerializer = null;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
@@ -174,21 +178,15 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
-
         invokeWriter();
-
-        final Serializer<T> serializer = new FlinkSerializer<>(serializationSchema);
-
         ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
-
         this.pravegaWriter = clientFactory.createEventWriter(
                 streamName,
-                serializer,
+                eventSerializer,
                 EventWriterConfig.builder().build());
 
         log.info("Initialized pravega writer for stream: {}/{} with controller URI: {}", scopeName,
                 streamName, controllerURI);
-
         writer.initialize();
     }
 
@@ -209,14 +207,13 @@ public class FlinkPravegaWriter<T>
         return writer.snapshotState(checkpointId, checkpointTime);
     }
 
-
     /**
      * Restores the state, which here means the IDs of transaction for which we have
      * to ensure that they are really committed.
      */
     @Override
     public void restoreState(List<UUID> list) throws Exception {
-        // restore will be called before open. Create a local internal writer only to assist the restore functionality
+        // restore will be called before open. The writer is initialized only to invoke the restoreState method
         invokeWriter();
         writer.restoreState(list);
     }
@@ -241,15 +238,34 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
 
     private void invokeWriter() {
+
         // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+
             if (!isCheckpointEnabled()) {
                 throw new UnsupportedOperationException("Pravega exactly once support requires checkpoint to be enabled");
             }
+
             log.debug("initializing pravega writer with transaction support");
+
+            this.eventSerializer = new FlinkSerializer<>(serializationSchema);
+
             this.writer = new TransactionWriter();
         } else {
             log.debug("initializing standard pravega writer");
+
+            this.eventSerializer = new Serializer<T>() {
+                @Override
+                public ByteBuffer serialize(T event) {
+                    return ByteBuffer.wrap(serializationSchema.serialize(event));
+                }
+
+                @Override
+                public T deserialize(ByteBuffer serializedValue) {
+                    throw new IllegalStateException("deserialize() called for a serializer");
+                }
+            };
+
             this.writer = new StandardWriter();
         }
     }
@@ -261,7 +277,6 @@ public class FlinkPravegaWriter<T>
     protected String name() {
         return getRuntimeContext().getTaskNameWithSubtasks();
     }
-
 
     // ------------------------------------------------------------------------
     //  serializer
@@ -531,7 +546,7 @@ public class FlinkPravegaWriter<T>
     private class StandardWriter implements InternalWriter<T> {
 
         // Error which will be detected asynchronously and reported to flink.
-        private AtomicReference<Exception> writeError = null;
+        private AtomicReference<Throwable> writeError = null;
 
         // Used to track confirmation from all writes to ensure guaranteed writes.
         private AtomicInteger pendingWritesCount = null;
@@ -548,23 +563,19 @@ public class FlinkPravegaWriter<T>
 
         @Override
         public void write(T event) throws Exception {
-            Exception error = this.writeError.getAndSet(null);
-            if (error != null) {
-                log.error("Failure detected, not writing any more events");
-                throw error;
-            }
+
+            checkWriteError();
 
             this.pendingWritesCount.incrementAndGet();
-            final AckFuture ackFuture = pravegaWriter.writeEvent(eventRouter.getRoutingKey(event), event);
-            ackFuture.addListener(
-                    () -> {
-                        try {
-                            ackFuture.get();
+            final CompletableFuture<Void> future = pravegaWriter.writeEvent(eventRouter.getRoutingKey(event), event);
+            future.whenCompleteAsync(
+                    (result, e) -> {
+                        if (e == null) {
                             synchronized (this) {
                                 pendingWritesCount.decrementAndGet();
                                 this.notify();
                             }
-                        } catch (Exception e) {
+                        } else {
                             log.warn("Detected a write failure: {}", e);
 
                             // We will record only the first error detected, since this will mostly likely help with
@@ -611,10 +622,13 @@ public class FlinkPravegaWriter<T>
             }
 
             // Verify that no events have been lost so far.
-            Exception error = this.writeError.getAndSet(null);
+            checkWriteError();
+        }
+
+        private void checkWriteError() throws Exception {
+            Throwable error = this.writeError.getAndSet(null);
             if (error != null) {
-                log.error("Write failure detected: " + error);
-                throw error;
+                throw new IOException("Write failure", error);
             }
         }
     }
