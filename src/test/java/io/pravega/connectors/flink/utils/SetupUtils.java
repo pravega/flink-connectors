@@ -46,7 +46,7 @@ public final class SetupUtils {
 
     // The test Scope name.
     @Getter
-    private final String scope = RandomStringUtils.randomAlphabetic(20);
+    private final String scope = RandomStringUtils.randomAlphabetic(20);;
 
     /**
      * Start all pravega related services required for the test deployment.

@@ -90,7 +90,6 @@ public class FlinkPravegaWriter<T>
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
 
-
     /**
      * The flink pravega writer instance which can be added as a sink to a flink job.
      *
@@ -632,4 +631,5 @@ public class FlinkPravegaWriter<T>
             }
         }
     }
+
 }
