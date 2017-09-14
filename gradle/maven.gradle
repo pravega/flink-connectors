@@ -43,6 +43,10 @@ uploadShadow {
     }
 }
 
+task publish(dependsOn: uploadShadow) {
+    description = "Publish all artifacts to a repository"
+}
+
 tasks.withType(Upload) {
     repositories.withType(MavenResolver) {
         pom.project {
