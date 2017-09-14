@@ -4,9 +4,13 @@ apply plugin: 'signing'
 if (project.hasProperty("doSigning")) {
     signing {
         sign shadowJar
+        sign sourceJar
+        sign javadocJar
     }
     artifacts {
         shadow signShadowJar.singleSignature
+        shadow signSourceJar.singleSignature
+        shadow signJavadocJar.singleSignature
     }
 
     // Default the secretKeyRingFile to the current user's home
