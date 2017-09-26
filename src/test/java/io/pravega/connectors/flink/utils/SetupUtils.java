@@ -105,7 +105,7 @@ public final class SetupUtils {
      * @return URI The controller endpoint to connect to this cluster.
      */
     public URI getControllerUri() {
-        return URI.create("tcp://" + this.inProcPravegaCluster.getControllerURI());
+        return URI.create(this.inProcPravegaCluster.getControllerURI());
     }
 
     /**
