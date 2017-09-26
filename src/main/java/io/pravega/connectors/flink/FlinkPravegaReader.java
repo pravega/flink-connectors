@@ -202,7 +202,7 @@ public class FlinkPravegaReader<T>
      * @param eventReadTimeout The timeout, in milliseconds
      */
     public void setEventReadTimeout(long eventReadTimeout) {
-        Preconditions.checkArgument(checkpointInitiateTimeout > 0, "timeout must be >= 0");
+        Preconditions.checkArgument(eventReadTimeout > 0, "timeout must be >= 0");
         this.eventReadTimeout = eventReadTimeout;
     }
 
