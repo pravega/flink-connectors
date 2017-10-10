@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Serializer;
 
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 
@@ -38,7 +39,7 @@ public class FlinkSerializerWrapperTest {
 
     private void runBufferLargerThanEventTest(int capacity, int offset, int size, boolean direct) throws IOException {
         final DeserializationSchema<Long> flinkDeserializer = new LongDeserializationSchema();
-        final Serializer<Long> wrappingSerializer = new FlinkPravegaReader.FlinkDeserializer<>(flinkDeserializer);
+        final Serializer<Long> wrappingSerializer = new FlinkPravegaUtils.FlinkDeserializer<>(flinkDeserializer);
 
         // we create some sliced byte buffers that do not always the first
         // bytes or all bytes of the backing array;
