@@ -77,8 +77,8 @@ public class FlinkPravegaTableSource implements StreamTableSource<Row> {
      */
     @Override
     public DataStream<Row> getDataStream(StreamExecutionEnvironment env) {
-        FlinkPravegaReader<Row> kafkaConsumer = createFlinkPravegaReader();
-        return env.addSource(kafkaConsumer);
+        FlinkPravegaReader<Row> reader = createFlinkPravegaReader();
+        return env.addSource(reader);
     }
 
     @Override
