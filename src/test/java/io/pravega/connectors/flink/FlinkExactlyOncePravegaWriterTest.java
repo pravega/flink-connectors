@@ -120,7 +120,6 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
                         new IntSerializer(),
                         new IdentityRouter<>(),
                         30 * 1000,  // 30 secs timeout
-                        30 * 1000,
                         30 * 1000)
                 );
 
