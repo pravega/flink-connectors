@@ -12,6 +12,10 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
+import io.pravega.client.stream.impl.Controller;
+import io.pravega.client.stream.impl.ControllerImpl;
+import io.pravega.client.stream.impl.ControllerImplConfig;
+import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -29,6 +33,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -38,6 +43,9 @@ import org.apache.commons.lang3.RandomStringUtils;
 @Slf4j
 @NotThreadSafe
 public final class SetupUtils {
+
+    private static final ScheduledExecutorService DEFAULT_SCHEDULED_EXECUTOR_SERVICE = ExecutorServiceHelpers.newScheduledThreadPool(3, "SetupUtils");
+
     // The pravega cluster.
     private InProcPravegaCluster inProcPravegaCluster = null;
 
@@ -111,6 +119,21 @@ public final class SetupUtils {
      */
     public URI getControllerUri() {
         return URI.create(this.inProcPravegaCluster.getControllerURI());
+    }
+
+    /**
+     * Create a controller facade for this cluster.
+     * @return The controller facade, which must be closed by the caller.
+     */
+    public Controller newController() {
+        return new ControllerImpl(getControllerUri(), ControllerImplConfig.builder().build(), DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
+    }
+
+    /**
+     * Create a {@link ClientFactory} for this cluster and scope.
+     */
+    public ClientFactory newClientFactory() {
+        return ClientFactory.withScope(this.scope, getControllerUri());
     }
 
     /**
