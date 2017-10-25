@@ -18,6 +18,7 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 
+import io.pravega.client.stream.TimeDomain;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.api.common.functions.StoppableFunction;
@@ -27,10 +28,12 @@ import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 import org.apache.flink.util.FlinkException;
 
 import java.net.URI;
+import java.time.Duration;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -54,6 +57,8 @@ public class FlinkPravegaReader<T>
 
     private static final long DEFAULT_CHECKPOINT_INITIATE_TIMEOUT = 5000;
 
+    private static final Duration DEFAULT_EVENT_TIME_SKEW = Duration.ofMinutes(5);
+
     // ----- configuration fields -----
 
     // The supplied event deserializer.
@@ -76,6 +81,9 @@ public class FlinkPravegaReader<T>
 
     // the timeout for call that initiates the Pravega checkpoint 
     private long checkpointInitiateTimeout = DEFAULT_CHECKPOINT_INITIATE_TIMEOUT;
+
+    // the maximum event time skew for watermarking purposes
+    private Duration eventTimeSkew = DEFAULT_EVENT_TIME_SKEW;
 
     // ----- runtime fields -----
 
@@ -212,6 +220,19 @@ public class FlinkPravegaReader<T>
         return eventReadTimeout;
     }
 
+    /**
+     * Sets the event time skew for watermarking purposes.
+     *
+     * <p>This duration represents the maximum amount of time allotted for events to be written to the Pravega stream,
+     * before being considered a 'late' event.  The default skew is 5 minutes.
+     *
+     * @param eventTimeSkew The skew
+     */
+    public void setEventTimeSkew(Duration eventTimeSkew) {
+        Preconditions.checkArgument(!eventTimeSkew.isNegative(), "eventTimeSkew must be non-negative");
+        this.eventTimeSkew = eventTimeSkew;
+    }
+
     // ------------------------------------------------------------------------
     //  source function methods
     // ------------------------------------------------------------------------
@@ -230,7 +251,7 @@ public class FlinkPravegaReader<T>
                 readerId,
                 this.readerGroupName,
                 this.deserializationSchema,
-                ReaderConfig.builder().build())) {
+                ReaderConfig.builder().timeDomain(TimeDomain.IngestionTime).build())) {
 
             log.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.controllerURI);
 
@@ -240,7 +261,7 @@ public class FlinkPravegaReader<T>
                 final T event = eventRead.getEvent();
 
                 // emit the event, if one was carried
-                if (event != null) {
+                if (eventRead.isEvent() && event != null) {
                     if (this.deserializationSchema.isEndOfStream(event)) {
                         // Found stream end marker.
                         // TODO: Handle scenario when reading from multiple segments. This will be cleaned up as part of:
@@ -249,6 +270,12 @@ public class FlinkPravegaReader<T>
                         return;
                     }
                     ctx.collect(event);
+                }
+
+                if(eventRead.isWatermark()) {
+                    Watermark watermark = calculateEventTimeWatermark(eventRead.getWatermark());
+                    log.debug("Emitting a watermark: {}", watermark);
+                    ctx.emitWatermark(watermark);
                 }
 
                 // if the read marks a checkpoint, trigger the checkpoint
@@ -315,5 +342,19 @@ public class FlinkPravegaReader<T>
         }
 
         checkpointTrigger.triggerCheckpoint(checkpointId);
+    }
+
+    // ------------------------------------------------------------------------
+    //  time management
+    // ------------------------------------------------------------------------
+
+    /**
+     * Converts an ingestion-time watermark to an application-specific event-time watermark.
+     *
+     * @param ingestionTimeWatermark the ingestion watermark read from the Pravega stream.
+     * @return an event-time watermark
+     */
+    private Watermark calculateEventTimeWatermark(long ingestionTimeWatermark) {
+        return new Watermark(ingestionTimeWatermark - eventTimeSkew.toMillis());
     }
 }

@@ -29,6 +29,8 @@ import org.apache.flink.streaming.api.operators.OneInputStreamOperator;
 import org.apache.flink.streaming.api.operators.Triggerable;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,6 +46,8 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
         implements OneInputStreamOperator<T, T>, Triggerable<K, VoidNamespace>, InputTypeConfigurable {
 
     private static final long serialVersionUID = 1L;
+
+    private static final Logger LOG = LoggerFactory.getLogger(EventTimeOrderingOperator.class);
 
     private static final String EVENT_QUEUE_STATE_NAME = "eventQueue";
 
@@ -123,12 +127,17 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
             saveRegisterWatermarkTimer();
             bufferEvent(element);
         }
+        else {
+            LOG.debug("Discarded a late record: {}", element);
+        }
     }
 
     @Override
     public void processWatermark(Watermark mark) throws Exception {
+        LOG.debug("Received a watermark: {}", mark);
         super.processWatermark(mark);
         lastWatermark = mark.getTimestamp();
+        LOG.debug("Processed a watermark: {}", mark);
     }
 
     /**
