@@ -27,6 +27,7 @@ import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
+import org.apache.flink.streaming.api.functions.TimestampAssigner;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
@@ -57,7 +58,7 @@ public class FlinkPravegaReader<T>
 
     private static final long DEFAULT_CHECKPOINT_INITIATE_TIMEOUT = 5000;
 
-    private static final Duration DEFAULT_EVENT_TIME_SKEW = Duration.ofMinutes(5);
+    private static final Duration DEFAULT_EVENT_TIME_LAG = Duration.ofMinutes(1);
 
     // ----- configuration fields -----
 
@@ -82,8 +83,11 @@ public class FlinkPravegaReader<T>
     // the timeout for call that initiates the Pravega checkpoint 
     private long checkpointInitiateTimeout = DEFAULT_CHECKPOINT_INITIATE_TIMEOUT;
 
-    // the maximum event time skew for watermarking purposes
-    private Duration eventTimeSkew = DEFAULT_EVENT_TIME_SKEW;
+    // the maximum event time lag for watermarking purposes
+    private Duration eventTimeLag = DEFAULT_EVENT_TIME_LAG;
+
+    // the (optional) timestamp assigner
+    private TimestampAssigner<T> timestampAssigner;
 
     // ----- runtime fields -----
 
@@ -221,16 +225,37 @@ public class FlinkPravegaReader<T>
     }
 
     /**
-     * Sets the event time skew for watermarking purposes.
+     * Sets the event time lag for watermarking purposes.
      *
      * <p>This duration represents the maximum amount of time allotted for events to be written to the Pravega stream,
-     * before being considered a 'late' event.  The default skew is 5 minutes.
+     * before being considered a 'late' event.  The default lag is one minute.
      *
-     * @param eventTimeSkew The skew
+     * <p>If you're using transactions or exactly-once semantics to write to the stream, be sure to incorporate
+     * the maximum transaction time into your lag time.
+     *
+     * @param eventTimeLag the lag to use.
      */
-    public void setEventTimeSkew(Duration eventTimeSkew) {
-        Preconditions.checkArgument(!eventTimeSkew.isNegative(), "eventTimeSkew must be non-negative");
-        this.eventTimeSkew = eventTimeSkew;
+    public void setEventTimeLag(Duration eventTimeLag) {
+        Preconditions.checkArgument(!eventTimeLag.isNegative(), "eventTimeLag must be non-negative");
+        this.eventTimeLag = eventTimeLag;
+    }
+
+    /**
+     * Gets the event time lag for watermarking purposes.
+     */
+    public Duration getEventTimeLag() {
+        return this.eventTimeLag;
+    }
+
+    /**
+     * Sets the timestamp assigner for event timestamping purposes.
+     *
+     * <p>The assigner is invoked per-event to produce an associated timestamp.
+     *
+     * @param timestampAssigner the assigner to use, or null.
+     */
+    public void setTimestampAssigner(TimestampAssigner<T> timestampAssigner) {
+        this.timestampAssigner = timestampAssigner;
     }
 
     // ------------------------------------------------------------------------
@@ -269,12 +294,18 @@ public class FlinkPravegaReader<T>
                         log.info("Reached end of stream for reader: {}", readerId);
                         return;
                     }
-                    ctx.collect(event);
+
+                    if(timestampAssigner != null) {
+                        ctx.collectWithTimestamp(event, timestampAssigner.extractTimestamp(event, Long.MIN_VALUE));
+                    }
+                    else {
+                        ctx.collect(event);
+                    }
                 }
 
                 if(eventRead.isWatermark()) {
                     Watermark watermark = calculateEventTimeWatermark(eventRead.getWatermark());
-                    log.debug("Emitting a watermark: {}", watermark);
+                    log.debug("Advancing the event time watermark: {}", watermark);
                     ctx.emitWatermark(watermark);
                 }
 
@@ -355,6 +386,6 @@ public class FlinkPravegaReader<T>
      * @return an event-time watermark
      */
     private Watermark calculateEventTimeWatermark(long ingestionTimeWatermark) {
-        return new Watermark(ingestionTimeWatermark - eventTimeSkew.toMillis());
+        return new Watermark(ingestionTimeWatermark - eventTimeLag.toMillis());
     }
 }

@@ -15,6 +15,7 @@ import io.pravega.client.stream.impl.Controller;
 import io.pravega.client.stream.impl.JavaSerializer;
 import io.pravega.connectors.flink.util.StreamId;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple2;
 
@@ -22,6 +23,8 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -33,8 +36,21 @@ import java.util.stream.Stream;
 @Slf4j
 public class IotWriter extends AbstractStreamBasedWriter<IotWriter.SensorEvent> {
 
+    private final BlockingQueue<SensorEvent> eventLog = new LinkedBlockingQueue<>();
+
+    /**
+     * The per-sensor limit.
+     */
+    @Getter
+    @Setter
+    private long limit = Integer.MAX_VALUE;
+
     public IotWriter(ClientFactory clientFactory, Controller controllerClient, StreamId streamId) {
         super(clientFactory, controllerClient, streamId, e -> e.f1, new JavaSerializer<>());
+    }
+
+    public BlockingQueue<SensorEvent> getEventLog() {
+        return eventLog;
     }
 
     @Override
@@ -45,14 +61,19 @@ public class IotWriter extends AbstractStreamBasedWriter<IotWriter.SensorEvent> 
     protected java.util.stream.Stream<SensorEvent> getSensorEvents(final Sensor sensor) {
         return Stream
                 .generate(() -> new SensorEvent(sensor.getClock().instant().toEpochMilli(), sensor.getId()))
-                .limit(100);
+                .limit(limit);
+    }
+
+    @Override
+    protected void onWriteEvent(SensorEvent event) {
+        eventLog.add(event);
     }
 
     public enum Sensor {
         // define a few sensors with associated event-time clocks (with varying degrees of clock skew)
-        A("A", Duration.ofSeconds(-5)),
-        B("B", Duration.ofSeconds(+5)),
-        C("C", Duration.ofSeconds(-10));
+        A("A", Duration.ofSeconds(-0)),
+        B("B", Duration.ofSeconds(+30)),
+        C("C", Duration.ofSeconds(-30));
 
         @Getter
         private final String id;
@@ -71,6 +92,7 @@ public class IotWriter extends AbstractStreamBasedWriter<IotWriter.SensorEvent> 
     }
 
     public static class SensorEvent extends Tuple2<Long, String> {
+        public SensorEvent() {}
         public SensorEvent(Long timestamp, String sensorId) {
             super(timestamp, sensorId);
         }

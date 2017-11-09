@@ -7,17 +7,9 @@
         </encoder>
     </appender>
 
-    <logger name="io.pravega.connectors.flink" level="DEBUG"/>
+    <!--<include resource="includes/logback-event-time.xml" />-->
 
-    <logger name="io.pravega.controller.server.rpc.grpc.v1.ControllerServiceImpl" level="INFO"/>
-    <logger name="io.pravega.client.stream.impl.ControllerImpl" level="INFO"/>
-    <logger name="io.pravega.controller.server.eventProcessor.requesthandlers" level="INFO"/>
-
-    <logger name="io.pravega.client" level="INFO"/>
-
-    <logger name="io.pravega" level="WARN"/>
-
-    <root level="WARN">
+    <root level="OFF">
         <appender-ref ref="STDOUT"/>
     </root>
 </configuration>

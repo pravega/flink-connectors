@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -46,9 +47,6 @@ import java.util.stream.Stream;
 @Slf4j
 public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
 
-    // a random number generator for any purpose
-    protected static final Random random = new Random(42L);
-
     // the ingestion-time clock (the system clock)
     protected static final Clock ingestionClock = Clock.systemDefaultZone();
 
@@ -58,10 +56,11 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
     protected final StreamId streamId;
     private final PravegaEventRouter<T> eventRouter;
     private final Serializer<T> eventSerializer;
-    private final Duration scalePeriod = Duration.ofSeconds(30);
-    private final Duration writeThrottle = Duration.ofSeconds(1);
 
-    private final ScheduledExecutorService executor = ExecutorServiceHelpers.newScheduledThreadPool(5, this.getClass().getName());
+    private Duration scalePeriod = Duration.ofSeconds(10);
+    private Duration writeThrottle = Duration.ofSeconds(1);
+
+    private final ScheduledExecutorService executor = ExecutorServiceHelpers.newScheduledThreadPool(1, this.getClass().getName());
 
     // the underlying Pravega writer
     private final EventStreamWriter<T> writer;
@@ -80,6 +79,18 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
 
         writer = newWriter();
     }
+
+    // region Properties
+
+    public void setWriteThrottle(Duration writeThrottle) {
+        this.writeThrottle = writeThrottle;
+    }
+
+    public void setScalePeriod(Duration scalePeriod) {
+        this.scalePeriod = scalePeriod;
+    }
+
+    // endregion
 
     // region Lifecycle
 
@@ -113,7 +124,7 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
     public void close() throws Exception {
         if(result != null) {
             result.cancel(true);
-            result.join();
+//            result.join();
         }
         executor.shutdown();
     }
@@ -136,6 +147,7 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
         Iterator<T> iter = new MergeIterator<>(streams.stream().map(Stream::iterator).collect(Collectors.toList()));
         return writeAll(iter).whenComplete((v, th) -> {
             streams.forEach(Stream::close);
+            log.debug("writeStreams completed");
         });
     }
 
@@ -158,17 +170,22 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
 
     @Synchronized
     private CompletableFuture<Void> writeNext(final Iterator<T> iterator) {
-        log.debug("writeNext");
         assert iterator.hasNext();
         final T event = iterator.next();
+        log.debug("Writing: {}", event);
+        onWriteEvent(event);
         return writer
                 .writeEvent(eventRouter.getRoutingKey(event), event)
                 .whenComplete((v,th) -> {
                     if (th != null) {
                         throw new CompletionException("writeNext failed", th);
                     }
-                    log.debug("Wrote: {}", event);
+                    log.trace("Wrote: {}", event);
                 });
+    }
+
+    protected void onWriteEvent(T event) {
+
     }
 
     // endregion
@@ -177,19 +194,31 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
 
     private CompletableFuture<Void> scaleIfRequired() {
         final Instant now = ingestionClock.instant();
-        if (now.isBefore(lastScaleTime.plus(scalePeriod))) {
+        if (scalePeriod.isZero() || now.isBefore(lastScaleTime.plus(scalePeriod))) {
             return CompletableFuture.completedFuture(null);
         }
         log.debug("Scaling the stream...");
         final io.pravega.client.stream.Stream stream = new StreamImpl(streamId.getScope(), streamId.getName());
         return controllerClient.getCurrentSegments(streamId.getScope(), streamId.getName())
-                .thenCompose(segments -> controllerClient.scaleStream(stream, getSegmentIds(segments), randomKeyRanges(), executor).getFuture())
-                .handle((success, th) -> {
-                    if (!success) {
-                       throw new RuntimeException("scaleIfRequired failed: scale operation failed");
+                .thenCompose(segments -> {
+                    if(segments.getSegments().size() == 1) {
+                        // split
+                        Map<Double, Double> keyRanges = new HashMap<>();
+                        keyRanges.put(0.0, 0.5);
+                        keyRanges.put(0.5, 1.0);
+                        return controllerClient.scaleStream(stream, getSegmentIds(segments), keyRanges, executor).getFuture();
                     }
+                    else {
+                        // merge
+                        return controllerClient.scaleStream(stream, getSegmentIds(segments), Collections.singletonMap(0.0, 1.0), executor).getFuture();
+                    }
+                })
+                .handle((success, th) -> {
                     if (th != null) {
                         throw new CompletionException("scaleIfRequired failed", th);
+                    }
+                    if (success == null || !success) {
+                       throw new RuntimeException("scaleIfRequired failed: scale operation failed");
                     }
                     log.debug("Scale complete.");
                     lastScaleTime = now;
@@ -201,15 +230,11 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
         return segments.getSegments().stream().map(Segment::getSegmentNumber).collect(Collectors.toList());
     }
 
-    private static Map<Double, Double> randomKeyRanges() {
-        double rnd = random.nextDouble();
-        Map<Double, Double> keyRanges = new HashMap<>();
-        keyRanges.put(0.0, rnd);
-        keyRanges.put(rnd, 1.0);
-        return keyRanges;
-    }
-
     // endregion
 
+    /**
+     * Creates the Java 8 stream(s) to write to the Pravega stream.
+     * @return
+     */
     protected abstract List<java.util.stream.Stream<T>> createStreams();
 }

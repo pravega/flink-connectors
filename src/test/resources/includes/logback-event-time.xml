@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<included>
+    <!-- Flink Connector -->
+    <logger name="io.pravega.connectors.flink.utils.IotWriter" level="DEBUG"/>
+    <logger name="io.pravega.connectors.flink.utils.AbstractStreamBasedWriter" level="DEBUG"/>
+    <logger name="io.pravega.connectors.flink.FlinkPravegaReader" level="DEBUG"/>
+    <logger name="io.pravega.connectors.flink.EventTimeOrderingOperator" level="DEBUG"/>
+    <logger name="io.pravega.connectors.flink.EventTimeITCase" level="DEBUG"/>
+
+    <!-- Pravega Client -->
+    <logger name="io.pravega.client.segment.impl.SegmentInputStreamImpl" level="DEBUG"/>
+    <logger name="io.pravega.client.stream.impl.EventStreamReaderImpl" level="DEBUG"/>
+
+    <!-- Pravega Server -->
+    <!--<logger name="io.pravega.segmentstore.server.logs.OperationProcessor" level="DEBUG"/>-->
+    <!--<logger name="io.pravega.segmentstore.server.containers.StreamSegmentContainer" level="DEBUG"/>-->
+    <!--<logger name="io.pravega.segmentstore.server.reading.StreamSegmentReadIndex" level="DEBUG"/>-->
+
+</included>
