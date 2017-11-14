@@ -22,6 +22,13 @@ task sourceJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.java
 }
+artifacts { shadow sourceJar }
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+artifacts { shadow javadocJar }
 
 task testJar(type: Jar) {
     classifier = 'tests'

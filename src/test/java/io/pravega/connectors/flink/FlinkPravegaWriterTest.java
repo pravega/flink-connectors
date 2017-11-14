@@ -9,10 +9,12 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
+
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
@@ -68,6 +70,31 @@ public class FlinkPravegaWriterTest {
         runTest(4, true, "TestStream4");
 
         log.info("All tests successful");
+    }
+
+    @Test
+    public void testEventTimeOrderedWriter() throws Exception {
+        StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment();
+
+        String streamName = "testEventTimeOrderedWriter";
+        this.setupUtils.createTestStream(streamName, 1);
+
+        DataStreamSource<Integer> dataStream = execEnv
+                .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE));
+
+        FlinkPravegaWriter<Integer> pravegaSink = new FlinkPravegaWriter<>(
+                this.setupUtils.getControllerUri(),
+                this.setupUtils.getScope(),
+                streamName,
+                element -> {
+                    ByteBuffer result = ByteBuffer.allocate(4).putInt(element);
+                    result.rewind();
+                    return result.array();
+                },
+                event -> "fixedkey");
+
+        FlinkPravegaUtils.writeToPravegaInEventTimeOrder(dataStream, pravegaSink, 1);
+        Assert.assertNotNull(execEnv.getExecutionPlan());
     }
 
     /**
