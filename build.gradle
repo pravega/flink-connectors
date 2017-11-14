@@ -31,13 +31,20 @@ apply from: 'gradle/maven.gradle'
 
 repositories {
     mavenLocal()
-    jcenter()
-    mavenCentral()
-    maven {
-        url "https://repository.apache.org/snapshots"
+    if (findProperty("repositoryUrl")) {
+        maven {
+            url findProperty("repositoryUrl")
+        }
     }
-    maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots"
+    else {
+        jcenter()
+        mavenCentral()
+        maven {
+            url "https://repository.apache.org/snapshots"
+        }
+        maven {
+            url "https://oss.sonatype.org/content/repositories/snapshots"
+        }
     }
 }
 
@@ -49,6 +56,7 @@ configurations.all {
 }
 
 configurations {
+    testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
 }
@@ -61,7 +69,10 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
+    compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
+
     testCompile group: 'junit', name: 'junit', version: junitVersion
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
     testCompile group: 'org.apache.flink', name: 'flink-tests_2.11', version: flinkVersion

@@ -50,7 +50,7 @@ public class FlinkPravegaUtils {
         // a forwarding strategy (as opposed to a rebalancing strategy) is used by Flink between the two operators.
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
-                .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism)
+                .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism).forward()
                 .addSink(writer).setParallelism(parallelism);
     }
 
