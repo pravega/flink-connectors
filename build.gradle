@@ -31,13 +31,20 @@ apply from: 'gradle/maven.gradle'
 
 repositories {
     mavenLocal()
-    jcenter()
-    mavenCentral()
-    maven {
-        url "https://repository.apache.org/snapshots"
+    if (findProperty("repositoryUrl")) {
+        maven {
+            url findProperty("repositoryUrl")
+        }
     }
-    maven {
-        url "https://oss.sonatype.org/content/repositories/snapshots"
+    else {
+        jcenter()
+        mavenCentral()
+        maven {
+            url "https://repository.apache.org/snapshots"
+        }
+        maven {
+            url "https://oss.sonatype.org/content/repositories/snapshots"
+        }
     }
 }
 
