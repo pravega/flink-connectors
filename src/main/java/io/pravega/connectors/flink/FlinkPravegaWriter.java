@@ -75,7 +75,6 @@ public class FlinkPravegaWriter<T>
     private final String streamName;
 
     private final long txnTimeoutMillis;
-    private final long txnMaxTimeMillis;
     private final long txnGracePeriodMillis;
 
     // Writer interface to assist exactly-once and atleast-once functionality
@@ -107,7 +106,7 @@ public class FlinkPravegaWriter<T>
             final PravegaEventRouter<T> router) {
 
         this(controllerURI, scope, streamName, serializationSchema, router,
-                DEFAULT_TXN_TIMEOUT_MILLIS, DEFAULT_TXN_TIMEOUT_MILLIS, DEFAULT_TX_SCALE_GRACE_MILLIS);
+                DEFAULT_TXN_TIMEOUT_MILLIS, DEFAULT_TX_SCALE_GRACE_MILLIS);
     }
 
 
@@ -120,8 +119,6 @@ public class FlinkPravegaWriter<T>
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param router                The implementation to extract the partition key from the event.
      * @param txnTimeoutMillis      The number of milliseconds after which the transaction will be aborted.
-     * @param txnMaxTimeMillis      The maximum time (in milliseconds) to which transaction timeout may be
-     *                              increased via the pingTransaction API.
      * @param txnGracePeriodMillis  The maximum amount of time, in milliseconds, until which transaction may
      *                              remain active, after a scale operation has been initiated on the underlying stream.
      */
@@ -132,7 +129,6 @@ public class FlinkPravegaWriter<T>
             final SerializationSchema<T> serializationSchema,
             final PravegaEventRouter<T> router,
             final long txnTimeoutMillis,
-            final long txnMaxTimeMillis,
             final long txnGracePeriodMillis) {
 
         Preconditions.checkNotNull(controllerURI, "controllerURI");
@@ -141,7 +137,6 @@ public class FlinkPravegaWriter<T>
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         Preconditions.checkNotNull(router, "router");
         Preconditions.checkArgument(txnTimeoutMillis > 0, "txnTimeoutMillis must be > 0");
-        Preconditions.checkArgument(txnMaxTimeMillis > 0, "txnMaxTimeMillis must be > 0");
         Preconditions.checkArgument(txnGracePeriodMillis > 0, "txnGracePeriodMillis must be > 0");
 
         this.controllerURI = controllerURI;
@@ -151,7 +146,6 @@ public class FlinkPravegaWriter<T>
         this.eventRouter = router;
 
         this.txnTimeoutMillis = txnTimeoutMillis;
-        this.txnMaxTimeMillis = txnMaxTimeMillis;
         this.txnGracePeriodMillis = txnGracePeriodMillis;
     }
 
@@ -182,7 +176,7 @@ public class FlinkPravegaWriter<T>
         this.pravegaWriter = clientFactory.createEventWriter(
                 streamName,
                 eventSerializer,
-                EventWriterConfig.builder().build());
+                EventWriterConfig.builder().transactionTimeoutTime(txnTimeoutMillis).transactionTimeoutScaleGracePeriod(txnGracePeriodMillis).build());
 
         log.info("Initialized pravega writer for stream: {}/{} with controller URI: {}", scopeName,
                 streamName, controllerURI);
@@ -363,7 +357,7 @@ public class FlinkPravegaWriter<T>
         public void initialize() throws Exception {
 
             // start the transaction that will hold the elements till the first checkpoint
-            this.currentTxn = pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
+            this.currentTxn = pravegaWriter.beginTxn();
 
             log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
 
@@ -418,7 +412,7 @@ public class FlinkPravegaWriter<T>
             this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
 
             // start the next transaction for what comes after this checkpoint
-            this.currentTxn = pravegaWriter.beginTxn(txnTimeoutMillis, txnMaxTimeMillis, txnGracePeriodMillis);
+            this.currentTxn = pravegaWriter.beginTxn();
 
             log.debug("{} - started new transaction '{}'", name(), this.currentTxn.getTxnId());
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
