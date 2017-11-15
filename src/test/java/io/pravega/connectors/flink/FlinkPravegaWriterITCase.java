@@ -36,11 +36,11 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Automated tests for {@link FlinkPravegaWriter}.
- * Tests the atleast once guarantee provided by the pravega writer.
+ * Integration tests for {@link FlinkPravegaWriter}.
+ * Tests the at-least once guarantee provided by the pravega writer.
  */
 @Slf4j
-public class FlinkPravegaWriterTest {
+public class FlinkPravegaWriterITCase {
 
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
