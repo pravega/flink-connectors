@@ -63,6 +63,7 @@ public final class SetupUtils {
         int controllerPort = TestUtils.getAvailableListenPort();
         int hostPort = TestUtils.getAvailableListenPort();
         int restPort = TestUtils.getAvailableListenPort();
+
         this.inProcPravegaCluster = InProcPravegaCluster.builder()
                 .isInProcZK(true)
                 .zkUrl("localhost:" + zkPort)
@@ -97,8 +98,7 @@ public final class SetupUtils {
 
         try {
             this.inProcPravegaCluster.close();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
         }
     }

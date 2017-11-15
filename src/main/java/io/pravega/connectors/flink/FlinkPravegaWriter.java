@@ -147,7 +147,6 @@ public class FlinkPravegaWriter<T>
         this.txnGracePeriodMillis = txnGracePeriodMillis;
     }
 
-
     /**
      * Gets the associated event router.
      */
@@ -159,7 +158,7 @@ public class FlinkPravegaWriter<T>
      * Set this writer's operating mode.
      *
      * @param writerMode    The mode of operation.
-    */
+     */
     public void setPravegaWriterMode(PravegaWriterMode writerMode) {
         Preconditions.checkNotNull(writerMode);
         this.writerMode = writerMode;
@@ -595,8 +594,7 @@ public class FlinkPravegaWriter<T>
 
             try {
                 flushAndVerify();
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
             }
 
@@ -608,8 +606,7 @@ public class FlinkPravegaWriter<T>
 
             try {
                 this.executorService.shutdown();
-            }
-            catch (Exception e) {
+            } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
             }
 
