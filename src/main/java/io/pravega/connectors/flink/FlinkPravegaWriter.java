@@ -17,6 +17,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
@@ -77,17 +78,15 @@ public class FlinkPravegaWriter<T>
     private final long txnTimeoutMillis;
     private final long txnGracePeriodMillis;
 
-    // Writer interface to assist exactly-once and atleast-once functionality
-    private transient InternalWriter<T> writer = null;
-
-    /** The pravega writer client. Used only to create transactions. */
-    private transient EventStreamWriter<T> pravegaWriter = null;
-
-    // The event serializer implementation for the pravega writer.
-    private transient Serializer<T> eventSerializer = null;
-
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
+
+    // Client factory for PravegaWriter instances
+    private transient ClientFactory clientFactory = null;
+
+    // Writer interface to assist exactly-once and atleast-once functionality
+    private transient AbstractInternalWriter writer = null;
+
 
     /**
      * The flink pravega writer instance which can be added as a sink to a flink job.
@@ -108,7 +107,6 @@ public class FlinkPravegaWriter<T>
         this(controllerURI, scope, streamName, serializationSchema, router,
                 DEFAULT_TXN_TIMEOUT_MILLIS, DEFAULT_TX_SCALE_GRACE_MILLIS);
     }
-
 
     /**
      * The flink pravega writer instance which can be added as a sink to a flink job.
@@ -171,16 +169,10 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        initializeInternalWriter();
-        ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
-        this.pravegaWriter = clientFactory.createEventWriter(
-                streamName,
-                eventSerializer,
-                EventWriterConfig.builder().transactionTimeoutTime(txnTimeoutMillis).transactionTimeoutScaleGracePeriod(txnGracePeriodMillis).build());
-
-        log.info("Initialized pravega writer for stream: {}/{} with controller URI: {}", scopeName,
+        createInternalWriter();
+        writer.open();
+        log.info("Initialized Pravega writer for stream: {}/{} with controller URI: {}", scopeName,
                 streamName, controllerURI);
-        writer.initialize();
     }
 
     @Override
@@ -190,7 +182,27 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void close() throws Exception {
-        writer.close();
+        Exception exception = null;
+
+        if (writer != null) {
+            try {
+                writer.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+        }
+
+        if (clientFactory != null) {
+            try {
+                clientFactory.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+        }
+
+        if (exception != null) {
+            throw exception;
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -203,11 +215,12 @@ public class FlinkPravegaWriter<T>
     /**
      * Restores the state, which here means the IDs of transaction for which we have
      * to ensure that they are really committed.
+     *
+     * Note: {@code restoreState} is called before {@code open}.
      */
     @Override
     public void restoreState(List<UUID> list) throws Exception {
-        // note: restore is called before open
-        initializeInternalWriter();
+        createInternalWriter();
         writer.restoreState(list);
     }
 
@@ -230,21 +243,28 @@ public class FlinkPravegaWriter<T>
     //  helper methods
     // ------------------------------------------------------------------------
 
-    private void initializeInternalWriter() {
+    @VisibleForTesting
+    protected ClientFactory createClientFactory(String scopeName, URI controllerURI) {
+        return ClientFactory.withScope(scopeName, controllerURI);
+    }
+
+    private void createInternalWriter() {
         if (this.writer != null) {
             return;
         }
 
-        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-            if (!isCheckpointEnabled()) {
-                // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
-                throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
-            }
-            this.writer = new TransactionalWriter();
-        } else {
-            this.writer = new NonTransactionalWriter();
+        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE && !isCheckpointEnabled()) {
+            // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
+            throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
         }
-        this.eventSerializer = new FlinkSerializer<>(serializationSchema);
+
+        this.clientFactory = createClientFactory(scopeName, controllerURI);
+
+        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            this.writer = new TransactionalWriter(this.clientFactory);
+        } else {
+            this.writer = new NonTransactionalWriter(this.clientFactory);
+        }
     }
 
     private boolean isCheckpointEnabled() {
@@ -309,43 +329,57 @@ public class FlinkPravegaWriter<T>
     /*
      * An abstract internal writer.
      */
-    private interface InternalWriter<T> {
+    private abstract class AbstractInternalWriter {
 
-        void initialize() throws Exception;
+        protected final EventStreamWriter<T> pravegaWriter;
 
-        void write(T event) throws Exception;
+        AbstractInternalWriter(ClientFactory clientFactory) {
+            Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
+            EventWriterConfig writerConfig = EventWriterConfig.builder()
+                    .transactionTimeoutTime(txnTimeoutMillis)
+                    .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
+                    .build();
+            pravegaWriter = clientFactory.createEventWriter(streamName, eventSerializer, writerConfig);
+        }
 
-        void close() throws Exception;
+        abstract void open() throws Exception;
 
-        List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+        abstract void write(T event) throws Exception;
 
-        void restoreState(List<UUID> list) throws Exception;
+        void close() throws Exception {
+            pravegaWriter.close();
+        }
 
-        void notifyCheckpointComplete(long checkpointId) throws Exception;
+        abstract List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+
+        abstract void restoreState(List<UUID> list) throws Exception;
+
+        abstract void notifyCheckpointComplete(long checkpointId) throws Exception;
 
     }
 
     /*
-     * Implements an {@link InternalWriter} using Pravega transactional writes.
+     * Implements an {@link AbstractInternalWriter} using transactional writes to Pravega.
      */
-    private class TransactionalWriter implements InternalWriter<T> {
+    private class TransactionalWriter extends AbstractInternalWriter {
 
         /** The currently running transaction to which we write */
         private Transaction<T> currentTxn;
 
         /** The transactions that are complete from Flink's view (their checkpoint was triggered),
          * but not fully committed, because their corresponding checkpoint is not yet confirmed */
-        private ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
+        private final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
+
+        TransactionalWriter(ClientFactory clientFactory) {
+            super(clientFactory);
+            this.txnsPendingCommit = new ArrayDeque<>();
+        }
 
         @Override
-        public void initialize() throws Exception {
-
+        public void open() throws Exception {
             // start the transaction that will hold the elements till the first checkpoint
             this.currentTxn = pravegaWriter.beginTxn();
-
             log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
-
-            this.txnsPendingCommit = new ArrayDeque<>();
         }
 
         @Override
@@ -366,12 +400,10 @@ public class FlinkPravegaWriter<T>
                 }
             }
 
-            if (pravegaWriter != null) {
-                try {
-                    pravegaWriter.close();
-                } catch (Exception e) {
-                    exception = ExceptionUtils.firstOrSuppressed(e, exception);
-                }
+            try {
+                super.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
             }
 
             if (exception != null) {
@@ -477,17 +509,6 @@ public class FlinkPravegaWriter<T>
             // for the reasons discussed in the 'notifyCheckpointComplete()' method.
 
             if (list != null && list.size() > 0) {
-
-                final Serializer<?> dummySerializer = new FlinkSerializer<>(null);
-                final ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
-
-                final EventStreamWriter<?> pravegaWriter = clientFactory.createEventWriter(
-                        streamName,
-                        dummySerializer,
-                        EventWriterConfig.builder().build());
-
-                // go over all transactions that we got. there may be more than one in case of
-                // a scale-in and
                 for (UUID txnId : list) {
                     if (txnId != null) {
                         final Transaction<?> txn = pravegaWriter.getTxn(txnId);
@@ -518,24 +539,28 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * Implements an {@link InternalWriter} using Pravega non-transactional writes.
+     * Implements an {@link AbstractInternalWriter} using non-transactional writes to Pravega.
      */
-    private class NonTransactionalWriter implements InternalWriter<T> {
+    private class NonTransactionalWriter extends AbstractInternalWriter {
 
-        // Error which will be detected asynchronously and reported to flink.
-        private AtomicReference<Throwable> writeError = null;
+        // Error which will be detected asynchronously and reported to Flink.
+        private final AtomicReference<Throwable> writeError;
 
         // Used to track confirmation from all writes to ensure guaranteed writes.
-        private AtomicInteger pendingWritesCount = null;
+        private final AtomicInteger pendingWritesCount;
 
         // Thread pool for handling callbacks from write events.
-        private ExecutorService executorService = null;
+        private final ExecutorService executorService;
 
-        @Override
-        public void initialize() throws Exception {
+        NonTransactionalWriter(ClientFactory clientFactory) {
+            super(clientFactory);
             this.writeError = new AtomicReference<>(null);
             this.pendingWritesCount = new AtomicInteger(0);
             this.executorService = Executors.newFixedThreadPool(5);
+        }
+
+        @Override
+        public void open() throws Exception {
         }
 
         @Override
@@ -566,8 +591,31 @@ public class FlinkPravegaWriter<T>
 
         @Override
         public void close() throws Exception {
-            flushAndVerify();
-            pravegaWriter.close();
+            Exception exception = null;
+
+            try {
+                flushAndVerify();
+            }
+            catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+
+            try {
+                super.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+
+            try {
+                this.executorService.shutdown();
+            }
+            catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+
+            if (exception != null) {
+                throw exception;
+            }
         }
 
         @Override
