@@ -171,7 +171,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        invokeWriter();
+        initializeInternalWriter();
         ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI);
         this.pravegaWriter = clientFactory.createEventWriter(
                 streamName,
@@ -206,8 +206,8 @@ public class FlinkPravegaWriter<T>
      */
     @Override
     public void restoreState(List<UUID> list) throws Exception {
-        // restore will be called before open. The writer is initialized only to invoke the restoreState method
-        invokeWriter();
+        // note: restore is called before open
+        initializeInternalWriter();
         writer.restoreState(list);
     }
 
@@ -230,37 +230,21 @@ public class FlinkPravegaWriter<T>
     //  helper methods
     // ------------------------------------------------------------------------
 
-    private void invokeWriter() {
-
-        // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
-        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-
-            if (!isCheckpointEnabled()) {
-                throw new UnsupportedOperationException("Pravega exactly once support requires checkpoint to be enabled");
-            }
-
-            log.debug("initializing pravega writer with transaction support");
-
-            this.eventSerializer = new FlinkSerializer<>(serializationSchema);
-
-            this.writer = new TransactionWriter();
-        } else {
-            log.debug("initializing standard pravega writer");
-
-            this.eventSerializer = new Serializer<T>() {
-                @Override
-                public ByteBuffer serialize(T event) {
-                    return ByteBuffer.wrap(serializationSchema.serialize(event));
-                }
-
-                @Override
-                public T deserialize(ByteBuffer serializedValue) {
-                    throw new IllegalStateException("deserialize() called for a serializer");
-                }
-            };
-
-            this.writer = new StandardWriter();
+    private void initializeInternalWriter() {
+        if (this.writer != null) {
+            return;
         }
+
+        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            if (!isCheckpointEnabled()) {
+                // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
+                throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
+            }
+            this.writer = new TransactionalWriter();
+        } else {
+            this.writer = new NonTransactionalWriter();
+        }
+        this.eventSerializer = new FlinkSerializer<>(serializationSchema);
     }
 
     private boolean isCheckpointEnabled() {
@@ -323,7 +307,7 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * Interface for exactly once and at least once writer implementation
+     * An abstract internal writer.
      */
     private interface InternalWriter<T> {
 
@@ -342,9 +326,9 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * Exactly-Once Pravega Writer implementation
+     * Implements an {@link InternalWriter} using Pravega transactional writes.
      */
-    private class TransactionWriter implements InternalWriter<T> {
+    private class TransactionalWriter implements InternalWriter<T> {
 
         /** The currently running transaction to which we write */
         private Transaction<T> currentTxn;
@@ -534,9 +518,9 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * At least-Once Pravega Writer implementation
+     * Implements an {@link InternalWriter} using Pravega non-transactional writes.
      */
-    private class StandardWriter implements InternalWriter<T> {
+    private class NonTransactionalWriter implements InternalWriter<T> {
 
         // Error which will be detected asynchronously and reported to flink.
         private AtomicReference<Throwable> writeError = null;
