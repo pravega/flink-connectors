@@ -98,8 +98,7 @@ public final class SetupUtils {
 
         try {
             this.inProcPravegaCluster.close();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
         }
     }
