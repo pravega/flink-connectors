@@ -85,8 +85,8 @@ public class FlinkPravegaWriter<T>
     private transient ClientFactory clientFactory = null;
 
     // Writer interface to assist exactly-once and atleast-once functionality
-    private transient AbstractInternalWriter writer = null;
-
+    @VisibleForTesting
+    transient AbstractInternalWriter writer = null;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a flink job.
@@ -155,7 +155,14 @@ public class FlinkPravegaWriter<T>
     }
 
     /**
-     * Set this writer's operating mode.
+     * Gets this writer's operating mode.
+     */
+    public PravegaWriterMode getPravegaWriterMode() {
+        return this.writerMode;
+    }
+
+    /**
+     * Sets this writer's operating mode.
      *
      * @param writerMode    The mode of operation.
      */
@@ -168,7 +175,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        createInternalWriter();
+        initializeInternalWriter();
         writer.open();
         log.info("Initialized Pravega writer for stream: {}/{} with controller URI: {}", scopeName,
                 streamName, controllerURI);
@@ -219,7 +226,7 @@ public class FlinkPravegaWriter<T>
      */
     @Override
     public void restoreState(List<UUID> list) throws Exception {
-        createInternalWriter();
+        initializeInternalWriter();
         writer.restoreState(list);
     }
 
@@ -247,7 +254,23 @@ public class FlinkPravegaWriter<T>
         return ClientFactory.withScope(scopeName, controllerURI);
     }
 
-    private void createInternalWriter() {
+    @VisibleForTesting
+    protected AbstractInternalWriter createInternalWriter() {
+        Preconditions.checkState(this.clientFactory != null, "clientFactory not initialized");
+        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            return new TransactionalWriter(this.clientFactory);
+        } else {
+            ExecutorService executorService = createExecutorService();
+            return new NonTransactionalWriter(this.clientFactory, executorService);
+        }
+    }
+
+    @VisibleForTesting
+    protected ExecutorService createExecutorService() {
+        return Executors.newFixedThreadPool(5);
+    }
+
+    private void initializeInternalWriter() {
         if (this.writer != null) {
             return;
         }
@@ -258,12 +281,7 @@ public class FlinkPravegaWriter<T>
         }
 
         this.clientFactory = createClientFactory(scopeName, controllerURI);
-
-        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-            this.writer = new TransactionalWriter(this.clientFactory);
-        } else {
-            this.writer = new NonTransactionalWriter(this.clientFactory);
-        }
+        this.writer = createInternalWriter();
     }
 
     private boolean isCheckpointEnabled() {
@@ -328,7 +346,8 @@ public class FlinkPravegaWriter<T>
     /*
      * An abstract internal writer.
      */
-    private abstract class AbstractInternalWriter {
+    @VisibleForTesting
+    abstract class AbstractInternalWriter {
 
         protected final EventStreamWriter<T> pravegaWriter;
 
@@ -360,7 +379,8 @@ public class FlinkPravegaWriter<T>
     /*
      * Implements an {@link AbstractInternalWriter} using transactional writes to Pravega.
      */
-    private class TransactionalWriter extends AbstractInternalWriter {
+    @VisibleForTesting
+    class TransactionalWriter extends AbstractInternalWriter {
 
         /** The currently running transaction to which we write */
         private Transaction<T> currentTxn;
@@ -540,22 +560,23 @@ public class FlinkPravegaWriter<T>
     /*
      * Implements an {@link AbstractInternalWriter} using non-transactional writes to Pravega.
      */
-    private class NonTransactionalWriter extends AbstractInternalWriter {
+    @VisibleForTesting
+    class NonTransactionalWriter extends AbstractInternalWriter {
 
         // Error which will be detected asynchronously and reported to Flink.
-        private final AtomicReference<Throwable> writeError;
+        final AtomicReference<Throwable> writeError;
 
         // Used to track confirmation from all writes to ensure guaranteed writes.
-        private final AtomicInteger pendingWritesCount;
+        final AtomicInteger pendingWritesCount;
 
         // Thread pool for handling callbacks from write events.
-        private final ExecutorService executorService;
+        final ExecutorService executorService;
 
-        NonTransactionalWriter(ClientFactory clientFactory) {
+        NonTransactionalWriter(ClientFactory clientFactory, ExecutorService executorService) {
             super(clientFactory);
             this.writeError = new AtomicReference<>(null);
             this.pendingWritesCount = new AtomicInteger(0);
-            this.executorService = Executors.newFixedThreadPool(5);
+            this.executorService = executorService;
         }
 
         @Override
