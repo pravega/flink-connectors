@@ -571,17 +571,16 @@ public class FlinkPravegaWriter<T>
             final CompletableFuture<Void> future = pravegaWriter.writeEvent(eventRouter.getRoutingKey(event), event);
             future.whenCompleteAsync(
                     (result, e) -> {
-                        if (e == null) {
-                            synchronized (this) {
-                                pendingWritesCount.decrementAndGet();
-                                this.notify();
-                            }
-                        } else {
+                        if (e != null) {
                             log.warn("Detected a write failure: {}", e);
 
                             // We will record only the first error detected, since this will mostly likely help with
                             // finding the root cause. Storing all errors will not be feasible.
                             writeError.compareAndSet(null, e);
+                        }
+                        synchronized (this) {
+                            pendingWritesCount.decrementAndGet();
+                            this.notify();
                         }
                     },
                     executorService
