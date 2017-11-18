@@ -52,12 +52,12 @@ public class FlinkPravegaWriterITCase {
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
 
+    // Setup utility.
+    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+
     // Ensure each test completes within 120 seconds.
     @Rule
     public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
-    // Setup utility.
-    private static SetupUtils SETUP_UTILS = new SetupUtils();
 
     @BeforeClass
     public static void setup() throws Exception {

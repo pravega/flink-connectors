@@ -58,6 +58,10 @@ public class FlinkPravegaWriter<T>
 
     private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 10 * 60 * 1000; // 10 minutes
 
+    // Writer interface to assist exactly-once and atleast-once functionality
+    @VisibleForTesting
+    transient AbstractInternalWriter writer = null;
+
     // ----------- configuration fields -----------
 
     // The supplied event serializer.
@@ -83,10 +87,6 @@ public class FlinkPravegaWriter<T>
 
     // Client factory for PravegaWriter instances
     private transient ClientFactory clientFactory = null;
-
-    // Writer interface to assist exactly-once and atleast-once functionality
-    @VisibleForTesting
-    transient AbstractInternalWriter writer = null;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a flink job.
@@ -296,7 +296,8 @@ public class FlinkPravegaWriter<T>
     //  serializer
     // ------------------------------------------------------------------------
 
-    private static final class FlinkSerializer<T> implements Serializer<T> {
+    @VisibleForTesting
+    static final class FlinkSerializer<T> implements Serializer<T> {
 
         private final SerializationSchema<T> serializationSchema;
 
@@ -319,7 +320,8 @@ public class FlinkPravegaWriter<T>
     //  utilities
     // ------------------------------------------------------------------------
 
-    private static final class TransactionAndCheckpoint<T> {
+    @VisibleForTesting
+    static final class TransactionAndCheckpoint<T> {
 
         private final Transaction<T> transaction;
         private final long checkpointId;
@@ -383,11 +385,13 @@ public class FlinkPravegaWriter<T>
     class TransactionalWriter extends AbstractInternalWriter {
 
         /** The currently running transaction to which we write */
-        private Transaction<T> currentTxn;
+        @VisibleForTesting
+        Transaction<T> currentTxn;
 
         /** The transactions that are complete from Flink's view (their checkpoint was triggered),
          * but not fully committed, because their corresponding checkpoint is not yet confirmed */
-        private final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
+        @VisibleForTesting
+        final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
 
         TransactionalWriter(ClientFactory clientFactory) {
             super(clientFactory);
@@ -453,7 +457,7 @@ public class FlinkPravegaWriter<T>
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
 
             // store all pending transactions in the checkpoint state
-            return txnsPendingCommit.stream().map( (v) -> v.transaction().getTxnId() ).collect(Collectors.toList());
+            return txnsPendingCommit.stream().map( v -> v.transaction().getTxnId() ).collect(Collectors.toList());
         }
 
         @Override
@@ -564,13 +568,15 @@ public class FlinkPravegaWriter<T>
     class NonTransactionalWriter extends AbstractInternalWriter {
 
         // Error which will be detected asynchronously and reported to Flink.
+        @VisibleForTesting
         final AtomicReference<Throwable> writeError;
 
         // Used to track confirmation from all writes to ensure guaranteed writes.
+        @VisibleForTesting
         final AtomicInteger pendingWritesCount;
 
         // Thread pool for handling callbacks from write events.
-        final ExecutorService executorService;
+        private final ExecutorService executorService;
 
         NonTransactionalWriter(ClientFactory clientFactory, ExecutorService executorService) {
             super(clientFactory);
@@ -653,7 +659,8 @@ public class FlinkPravegaWriter<T>
         }
 
         // Wait until all pending writes are completed and throw any errors detected.
-        private void flushAndVerify() throws Exception {
+        @VisibleForTesting
+        void flushAndVerify() throws Exception {
             pravegaWriter.flush();
 
             // Wait until all errors, if any, have been recorded.
