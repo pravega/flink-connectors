@@ -177,7 +177,9 @@ public class FlinkPravegaWriterTest {
                 setParallelism(jobParallelism);
         execEnv.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
-        DataStreamSource<Integer> dataStream = execEnv.enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE)
+        execEnv.enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
+
+        DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(withFailure, EVENT_COUNT_PER_SOURCE));
 
         FlinkPravegaWriter<Integer> pravegaSink = new FlinkPravegaWriter<>(

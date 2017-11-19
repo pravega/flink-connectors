@@ -25,5 +25,10 @@ public enum PravegaWriterMode implements Serializable {
      * The writer will guarantee that all events are persisted in pravega.
      * There could be duplicate events written though.
      */
-    ATLEAST_ONCE
+    ATLEAST_ONCE,
+
+    /*
+     * The writer will guarantee that all events are persisted in pravega exactly once.
+     */
+    EXACTLY_ONCE
 }

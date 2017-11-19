@@ -16,6 +16,7 @@ import io.pravega.client.stream.EventStreamReader;
 
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang.exception.ExceptionUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -34,6 +35,7 @@ import java.util.BitSet;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 
 /**
@@ -67,12 +69,12 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
 
     @Test
     public void testOneWriterOneSegment() throws Exception {
-        runTest(1, 1, NUM_STREAM_ELEMENTS);
+        runTest(1, 1, NUM_STREAM_ELEMENTS, true);
     }
 
     @Test
     public void testOneWriterMultipleSegments() throws Exception {
-        runTest(1, 4, NUM_STREAM_ELEMENTS);
+        runTest(1, 4, NUM_STREAM_ELEMENTS, true);
     }
 
     // This test fails reliably with 
@@ -89,11 +91,21 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
     //        runTest(4, 4, NUM_STREAM_ELEMENTS);
     //    }
 
+    @Test
+    public void testInvalidWriterModeOption() throws Exception {
+        try {
+            runTest(1, 4, NUM_STREAM_ELEMENTS, false);
+        } catch (Exception e) {
+            assertNotEquals(-1, ExceptionUtils.indexOfThrowable(e, UnsupportedOperationException.class));
+        }
+    }
+
 
     private static void runTest(
             final int sinkParallelism,
             final int numPravegaSegments,
-            final int numElements) throws Exception {
+            final int numElements,
+            boolean enableCheckpoint) throws Exception {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -106,22 +118,26 @@ public class FlinkExactlyOncePravegaWriterTest extends StreamingMultiplePrograms
         env.setParallelism(sinkParallelism);
 
         // checkpoint frequently
-        env.enableCheckpointing(100);
+        if (enableCheckpoint) {
+            env.enableCheckpointing(100);
+        }
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
+
+        FlinkPravegaWriter pravegaWriter = new FlinkPravegaWriter<>(
+                SETUP_UTILS.getControllerUri(),
+                SETUP_UTILS.getScope(),
+                streamName,
+                new IntSerializer(),
+                new IdentityRouter<>(),
+                30 * 1000,  // 30 secs timeout
+                30 * 1000);
+        pravegaWriter.setPravegaWriterMode(PravegaWriterMode.EXACTLY_ONCE);
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(numElements))
                 .map(new FailingMapper<>(numElements / sinkParallelism / 2))
                 .rebalance()
-                .addSink(new FlinkExactlyOncePravegaWriter<>(
-                        SETUP_UTILS.getControllerUri(),
-                        SETUP_UTILS.getScope(),
-                        streamName,
-                        new IntSerializer(),
-                        new IdentityRouter<>(),
-                        30 * 1000,  // 30 secs timeout
-                        30 * 1000)
-                );
+                .addSink(pravegaWriter);
 
         final long executeStart = System.nanoTime();
         env.execute();
