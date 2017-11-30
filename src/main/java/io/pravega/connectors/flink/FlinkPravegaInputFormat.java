@@ -15,6 +15,7 @@ import com.google.common.base.Preconditions;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.InvalidStreamException;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 
@@ -48,8 +49,9 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
     // The scope name of the destination stream.
     private final String scopeName;
 
-    // The readergroup name to coordinate the parallel readers. This should be unique for a Flink job.
-    private final String readerGroupName;
+    // The prefix for Pravega reader group names to coordinate the parallel readers. This should be unique for a Flink job.
+    // The actual reader group name is recreated for each execution attempt of the job.
+    private final String readerGroupNamePrefix;
 
     // The names of Pravega streams to read
     private final Set<String> streamNames;
@@ -98,12 +100,7 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
         this.deserializationSchema = deserializationSchema;
         this.streamNames = streamNames;
         this.startTime = startTime;
-        this.readerGroupName = generateRandomReaderGroupName();
-
-        // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
-        ReaderGroupManager.withScope(scopeName, controllerURI)
-                .createReaderGroup(this.readerGroupName, ReaderGroupConfig.builder().startingTime(startTime).build(),
-                        streamNames);
+        this.readerGroupNamePrefix = generateRandomReaderGroupName();
     }
 
     // ------------------------------------------------------------------------
@@ -135,6 +132,17 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
     }
 
     // ------------------------------------------------------------------------
+    //  Input format life cycle methods
+    // ------------------------------------------------------------------------
+
+    @Override
+    public void openInputFormat() throws IOException {
+        super.openInputFormat();
+
+        setupReaderGroupForCurrentExecution();
+    }
+
+    // ------------------------------------------------------------------------
     //  Input split life cycle methods
     // ------------------------------------------------------------------------
 
@@ -147,7 +155,7 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
                 this.scopeName,
                 this.controllerURI,
                 getRuntimeContext().getTaskNameWithSubtasks(),
-                this.readerGroupName,
+                getReaderGroupNameForExecutionAttempt(getRuntimeContext().getAttemptNumber()),
                 this.deserializationSchema,
                 ReaderConfig.builder().build());
     }
@@ -175,5 +183,37 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
     @Override
     public void close() throws IOException {
         this.pravegaReader.close();
+    }
+
+    // ------------------------------------------------------------------------
+    //  Utilities
+    // ------------------------------------------------------------------------
+
+    private void setupReaderGroupForCurrentExecution() {
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(scopeName, controllerURI)) {
+            final int currentAttemptNum = getRuntimeContext().getAttemptNumber();
+
+            // delete reader group from last execution attempt, if any
+            if (currentAttemptNum > 0) {
+                try {
+                    readerGroupManager.deleteReaderGroup(getReaderGroupNameForExecutionAttempt(currentAttemptNum - 1));
+                } catch (RuntimeException e) {
+                    // ignore InvalidStreamExceptions, which is the result of duplicate reader group deletions
+                    // (the reader group deletion operation is not idempotent); rethrow all other exceptions
+                    if (!(e.getCause() instanceof InvalidStreamException)) {
+                        throw e;
+                    }
+                }
+            }
+
+            readerGroupManager.createReaderGroup(
+                    getReaderGroupNameForExecutionAttempt(currentAttemptNum),
+                    ReaderGroupConfig.builder().startingTime(startTime).build(),
+                    streamNames);
+        }
+    }
+
+    private String getReaderGroupNameForExecutionAttempt(int executionAttemptNum) {
+        return this.readerGroupNamePrefix + "-" + executionAttemptNum;
     }
 }
