@@ -12,6 +12,7 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
+import io.pravega.connectors.flink.util.RandomStringUtils;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -30,7 +31,6 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Utility functions for creating the test setup.

@@ -17,7 +17,7 @@ import io.pravega.connectors.flink.EventTimeOrderingOperator;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import lombok.SneakyThrows;
-import org.apache.commons.lang.RandomStringUtils;
+import org.apache.commons.text.RandomStringGenerator;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.util.serialization.DeserializationSchema;
@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class FlinkPravegaUtils {
+    private static final RandomStringGenerator alphabeticGenerator = new RandomStringGenerator.Builder().withinRange('a', 'z').build();
 
     private FlinkPravegaUtils() {
     }
@@ -77,7 +78,7 @@ public class FlinkPravegaUtils {
      * @return generated reader group name.
      */
     public static String generateRandomReaderGroupName() {
-        return "flink" + RandomStringUtils.randomAlphanumeric(20).toLowerCase();
+        return "flink" + alphabeticGenerator.generate(20).toLowerCase();
     }
 
     /**

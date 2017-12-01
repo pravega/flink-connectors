@@ -69,6 +69,8 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    compile group: 'org.apache.commons', name: 'commons-text', version: commonsTextVersion
+
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
@@ -92,7 +94,7 @@ shadowJar {
         // 'include' specific dependencies in the shadow jar
         // IMPORTANT: transitive dependencies must be manually listed here!
         include dependency("com.google.guava:guava")
-        include dependency("commons-lang:commons-lang")
+        include dependency("org.apache.commons:commons-text")
         include dependency("org.apache.commons:commons-lang3")
         include dependency("commons-io:commons-io")
         include dependency("io.netty:netty-common")
@@ -126,6 +128,7 @@ shadowJar {
     // Shading the libraries which could cause potential version conflicts with flink.
     relocate "com.google", "io.pravega.shaded.com.google"
     relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+
     relocate "io.grpc", "io.pravega.shaded.io.grpc"
     relocate "io.netty", "io.pravega.shaded.io.netty"
 

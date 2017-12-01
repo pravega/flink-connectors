@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.util.RandomStringUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
@@ -18,8 +19,6 @@ import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 import io.pravega.client.stream.EventStreamWriter;
 
 import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.RandomStringUtils;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -53,7 +52,7 @@ public class FlinkPravegaReaderTest extends StreamingMultipleProgramsTestBase {
     //Ensure each test completes within 120 seconds.
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-    
+
     @BeforeClass
     public static void setupPravega() throws Exception {
         SETUP_UTILS.startAllServices();
