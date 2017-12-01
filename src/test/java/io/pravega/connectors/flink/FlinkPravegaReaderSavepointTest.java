@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.connectors.flink.util.RandomStringUtils;
 import io.pravega.connectors.flink.utils.FlinkMiniClusterWithSavepointCommand;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
@@ -18,8 +19,6 @@ import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 
 import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.RandomStringUtils;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;

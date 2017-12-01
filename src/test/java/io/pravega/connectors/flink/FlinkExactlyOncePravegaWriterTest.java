@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.util.RandomStringUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.client.stream.EventRead;
@@ -17,7 +18,6 @@ import io.pravega.client.stream.EventStreamReader;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.lang.exception.ExceptionUtils;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
