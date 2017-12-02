@@ -92,7 +92,6 @@ shadowJar {
         // 'include' specific dependencies in the shadow jar
         // IMPORTANT: transitive dependencies must be manually listed here!
         include dependency("com.google.guava:guava")
-        include dependency("commons-lang:commons-lang")
         include dependency("org.apache.commons:commons-lang3")
         include dependency("commons-io:commons-io")
         include dependency("io.netty:netty-common")
