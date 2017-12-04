@@ -69,6 +69,8 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
