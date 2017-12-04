@@ -75,7 +75,6 @@ public class FlinkPravegaUtils {
      *
      * @return generated reader group name.
      */
-    @SuppressWarnings( "deprecation" )
     public static String generateRandomReaderGroupName() {
         return "flink" + org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(20).toLowerCase();
     }
