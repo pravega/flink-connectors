@@ -96,6 +96,8 @@ shadowJar {
         include dependency("com.google.guava:guava")
         include dependency("org.apache.commons:commons-lang3")
         include dependency("commons-io:commons-io")
+        include dependency("io.netty:netty")
+        include dependency("io.netty:netty-all")
         include dependency("io.netty:netty-common")
         include dependency("io.netty:netty-buffer")
         include dependency("io.netty:netty-resolver")
