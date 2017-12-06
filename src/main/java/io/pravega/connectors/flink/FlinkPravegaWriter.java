@@ -58,7 +58,7 @@ public class FlinkPravegaWriter<T>
 
     private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 10 * 60 * 1000; // 10 minutes
 
-    // Writer interface to assist exactly-once and atleast-once functionality
+    // Writer interface to assist exactly-once and at-least-once functionality
     @VisibleForTesting
     transient AbstractInternalWriter writer = null;
 

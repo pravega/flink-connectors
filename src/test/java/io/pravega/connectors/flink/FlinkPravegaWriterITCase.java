@@ -152,12 +152,11 @@ public class FlinkPravegaWriterITCase {
         pravegaSink.setPravegaWriterMode(PravegaWriterMode.ATLEAST_ONCE);
         dataStream.addSink(pravegaSink).setParallelism(2);
 
-        System.out.println(execEnv.getExecutionPlan());
         execEnv.execute();
         List<Integer> readElements = readAllEvents(streamName);
 
         // Now verify that all expected events are present in the stream. Having extra elements are fine since we are
-        // testing the atleast once writer.
+        // testing the at-least-once writer.
         Collections.sort(readElements);
         int expectedEventValue = 0;
         for (int i = 0; i < readElements.size();) {
@@ -207,11 +206,7 @@ public class FlinkPravegaWriterITCase {
                 .map(new FailingMapper<>(numElements / 2))
                 .addSink(pravegaWriter).setParallelism(2);
 
-        final long executeStart = System.nanoTime();
-        System.out.println(env.getExecutionPlan());
         env.execute();
-        final long executeEnd = System.nanoTime();
-        System.out.println(String.format("Test execution took %d ms", (executeEnd - executeStart) / 1_000_000));
 
         // validate the written data - no duplicates within the first numElements events
 
