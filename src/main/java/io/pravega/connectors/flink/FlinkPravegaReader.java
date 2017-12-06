@@ -248,7 +248,10 @@ public class FlinkPravegaReader<T>
                         log.info("Reached end of stream for reader: {}", readerId);
                         return;
                     }
-                    ctx.collect(event);
+
+                    synchronized (ctx.getCheckpointLock()) {
+                        ctx.collect(event);
+                    }
                 }
 
                 // if the read marks a checkpoint, trigger the checkpoint
