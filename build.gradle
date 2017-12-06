@@ -69,6 +69,8 @@ dependencies {
     compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
@@ -92,9 +94,10 @@ shadowJar {
         // 'include' specific dependencies in the shadow jar
         // IMPORTANT: transitive dependencies must be manually listed here!
         include dependency("com.google.guava:guava")
-        include dependency("commons-lang:commons-lang")
         include dependency("org.apache.commons:commons-lang3")
         include dependency("commons-io:commons-io")
+        include dependency("io.netty:netty")
+        include dependency("io.netty:netty-all")
         include dependency("io.netty:netty-common")
         include dependency("io.netty:netty-buffer")
         include dependency("io.netty:netty-resolver")
