@@ -45,6 +45,10 @@ repositories {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
         }
+        //TODO temporarily enabled staging repository to pull Flink 1.4.0-RC3 since it is not published yet to maven central
+        maven {
+            url "https://repository.apache.org/content/repositories/orgapacheflink-1141/"
+        }
     }
 }
 
