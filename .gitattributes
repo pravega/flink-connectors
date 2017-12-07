@@ -7,6 +7,7 @@
 *.java text
 *.xml text
 *.sh text
+*.properties text
 
 # Files that should keep CRLF line endings
 *.bat text eol=crlf

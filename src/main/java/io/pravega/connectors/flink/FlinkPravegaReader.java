@@ -154,9 +154,13 @@ public class FlinkPravegaReader<T>
         //       See https://github.com/pravega/pravega/issues/553.
         log.info("Creating reader group: {} for the Flink job", this.readerGroupName);
 
+        ReaderGroupConfig groupConfig = ReaderGroupConfig.builder()
+                .startingTime(startTime)
+                .disableAutomaticCheckpoints()
+                .build();
+
         ReaderGroupManager.withScope(scope, controllerURI)
-                .createReaderGroup(this.readerGroupName, ReaderGroupConfig.builder().startingTime(startTime).build(),
-                        streamNames);
+                .createReaderGroup(this.readerGroupName, groupConfig, streamNames);
     }
 
     // ------------------------------------------------------------------------
@@ -248,7 +252,10 @@ public class FlinkPravegaReader<T>
                         log.info("Reached end of stream for reader: {}", readerId);
                         return;
                     }
-                    ctx.collect(event);
+
+                    synchronized (ctx.getCheckpointLock()) {
+                        ctx.collect(event);
+                    }
                 }
 
                 // if the read marks a checkpoint, trigger the checkpoint
