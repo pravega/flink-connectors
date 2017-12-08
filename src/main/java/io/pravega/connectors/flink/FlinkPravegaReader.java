@@ -27,7 +27,7 @@ import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.FlinkException;
 
 import java.net.URI;

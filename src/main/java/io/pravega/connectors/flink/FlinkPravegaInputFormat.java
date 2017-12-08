@@ -21,7 +21,7 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import org.apache.flink.api.common.io.GenericInputFormat;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.core.io.GenericInputSplit;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 
 import java.io.IOException;
 import java.net.URI;

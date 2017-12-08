@@ -20,8 +20,8 @@ import io.pravega.connectors.flink.serialization.PravegaSerialization;
 import java.io.Serializable;
 import java.net.URI;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 
 /**
  * Convenience class for extracting pravega parameters from flink job parameters.

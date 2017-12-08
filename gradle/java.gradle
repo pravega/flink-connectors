@@ -9,7 +9,8 @@ compileJava {
             "-Xlint:fallthrough",
             "-Xlint:finally",
             "-Xlint:overrides",
-            "-Xlint:path"
+            "-Xlint:path",
+            "-Werror"
     ])
 }
 

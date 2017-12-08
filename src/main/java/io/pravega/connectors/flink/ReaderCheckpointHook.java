@@ -95,16 +95,6 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // we make sure the executor is shut down after the future completes
         checkpointResult.handle((success, failure) -> scheduledExecutorService.shutdownNow());
 
-        // handle checkpoint completion
-        checkpointResult.handleAsync((success, failure) -> {
-            if (failure != null) {
-                checkpointResult.completeExceptionally(failure);
-            } else {
-                checkpointResult.complete(success);
-            }
-            return null;
-        }, executor);
-
         return checkpointResult;
     }
 
