@@ -17,8 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
-import org.apache.flink.runtime.concurrent.Future;
-import org.apache.flink.runtime.concurrent.impl.FlinkCompletableFuture;
 
 import java.net.URI;
 import java.util.concurrent.CompletableFuture;
@@ -75,7 +73,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     }
 
     @Override
-    public Future<Checkpoint> triggerCheckpoint(
+    public CompletableFuture<Checkpoint> triggerCheckpoint(
             long checkpointId, long checkpointTimestamp, Executor executor) throws Exception {
 
         final String checkpointName = createCheckpointName(checkpointId);
@@ -97,7 +95,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // we make sure the executor is shut down after the future completes
         checkpointResult.handle((success, failure) -> scheduledExecutorService.shutdownNow());
 
-        return flinkFutureFromJava8Future(checkpointResult, executor);
+        return checkpointResult;
     }
 
     @Override
@@ -132,26 +130,4 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         return PRAVEGA_CHECKPOINT_NAME_PREFIX + checkpointId;
     }
 
-    // ------------------------------------------------------------------------
-
-    /**
-     * Utility function to convert a Java 8 Future ({@link CompletableFuture}) to a
-     * Flink Future ({@link Future}). Flink brings its own futures currently, because it
-     * still assumes only Java 7 and still needs the functionality of completable futures.
-     */
-    private static <T> Future<T> flinkFutureFromJava8Future(CompletableFuture<T> javaFuture, Executor executor) {
-
-        final FlinkCompletableFuture<T> flinkFuture = new FlinkCompletableFuture<>();
-
-        javaFuture.handleAsync((success, failure) -> {
-            if (failure != null) {
-                flinkFuture.completeExceptionally(failure);
-            } else {
-                flinkFuture.complete(success);
-            }
-            return null;
-        }, executor);
-
-        return flinkFuture;
-    }
 }

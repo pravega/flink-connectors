@@ -9,11 +9,11 @@
  */
 package io.pravega.connectors.flink;
 
-import org.apache.flink.hadoop.shaded.com.google.common.base.Preconditions;
 import org.apache.flink.runtime.state.CheckpointListener;
-import org.apache.flink.runtime.util.SerializableObject;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.SerializableObject;
 
 import java.util.Collections;
 import java.util.List;

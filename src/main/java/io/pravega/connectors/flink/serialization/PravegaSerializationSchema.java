@@ -11,7 +11,7 @@ package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
 import java.nio.ByteBuffer;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 
 /**
  * A serialization schema adapter for a Pravega serializer.

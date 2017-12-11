@@ -14,7 +14,7 @@ import java.nio.ByteBuffer;
 import java.util.Random;
 
 import io.pravega.client.stream.Serializer;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 
 import org.junit.Test;
 

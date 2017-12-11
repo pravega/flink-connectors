@@ -9,7 +9,7 @@
  */
 package io.pravega.connectors.flink.utils;
 
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 
 import java.nio.ByteBuffer;
 

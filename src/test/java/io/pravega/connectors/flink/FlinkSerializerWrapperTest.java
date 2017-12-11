@@ -12,8 +12,8 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Serializer;
 
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.streaming.util.serialization.DeserializationSchema;
 
 import org.junit.Test;
 

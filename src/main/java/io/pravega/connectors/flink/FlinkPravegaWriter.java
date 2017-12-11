@@ -23,7 +23,7 @@ import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
-import org.apache.flink.streaming.util.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 
 import java.io.IOException;
@@ -182,7 +182,7 @@ public class FlinkPravegaWriter<T>
     }
 
     @Override
-    public void invoke(T event) throws Exception {
+    public void invoke(T event, Context context) throws Exception {
         writer.write(event);
     }
 
