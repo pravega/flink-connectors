@@ -65,12 +65,7 @@ public class PravegaInputSplit implements InputSplit {
     @Override
     public int hashCode() {
         int result = splitId;
-
-        // Pravega's Segment does not have hashCode implemented
-        result = 31 * result + segment.getScope().hashCode();
-        result = 31 * result + segment.getStreamName().hashCode();
-        result = 31 * result + segment.getSegmentNumber();
-
+        result = 31 * result + segment.hashCode();
         result = 31 * result + Long.hashCode(startOffset);
         result = 31 * result + Long.hashCode(endOffset);
 
@@ -85,7 +80,7 @@ public class PravegaInputSplit implements InputSplit {
             PravegaInputSplit other = (PravegaInputSplit) obj;
 
             return this.splitId == other.splitId &&
-                    this.segment.compareTo(other.segment) == 0 &&
+                    this.segment.equals(other.segment) &&
                     this.startOffset == other.startOffset &&
                     this.endOffset == other.endOffset;
         } else {
