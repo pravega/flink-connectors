@@ -39,7 +39,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class FlinkPravegaInputFormatTest extends StreamingMultipleProgramsTestBase {
+public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTestBase {
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
