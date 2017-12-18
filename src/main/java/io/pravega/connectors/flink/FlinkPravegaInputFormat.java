@@ -12,32 +12,38 @@ package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
 
-import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.ClientFactory;
+import io.pravega.client.batch.BatchClient;
+import io.pravega.client.batch.SegmentInfo;
+import io.pravega.client.batch.SegmentIterator;
+import io.pravega.client.segment.impl.Segment;
 import io.pravega.client.stream.EventRead;
-import io.pravega.client.stream.EventStreamReader;
-import io.pravega.client.stream.ReaderConfig;
-import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.impl.StreamImpl;
+import io.pravega.connectors.flink.serialization.WrappingSerializer;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
-import org.apache.flink.api.common.io.GenericInputFormat;
+import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
-import org.apache.flink.core.io.GenericInputSplit;
+import org.apache.flink.api.common.io.RichInputFormat;
+import org.apache.flink.api.common.io.statistics.BaseStatistics;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.core.io.InputSplitAssigner;
 
 import java.io.IOException;
 import java.net.URI;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Set;
-
-import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
-import static io.pravega.connectors.flink.util.FlinkPravegaUtils.generateRandomReaderGroupName;
 
 /**
  * A Flink {@link InputFormat} that can be added as a source to read from Pravega in a Flink batch job.
  */
-public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
+public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputSplit> {
 
     private static final long serialVersionUID = 1L;
-
-    private static final long DEFAULT_EVENT_READ_TIMEOUT = 1000;
 
     // The supplied event deserializer.
     private final DeserializationSchema<T> deserializationSchema;
@@ -48,23 +54,17 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
     // The scope name of the destination stream.
     private final String scopeName;
 
-    // The readergroup name to coordinate the parallel readers. This should be unique for a Flink job.
-    private final String readerGroupName;
-
-    // The names of Pravega streams to read
+    // The names of Pravega streams to read.
     private final Set<String> streamNames;
 
-    // The configured start time for the reader
-    private final long startTime;
+    // The factory used to create Pravega clients; closing this will also close all Pravega connections.
+    private transient ClientFactory clientFactory;
 
-    // The event read timeout
-    private long eventReadTimeout = DEFAULT_EVENT_READ_TIMEOUT;
+    // The batch client used to read Pravega segments; this client is reused for all segments read by this input format.
+    private transient BatchClient batchClient;
 
-    // The Pravega reader; a new reader will be opened for each input split
-    private transient EventStreamReader<T> pravegaReader;
-
-    // Read-ahead event; null indicates that end of input is reached
-    private transient EventRead<T> lastReadAheadEvent;
+    // The iterator for the currently read input split (i.e. a Pravega segment).
+    private transient SegmentIterator<T> segmentIterator;
 
     /**
      * Creates a new Flink Pravega {@link InputFormat} which can be added as a source to a Flink batch job.
@@ -76,62 +76,78 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
      * @param controllerURI         The pravega controller endpoint address.
      * @param scope                 The destination stream's scope name.
      * @param streamNames           The list of stream names to read events from.
-     * @param startTime             The start time from when to read events from.
-     *                              Use 0 to read all stream events from the beginning.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      */
     public FlinkPravegaInputFormat(
             final URI controllerURI,
             final String scope,
             final Set<String> streamNames,
-            final long startTime,
             final DeserializationSchema<T> deserializationSchema) {
 
         Preconditions.checkNotNull(controllerURI, "controllerURI");
         Preconditions.checkNotNull(scope, "scope");
         Preconditions.checkNotNull(streamNames, "streamNames");
-        Preconditions.checkArgument(startTime >= 0, "start time must be >= 0");
         Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
 
         this.controllerURI = controllerURI;
         this.scopeName = scope;
         this.deserializationSchema = deserializationSchema;
         this.streamNames = streamNames;
-        this.startTime = startTime;
-        this.readerGroupName = generateRandomReaderGroupName();
-
-        // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
-        ReaderGroupManager.withScope(scopeName, controllerURI)
-                .createReaderGroup(this.readerGroupName, ReaderGroupConfig.builder().startingTime(startTime).build(),
-                        streamNames);
     }
 
     // ------------------------------------------------------------------------
-    //  User configurations
+    //  Input format life cycle methods
     // ------------------------------------------------------------------------
 
-    /**
-     * Gets the timeout for the call to read events from Pravega. After the timeout
-     * expires (without an event being returned), another call will be made.
-     *
-     * <p>This timeout is passed to {@link EventStreamReader#readNextEvent(long)}.
-     *
-     * @param eventReadTimeout The timeout, in milliseconds
-     */
-    public void setEventReadTimeout(long eventReadTimeout) {
-        Preconditions.checkArgument(eventReadTimeout > 0, "timeout must be >= 0");
-        this.eventReadTimeout = eventReadTimeout;
+    @Override
+    public void openInputFormat() throws IOException {
+        super.openInputFormat();
+
+        this.clientFactory = ClientFactory.withScope(scopeName, controllerURI);
+        this.batchClient = clientFactory.createBatchClient();
     }
 
-    /**
-     * Gets the timeout for the call to read events from Pravega.
-     *
-     * <p>This timeout is the value passed to {@link EventStreamReader#readNextEvent(long)}.
-     *
-     * @return The timeout, in milliseconds
-     */
-    public long getEventReadTimeout() {
-        return eventReadTimeout;
+    @Override
+    public void closeInputFormat() throws IOException {
+        // closing the client factory also closes the batch client connection
+        this.clientFactory.close();
+    }
+
+    @Override
+    public void configure(Configuration parameters) {
+        //	nothing to configure
+    }
+
+    @Override
+    public BaseStatistics getStatistics(BaseStatistics cachedStatistics) throws IOException {
+        // no statistics available, by default.
+        return cachedStatistics;
+    }
+
+    @Override
+    public PravegaInputSplit[] createInputSplits(int minNumSplits) throws IOException {
+        List<PravegaInputSplit> splits = new ArrayList<>();
+
+        // createInputSplits() is called in the JM, so we have to establish separate
+        // short-living connections to Pravega here to retrieve the segments list
+        try (ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI)) {
+            BatchClient batchClient = clientFactory.createBatchClient();
+
+            for (String stream : streamNames) {
+                for (Iterator<SegmentInfo> segmentInfos = batchClient.listSegments(new StreamImpl(scopeName, stream)); segmentInfos.hasNext(); ) {
+                    SegmentInfo segmentInfo = segmentInfos.next();
+                    Segment segment = segmentInfo.getSegment();
+                    splits.add(new PravegaInputSplit(splits.size(), segment, 0, segmentInfo.getLength()));
+                }
+            }
+        }
+
+        return splits.toArray(new PravegaInputSplit[splits.size()]);
+    }
+
+    @Override
+    public InputSplitAssigner getInputSplitAssigner(PravegaInputSplit[] inputSplits) {
+        return new DefaultInputSplitAssigner(inputSplits);
     }
 
     // ------------------------------------------------------------------------
@@ -139,41 +155,33 @@ public class FlinkPravegaInputFormat<T> extends GenericInputFormat<T> {
     // ------------------------------------------------------------------------
 
     @Override
-    public void open(GenericInputSplit split) throws IOException {
-        super.open(split);
+    public void open(PravegaInputSplit split) throws IOException {
+        // create the adapter between Pravega's serializers and Flink's serializers
+        @SuppressWarnings("unchecked")
+        final Serializer<T> deserializer = deserializationSchema instanceof WrappingSerializer
+                ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
+                : new FlinkPravegaUtils.FlinkDeserializer<>(deserializationSchema);
 
-        // build a new reader for each input split
-        this.pravegaReader = createPravegaReader(
-                this.scopeName,
-                this.controllerURI,
-                getRuntimeContext().getTaskNameWithSubtasks(),
-                this.readerGroupName,
-                this.deserializationSchema,
-                ReaderConfig.builder().build());
+        // build a new iterator for each input split
+        this.segmentIterator = batchClient.readSegment(
+                split.getSegment(),
+                deserializer,
+                split.getStartOffset(),
+                split.getEndOffset());
     }
 
     @Override
     public boolean reachedEnd() throws IOException {
-        // look ahead to see if we have reached the end of input
-        try {
-            this.lastReadAheadEvent = pravegaReader.readNextEvent(eventReadTimeout);
-        } catch (Exception e) {
-            throw new IOException("Failed to read next event.", e);
-        }
-
-        // TODO this "end of input" marker is too brittle, as the timeout could easily be a temporary hiccup;
-        // TODO to make this more robust, we could loop and try to fetch a few more times before concluding end of input
-        return lastReadAheadEvent.getEvent() == null;
+        return !this.segmentIterator.hasNext();
     }
 
     @Override
     public T nextRecord(T t) throws IOException {
-        // reachedEnd() will be checked first, so lastReadAheadEvent should never be null
-        return lastReadAheadEvent.getEvent();
+        return this.segmentIterator.next();
     }
 
     @Override
     public void close() throws IOException {
-        this.pravegaReader.close();
+        this.segmentIterator.close();
     }
 }
