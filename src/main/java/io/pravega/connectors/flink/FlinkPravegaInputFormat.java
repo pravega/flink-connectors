@@ -115,7 +115,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     @Override
     public void configure(Configuration parameters) {
-        //	nothing to configure
+        // nothing to configure
     }
 
     @Override
@@ -137,7 +137,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 for (Iterator<SegmentInfo> segmentInfos = batchClient.listSegments(new StreamImpl(scopeName, stream)); segmentInfos.hasNext(); ) {
                     SegmentInfo segmentInfo = segmentInfos.next();
                     Segment segment = segmentInfo.getSegment();
-                    splits.add(new PravegaInputSplit(splits.size(), segment, 0, segmentInfo.getLength()));
+                    splits.add(new PravegaInputSplit(splits.size(), segment, 0, segmentInfo.getWriteOffset()));
                 }
             }
         }
