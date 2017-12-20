@@ -176,6 +176,7 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
 
     private static class FailOnceMapper extends RichMapFunction<Integer, Integer> {
 
+        @SuppressWarnings("checkstyle:StaticVariableName")
         private static boolean failedOnce;
 
         private final int failCount;
