@@ -25,6 +25,7 @@ public class PravegaInputSplit implements InputSplit {
 
     private final long startOffset;
 
+    // the value is not inclusive when batch client is reading the data for the segment
     private final long endOffset;
 
     public PravegaInputSplit(int splitId, Segment segment, long startOffset, long endOffset) {
@@ -34,8 +35,8 @@ public class PravegaInputSplit implements InputSplit {
                 startOffset >= 0,
                 "The start offset is not recognizable.");
         Preconditions.checkArgument(
-                startOffset <= endOffset,
-                "The end offset must be larger than the start offset.");
+                startOffset <= endOffset, // keeping equals check assuming both start and end could be 0?
+                "The end offset must be larger or equal to the start offset.");
 
         this.splitId = splitId;
         this.segment = segment;

@@ -137,7 +137,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 for (Iterator<SegmentInfo> segmentInfos = batchClient.listSegments(new StreamImpl(scopeName, stream)); segmentInfos.hasNext(); ) {
                     SegmentInfo segmentInfo = segmentInfos.next();
                     Segment segment = segmentInfo.getSegment();
-                    splits.add(new PravegaInputSplit(splits.size(), segment, segmentInfo.getStartingOffset(), segmentInfo.getWriteOffset() - 1));
+                    // segmentInfo.getWriteOffset() will give the length of the segment.
+                    splits.add(new PravegaInputSplit(splits.size(), segment, segmentInfo.getStartingOffset(), segmentInfo.getWriteOffset()));
                 }
             }
         }
