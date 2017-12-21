@@ -31,7 +31,6 @@ import org.junit.rules.Timeout;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -177,7 +176,14 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
 
     private static class FailOnceMapper extends RichMapFunction<Integer, Integer> {
 
+        @SuppressWarnings("checkstyle:StaticVariableName")
         private static boolean failedOnce;
+
+        private final int failCount;
+
+        FailOnceMapper(int failCount) {
+            this.failCount = failCount;
+        }
 
         static void reset() {
             failedOnce = false;
@@ -185,12 +191,6 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
 
         static boolean hasFailed() {
             return failedOnce;
-        }
-
-        private final int failCount;
-
-        FailOnceMapper(int failCount) {
-            this.failCount = failCount;
         }
 
         @Override
