@@ -1,0 +1,4 @@
+[submodule "pravega"]
+	path = pravega
+	url = https://github.com/pravega/pravega.git
+	branch = master
