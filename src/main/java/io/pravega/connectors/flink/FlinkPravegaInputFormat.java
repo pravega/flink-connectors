@@ -163,12 +163,11 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
                 : new FlinkPravegaUtils.FlinkDeserializer<>(deserializationSchema);
 
-        // build a new iterator for each input split
+        // build a new iterator for each input split.  Note that the endOffset parameter is not used by the Batch API at the moment.
         this.segmentIterator = batchClient.readSegment(
                 split.getSegment(),
                 deserializer,
-                split.getStartOffset(),
-                split.getEndOffset());
+                split.getStartOffset());
     }
 
     @Override
