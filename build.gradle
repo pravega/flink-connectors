@@ -45,10 +45,6 @@ repositories {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
         }
-        //TODO temporarily enabled staging repository to pull Flink 1.4.0-RC3 since it is not published yet to maven central
-        maven {
-            url "https://repository.apache.org/content/repositories/orgapacheflink-1141/"
-        }
     }
 }
 
@@ -67,11 +63,6 @@ configurations {
 
 dependencies {
     compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
 
@@ -123,11 +114,6 @@ shadowJar {
         include dependency("com.google.code.gson:gson")
         include dependency("com.google.instrumentation:instrumentation-api")
         include dependency("io.pravega:pravega-client")
-        include dependency("io.pravega:pravega-common")
-        include dependency("io.pravega:pravega-shared")
-        include dependency("io.pravega:pravega-shared-metrics")
-        include dependency("io.pravega:pravega-shared-protocol")
-        include dependency("io.pravega:pravega-shared-controller-api")
     }
 
     // Shading the libraries which could cause potential version conflicts with flink.
