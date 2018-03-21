@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true">
+
+    <appender name="FILE" class="ch.qos.logback.core.FileAppender">
+        <file>connector-test.log</file>
+        <append>false</append>
+        <encoder>
+            <charset>UTF-8</charset>
+            <Pattern>%d %-4relative [%thread] %-5level %logger{35} - %msg%n</Pattern>
+        </encoder>
+    </appender>
+
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <charset>UTF-8</charset>
@@ -7,7 +17,8 @@
         </encoder>
     </appender>
 
-    <root level="OFF">
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
+        <appender-ref ref="FILE" />
     </root>
 </configuration>

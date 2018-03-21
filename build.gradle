@@ -65,6 +65,13 @@ configurations {
     testCompile.exclude group: 'log4j', module: 'log4j'
 }
 
+test {
+    testLogging {
+        events = ["passed", "failed", "skipped"]
+        showStandardStreams = false
+    }
+}
+
 dependencies {
     compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
