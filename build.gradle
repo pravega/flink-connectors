@@ -67,8 +67,13 @@ configurations {
 
 test {
     testLogging {
-        events = ["passed", "failed", "skipped"]
-        showStandardStreams = false
+        onOutput { descriptor, event ->
+            if (project.hasProperty('logOutput')) {
+                events = ["passed", "failed", "skipped"]
+                showStandardStreams = true
+                logger.lifecycle(event.message)
+            }
+        }
     }
 }
 
