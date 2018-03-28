@@ -533,7 +533,7 @@ public class FlinkPravegaWriterTest {
                         testHarness.setup();
                         Transaction<Integer> trans = context.prepareTransaction();
                         when(trans.checkStatus()).thenReturn(status);
-                        context.sinkFunction.restoreState(Collections.singletonList(new FlinkPravegaWriter.PravegaState(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME)));
+                        context.sinkFunction.restoreState(Collections.singletonList(new FlinkPravegaWriter.PendingTransaction(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME)));
                         verify(trans).checkStatus();
                         return trans;
                     }

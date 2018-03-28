@@ -33,6 +33,7 @@ import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -40,6 +41,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
 
 /**
  * Flink sink implementation for writing into pravega storage.
@@ -49,7 +52,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FlinkPravegaWriter<T>
         extends RichSinkFunction<T>
-        implements ListCheckpointed<FlinkPravegaWriter.PravegaState>, CheckpointListener {
+        implements ListCheckpointed<FlinkPravegaWriter.PendingTransaction>, CheckpointListener {
 
     private static final long serialVersionUID = 1L;
 
@@ -215,7 +218,7 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
 
     @Override
-    public List<PravegaState> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+    public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
         return writer.snapshotState(checkpointId, checkpointTime);
     }
 
@@ -226,9 +229,9 @@ public class FlinkPravegaWriter<T>
      * Note: {@code restoreState} is called before {@code open}.
      */
     @Override
-    public void restoreState(List<PravegaState> list) throws Exception {
+    public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
         initializeInternalWriter();
-        writer.restoreState(list);
+        writer.restoreState(pendingTransactionList);
     }
 
     /**
@@ -371,9 +374,9 @@ public class FlinkPravegaWriter<T>
             pravegaWriter.close();
         }
 
-        abstract List<PravegaState> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+        abstract List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception;
 
-        abstract void restoreState(List<PravegaState> list) throws Exception;
+        abstract void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception;
 
         abstract void notifyCheckpointComplete(long checkpointId) throws Exception;
 
@@ -385,12 +388,16 @@ public class FlinkPravegaWriter<T>
     @VisibleForTesting
     class TransactionalWriter extends AbstractInternalWriter {
 
-        /** The currently running transaction to which we write */
+        /**
+         * The currently running transaction to which we write
+         */
         @VisibleForTesting
         Transaction<T> currentTxn;
 
-        /** The transactions that are complete from Flink's view (their checkpoint was triggered),
-         * but not fully committed, because their corresponding checkpoint is not yet confirmed */
+        /**
+         * The transactions that are complete from Flink's view (their checkpoint was triggered),
+         * but not fully committed, because their corresponding checkpoint is not yet confirmed
+         */
         @VisibleForTesting
         final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
 
@@ -418,7 +425,7 @@ public class FlinkPravegaWriter<T>
             Transaction<?> txn = this.currentTxn;
             if (txn != null) {
                 try {
-                    Exceptions.handleInterrupted( txn::abort );
+                    Exceptions.handleInterrupted(txn::abort);
                 } catch (Exception e) {
                     exception = e;
                 }
@@ -436,7 +443,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<PravegaState> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
             // this is like the pre-commit of a 2-phase-commit transaction
             // we are ready to commit and remember the transaction
 
@@ -458,7 +465,7 @@ public class FlinkPravegaWriter<T>
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
 
             // store all pending transactions in the checkpoint state
-            return txnsPendingCommit.stream().map( v -> new PravegaState(v.transaction().getTxnId(), scopeName, streamName) ).collect(Collectors.toList());
+            return txnsPendingCommit.stream().map(v -> new PendingTransaction(v.transaction().getTxnId(), scopeName, streamName)).collect(Collectors.toList());
         }
 
         @Override
@@ -517,7 +524,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void restoreState(List<PravegaState> list) throws Exception {
+        public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
             // when we are restored with a state (UUID,scope & stream), we don't really know whether the
             // transaction was already committed, or whether there was a failure between
             // completing the checkpoint on the master, and notifying the writer here.
@@ -532,75 +539,103 @@ public class FlinkPravegaWriter<T>
             // we can have more than one transaction to check in case of a scale-in event, or
             // for the reasons discussed in the 'notifyCheckpointComplete()' method.
 
+            // we will create a writer per scope/stream from the pending transaction list and
+            // commit the transaction if it is still open
+
+            if (pendingTransactionList == null || pendingTransactionList.size() == 0) {
+                return;
+            }
+
             Exception exception = null;
+
             EventStreamWriter<T> restorePravegaWriter = null;
+
             ClientFactory restoreClientFactory = null;
-            PravegaState pravegaState = list != null && list.size() > 0 ? list.get(0) : null;
-            if (pravegaState != null) {
-                try {
-                    Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
-                    EventWriterConfig writerConfig = EventWriterConfig.builder()
-                            .transactionTimeoutTime(txnTimeoutMillis)
-                            .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
-                            .build();
-                    restoreClientFactory = createClientFactory(pravegaState.getScope(), controllerURI);
-                    restorePravegaWriter = restoreClientFactory.createEventWriter(pravegaState.getStream(),
-                            eventSerializer,
-                            writerConfig);
-                    log.info("restore state for the scope: {} and stream: {}",
-                            pravegaState.getScope(), pravegaState.getStream());
 
-                    for (PravegaState state : list) {
-                        UUID txnId = state.getUuid();
-                        if (txnId != null) {
-                            final Transaction<?> txn = restorePravegaWriter.getTxn(txnId);
-                            final Transaction.Status status = txn.checkStatus();
+            Map<String, Map<String, List<PendingTransaction>>> pendingTransactionsMap =
+                    pendingTransactionList.stream().collect(groupingBy(PendingTransaction::getScope, groupingBy(PendingTransaction::getStream)));
 
-                            if (status == Transaction.Status.OPEN) {
-                                // that is the case when a crash happened between when the master committed
-                                // the checkpoint, and the sink could be notified
-                                log.info("{} - committing completed checkpoint transaction {} after task restore",
-                                        name(), txnId);
+            log.debug("pendingTransactionsMap:: " + pendingTransactionsMap);
 
-                                txn.commit();
+            for (Map.Entry<String, Map<String, List<PendingTransaction>>> pendingTransactionEntry: pendingTransactionsMap.entrySet()) {
 
-                                log.debug("{} - committed checkpoint transaction {}", name(), txnId);
+                String scope = pendingTransactionEntry.getKey();
 
-                            } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
-                                // that the common case
-                                log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
+                Map<String, List<PendingTransaction>> transactionsMap = pendingTransactionEntry.getValue();
 
-                            } else {
-                                log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
-                                        "Transaction probably timed out between failure and restore. ", name(), status, txnId);
+                for (Map.Entry<String, List<PendingTransaction>> transactionsEntry: transactionsMap.entrySet()) {
+
+                    String stream = transactionsEntry.getKey();
+
+                    try {
+                        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
+                        EventWriterConfig writerConfig = EventWriterConfig.builder()
+                                .transactionTimeoutTime(txnTimeoutMillis)
+                                .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
+                                .build();
+                        restoreClientFactory = createClientFactory(scope, controllerURI);
+                        restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
+                                eventSerializer,
+                                writerConfig);
+                        log.info("restore state for the scope: {} and stream: {}", scope, stream);
+
+                        List<PendingTransaction> pendingTransactions = transactionsEntry.getValue();
+
+                        for (PendingTransaction pendingTransaction : pendingTransactions) {
+                            UUID txnId = pendingTransaction.getUuid();
+                            if (txnId != null) {
+                                final Transaction<?> txn = restorePravegaWriter.getTxn(txnId);
+                                final Transaction.Status status = txn.checkStatus();
+
+                                if (status == Transaction.Status.OPEN) {
+                                    // that is the case when a crash happened between when the master committed
+                                    // the checkpoint, and the sink could be notified
+                                    log.info("{} - committing completed checkpoint transaction {} after task restore",
+                                            name(), txnId);
+
+                                    txn.commit();
+
+                                    log.debug("{} - committed checkpoint transaction {}", name(), txnId);
+
+                                } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
+                                    // that the common case
+                                    log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
+
+                                } else {
+                                    log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
+                                            "Transaction probably timed out between failure and restore. ", name(), status, txnId);
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Exception occurred while restoring the state for scope: {} and stream: {}", scope, stream, e);
+                    } finally {
+
+                        if (restorePravegaWriter != null) {
+                            try {
+                                restorePravegaWriter.close();
+                            } catch (Exception e) {
+                                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+                            }
+                        }
+
+                        if (restoreClientFactory != null) {
+                            try {
+                                restoreClientFactory.close();
+                            } catch (Exception e) {
+                                exception = ExceptionUtils.firstOrSuppressed(e, exception);
                             }
                         }
                     }
-                } catch (Exception e) {
-                    log.error("Exception occurred while restoring the state for the scope: {} and stream: {}",
-                            pravegaState.getScope(), pravegaState.getStream(), e);
-                } finally {
-                    if (restorePravegaWriter != null) {
-                        try {
-                            restorePravegaWriter.close();
-                        } catch (Exception e) {
-                            exception = ExceptionUtils.firstOrSuppressed(e, exception);
-                        }
-                    }
 
-                    if (restoreClientFactory != null) {
-                        try {
-                            restoreClientFactory.close();
-                        } catch (Exception e) {
-                            exception = ExceptionUtils.firstOrSuppressed(e, exception);
-                        }
-                    }
-
-                    if (exception != null) {
-                        throw exception;
-                    }
                 }
+
             }
+
+            if (exception != null) {
+                throw exception;
+            }
+
         }
     }
 
@@ -685,7 +720,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<PravegaState> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
             log.debug("Snapshot triggered, wait for all pending writes to complete");
             flushAndVerify();
             return new ArrayList<>();
@@ -697,7 +732,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void restoreState(List<PravegaState> list) throws Exception {
+        public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
             //do nothing
         }
 
@@ -726,14 +761,14 @@ public class FlinkPravegaWriter<T>
     }
 
     /*
-     * Pravega state snapshot representing combinations of transaction id, scope and stream
+     * Pending transaction state snapshot representing combinations of transaction id, scope and stream
      */
-    static class PravegaState implements Serializable {
+    static class PendingTransaction implements Serializable {
         private final UUID uuid;
         private final String scope;
         private final String stream;
 
-        public PravegaState(UUID uuid, String scope, String stream) {
+        public PendingTransaction(UUID uuid, String scope, String stream) {
             this.uuid = uuid;
             this.scope = scope;
             this.stream = stream;
