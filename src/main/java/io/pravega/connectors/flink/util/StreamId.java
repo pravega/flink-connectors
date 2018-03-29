@@ -11,6 +11,8 @@ package io.pravega.connectors.flink.util;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Objects;
+
 /**
  * Captures the fully qualified name of a stream. The convention to represent this as a
  * single string is using [scope]/[stream].
@@ -28,6 +30,26 @@ public class StreamId {
 
     public String getScope() {
         return scope;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+
+        StreamId streamId = (StreamId) o;
+        return Objects.equals(scope, streamId.scope) &&
+                Objects.equals(name, streamId.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(scope, name);
     }
 
     public String getName() {

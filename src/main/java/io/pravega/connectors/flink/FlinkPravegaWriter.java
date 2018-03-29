@@ -16,6 +16,7 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
+import io.pravega.connectors.flink.util.StreamId;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
@@ -27,11 +28,13 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -39,6 +42,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.groupingBy;
 
 /**
  * Flink sink implementation for writing into pravega storage.
@@ -48,7 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class FlinkPravegaWriter<T>
         extends RichSinkFunction<T>
-        implements ListCheckpointed<UUID>, CheckpointListener {
+        implements ListCheckpointed<FlinkPravegaWriter.PendingTransaction>, CheckpointListener {
 
     private static final long serialVersionUID = 1L;
 
@@ -214,7 +219,7 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
 
     @Override
-    public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+    public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
         return writer.snapshotState(checkpointId, checkpointTime);
     }
 
@@ -225,9 +230,9 @@ public class FlinkPravegaWriter<T>
      * Note: {@code restoreState} is called before {@code open}.
      */
     @Override
-    public void restoreState(List<UUID> list) throws Exception {
+    public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
         initializeInternalWriter();
-        writer.restoreState(list);
+        writer.restoreState(pendingTransactionList);
     }
 
     /**
@@ -370,9 +375,9 @@ public class FlinkPravegaWriter<T>
             pravegaWriter.close();
         }
 
-        abstract List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+        abstract List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception;
 
-        abstract void restoreState(List<UUID> list) throws Exception;
+        abstract void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception;
 
         abstract void notifyCheckpointComplete(long checkpointId) throws Exception;
 
@@ -384,12 +389,16 @@ public class FlinkPravegaWriter<T>
     @VisibleForTesting
     class TransactionalWriter extends AbstractInternalWriter {
 
-        /** The currently running transaction to which we write */
+        /**
+         * The currently running transaction to which we write
+         */
         @VisibleForTesting
         Transaction<T> currentTxn;
 
-        /** The transactions that are complete from Flink's view (their checkpoint was triggered),
-         * but not fully committed, because their corresponding checkpoint is not yet confirmed */
+        /**
+         * The transactions that are complete from Flink's view (their checkpoint was triggered),
+         * but not fully committed, because their corresponding checkpoint is not yet confirmed
+         */
         @VisibleForTesting
         final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
 
@@ -417,7 +426,7 @@ public class FlinkPravegaWriter<T>
             Transaction<?> txn = this.currentTxn;
             if (txn != null) {
                 try {
-                    Exceptions.handleInterrupted( txn::abort );
+                    Exceptions.handleInterrupted(txn::abort);
                 } catch (Exception e) {
                     exception = e;
                 }
@@ -435,7 +444,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
             // this is like the pre-commit of a 2-phase-commit transaction
             // we are ready to commit and remember the transaction
 
@@ -457,7 +466,7 @@ public class FlinkPravegaWriter<T>
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
 
             // store all pending transactions in the checkpoint state
-            return txnsPendingCommit.stream().map( v -> v.transaction().getTxnId() ).collect(Collectors.toList());
+            return txnsPendingCommit.stream().map(v -> new PendingTransaction(v.transaction().getTxnId(), scopeName, streamName)).collect(Collectors.toList());
         }
 
         @Override
@@ -516,8 +525,8 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void restoreState(List<UUID> list) throws Exception {
-            // when we are restored with a UUID, we don't really know whether the
+        public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
+            // when we are restored with a state (UUID,scope & stream), we don't really know whether the
             // transaction was already committed, or whether there was a failure between
             // completing the checkpoint on the master, and notifying the writer here.
 
@@ -531,10 +540,46 @@ public class FlinkPravegaWriter<T>
             // we can have more than one transaction to check in case of a scale-in event, or
             // for the reasons discussed in the 'notifyCheckpointComplete()' method.
 
-            if (list != null && list.size() > 0) {
-                for (UUID txnId : list) {
-                    if (txnId != null) {
-                        final Transaction<?> txn = pravegaWriter.getTxn(txnId);
+            // we will create a writer per scope/stream from the pending transaction list and
+            // commit the transaction if it is still open
+
+            if (pendingTransactionList == null || pendingTransactionList.size() == 0) {
+                return;
+            }
+
+            Exception exception = null;
+
+            Map<StreamId, List<PendingTransaction>> pendingTransactionsMap =
+                    pendingTransactionList.stream().collect(groupingBy(s -> new StreamId(s.getScope(), s.getStream())));
+
+            log.debug("pendingTransactionsMap:: " + pendingTransactionsMap);
+
+            for (Map.Entry<StreamId, List<PendingTransaction>> transactionsEntry: pendingTransactionsMap.entrySet()) {
+
+                StreamId streamId = transactionsEntry.getKey();
+                String scope = streamId.getScope();
+                String stream = streamId.getName();
+
+                Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
+                EventWriterConfig writerConfig = EventWriterConfig.builder()
+                        .transactionTimeoutTime(txnTimeoutMillis)
+                        .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
+                        .build();
+
+                try (
+                    ClientFactory restoreClientFactory = createClientFactory(scope, controllerURI);
+                    EventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
+                            eventSerializer,
+                            writerConfig);
+                    ) {
+
+                    log.info("restore state for the scope: {} and stream: {}", scope, stream);
+
+                    List<PendingTransaction> pendingTransactions = transactionsEntry.getValue();
+
+                    for (PendingTransaction pendingTransaction : pendingTransactions) {
+                        UUID txnId = pendingTransaction.getUuid();
+                        final Transaction<?> txn = restorePravegaWriter.getTxn(txnId);
                         final Transaction.Status status = txn.checkStatus();
 
                         if (status == Transaction.Status.OPEN) {
@@ -556,8 +601,15 @@ public class FlinkPravegaWriter<T>
                                     "Transaction probably timed out between failure and restore. ", name(), status, txnId);
                         }
                     }
+                } catch (Exception e) {
+                    log.error("Exception occurred while restoring the state for scope: {} and stream: {}", scope, stream, e);
                 }
             }
+
+            if (exception != null) {
+                throw exception;
+            }
+
         }
     }
 
@@ -642,7 +694,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<UUID> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
             log.debug("Snapshot triggered, wait for all pending writes to complete");
             flushAndVerify();
             return new ArrayList<>();
@@ -654,7 +706,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void restoreState(List<UUID> list) throws Exception {
+        public void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception {
             //do nothing
         }
 
@@ -679,6 +731,36 @@ public class FlinkPravegaWriter<T>
             if (error != null) {
                 throw new IOException("Write failure", error);
             }
+        }
+    }
+
+    /*
+     * Pending transaction state snapshot representing combinations of transaction id, scope and stream
+     */
+    static class PendingTransaction implements Serializable {
+        private final UUID uuid;
+        private final String scope;
+        private final String stream;
+
+        public PendingTransaction(UUID uuid, String scope, String stream) {
+            Preconditions.checkNotNull(uuid, "UUID");
+            Preconditions.checkNotNull(scope, "scope");
+            Preconditions.checkNotNull(stream, "stream");
+            this.uuid = uuid;
+            this.scope = scope;
+            this.stream = stream;
+        }
+
+        public UUID getUuid() {
+            return uuid;
+        }
+
+        public String getScope() {
+            return scope;
+        }
+
+        public String getStream() {
+            return stream;
         }
     }
 
