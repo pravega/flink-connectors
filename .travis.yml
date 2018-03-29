@@ -13,6 +13,7 @@ jdk:
 env:
   global:
     - GRADLE_OPTS="-Xms128m"
+    - ORG_GRADLE_PROJECT_logOutput=true
 
 sudo: required
 
