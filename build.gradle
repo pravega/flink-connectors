@@ -65,6 +65,18 @@ configurations {
     testCompile.exclude group: 'log4j', module: 'log4j'
 }
 
+test {
+    testLogging {
+        onOutput { descriptor, event ->
+            if (project.hasProperty('logOutput')) {
+                events = ["passed", "failed", "skipped"]
+                showStandardStreams = true
+                logger.lifecycle(event.message)
+            }
+        }
+    }
+}
+
 dependencies {
     compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
     compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
