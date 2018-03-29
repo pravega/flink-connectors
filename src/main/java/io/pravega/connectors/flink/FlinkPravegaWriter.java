@@ -16,6 +16,7 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
+import io.pravega.connectors.flink.util.StreamId;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
@@ -548,88 +549,61 @@ public class FlinkPravegaWriter<T>
 
             Exception exception = null;
 
-            EventStreamWriter<T> restorePravegaWriter = null;
-
-            ClientFactory restoreClientFactory = null;
-
-            Map<String, Map<String, List<PendingTransaction>>> pendingTransactionsMap =
-                    pendingTransactionList.stream().collect(groupingBy(PendingTransaction::getScope, groupingBy(PendingTransaction::getStream)));
+            Map<StreamId, List<PendingTransaction>> pendingTransactionsMap =
+                    pendingTransactionList.stream().collect(groupingBy(s -> new StreamId(s.getScope(), s.getStream())));
 
             log.debug("pendingTransactionsMap:: " + pendingTransactionsMap);
 
-            for (Map.Entry<String, Map<String, List<PendingTransaction>>> pendingTransactionEntry: pendingTransactionsMap.entrySet()) {
+            for (Map.Entry<StreamId, List<PendingTransaction>> transactionsEntry: pendingTransactionsMap.entrySet()) {
 
-                String scope = pendingTransactionEntry.getKey();
+                StreamId streamId = transactionsEntry.getKey();
+                String scope = streamId.getScope();
+                String stream = streamId.getName();
 
-                Map<String, List<PendingTransaction>> transactionsMap = pendingTransactionEntry.getValue();
+                Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
+                EventWriterConfig writerConfig = EventWriterConfig.builder()
+                        .transactionTimeoutTime(txnTimeoutMillis)
+                        .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
+                        .build();
 
-                for (Map.Entry<String, List<PendingTransaction>> transactionsEntry: transactionsMap.entrySet()) {
+                try (
+                    ClientFactory restoreClientFactory = createClientFactory(scope, controllerURI);
+                    EventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
+                            eventSerializer,
+                            writerConfig);
+                    ) {
 
-                    String stream = transactionsEntry.getKey();
+                    log.info("restore state for the scope: {} and stream: {}", scope, stream);
 
-                    try {
-                        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
-                        EventWriterConfig writerConfig = EventWriterConfig.builder()
-                                .transactionTimeoutTime(txnTimeoutMillis)
-                                .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
-                                .build();
-                        restoreClientFactory = createClientFactory(scope, controllerURI);
-                        restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
-                                eventSerializer,
-                                writerConfig);
-                        log.info("restore state for the scope: {} and stream: {}", scope, stream);
+                    List<PendingTransaction> pendingTransactions = transactionsEntry.getValue();
 
-                        List<PendingTransaction> pendingTransactions = transactionsEntry.getValue();
+                    for (PendingTransaction pendingTransaction : pendingTransactions) {
+                        UUID txnId = pendingTransaction.getUuid();
+                        final Transaction<?> txn = restorePravegaWriter.getTxn(txnId);
+                        final Transaction.Status status = txn.checkStatus();
 
-                        for (PendingTransaction pendingTransaction : pendingTransactions) {
-                            UUID txnId = pendingTransaction.getUuid();
-                            if (txnId != null) {
-                                final Transaction<?> txn = restorePravegaWriter.getTxn(txnId);
-                                final Transaction.Status status = txn.checkStatus();
+                        if (status == Transaction.Status.OPEN) {
+                            // that is the case when a crash happened between when the master committed
+                            // the checkpoint, and the sink could be notified
+                            log.info("{} - committing completed checkpoint transaction {} after task restore",
+                                    name(), txnId);
 
-                                if (status == Transaction.Status.OPEN) {
-                                    // that is the case when a crash happened between when the master committed
-                                    // the checkpoint, and the sink could be notified
-                                    log.info("{} - committing completed checkpoint transaction {} after task restore",
-                                            name(), txnId);
+                            txn.commit();
 
-                                    txn.commit();
+                            log.debug("{} - committed checkpoint transaction {}", name(), txnId);
 
-                                    log.debug("{} - committed checkpoint transaction {}", name(), txnId);
+                        } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
+                            // that the common case
+                            log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
 
-                                } else if (status == Transaction.Status.COMMITTED || status == Transaction.Status.COMMITTING) {
-                                    // that the common case
-                                    log.debug("{} - at restore, transaction {} was already committed", name(), txnId);
-
-                                } else {
-                                    log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
-                                            "Transaction probably timed out between failure and restore. ", name(), status, txnId);
-                                }
-                            }
-                        }
-                    } catch (Exception e) {
-                        log.error("Exception occurred while restoring the state for scope: {} and stream: {}", scope, stream, e);
-                    } finally {
-
-                        if (restorePravegaWriter != null) {
-                            try {
-                                restorePravegaWriter.close();
-                            } catch (Exception e) {
-                                exception = ExceptionUtils.firstOrSuppressed(e, exception);
-                            }
-                        }
-
-                        if (restoreClientFactory != null) {
-                            try {
-                                restoreClientFactory.close();
-                            } catch (Exception e) {
-                                exception = ExceptionUtils.firstOrSuppressed(e, exception);
-                            }
+                        } else {
+                            log.warn("{} - found unexpected transaction status {} for transaction {} on task restore. " +
+                                    "Transaction probably timed out between failure and restore. ", name(), status, txnId);
                         }
                     }
-
+                } catch (Exception e) {
+                    log.error("Exception occurred while restoring the state for scope: {} and stream: {}", scope, stream, e);
                 }
-
             }
 
             if (exception != null) {
@@ -769,6 +743,9 @@ public class FlinkPravegaWriter<T>
         private final String stream;
 
         public PendingTransaction(UUID uuid, String scope, String stream) {
+            Preconditions.checkNotNull(uuid, "UUID");
+            Preconditions.checkNotNull(scope, "scope");
+            Preconditions.checkNotNull(stream, "stream");
             this.uuid = uuid;
             this.scope = scope;
             this.stream = stream;
