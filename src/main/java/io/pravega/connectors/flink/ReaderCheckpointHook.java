@@ -9,16 +9,15 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 
+import io.pravega.client.stream.ReaderGroupConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 
-import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -55,14 +54,12 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     private final long triggerTimeout;
 
 
-    ReaderCheckpointHook(String readerName, String readerGroupName,
-                         String scope, URI controllerURI,
-                         long triggerTimeout) {
+    ReaderCheckpointHook(String readerName, ReaderGroup readerGroup, long triggerTimeout) {
 
         this.readerName = checkNotNull(readerName);
+        this.readerGroup = checkNotNull(readerGroup);
         this.triggerTimeout = triggerTimeout;
         this.checkpointSerializer = new CheckpointSerializer();
-        this.readerGroup = ReaderGroupManager.withScope(scope, controllerURI).getReaderGroup(readerGroupName);
     }
 
     // ------------------------------------------------------------------------
@@ -103,7 +100,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // checkpoint can be null when restoring from a savepoint that
         // did not include any state for that particular reader name
         if (checkpoint != null) {
-            this.readerGroup.resetReadersToCheckpoint(checkpoint);
+            this.readerGroup.resetReaderGroup(ReaderGroupConfig.builder().startFromCheckpoint(checkpoint).build());
         }
     }
 

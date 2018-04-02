@@ -27,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -171,8 +170,7 @@ public final class SetupUtils {
         final String readerGroup = "testReaderGroup" + this.scope + streamName;
         readerGroupManager.createReaderGroup(
                 readerGroup,
-                ReaderGroupConfig.builder().startingTime(0).build(),
-                Collections.singleton(streamName));
+                ReaderGroupConfig.builder().stream(this.scope + "/" + streamName).build());
 
         ClientFactory clientFactory = ClientFactory.withScope(this.scope, getControllerUri());
         final String readerGroupId = UUID.randomUUID().toString();

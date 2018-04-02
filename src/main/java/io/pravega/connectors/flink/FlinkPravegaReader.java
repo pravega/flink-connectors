@@ -16,8 +16,11 @@ import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
+import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 
+import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.StreamCut;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.api.common.functions.StoppableFunction;
@@ -31,6 +34,8 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.FlinkException;
 
 import java.net.URI;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -67,6 +72,9 @@ public class FlinkPravegaReader<T>
 
     // The readergroup name to coordinate the parallel readers. This should be unique for a Flink job.
     private final String readerGroupName;
+
+    // The stream names of the associated scope
+    private final Set<String> streamNames;
 
     // the name of the reader, used to store state and resume existing state from savepoints
     private final String readerName;
@@ -149,18 +157,14 @@ public class FlinkPravegaReader<T>
         this.scopeName = scope;
         this.deserializationSchema = deserializationSchema;
         this.readerGroupName = generateRandomReaderGroupName();
+        this.streamNames = streamNames;
 
         // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
         //       See https://github.com/pravega/pravega/issues/553.
         log.info("Creating reader group: {} for the Flink job", this.readerGroupName);
 
-        ReaderGroupConfig groupConfig = ReaderGroupConfig.builder()
-                .startingTime(startTime)
-                .disableAutomaticCheckpoints()
-                .build();
+        createReaderGroup();
 
-        ReaderGroupManager.withScope(scope, controllerURI)
-                .createReaderGroup(this.readerGroupName, groupConfig, streamNames);
     }
 
     // ------------------------------------------------------------------------
@@ -287,8 +291,7 @@ public class FlinkPravegaReader<T>
 
     @Override
     public MasterTriggerRestoreHook<Checkpoint> createMasterTriggerRestoreHook() {
-        return new ReaderCheckpointHook(this.readerName, this.readerGroupName,
-                this.scopeName, this.controllerURI, this.checkpointInitiateTimeout);
+        return new ReaderCheckpointHook(this.readerName, createReaderGroup(), this.checkpointInitiateTimeout);
     }
 
     @Override
@@ -315,5 +318,23 @@ public class FlinkPravegaReader<T>
         }
 
         checkpointTrigger.triggerCheckpoint(checkpointId);
+    }
+
+    /*
+     * create reader group for the associated stream names and scope
+     */
+    private ReaderGroup createReaderGroup() {
+        Map<Stream, StreamCut> streamConfigMap = new HashMap<>();
+        for (String stream: streamNames) {
+            streamConfigMap.put(Stream.of(scopeName, stream), StreamCut.UNBOUNDED);
+        }
+
+        ReaderGroupConfig groupConfig = ReaderGroupConfig.builder()
+                .disableAutomaticCheckpoints()
+                .startFromStreamCuts(streamConfigMap)
+                .build();
+
+        return ReaderGroupManager.withScope(scopeName, controllerURI)
+                .createReaderGroup(this.readerGroupName, groupConfig);
     }
 }
