@@ -96,8 +96,6 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
         this.scopeName = scope;
         this.deserializationSchema = deserializationSchema;
         this.streamNames = streamNames;
-
-        log.info("FlinkPravegaInputFormat:: scope: {}, streams: {}", scopeName, streamNames);
     }
 
     // ------------------------------------------------------------------------
@@ -132,7 +130,6 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public PravegaInputSplit[] createInputSplits(int minNumSplits) throws IOException {
         List<PravegaInputSplit> splits = new ArrayList<>();
-        log.info("Create Input Splits called with no of splits: {}", minNumSplits);
 
         // createInputSplits() is called in the JM, so we have to establish separate
         // short-living connections to Pravega here to retrieve the segments list
@@ -143,16 +140,13 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
                 Iterator<SegmentRange> segmentRangeIterator =
                         batchClient.getSegments(Stream.of(scopeName, stream), null, null).getIterator();
-                log.info("batch client get segments returned stream range iterator: {}", segmentRangeIterator);
                 while (segmentRangeIterator.hasNext()) {
                     SegmentRange segmentRange = segmentRangeIterator.next();
-                    log.info("##################################: {}", segmentRange);
-                    Segment segment = new Segment(segmentRange.getScopeName(), segmentRange.getStreamName(), segmentRange.getSegmentNumber());
+                    Segment segment = Segment.fromScopedName(segmentRange.getScopeName() + "/"
+                            + segmentRange.getStreamName() + "/" + segmentRange.getSegmentNumber());
                     splits.add(new PravegaInputSplit(splits.size(), segment, segmentRange.getStartOffset(), segmentRange.getEndOffset() ));
                 }
             }
-
-            log.info("total splits: {}", splits);
         }
 
         return splits.toArray(new PravegaInputSplit[splits.size()]);
@@ -180,9 +174,6 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 .startOffset(split.getStartOffset())
                 .endOffset(split.getEndOffset()).build();
 
-        log.info("In open, split: {}, start offset: {}, end offset: {}, segmentRange: {}",
-                split, split.getStartOffset(), split.getEndOffset(), segmentRange);
-
         this.segmentIterator = batchClient.readSegment(segmentRange, deserializer);
     }
 
@@ -193,7 +184,6 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     @Override
     public T nextRecord(T t) throws IOException {
-        log.info("going to fetch next record... offset: {}", segmentIterator.getOffset());
         return this.segmentIterator.next();
     }
 
