@@ -63,8 +63,7 @@ public final class SetupUtils {
         if (externalUri != null) {
             log.info("Using Pravega services at {}.", externalUri);
             gateway = new ExternalPravegaGateway(URI.create(externalUri));
-        }
-        else {
+        } else {
             log.info("Starting in-process Pravega services.");
             gateway = new InProcPravegaGateway();
         }
@@ -80,7 +79,6 @@ public final class SetupUtils {
             log.warn("Services already started, not attempting to start again");
             return;
         }
-
 
         gateway.start();
     }
@@ -98,8 +96,7 @@ public final class SetupUtils {
 
         try {
             gateway.stop();
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             log.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
         }
     }
@@ -200,8 +197,20 @@ public final class SetupUtils {
     }
 
     private interface PravegaGateway {
+        /**
+         * Starts the gateway.
+         */
         void start() throws Exception;
+
+        /**
+         * Stops the gateway.
+         */
         void stop() throws Exception;
+
+        /**
+         * Gets the controller endpoint.
+         * @return
+         */
         URI getControllerURI();
     }
 
