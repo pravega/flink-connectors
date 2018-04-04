@@ -12,6 +12,7 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
+import io.pravega.client.stream.Stream;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -170,7 +171,7 @@ public final class SetupUtils {
         final String readerGroup = "testReaderGroup" + this.scope + streamName;
         readerGroupManager.createReaderGroup(
                 readerGroup,
-                ReaderGroupConfig.builder().stream(this.scope + "/" + streamName).build());
+                ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
 
         ClientFactory clientFactory = ClientFactory.withScope(this.scope, getControllerUri());
         final String readerGroupId = UUID.randomUUID().toString();

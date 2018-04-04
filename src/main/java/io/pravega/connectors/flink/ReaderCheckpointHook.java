@@ -12,7 +12,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 
-import io.pravega.client.stream.ReaderGroupConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -95,12 +94,13 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         return checkpointResult;
     }
 
+    @SuppressWarnings("deprecation")
     @Override
     public void restoreCheckpoint(long checkpointId, Checkpoint checkpoint) throws Exception {
         // checkpoint can be null when restoring from a savepoint that
         // did not include any state for that particular reader name
         if (checkpoint != null) {
-            this.readerGroup.resetReaderGroup(ReaderGroupConfig.builder().startFromCheckpoint(checkpoint).build());
+            this.readerGroup.resetReadersToCheckpoint(checkpoint);
         }
     }
 
