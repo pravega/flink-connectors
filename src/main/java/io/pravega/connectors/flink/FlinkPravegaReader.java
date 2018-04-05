@@ -334,7 +334,9 @@ public class FlinkPravegaReader<T>
                 .startFromStreamCuts(streamConfigMap)
                 .build();
 
-        return ReaderGroupManager.withScope(scopeName, controllerURI)
-                .createReaderGroup(this.readerGroupName, groupConfig);
+        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(scopeName, controllerURI);
+        readerGroupManager.createReaderGroup(this.readerGroupName, groupConfig);
+
+        return readerGroupManager.getReaderGroup(this.readerGroupName);
     }
 }
