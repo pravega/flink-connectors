@@ -19,7 +19,7 @@ includeBuild('pravega') {
             substitute module('io.pravega:pravega-standalone') with project(':standalone')
 
             substitute module('io.pravega:pravega-segmentstore-storage-impl') with project(':segmentstore:storage:impl')
-            substitute module('io.pravega:pravega-authplugin') with project(':authplugin')
+            substitute module('io.pravega:pravega-authplugin') with project(':shared:authplugin')
         }
     }
 }

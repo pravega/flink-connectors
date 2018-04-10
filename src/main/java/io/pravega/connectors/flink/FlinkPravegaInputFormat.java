@@ -16,8 +16,6 @@ import io.pravega.client.ClientFactory;
 import io.pravega.client.batch.BatchClient;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
-import io.pravega.client.batch.impl.SegmentRangeImpl;
-import io.pravega.client.segment.impl.Segment;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
@@ -141,10 +139,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 Iterator<SegmentRange> segmentRangeIterator =
                         batchClient.getSegments(Stream.of(scopeName, stream), null, null).getIterator();
                 while (segmentRangeIterator.hasNext()) {
-                    SegmentRange segmentRange = segmentRangeIterator.next();
-                    Segment segment = Segment.fromScopedName(segmentRange.getScopeName() + "/"
-                            + segmentRange.getStreamName() + "/" + segmentRange.getSegmentNumber());
-                    splits.add(new PravegaInputSplit(splits.size(), segment, segmentRange.getStartOffset(), segmentRange.getEndOffset() ));
+                    splits.add(new PravegaInputSplit(splits.size(),
+                            segmentRangeIterator.next()));
                 }
             }
         }
@@ -170,11 +166,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 : new FlinkPravegaUtils.FlinkDeserializer<>(deserializationSchema);
 
         // build a new iterator for each input split.  Note that the endOffset parameter is not used by the Batch API at the moment.
-        SegmentRange segmentRange = SegmentRangeImpl.builder().segment(split.getSegment())
-                .startOffset(split.getStartOffset())
-                .endOffset(split.getEndOffset()).build();
-
-        this.segmentIterator = batchClient.readSegment(segmentRange, deserializer);
+        this.segmentIterator = batchClient.readSegment(split.getSegmentRange(), deserializer);
     }
 
     @Override

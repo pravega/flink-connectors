@@ -11,37 +11,23 @@
 package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
-import io.pravega.client.segment.impl.Segment;
+import io.pravega.client.batch.SegmentRange;
 import org.apache.flink.core.io.InputSplit;
 
 /**
- * A {@link PravegaInputSplit} corresponds to a Pravega {@link Segment}.
+ * A {@link PravegaInputSplit} corresponds to a Pravega {@link SegmentRange}.
  */
 public class PravegaInputSplit implements InputSplit {
 
     private final int splitId;
 
-    private final Segment segment;
+    private final SegmentRange segmentRange;
 
-    private final long startOffset;
-
-    // the value is not inclusive when batch client is reading the data for the segment
-    private final long endOffset;
-
-    public PravegaInputSplit(int splitId, Segment segment, long startOffset, long endOffset) {
+    public PravegaInputSplit(int splitId, SegmentRange segmentRange) {
         Preconditions.checkArgument(splitId >= 0, "The splitId is not recognizable.");
-        Preconditions.checkNotNull(segment, "segment");
-        Preconditions.checkArgument(
-                startOffset >= 0,
-                "The start offset is not recognizable.");
-        Preconditions.checkArgument(
-                startOffset <= endOffset, // keeping equals check assuming both start and end could be 0?
-                "The end offset must be larger or equal to the start offset.");
-
+        Preconditions.checkNotNull(segmentRange, "segmentRange");
         this.splitId = splitId;
-        this.segment = segment;
-        this.startOffset = startOffset;
-        this.endOffset = endOffset;
+        this.segmentRange = segmentRange;
     }
 
     @Override
@@ -49,52 +35,77 @@ public class PravegaInputSplit implements InputSplit {
         return splitId;
     }
 
-    public Segment getSegment() {
-        return segment;
-    }
-
-    public long getStartOffset() {
-        return startOffset;
-    }
-
-    public long getEndOffset() {
-        return endOffset;
+    public SegmentRange getSegmentRange() {
+        return segmentRange;
     }
 
     // --------------------------------------------------------------------
 
     @Override
-    public int hashCode() {
-        int result = splitId;
-        result = 31 * result + segment.hashCode();
-        result = 31 * result + Long.hashCode(startOffset);
-        result = 31 * result + Long.hashCode(endOffset);
+    public boolean equals(Object o) {
 
-        return result;
+        if (this == o) {
+            return true;
+        }
+
+        if (!(o instanceof PravegaInputSplit)) {
+            return false;
+        }
+
+        PravegaInputSplit that = (PravegaInputSplit) o;
+
+        if ( (segmentRange == null && that.getSegmentRange() != null) ||
+                (segmentRange != null && that.getSegmentRange() == null) ) {
+            return false;
+        }
+
+        if (segmentRange == null && that.segmentRange == null &&
+                splitId != that.splitId) {
+            return false;
+        }
+
+        String thisScope = segmentRange.getScopeName();
+        String thatScope = that.getSegmentRange().getScopeName();
+        if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
+            return false;
+        }
+
+        String thisStream = segmentRange.getStreamName();
+        String thatStream = that.getSegmentRange().getStreamName();
+        if (thisStream == null ? thatStream != null : !thisStream.equals(thatStream)) {
+            return false;
+        }
+
+        return splitId == that.splitId &&
+                segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
+                segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
+                segmentRange.getSegmentNumber() == that.getSegmentRange().getSegmentNumber();
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this) {
-            return true;
-        } else if (obj instanceof PravegaInputSplit) {
-            PravegaInputSplit other = (PravegaInputSplit) obj;
+    public int hashCode() {
 
-            return this.splitId == other.splitId &&
-                    this.segment.equals(other.segment) &&
-                    this.startOffset == other.startOffset &&
-                    this.endOffset == other.endOffset;
-        } else {
-            return false;
-        }
+        int prime = 59;
+        int result = 1;
+
+        result = result * prime + splitId;
+        result = result * prime + getSegmentRange().getSegmentNumber();
+        result = result * prime + Long.hashCode(getSegmentRange().getStartOffset());
+        result = result * prime + Long.hashCode(getSegmentRange().getEndOffset());
+
+        String scope = getSegmentRange().getScopeName();
+        String stream = getSegmentRange().getStreamName();
+
+        result = result * prime + (scope == null ? 43 : scope.hashCode());
+        result = result * prime + (stream == null ? 43 : stream.hashCode());
+
+        return result;
     }
 
     @Override
     public String toString() {
         return "PravegaInputSplit {" +
                 "splitId = " + splitId +
-                ", segment = " + segment.toString() +
-                ", startOffset = " + startOffset +
-                ", endOffset = " + endOffset +  "}";
+                ", segmentRange = " + segmentRange.toString() + "}";
     }
 }
