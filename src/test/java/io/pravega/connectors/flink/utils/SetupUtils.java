@@ -12,6 +12,10 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
+import io.pravega.client.stream.impl.Controller;
+import io.pravega.client.stream.impl.ControllerImpl;
+import io.pravega.client.stream.impl.ControllerImplConfig;
+import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -29,6 +33,7 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
 import java.util.Collections;
 import java.util.UUID;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -38,15 +43,31 @@ import org.apache.commons.lang3.RandomStringUtils;
 @Slf4j
 @NotThreadSafe
 public final class SetupUtils {
-    // The pravega cluster.
-    private InProcPravegaCluster inProcPravegaCluster = null;
+
+    private static final ScheduledExecutorService DEFAULT_SCHEDULED_EXECUTOR_SERVICE = ExecutorServiceHelpers.newScheduledThreadPool(3, "SetupUtils");
+
+    private final PravegaGateway gateway;
 
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
 
     // The test Scope name.
     @Getter
-    private final String scope = RandomStringUtils.randomAlphabetic(20);;
+    private final String scope = RandomStringUtils.randomAlphabetic(20);
+
+    public SetupUtils() {
+        this(System.getProperty("pravega.uri"));
+    }
+
+    public SetupUtils(String externalUri) {
+        if (externalUri != null) {
+            log.info("Using Pravega services at {}.", externalUri);
+            gateway = new ExternalPravegaGateway(URI.create(externalUri));
+        } else {
+            log.info("Starting in-process Pravega services.");
+            gateway = new InProcPravegaGateway();
+        }
+    }
 
     /**
      * Start all pravega related services required for the test deployment.
@@ -59,30 +80,7 @@ public final class SetupUtils {
             return;
         }
 
-        int zkPort = TestUtils.getAvailableListenPort();
-        int controllerPort = TestUtils.getAvailableListenPort();
-        int hostPort = TestUtils.getAvailableListenPort();
-        int restPort = TestUtils.getAvailableListenPort();
-
-        this.inProcPravegaCluster = InProcPravegaCluster.builder()
-                .isInProcZK(true)
-                .zkUrl("localhost:" + zkPort)
-                .zkPort(zkPort)
-                .isInMemStorage(true)
-                .isInProcController(true)
-                .controllerCount(1)
-                .restServerPort(restPort)
-                .isInProcSegmentStore(true)
-                .segmentStoreCount(1)
-                .containerCount(4)
-                .build();
-        this.inProcPravegaCluster.setControllerPorts(new int[]{controllerPort});
-        this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
-        this.inProcPravegaCluster.start();
-        log.info("Initialized Pravega Cluster");
-        log.info("Controller port is {}", controllerPort);
-        log.info("Host port is {}", hostPort);
-        log.info("REST server port is {}", restPort);
+        gateway.start();
     }
 
     /**
@@ -97,7 +95,7 @@ public final class SetupUtils {
         }
 
         try {
-            this.inProcPravegaCluster.close();
+            gateway.stop();
         } catch (Exception e) {
             log.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
         }
@@ -109,7 +107,22 @@ public final class SetupUtils {
      * @return URI The controller endpoint to connect to this cluster.
      */
     public URI getControllerUri() {
-        return URI.create(this.inProcPravegaCluster.getControllerURI());
+        return this.gateway.getControllerURI();
+    }
+
+    /**
+     * Create a controller facade for this cluster.
+     * @return The controller facade, which must be closed by the caller.
+     */
+    public Controller newController() {
+        return new ControllerImpl(getControllerUri(), ControllerImplConfig.builder().build(), DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
+    }
+
+    /**
+     * Create a {@link ClientFactory} for this cluster and scope.
+     */
+    public ClientFactory newClientFactory() {
+        return ClientFactory.withScope(this.scope, getControllerUri());
     }
 
     /**
@@ -181,5 +194,89 @@ public final class SetupUtils {
                 readerGroup,
                 new IntegerSerializer(),
                 ReaderConfig.builder().build());
+    }
+
+    private interface PravegaGateway {
+        /**
+         * Starts the gateway.
+         */
+        void start() throws Exception;
+
+        /**
+         * Stops the gateway.
+         */
+        void stop() throws Exception;
+
+        /**
+         * Gets the controller endpoint.
+         * @return
+         */
+        URI getControllerURI();
+    }
+
+    static class InProcPravegaGateway implements PravegaGateway {
+
+        // The pravega cluster.
+        private InProcPravegaCluster inProcPravegaCluster = null;
+
+        @Override
+        public void start() throws Exception {
+            int zkPort = TestUtils.getAvailableListenPort();
+            int controllerPort = TestUtils.getAvailableListenPort();
+            int hostPort = TestUtils.getAvailableListenPort();
+            int restPort = TestUtils.getAvailableListenPort();
+
+            this.inProcPravegaCluster = InProcPravegaCluster.builder()
+                    .isInProcZK(true)
+                    .zkUrl("localhost:" + zkPort)
+                    .zkPort(zkPort)
+                    .isInMemStorage(true)
+                    .isInProcController(true)
+                    .controllerCount(1)
+                    .restServerPort(restPort)
+                    .isInProcSegmentStore(true)
+                    .segmentStoreCount(1)
+                    .containerCount(4)
+                    .build();
+            this.inProcPravegaCluster.setControllerPorts(new int[]{controllerPort});
+            this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
+            this.inProcPravegaCluster.start();
+            log.info("Initialized Pravega Cluster");
+            log.info("Controller port is {}", controllerPort);
+            log.info("Host port is {}", hostPort);
+            log.info("REST server port is {}", restPort);
+        }
+
+        @Override
+        public void stop() throws Exception {
+            inProcPravegaCluster.close();
+        }
+
+        @Override
+        public URI getControllerURI() {
+            return URI.create(inProcPravegaCluster.getControllerURI());
+        }
+    }
+
+    static class ExternalPravegaGateway implements PravegaGateway {
+
+        private final URI controllerUri;
+
+        public ExternalPravegaGateway(URI controllerUri) {
+            this.controllerUri = controllerUri;
+        }
+
+        @Override
+        public void start() throws Exception {
+        }
+
+        @Override
+        public void stop() throws Exception {
+        }
+
+        @Override
+        public URI getControllerURI() {
+            return controllerUri;
+        }
     }
 }
