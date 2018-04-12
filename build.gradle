@@ -45,10 +45,6 @@ repositories {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
         }
-        //TODO temporarily enabled staging repository to pull Flink 1.4.0-RC3 since it is not published yet to maven central
-        maven {
-            url "https://repository.apache.org/content/repositories/orgapacheflink-1141/"
-        }
     }
 }
 
@@ -79,11 +75,6 @@ test {
 
 dependencies {
     compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
     compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
 
@@ -106,41 +97,19 @@ dependencies {
 }
 
 shadowJar {
-    dependencies {
-        // 'include' specific dependencies in the shadow jar
-        // IMPORTANT: transitive dependencies must be manually listed here!
-        include dependency("com.google.guava:guava")
-        include dependency("org.apache.commons:commons-lang3")
-        include dependency("commons-io:commons-io")
-        include dependency("io.netty:netty")
-        include dependency("io.netty:netty-all")
-        include dependency("io.netty:netty-common")
-        include dependency("io.netty:netty-buffer")
-        include dependency("io.netty:netty-resolver")
-        include dependency("io.netty:netty-transport")
-        include dependency("io.netty:netty-codec")
-        include dependency("io.netty:netty-codec-http")
-        include dependency("io.netty:netty-codec-http2")
-        include dependency("io.netty:netty-codec-socks")
-        include dependency("io.netty:netty-handler")
-        include dependency("io.netty:netty-handler-proxy")
-        include dependency("io.grpc:grpc-core")
-        include dependency("io.grpc:grpc-protobuf")
-        include dependency("io.grpc:grpc-stub")
-        include dependency("io.grpc:grpc-context")
-        include dependency("io.grpc:grpc-netty")
-        include dependency("io.grpc:grpc-protobuf-lite")
-        include dependency("com.google.protobuf:protobuf-java-util")
-        include dependency("com.google.protobuf:protobuf-java")
-        include dependency("com.google.code.gson:gson")
-        include dependency("com.google.instrumentation:instrumentation-api")
-        include dependency("io.pravega:pravega-client")
-        include dependency("io.pravega:pravega-common")
-        include dependency("io.pravega:pravega-shared")
-        include dependency("io.pravega:pravega-shared-metrics")
-        include dependency("io.pravega:pravega-shared-protocol")
-        include dependency("io.pravega:pravega-shared-controller-api")
-    }
+
+    relocate "Class50.lombok", "io.pravega.shaded.Class50"
+    relocate "com.squareup", "io.pravega.shaded.com.squareup"
+    relocate "com.zwitserloot", "io.pravega.shaded.com.zwitserloot"
+    relocate "edu.umd", "io.pravega.shaded.edu.umb"
+    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
+    relocate "info.ganglia", "io.pravega.shaded.info.ganglia"
+    relocate "javax.annotation", "io.pravega.shaded.javax.annotation"
+    relocate "lombok", "io.pravega.shaded.lombok"
+    relocate "net.jcip", "io.pravega.shaded.net.jcip"
+    relocate "okio", "io.pravega.shaded.okio"
+    relocate "org.acplt", "io.pravega.shaded.org.acplt"
+    relocate "org.objectweb", "io.pravega.shaded.org.objectweb"
 
     // Shading the libraries which could cause potential version conflicts with flink.
     relocate "com.google", "io.pravega.shaded.com.google"
