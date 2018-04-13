@@ -45,10 +45,6 @@ repositories {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
         }
-        //TODO temporarily enabled staging repository to pull Flink 1.4.0-RC3 since it is not published yet to maven central
-        maven {
-            url "https://repository.apache.org/content/repositories/orgapacheflink-1141/"
-        }
     }
 }
 
@@ -60,6 +56,16 @@ configurations.all {
 }
 
 configurations {
+    shadowOnly {
+    }
+
+    all {
+        resolutionStrategy {
+            // pravega/pravega/issues/2464
+            force 'io.netty:netty-tcnative-boringssl-static:2.0.8.Final'
+        }
+    }
+
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -78,15 +84,23 @@ test {
 }
 
 dependencies {
-    compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-common', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-metrics', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-protocol', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-shared-controller-api', version: pravegaVersion
-    compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+    compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
+        exclude group:  'org.slf4j', module: 'slf4j-api'
 
+        // lombok and findbugs should be compileOnly
+        exclude group: 'org.projectlombok', module: 'lombok'
+        exclude group: 'com.google.code.findbugs', module: 'annotations'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
+
+        // pravega-shared pulls in curator which isn't needed on the client
+        exclude group: 'org.apache.curator', module: 'curator-recipes'
+    }
+    compile(group: 'io.pravega', name: 'pravega-authplugin', version: pravegaVersion) {
+        exclude group:  'org.slf4j', module: 'slf4j-api'
+    }
+    compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
@@ -101,52 +115,22 @@ dependencies {
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies
-    shadow group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    shadow group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion
 }
 
 shadowJar {
-    dependencies {
-        // 'include' specific dependencies in the shadow jar
-        // IMPORTANT: transitive dependencies must be manually listed here!
-        include dependency("com.google.guava:guava")
-        include dependency("org.apache.commons:commons-lang3")
-        include dependency("commons-io:commons-io")
-        include dependency("io.netty:netty")
-        include dependency("io.netty:netty-all")
-        include dependency("io.netty:netty-common")
-        include dependency("io.netty:netty-buffer")
-        include dependency("io.netty:netty-resolver")
-        include dependency("io.netty:netty-transport")
-        include dependency("io.netty:netty-codec")
-        include dependency("io.netty:netty-codec-http")
-        include dependency("io.netty:netty-codec-http2")
-        include dependency("io.netty:netty-codec-socks")
-        include dependency("io.netty:netty-handler")
-        include dependency("io.netty:netty-handler-proxy")
-        include dependency("io.grpc:grpc-core")
-        include dependency("io.grpc:grpc-protobuf")
-        include dependency("io.grpc:grpc-stub")
-        include dependency("io.grpc:grpc-context")
-        include dependency("io.grpc:grpc-netty")
-        include dependency("io.grpc:grpc-protobuf-lite")
-        include dependency("com.google.protobuf:protobuf-java-util")
-        include dependency("com.google.protobuf:protobuf-java")
-        include dependency("com.google.code.gson:gson")
-        include dependency("com.google.instrumentation:instrumentation-api")
-        include dependency("io.pravega:pravega-client")
-        include dependency("io.pravega:pravega-common")
-        include dependency("io.pravega:pravega-shared")
-        include dependency("io.pravega:pravega-shared-metrics")
-        include dependency("io.pravega:pravega-shared-protocol")
-        include dependency("io.pravega:pravega-shared-controller-api")
-    }
-
-    // Shading the libraries which could cause potential version conflicts with flink.
-    relocate "com.google", "io.pravega.shaded.com.google"
+    // relocate pravega client's dependencies to minimize conflicts
     relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+    relocate "com.google", "io.pravega.shaded.com.google"
     relocate "io.grpc", "io.pravega.shaded.io.grpc"
+    relocate "com.squareup.okhttp", "io.pravega.shaded.com.squareup.okhttp"
+    relocate "okio", "io.pravega.shaded.okio"
+    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
     relocate "io.netty", "io.pravega.shaded.io.netty"
+    relocate 'META-INF/native/libnetty', 'META-INF/native/libio_pravega_shaded_netty'
+    relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
 
     classifier = null
     mergeServiceFiles()

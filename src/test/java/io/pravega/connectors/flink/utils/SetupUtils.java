@@ -9,9 +9,11 @@
  */
 package io.pravega.connectors.flink.utils;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
+import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.impl.Controller;
 import io.pravega.client.stream.impl.ControllerImpl;
 import io.pravega.client.stream.impl.ControllerImplConfig;
@@ -31,7 +33,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
-import java.util.Collections;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -107,7 +108,14 @@ public final class SetupUtils {
      * @return URI The controller endpoint to connect to this cluster.
      */
     public URI getControllerUri() {
-        return this.gateway.getControllerURI();
+        return getClientConfig().getControllerURI();
+    }
+
+    /**
+     * Fetch the client configuration with which to connect to the controller.
+     */
+    public ClientConfig getClientConfig() {
+        return this.gateway.getClientConfig();
     }
 
     /**
@@ -115,7 +123,10 @@ public final class SetupUtils {
      * @return The controller facade, which must be closed by the caller.
      */
     public Controller newController() {
-        return new ControllerImpl(getControllerUri(), ControllerImplConfig.builder().build(), DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
+        ControllerImplConfig config = ControllerImplConfig.builder()
+                .clientConfig(getClientConfig())
+                .build();
+        return new ControllerImpl(config, DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
     }
 
     /**
@@ -184,8 +195,7 @@ public final class SetupUtils {
         final String readerGroup = "testReaderGroup" + this.scope + streamName;
         readerGroupManager.createReaderGroup(
                 readerGroup,
-                ReaderGroupConfig.builder().startingTime(0).build(),
-                Collections.singleton(streamName));
+                ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
 
         ClientFactory clientFactory = ClientFactory.withScope(this.scope, getControllerUri());
         final String readerGroupId = UUID.randomUUID().toString();
@@ -196,6 +206,9 @@ public final class SetupUtils {
                 ReaderConfig.builder().build());
     }
 
+    /**
+     * A gateway interface to Pravega for integration test purposes.
+     */
     private interface PravegaGateway {
         /**
          * Starts the gateway.
@@ -208,10 +221,9 @@ public final class SetupUtils {
         void stop() throws Exception;
 
         /**
-         * Gets the controller endpoint.
-         * @return
+         * Gets the client configuration with which to connect to the controller.
          */
-        URI getControllerURI();
+        ClientConfig getClientConfig();
     }
 
     static class InProcPravegaGateway implements PravegaGateway {
@@ -253,8 +265,10 @@ public final class SetupUtils {
         }
 
         @Override
-        public URI getControllerURI() {
-            return URI.create(inProcPravegaCluster.getControllerURI());
+        public ClientConfig getClientConfig() {
+            return ClientConfig.builder()
+                    .controllerURI(URI.create(inProcPravegaCluster.getControllerURI()))
+                    .build();
         }
     }
 
@@ -275,8 +289,10 @@ public final class SetupUtils {
         }
 
         @Override
-        public URI getControllerURI() {
-            return controllerUri;
+        public ClientConfig getClientConfig() {
+            return ClientConfig.builder()
+                    .controllerURI(controllerUri)
+                    .build();
         }
     }
 }

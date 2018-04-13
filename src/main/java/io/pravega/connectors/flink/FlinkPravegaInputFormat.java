@@ -14,15 +14,15 @@ import com.google.common.base.Preconditions;
 
 import io.pravega.client.ClientFactory;
 import io.pravega.client.batch.BatchClient;
-import io.pravega.client.batch.SegmentInfo;
 import io.pravega.client.batch.SegmentIterator;
-import io.pravega.client.segment.impl.Segment;
+import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
-import io.pravega.client.stream.impl.StreamImpl;
+import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.RichInputFormat;
@@ -41,6 +41,7 @@ import java.util.Set;
 /**
  * A Flink {@link InputFormat} that can be added as a source to read from Pravega in a Flink batch job.
  */
+@Slf4j
 public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputSplit> {
 
     private static final long serialVersionUID = 1L;
@@ -134,11 +135,12 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
             BatchClient batchClient = clientFactory.createBatchClient();
 
             for (String stream : streamNames) {
-                for (Iterator<SegmentInfo> segmentInfos = batchClient.listSegments(new StreamImpl(scopeName, stream)); segmentInfos.hasNext(); ) {
-                    SegmentInfo segmentInfo = segmentInfos.next();
-                    Segment segment = segmentInfo.getSegment();
-                    // segmentInfo.getWriteOffset() will give the length of the segment.
-                    splits.add(new PravegaInputSplit(splits.size(), segment, segmentInfo.getStartingOffset(), segmentInfo.getWriteOffset()));
+
+                Iterator<SegmentRange> segmentRangeIterator =
+                        batchClient.getSegments(Stream.of(scopeName, stream), null, null).getIterator();
+                while (segmentRangeIterator.hasNext()) {
+                    splits.add(new PravegaInputSplit(splits.size(),
+                            segmentRangeIterator.next()));
                 }
             }
         }
@@ -164,10 +166,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 : new FlinkPravegaUtils.FlinkDeserializer<>(deserializationSchema);
 
         // build a new iterator for each input split.  Note that the endOffset parameter is not used by the Batch API at the moment.
-        this.segmentIterator = batchClient.readSegment(
-                split.getSegment(),
-                deserializer,
-                split.getStartOffset());
+        this.segmentIterator = batchClient.readSegment(split.getSegmentRange(), deserializer);
     }
 
     @Override
