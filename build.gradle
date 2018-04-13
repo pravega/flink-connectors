@@ -56,6 +56,18 @@ configurations.all {
 }
 
 configurations {
+    shadowOnly {
+    }
+
+    all {
+        resolutionStrategy {
+            // pravega/pravega/issues/2464
+            force 'io.netty:netty-tcnative-boringssl-static:2.0.8.Final'
+        }
+    }
+
+    runtime.exclude group: 'org.slf4j', module: 'slf4j-api'
+
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -74,11 +86,19 @@ test {
 }
 
 dependencies {
-    compile group: 'io.pravega', name: 'pravega-client', version: pravegaVersion
-    compile group: 'io.pravega', name: 'pravega-authplugin', version: pravegaVersion
-    compile group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+    compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
+        // lombok and findbugs should be compileOnly
+        exclude group: 'org.projectlombok', module: 'lombok'
+        exclude group: 'com.google.code.findbugs', module: 'annotations'
+        exclude group: 'com.google.code.findbugs', module: 'jsr305'
 
+        // pravega-shared pulls in curator which isn't needed on the client
+        exclude group: 'org.apache.curator', module: 'curator-recipes'
+    }
+    compile group: 'io.pravega', name: 'pravega-authplugin', version: pravegaVersion
+    compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
+    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+    compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
@@ -93,30 +113,22 @@ dependencies {
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies
-    shadow group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    shadow group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion
 }
 
 shadowJar {
-
-    relocate "Class50.lombok", "io.pravega.shaded.Class50"
-    relocate "com.squareup", "io.pravega.shaded.com.squareup"
-    relocate "com.zwitserloot", "io.pravega.shaded.com.zwitserloot"
-    relocate "edu.umd", "io.pravega.shaded.edu.umb"
-    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
-    relocate "info.ganglia", "io.pravega.shaded.info.ganglia"
-    relocate "net.jcip", "io.pravega.shaded.net.jcip"
-    relocate "okio", "io.pravega.shaded.okio"
-    relocate "org.acplt", "io.pravega.shaded.org.acplt"
-    relocate "org.objectweb", "io.pravega.shaded.org.objectweb"
-    relocate "javax.annotation", "io.pravega.shaded.javax.annotation"
-    relocate "lombok", "io.pravega.shaded.lombok"
-
-    // Shading the libraries which could cause potential version conflicts with flink.
-    relocate "com.google", "io.pravega.shaded.com.google"
+    // relocate pravega client's dependencies to minimize conflicts
     relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+    relocate "com.google", "io.pravega.shaded.com.google"
     relocate "io.grpc", "io.pravega.shaded.io.grpc"
+    relocate "com.squareup.okhttp", "io.pravega.shaded.com.squareup.okhttp"
+    relocate "okio", "io.pravega.shaded.okio"
+    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
     relocate "io.netty", "io.pravega.shaded.io.netty"
+    relocate 'META-INF/native/libnetty', 'META-INF/native/libio_pravega_shaded_netty'
+    relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
 
     classifier = null
     mergeServiceFiles()

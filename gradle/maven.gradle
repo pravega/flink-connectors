@@ -77,6 +77,21 @@ tasks.withType(Upload) {
         }
 
         pom.scopeMappings.mappings.remove(configurations.testCompile)
+
+        pom.withXml { xml ->
+            // add the 'provided' dependencies based on the 'shadowOnly' configuration
+            def dependenciesNode = xml.asNode().appendNode('dependencies')
+            project.configurations.shadowOnly.allDependencies.each { dep ->
+                if (!(dep instanceof SelfResolvingDependency)) {
+                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                    dependencyNode.appendNode('groupId', dep.group)
+                    dependencyNode.appendNode('artifactId', dep.name)
+                    dependencyNode.appendNode('version', dep.version)
+                    dependencyNode.appendNode('scope', 'provided')
+                }
+            }
+        }
+
         if (project.hasProperty('doSigning')) {
             beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
         }
