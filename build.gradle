@@ -66,8 +66,6 @@ configurations {
         }
     }
 
-    runtime.exclude group: 'org.slf4j', module: 'slf4j-api'
-
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -87,6 +85,8 @@ test {
 
 dependencies {
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
+        exclude group:  'org.slf4j', module: 'slf4j-api'
+
         // lombok and findbugs should be compileOnly
         exclude group: 'org.projectlombok', module: 'lombok'
         exclude group: 'com.google.code.findbugs', module: 'annotations'
@@ -95,7 +95,9 @@ dependencies {
         // pravega-shared pulls in curator which isn't needed on the client
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
-    compile group: 'io.pravega', name: 'pravega-authplugin', version: pravegaVersion
+    compile(group: 'io.pravega', name: 'pravega-authplugin', version: pravegaVersion) {
+        exclude group:  'org.slf4j', module: 'slf4j-api'
+    }
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
