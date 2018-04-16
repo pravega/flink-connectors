@@ -64,8 +64,8 @@ public class PravegaInputSplit implements InputSplit {
             return false;
         }
 
-        String thisScope = segmentRange.getScopeName();
-        String thatScope = that.getSegmentRange().getScopeName();
+        String thisScope = segmentRange.getScope();
+        String thatScope = that.getSegmentRange().getScope();
         if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
             return false;
         }
@@ -93,7 +93,7 @@ public class PravegaInputSplit implements InputSplit {
         result = result * prime + Long.hashCode(getSegmentRange().getStartOffset());
         result = result * prime + Long.hashCode(getSegmentRange().getEndOffset());
 
-        String scope = getSegmentRange().getScopeName();
+        String scope = getSegmentRange().getScope();
         String stream = getSegmentRange().getStreamName();
 
         result = result * prime + (scope == null ? 43 : scope.hashCode());
