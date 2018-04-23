@@ -21,6 +21,7 @@ import org.apache.flink.api.java.tuple.Tuple2;
 
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -46,7 +47,7 @@ public class IotWriter extends AbstractStreamBasedWriter<IotWriter.SensorEvent> 
     private long limit = Integer.MAX_VALUE;
 
     public IotWriter(ClientFactory clientFactory, Controller controllerClient, StreamId streamId) {
-        super(clientFactory, controllerClient, streamId, e -> e.f1, new JavaSerializer<>());
+        super(log, clientFactory, controllerClient, streamId, e -> e.f1, new JavaSerializer<>());
     }
 
     public BlockingQueue<SensorEvent> getEventLog() {
@@ -95,6 +96,13 @@ public class IotWriter extends AbstractStreamBasedWriter<IotWriter.SensorEvent> 
         public SensorEvent() {}
         public SensorEvent(Long timestamp, String sensorId) {
             super(timestamp, sensorId);
+        }
+
+        @Override
+        public String toString() {
+            return "(" + java.sql.Timestamp.from(Instant.ofEpochMilli(this.f0))
+                    + "," + this.f1
+                    + ")";
         }
     }
 }

@@ -35,6 +35,7 @@ import org.apache.flink.util.FlinkException;
 
 import java.net.URI;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.ScheduledExecutorService;
 
@@ -304,8 +305,11 @@ public class FlinkPravegaReader<T>
                 }
 
                 if(eventRead.isWatermark()) {
-                    Watermark watermark = calculateEventTimeWatermark(eventRead.getWatermark());
-                    log.debug("Advancing the event time watermark: {}", watermark);
+                    Long ingestionTimeWatermark = eventRead.getWatermark();
+                    Watermark watermark = calculateEventTimeWatermark(ingestionTimeWatermark);
+                    log.debug("Advancing the event time watermark @ {} based on the ingestion time watermark @ {}",
+                            java.sql.Timestamp.from(Instant.ofEpochMilli(watermark.getTimestamp())),
+                            java.sql.Timestamp.from(Instant.ofEpochMilli(ingestionTimeWatermark)));
                     ctx.emitWatermark(watermark);
                 }
 

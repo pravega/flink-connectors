@@ -24,7 +24,7 @@ import io.pravega.common.concurrent.FutureHelpers;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.util.StreamId;
 import lombok.Synchronized;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
 
 import java.time.Clock;
 import java.time.Duration;
@@ -34,7 +34,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,13 +43,13 @@ import java.util.stream.Stream;
 /**
  * Writes one or more Java 8 {@link Stream streams} to a Pravega stream.
  */
-@Slf4j
 public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
 
     // the ingestion-time clock (the system clock)
     protected static final Clock ingestionClock = Clock.systemDefaultZone();
 
     // parameters
+    private final Logger log;
     protected final ClientFactory clientFactory;
     protected final Controller controllerClient;
     protected final StreamId streamId;
@@ -70,7 +69,8 @@ public abstract class AbstractStreamBasedWriter<T> implements AutoCloseable {
     // indicates when last the stream was scaled
     private volatile Instant lastScaleTime = Instant.EPOCH;
 
-    protected AbstractStreamBasedWriter(ClientFactory clientFactory, Controller controllerClient, StreamId streamId, PravegaEventRouter<T> eventRouter, Serializer<T> eventSerializer) {
+    protected AbstractStreamBasedWriter(Logger log, ClientFactory clientFactory, Controller controllerClient, StreamId streamId, PravegaEventRouter<T> eventRouter, Serializer<T> eventSerializer) {
+        this.log = log;
         this.clientFactory = Preconditions.checkNotNull(clientFactory);
         this.controllerClient = Preconditions.checkNotNull(controllerClient);
         this.streamId = Preconditions.checkNotNull(streamId);

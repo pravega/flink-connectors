@@ -103,7 +103,7 @@ public class EventTimeITCase extends StreamingMultipleProgramsTestBase {
         env.setParallelism(1);
         env.setRestartStrategy(RestartStrategies.noRestart());
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        env.enableCheckpointing(15000L);
+        env.enableCheckpointing(Duration.ofSeconds(15).toMillis());
 
         // create the Pravega reader
         final FlinkPravegaReader<IotWriter.SensorEvent> pravegaSource = new FlinkPravegaReader<>(
