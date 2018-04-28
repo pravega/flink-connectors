@@ -18,6 +18,7 @@ import io.pravega.client.batch.BatchClient;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
@@ -123,8 +124,11 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
             BatchClient batchClient = clientFactory.createBatchClient();
 
             for (StreamWithBoundaries stream : streams) {
+                // ISSUE: pravega/pravega#2518
+                StreamCut from = !stream.getFrom().equals(StreamCut.UNBOUNDED) ? stream.getFrom() : null;
+                StreamCut to = !stream.getTo().equals(StreamCut.UNBOUNDED) ? stream.getTo() : null;
                 Iterator<SegmentRange> segmentRangeIterator =
-                        batchClient.getSegments(stream.getStream(), stream.getFrom(), stream.getTo()).getIterator();
+                        batchClient.getSegments(stream.getStream(), from, to).getIterator();
                 while (segmentRangeIterator.hasNext()) {
                     splits.add(new PravegaInputSplit(splits.size(), segmentRangeIterator.next()));
                 }

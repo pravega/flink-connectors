@@ -22,7 +22,6 @@ import java.util.stream.Collectors;
 
 /**
  * A base builder for connectors that consume a Pravega stream.
- *
  * @param <B> the builder class.
  */
 public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> implements Serializable {
@@ -42,7 +41,6 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
      * Set the Pravega client configuration, which includes connection info, security info, and a default scope.
      *
      * The default client configuration is obtained from {@code PravegaConfig.fromDefaults()}.
-     *
      * @param pravegaConfig the configuration to use.
      */
     public B withPravegaConfig(PravegaConfig pravegaConfig) {
@@ -51,32 +49,19 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     }
 
     /**
-     * Add a stream to be read by the source, from the given start position in the stream.
-     *
+     * Add a stream and its associated start {@link StreamCut} to be read by the readers of a ReaderGroup.
      * @param streamSpec the unqualified or qualified name of the stream.
      * @param startStreamCut Start {@link StreamCut}
      * @return A builder to configure and create a reader.
      */
     public B forStream(final String streamSpec, final StreamCut startStreamCut) {
-        return forStream(streamSpec, startStreamCut, StreamCut.UNBOUNDED);
-    }
-
-    /**
-     * Add a stream to be read by the source, from the given start position in the stream.
-     *
-     * @param streamSpec the unqualified or qualified name of the stream.
-     * @param startStreamCut Start {@link StreamCut}
-     * @param endStreamCut End {@link StreamCut}
-     * @return A builder to configure and create a reader.
-     */
-    public B forStream(final String streamSpec, final StreamCut startStreamCut, final StreamCut endStreamCut) {
-        streams.add(StreamSpec.of(streamSpec, startStreamCut, endStreamCut));
+        streams.add(StreamSpec.of(streamSpec, startStreamCut, StreamCut.UNBOUNDED));
         return builder();
     }
 
     /**
-     * Add a stream to be read by the source, from the earliest available position in the stream.
-     *
+     * Add a stream that needs to be read by the readers of a ReaderGroup. The current starting position of the stream
+     * will be used as the starting StreamCut.
      * @param streamSpec the unqualified or qualified name of the stream.
      * @return A builder to configure and create a reader.
      */
@@ -85,32 +70,19 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     }
 
     /**
-     * Add a stream to be read by the source, from the given start position in the stream.
-     *
+     * Add a stream and its associated start {@link StreamCut} to be read by the readers of a ReaderGroup.
      * @param stream Stream.
      * @param startStreamCut Start {@link StreamCut}
      * @return A builder to configure and create a reader.
      */
     public B forStream(final Stream stream, final StreamCut startStreamCut) {
-        return forStream(stream, startStreamCut, StreamCut.UNBOUNDED);
-    }
-
-    /**
-     * Add a stream to be read by the source, from the given start position in the stream to the given end position.
-     *
-     * @param stream Stream.
-     * @param startStreamCut Start {@link StreamCut}
-     * @param endStreamCut End {@link StreamCut}
-     * @return A builder to configure and create a reader.
-     */
-    public B forStream(final Stream stream, final StreamCut startStreamCut, final StreamCut endStreamCut) {
-        streams.add(StreamSpec.of(stream, startStreamCut, endStreamCut));
+        streams.add(StreamSpec.of(stream, startStreamCut, StreamCut.UNBOUNDED));
         return builder();
     }
 
     /**
-     * Add a stream to be read by the source, from the earliest available position in the stream.
-     *
+     * Add a stream that needs to be read by the readers of a ReaderGroup. The current starting position of the stream
+     * will be used as the starting StreamCut.
      * @param stream Stream.
      * @return A builder to configure and create a reader.
      */
@@ -143,7 +115,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
      * A Pravega stream with optional boundaries based on stream cuts.
      */
     @Data
-    private static class StreamSpec implements Serializable {
+    public static class StreamSpec implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

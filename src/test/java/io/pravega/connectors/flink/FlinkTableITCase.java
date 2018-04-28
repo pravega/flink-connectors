@@ -11,6 +11,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
 
 import lombok.Data;
@@ -94,7 +95,7 @@ public class FlinkTableITCase {
     }
 
     /**
-     * Tests the end-to-end functionality of a streaming table source and sink.
+     * Tests the end-to-end functionality of a streaming table source & sink.
      *
      * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
      * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).
@@ -124,11 +125,8 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
         // write the table to a Pravega stream (using the 'category' column as a routing key)
-        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
-                .forStream(stream)
-                .withPravegaConfig(this.setupUtils.getPravegaConfig())
-                .withRoutingKeyField("category")
-                .build();
+        FlinkPravegaTableSink sink = new FlinkPravegaTableSink(
+                this.setupUtils.getControllerUri(), stream, JsonRowSerializationSchema::new, "category");
         table.writeToSink(sink);
 
         // register the Pravega stream as a table called 'samples'
@@ -157,7 +155,7 @@ public class FlinkTableITCase {
 
 
     /**
-     * Tests the end-to-end functionality of a batch table source and sink.
+     * Tests the end-to-end functionality of a batch table source & sink.
      *
      * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
      * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).
@@ -189,11 +187,8 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
 
         // write the table to a Pravega stream (using the 'category' column as a routing key)
-        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
-                .forStream(stream)
-                .withPravegaConfig(this.setupUtils.getPravegaConfig())
-                .withRoutingKeyField("category")
-                .build();
+        FlinkPravegaTableSink sink = new FlinkPravegaTableSink(
+                this.setupUtils.getControllerUri(), stream, JsonRowSerializationSchema::new, "category");
         table.writeToSink(sink);
 
         // register the Pravega stream as a table called 'samples'

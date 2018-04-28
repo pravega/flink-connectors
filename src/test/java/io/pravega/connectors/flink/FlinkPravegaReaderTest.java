@@ -232,28 +232,22 @@ public class FlinkPravegaReaderTest {
     public void testGenerateUid() {
         TestableStreamingReaderBuilder builder1 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT);
         String uid1 = builder1.generateUid();
 
         TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT)
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
         TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT2, StreamCut.UNBOUNDED);
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT2);
         String uid3 = builder3.generateUid();
-
-        TestableStreamingReaderBuilder builder4 = new TestableStreamingReaderBuilder()
-                .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2);
-        String uid4 = builder4.generateUid();
 
         assertEquals(uid1, uid2);
         assertNotEquals(uid1, uid3);
-        assertNotEquals(uid1, uid4);
     }
 
     // endregion
@@ -323,7 +317,7 @@ public class FlinkPravegaReaderTest {
     /**
      * A reader subclass for test purposes.
      */
-    private static class TestableStreamingReaderBuilder extends AbstractStreamingReaderBuilder<Integer, TestableStreamingReaderBuilder> {
+    private static class TestableStreamingReaderBuilder extends FlinkPravegaReader.AbstractStreamingReaderBuilder<Integer, TestableStreamingReaderBuilder> {
         @Override
         protected TestableStreamingReaderBuilder builder() {
             return this;
