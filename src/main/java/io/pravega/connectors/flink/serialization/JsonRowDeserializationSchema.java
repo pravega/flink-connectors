@@ -110,4 +110,10 @@ public class JsonRowDeserializationSchema implements DeserializationSchema<Row> 
         this.failOnMissingField = failOnMissingField;
     }
 
+    /**
+     * Gets the failure behavior if a JSON field is missing.
+     */
+    public boolean getFailOnMissingField() {
+        return this.failOnMissingField;
+    }
 }

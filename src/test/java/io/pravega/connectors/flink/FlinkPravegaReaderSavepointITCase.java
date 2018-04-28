@@ -12,15 +12,13 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.FlinkMiniClusterWithSavepointCommand;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
+import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.RandomStringUtils;
-
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.core.testutils.CheckedThread;
@@ -30,9 +28,7 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.util.serialization.AbstractDeserializationSchema;
 import org.apache.flink.util.TestLogger;
-
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -41,17 +37,15 @@ import org.junit.rules.TemporaryFolder;
 import org.junit.rules.Timeout;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertNotNull;
 
 /**
- * Automated tests for {@link FlinkPravegaReader}.
+ * Integration tests for {@link FlinkPravegaReader} focused on savepoint integration.
  */
 @Slf4j
-public class FlinkPravegaReaderSavepointTest extends TestLogger {
+public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
@@ -198,13 +192,12 @@ public class FlinkPravegaReaderSavepointTest extends TestLogger {
         env.setStateBackend(new FsStateBackend(tmpFolder.newFolder().toURI(), 1024 * 1024, false));
 
         // the Pravega reader
-        final FlinkPravegaReader<Integer> pravegaSource = new FlinkPravegaReader<>(
-                SETUP_UTILS.getControllerUri(),
-                SETUP_UTILS.getScope(),
-                Collections.singleton(streamName),
-                0,
-                new IntDeserializer(),
-                "my_reader_name");
+        final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
+                .forStream(streamName)
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withDeserializationSchema(new IntegerDeserializationSchema())
+                .uid("my_reader_name")
+                .build();
 
         env
                 .addSource(pravegaSource)
@@ -220,22 +213,5 @@ public class FlinkPravegaReaderSavepointTest extends TestLogger {
                 .setParallelism(1);
         
         return env.getStreamGraph().getJobGraph();
-    }
-
-    // ----------------------------------------------------------------------------
-    //  utilities
-    // ----------------------------------------------------------------------------
-
-    private static class IntDeserializer extends AbstractDeserializationSchema<Integer> {
-
-        @Override
-        public Integer deserialize(byte[] message) throws IOException {
-            return ByteBuffer.wrap(message).getInt();
-        }
-
-        @Override
-        public boolean isEndOfStream(Integer nextElement) {
-            return false;
-        }
     }
 }

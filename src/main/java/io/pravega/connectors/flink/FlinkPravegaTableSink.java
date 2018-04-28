@@ -10,7 +10,7 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.util.StreamId;
+import io.pravega.client.stream.Stream;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
@@ -37,7 +37,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row> {
     protected final URI controllerURI;
 
     /** The Pravega stream to use. */
-    protected final StreamId stream;
+    protected final Stream stream;
 
     protected SerializationSchema<Row> serializationSchema;
     protected PravegaEventRouter<Row> eventRouter;
@@ -65,7 +65,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row> {
      */
     public FlinkPravegaTableSink(
             URI controllerURI,
-            StreamId stream,
+            Stream stream,
             Function<String[], SerializationSchema<Row>> serializationSchemaFactory,
             String routingKeyFieldName) {
         this.controllerURI = controllerURI;
@@ -85,7 +85,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row> {
      * Returns the low-level writer.
      */
     protected FlinkPravegaWriter<Row> createFlinkPravegaWriter() {
-        return new FlinkPravegaWriter<>(controllerURI, stream.getScope(), stream.getName(), serializationSchema, eventRouter);
+        return new FlinkPravegaWriter<>(controllerURI, stream.getScope(), stream.getStreamName(), serializationSchema, eventRouter);
     }
 
     /**

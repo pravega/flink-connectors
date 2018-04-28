@@ -18,6 +18,7 @@ import io.pravega.client.stream.impl.Controller;
 import io.pravega.client.stream.impl.ControllerImpl;
 import io.pravega.client.stream.impl.ControllerImplConfig;
 import io.pravega.common.concurrent.ExecutorServiceHelpers;
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -116,6 +117,13 @@ public final class SetupUtils {
      */
     public ClientConfig getClientConfig() {
         return this.gateway.getClientConfig();
+    }
+
+    /**
+     * Fetch the {@link PravegaConfig} for integration test purposes.
+     */
+    public PravegaConfig getPravegaConfig() {
+        return PravegaConfig.fromDefaults().withControllerURI(getControllerUri()).withDefaultScope(getScope());
     }
 
     /**

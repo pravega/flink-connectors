@@ -9,12 +9,13 @@
  */
 package io.pravega.connectors.flink.util;
 
-import com.google.common.collect.Sets;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.ScalingPolicy;
+import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.serialization.PravegaSerialization;
 import java.io.Serializable;
@@ -32,7 +33,9 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
  * parameters.
  *
  * @see StreamId
+ * @deprecated use {@link PravegaConfig} and the {@code builder()} methods.
  */
+@Deprecated
 public class FlinkPravegaParams {
     public static final String DEFAULT_CONTROLLER_URI = "tcp://127.0.0.1:9090";
     public static final String CONTROLLER_PARAM_NAME = "controller";
@@ -89,8 +92,13 @@ public class FlinkPravegaParams {
     public <T extends Serializable> FlinkPravegaReader<T> newReader(final StreamId stream,
                                                                     final long startTime,
                                                                     final DeserializationSchema<T> deserializationSchema) {
-        return new FlinkPravegaReader<>(getControllerUri(), stream.getScope(), Sets.newHashSet(stream.getName()),
-                startTime, deserializationSchema);
+        PravegaConfig pravegaConfig = PravegaConfig.fromParams(params);
+
+        return FlinkPravegaReader.<T>builder()
+                .forStream(Stream.of(stream.getScope(), stream.getName()))
+                .withPravegaConfig(pravegaConfig)
+                .withDeserializationSchema(deserializationSchema)
+                .build();
     }
 
     /**

@@ -9,186 +9,325 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.utils.FailingMapper;
-import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
-import io.pravega.connectors.flink.utils.NotifyingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.connectors.flink.utils.SuccessException;
-import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-import io.pravega.client.stream.EventStreamWriter;
-
-import lombok.extern.slf4j.Slf4j;
-
-import org.apache.commons.lang3.RandomStringUtils;
-
-import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
-import org.apache.flink.streaming.util.serialization.AbstractDeserializationSchema;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
+import io.pravega.client.ClientConfig;
+import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.segment.impl.Segment;
+import io.pravega.client.stream.EventPointer;
+import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.client.stream.Position;
+import io.pravega.client.stream.ReaderGroup;
+import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.Sequence;
+import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.StreamCut;
+import io.pravega.client.stream.impl.EventReadImpl;
+import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.junit.Test;
-import org.junit.rules.Timeout;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Collections;
-import java.util.concurrent.TimeUnit;
+import java.util.Properties;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
+import static org.mockito.Matchers.anyLong;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 
 /**
- * Automated tests for {@link FlinkPravegaReader}.
+ * Unit tests for {@link FlinkPravegaReader} and its builder.
  */
-@Slf4j
-public class FlinkPravegaReaderTest extends StreamingMultipleProgramsTestBase {
+public class FlinkPravegaReaderTest {
 
-    // Number of events to produce into the test stream.
-    private static final int NUM_STREAM_ELEMENTS = 10000;
+    private static final String SAMPLE_SCOPE = "scope";
+    private static final Stream SAMPLE_STREAM = Stream.of(SAMPLE_SCOPE, "stream");
+    private static final Segment SAMPLE_SEGMENT = new Segment(SAMPLE_SCOPE, SAMPLE_STREAM.getStreamName(), 1);
+    private static final StreamCut SAMPLE_CUT = new StreamCutImpl(SAMPLE_STREAM, Collections.singletonMap(SAMPLE_SEGMENT, 42L));
+    private static final StreamCut SAMPLE_CUT2 = new StreamCutImpl(SAMPLE_STREAM, Collections.singletonMap(SAMPLE_SEGMENT, 1024L));
 
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final Time GROUP_REFRESH_TIME = Time.seconds(10);
+    private static final String GROUP_NAME = "group";
 
-    //Ensure each test completes within 120 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-    
-    @BeforeClass
-    public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
-    }
+    private static final IntegerDeserializationSchema DESERIALIZATION_SCHEMA = new TestDeserializationSchema();
+    private static final Time READER_TIMEOUT = Time.seconds(1);
+    private static final Time CHKPT_TIMEOUT = Time.seconds(1);
 
-    @AfterClass
-    public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
-    }
+    // region Source Function Tests
 
+    /**
+     * Tests the behavior of {@code initialize()}.
+     */
     @Test
-    public void testOneSourceOneSegment() throws Exception {
-        runTest(1, 1, NUM_STREAM_ELEMENTS);
+    public void testInitialize() {
+        TestableFlinkPravegaReader<Integer> reader = createReader();
+        reader.initialize();
+        verify(reader.readerGroupManager).createReaderGroup(GROUP_NAME, reader.readerGroupConfig);
     }
 
+    /**
+     * Tests the behavior of {@code run()}.
+     */
     @Test
-    public void testOneSourceMultipleSegments() throws Exception {
-        runTest(1, 4, NUM_STREAM_ELEMENTS);
-    }
+    public void testRun() throws Exception {
+        TestableFlinkPravegaReader<Integer> reader = createReader();
 
-    // this test currently does ot work, see https://github.com/pravega/pravega/issues/1152
-    //@Test
-    //public void testMultipleSourcesOneSegment() throws Exception {
-    //    runTest(4, 1, NUM_STREAM_ELEMENTS);
-    //}
+        try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness = createTestHarness(reader, 1, 1, 0)) {
+            testHarness.open();
 
-    @Test
-    public void testMultipleSourcesMultipleSegments() throws Exception {
-        runTest(4, 4, NUM_STREAM_ELEMENTS);
-    }
+            // prepare a sequence of events
+            TestEventGenerator<Integer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(1))
+                    .thenReturn(evts.event(2))
+                    .thenReturn(evts.checkpoint(42L))
+                    .thenReturn(evts.idle())
+                    .thenReturn(evts.event(3))
+                    .thenReturn(evts.event(TestDeserializationSchema.END_OF_STREAM));
 
+            // run the source
+            testHarness.run();
 
-    private static void runTest(
-            final int sourceParallelism,
-            final int numPravegaSegments,
-            final int numElements) throws Exception {
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(6)).readNextEvent(anyLong());
+            Queue<Object> actual = testHarness.getOutput();
+            Queue<Object> expected = new ConcurrentLinkedQueue<>();
+            expected.add(record(1));
+            expected.add(record(2));
+            expected.add(record(3));
+            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
 
-        // set up the stream
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
-
-        try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-
-                // create the producer that writes to the stream
-                final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
-                        eventWriter,
-                        numElements,
-                        numElements / 2,  // the latest when a checkpoint must have happened
-                        1                 // the initial sleep time per element
-                )
-
-        ) {
-            producer.start();
-
-            // the producer is throttled so that we don't run the (whatever small) risk of pumping
-            // all elements through before completing the first checkpoint (that would make the test senseless)
-
-            // to speed the test up, we un-throttle the producer as soon as the first checkpoint
-            // has gone through. Rather than implementing a complicated observer that polls the status
-            // from Flink, we simply forward the 'checkpoint complete' notification from the user functions
-            // the thr throttler, via a static variable
-            NotifyingMapper.TO_CALL_ON_COMPLETION.set(producer::unthrottle);
-
-            final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
-            env.setParallelism(sourceParallelism);
-            env.enableCheckpointing(100);
-            env.setRestartStrategy(RestartStrategies.fixedDelayRestart(3, 0L));
-
-            // we currently need this to work around the case where tasks are
-            // started too late, a checkpoint was already triggered, and some tasks
-            // never see the checkpoint event
-            env.getCheckpointConfig().setCheckpointTimeout(2000);
-
-            // the Pravega reader
-            final FlinkPravegaReader<Integer> pravegaSource = new FlinkPravegaReader<>(
-                    SETUP_UTILS.getControllerUri(),
-                    SETUP_UTILS.getScope(),
-                    Collections.singleton(streamName),
-                    0,
-                    new IntDeserializer());
-
-            env
-                    .addSource(pravegaSource)
-
-                    // this mapper throws an exception at 2/3rd of the data stream,
-                    // which is strictly after the checkpoint happened (the latest at 1/2 of the stream)
-
-                    // to make sure that this is not affected by how fast subtasks of the source
-                    // manage to pull data from pravega, we make this task non-parallel
-                    .map(new FailingMapper<>(numElements * 2 / 3))
-                    .setParallelism(1)
-
-                    // hook in the notifying mapper
-                    .map(new NotifyingMapper<>())
-                    .setParallelism(1)
-
-                    // the sink validates that the exactly-once semantics hold
-                    // it must be non-parallel so that it sees all elements and can trivially
-                    // check for duplicates
-                    .addSink(new IntSequenceExactlyOnceValidator(numElements))
-                    .setParallelism(1);
-
-            final long executeStart = System.nanoTime();
-
-            // if these calls complete without exception, then the test passes
-            try {
-                env.execute();
-            } catch (Exception e) {
-                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    throw e;
-                }
-            }
-
-            // this method forwards exception thrown in the data generator thread
-            producer.sync();
-
-            final long executeEnd = System.nanoTime();
-            System.out.println(String.format("Test execution took %d ms", (executeEnd - executeStart) / 1_000_000));
+            // verify that checkpoints were triggered
+            Queue<Long> actualChkpts = testHarness.getTriggeredCheckpoints();
+            Queue<Long> expectedChkpts = new ConcurrentLinkedQueue<>();
+            expectedChkpts.add(42L);
+            TestHarnessUtil.assertOutputEquals("Unexpected checkpoints", expectedChkpts, actualChkpts);
         }
     }
 
-    // ----------------------------------------------------------------------------
+    /**
+     * Tests the cancellation support.
+     */
+    @Test
+    public void testCancellation() throws Exception {
+        TestableFlinkPravegaReader<Integer> reader = createReader();
 
-    private static class IntDeserializer extends AbstractDeserializationSchema<Integer> {
+        try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness = createTestHarness(reader, 1, 1, 0)) {
+            testHarness.open();
 
-        @Override
-        public Integer deserialize(byte[] message) throws IOException {
-            return ByteBuffer.wrap(message).getInt();
+            // prepare a sequence of events
+            TestEventGenerator<Integer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenAnswer(i -> {
+                        testHarness.cancel();
+                        return evts.idle();
+                    });
+
+            // run the source, which should return upon cancellation
+            testHarness.run();
+            assertFalse(reader.running);
+        }
+    }
+
+    /**
+     * Creates a {@link TestableFlinkPravegaReader}.
+     */
+    private static TestableFlinkPravegaReader<Integer> createReader() {
+        ClientConfig clientConfig = ClientConfig.builder().build();
+        ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
+        return new TestableFlinkPravegaReader<>(
+                "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, DESERIALIZATION_SCHEMA, READER_TIMEOUT, CHKPT_TIMEOUT);
+    }
+
+    /**
+     * Creates a test harness for a {@link SourceFunction}.
+     */
+    private <T, F extends SourceFunction<T>> StreamSourceOperatorTestHarness<T, F> createTestHarness(
+            F sourceFunction, int maxParallelism, int parallelism, int subtaskIndex) throws Exception {
+        StreamSourceOperatorTestHarness harness = new StreamSourceOperatorTestHarness<T, F>(sourceFunction, maxParallelism, parallelism, subtaskIndex);
+        harness.setTimeCharacteristic(TimeCharacteristic.ProcessingTime);
+        return harness;
+    }
+
+    /**
+     * Creates a {@link StreamRecord} for the given event (without a timestamp).
+     */
+    private static <T> StreamRecord<T> record(T evt) {
+        return new StreamRecord<>(evt);
+    }
+
+    // endregion
+
+    // region Builder Tests
+
+    @Test
+    public void testBuilderProperties() {
+        TestableStreamingReaderBuilder builder = new TestableStreamingReaderBuilder()
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT)
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
+                .withReaderGroupRefreshTime(GROUP_REFRESH_TIME);
+
+        FlinkPravegaReader<Integer> reader = builder.buildSourceFunction();
+
+        assertNotNull(reader.hookUid);
+        assertNotNull(reader.clientConfig);
+        assertEquals(-1L, reader.readerGroupConfig.getAutomaticCheckpointIntervalMillis());
+        assertEquals(GROUP_REFRESH_TIME.toMilliseconds(), reader.readerGroupConfig.getGroupRefreshTimeMillis());
+        assertEquals(GROUP_NAME, reader.readerGroupName);
+        assertEquals(Collections.singletonMap(SAMPLE_STREAM, SAMPLE_CUT), reader.readerGroupConfig.getStartingStreamCuts());
+        assertEquals(DESERIALIZATION_SCHEMA, reader.deserializationSchema);
+        assertEquals(DESERIALIZATION_SCHEMA.getProducedType(), reader.getProducedType());
+        assertNotNull(reader.eventReadTimeout);
+        assertNotNull(reader.checkpointInitiateTimeout);
+    }
+
+    @Test
+    public void testRgScope() {
+        PravegaConfig config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
+
+        // no scope
+        TestableStreamingReaderBuilder builder = new TestableStreamingReaderBuilder()
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT)
+                .withPravegaConfig(config);
+
+        FlinkPravegaReader<Integer> reader;
+        try {
+            builder.buildSourceFunction();
+            fail();
+        } catch (IllegalStateException e) {
+            // "missing reader group scope"
         }
 
+        // default scope
+        config.withDefaultScope(SAMPLE_SCOPE);
+        reader = builder.buildSourceFunction();
+        assertEquals(SAMPLE_SCOPE, reader.readerGroupScope);
+
+        // explicit scope
+        builder.withReaderGroupScope("myscope");
+        reader = builder.buildSourceFunction();
+        assertEquals("myscope", reader.readerGroupScope);
+    }
+
+    @Test
+    public void testGenerateUid() {
+        TestableStreamingReaderBuilder builder1 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT);
+        String uid1 = builder1.generateUid();
+
+        TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT)
+                .withEventReadTimeout(Time.seconds(42L));
+        String uid2 = builder2.generateUid();
+
+        TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT2);
+        String uid3 = builder3.generateUid();
+
+        assertEquals(uid1, uid2);
+        assertNotEquals(uid1, uid3);
+    }
+
+    // endregion
+
+    // region Helper Classes
+
+    /**
+     * Generates a sequence of {@link EventRead} instances, including events, checkpoints, and idleness.
+     */
+    private static class TestEventGenerator<T> {
+        private long sequence = 0;
+
+        public EventRead<T> event(T evt) {
+            return new EventReadImpl<>(Sequence.create(0, sequence++), evt, mock(Position.class), mock(EventPointer.class), null);
+        }
+
+        public EventRead<T> idle() {
+            return event(null);
+        }
+
+        @SuppressWarnings("unchecked")
+        public EventRead<T> checkpoint(long checkpointId) {
+            String checkpointName = ReaderCheckpointHook.createCheckpointName(checkpointId);
+            return new EventReadImpl<>(Sequence.create(0, sequence++), null, mock(Position.class), mock(EventPointer.class), checkpointName);
+        }
+    }
+
+    /**
+     * A deserialization schema for test purposes.
+     */
+    private static class TestDeserializationSchema extends IntegerDeserializationSchema {
+        public static final int END_OF_STREAM = -1;
         @Override
         public boolean isEndOfStream(Integer nextElement) {
-            return false;
+            return nextElement.equals(END_OF_STREAM);
         }
     }
+
+    /**
+     * A reader builder subclass for test purposes.
+     */
+    private static class TestableFlinkPravegaReader<T> extends FlinkPravegaReader<T> {
+
+        @SuppressWarnings("unchecked")
+        final ReaderGroupManager readerGroupManager = mock(ReaderGroupManager.class);
+
+        @SuppressWarnings("unchecked")
+        final EventStreamReader<T> eventStreamReader = mock(EventStreamReader.class);
+
+        protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig, ReaderGroupConfig readerGroupConfig, String readerGroupScope, String readerGroupName, DeserializationSchema<T> deserializationSchema, Time eventReadTimeout, Time checkpointInitiateTimeout) {
+            super(hookUid, clientConfig, readerGroupConfig, readerGroupScope, readerGroupName, deserializationSchema, eventReadTimeout, checkpointInitiateTimeout);
+        }
+
+        @Override
+        protected ReaderGroupManager createReaderGroupManager() {
+            doNothing().when(readerGroupManager).createReaderGroup(readerGroupName, readerGroupConfig);
+            doReturn(mock(ReaderGroup.class)).when(readerGroupManager).getReaderGroup(readerGroupName);
+            return readerGroupManager;
+        }
+
+        @Override
+        protected EventStreamReader<T> createEventStreamReader(String readerId) {
+            return eventStreamReader;
+        }
+    }
+
+    /**
+     * A reader subclass for test purposes.
+     */
+    private static class TestableStreamingReaderBuilder extends FlinkPravegaReader.AbstractStreamingReaderBuilder<Integer, TestableStreamingReaderBuilder> {
+        @Override
+        protected TestableStreamingReaderBuilder builder() {
+            return this;
+        }
+
+        @Override
+        protected DeserializationSchema<Integer> getDeserializationSchema() {
+            return DESERIALIZATION_SCHEMA;
+        }
+    }
+
+    // endregion
 }

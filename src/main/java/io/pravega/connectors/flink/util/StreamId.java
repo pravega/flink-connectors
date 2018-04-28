@@ -16,7 +16,10 @@ import java.util.Objects;
 /**
  * Captures the fully qualified name of a stream. The convention to represent this as a
  * single string is using [scope]/[stream].
+ *
+ * @deprecated Use {@link io.pravega.client.stream.Stream}
  */
+@Deprecated
 public class StreamId {
     public static final char STREAM_SPEC_SEPARATOR = '/';
 

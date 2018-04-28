@@ -28,6 +28,9 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.junit.Assert.assertEquals;
 
+/**
+ * Unit tests for {@link EventTimeOrderingOperator}.
+ */
 @Slf4j
 public class EventTimeOrderingOperatorTest {
 
