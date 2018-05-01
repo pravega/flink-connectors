@@ -14,9 +14,9 @@ import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
-import io.pravega.connectors.flink.util.StreamId;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
@@ -549,16 +549,16 @@ public class FlinkPravegaWriter<T>
 
             Exception exception = null;
 
-            Map<StreamId, List<PendingTransaction>> pendingTransactionsMap =
-                    pendingTransactionList.stream().collect(groupingBy(s -> new StreamId(s.getScope(), s.getStream())));
+            Map<Stream, List<PendingTransaction>> pendingTransactionsMap =
+                    pendingTransactionList.stream().collect(groupingBy(s -> Stream.of(s.getScope(), s.getStream())));
 
             log.debug("pendingTransactionsMap:: " + pendingTransactionsMap);
 
-            for (Map.Entry<StreamId, List<PendingTransaction>> transactionsEntry: pendingTransactionsMap.entrySet()) {
+            for (Map.Entry<Stream, List<PendingTransaction>> transactionsEntry: pendingTransactionsMap.entrySet()) {
 
-                StreamId streamId = transactionsEntry.getKey();
+                Stream streamId = transactionsEntry.getKey();
                 String scope = streamId.getScope();
-                String stream = streamId.getName();
+                String stream = streamId.getStreamName();
 
                 Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
                 EventWriterConfig writerConfig = EventWriterConfig.builder()
