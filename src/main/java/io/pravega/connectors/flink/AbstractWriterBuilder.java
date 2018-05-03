@@ -15,11 +15,6 @@ import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
 
-/**
- * A base builder for connectors that emit a Pravega stream.
- *
- * @param <B> the builder class.
- */
 public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> implements Serializable {
 
     private PravegaConfig pravegaConfig;

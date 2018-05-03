@@ -9,7 +9,6 @@
  */
 package io.pravega.connectors.flink;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -20,6 +19,7 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
@@ -58,6 +58,12 @@ public class FlinkPravegaWriter<T>
 
     private static final long serialVersionUID = 1L;
 
+    // the numbers below are picked somewhat arbitrarily at this point
+
+    private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 2 * 60 * 60 * 1000; // 2 hours
+
+    private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 10 * 60 * 1000; // 10 minutes
+
     // Writer interface to assist exactly-once and at-least-once functionality
     @VisibleForTesting
     transient AbstractInternalWriter writer = null;
@@ -74,7 +80,6 @@ public class FlinkPravegaWriter<T>
     final PravegaEventRouter<T> eventRouter;
 
     // The destination stream.
-    @SuppressFBWarnings("SE_BAD_FIELD")
     final Stream stream;
 
     // Various timeouts
@@ -730,6 +735,84 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
     //  builder
     // ------------------------------------------------------------------------
+
+    /**
+     * An abstract streaming writer builder.
+     *
+     * The builder is abstracted to act as the base for both the {@link FlinkPravegaWriter} and {@link FlinkPravegaTableSink} builders.
+     *
+     * @param <T> the element type.
+     * @param <B> the builder type.
+     */
+    public abstract static class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
+
+        protected PravegaWriterMode writerMode;
+        protected Time txnTimeout;
+        protected Time txnGracePeriod;
+
+        protected AbstractStreamingWriterBuilder() {
+            writerMode = PravegaWriterMode.ATLEAST_ONCE;
+            txnTimeout = Time.milliseconds(DEFAULT_TXN_TIMEOUT_MILLIS);
+            txnGracePeriod = Time.milliseconds(DEFAULT_TX_SCALE_GRACE_MILLIS);
+        }
+
+        /**
+         * Sets the writer mode to provide at-least-once or exactly-once guarantees.
+         * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
+         */
+        public B withWriterMode(PravegaWriterMode writerMode) {
+            this.writerMode = writerMode;
+            return builder();
+        }
+
+        /**
+         * Sets the transaction timeout.
+         *
+         * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist events to the Pravega stream.
+         * The timeout refers to the maximum amount of time that a transaction may remain uncommitted, after which the
+         * transaction will be aborted.  The default timeout is 2 hours.
+         *
+         * @param timeout the timeout
+         */
+        public B withTxnTimeout(Time timeout) {
+            Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
+            this.txnTimeout = timeout;
+            return builder();
+        }
+
+        /**
+         * Sets the transaction grace period.
+         *
+         * The grace period is the maximum amount of time for which a transaction may
+         * remain active, after a scale operation has been initiated on the underlying stream.
+         *
+         * @param timeout the timeout
+         */
+        public B withTxnGracePeriod(Time timeout) {
+            Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
+            this.txnGracePeriod = timeout;
+            return builder();
+        }
+
+        /**
+         * Creates the sink function for the current builder state.
+         *
+         * @param serializationSchema the deserialization schema to use.
+         * @param eventRouter the event router to use.
+         */
+        FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+            Preconditions.checkNotNull(serializationSchema, "serializationSchema");
+            Preconditions.checkNotNull(eventRouter, "eventRouter");
+            return new FlinkPravegaWriter<>(
+                    getPravegaConfig().getClientConfig(),
+                    resolveStream(),
+                    serializationSchema,
+                    eventRouter,
+                    writerMode,
+                    txnTimeout.toMilliseconds(),
+                    txnGracePeriod.toMilliseconds());
+        }
+    }
 
     /**
      * A builder for {@link FlinkPravegaWriter}.
