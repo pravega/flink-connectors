@@ -115,7 +115,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
      * A Pravega stream with optional boundaries based on stream cuts.
      */
     @Data
-    public static class StreamSpec implements Serializable {
+    private static class StreamSpec implements Serializable {
 
         private static final long serialVersionUID = 1L;
 

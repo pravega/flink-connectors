@@ -9,7 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
-import com.google.common.base.Preconditions;
+import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
@@ -19,6 +19,7 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
@@ -26,10 +27,10 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
+import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 import java.io.Serializable;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -69,85 +70,56 @@ public class FlinkPravegaWriter<T>
 
     // ----------- configuration fields -----------
 
+    // The Pravega client config.
+    final ClientConfig clientConfig;
+
     // The supplied event serializer.
-    private final SerializationSchema<T> serializationSchema;
+    final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream.
-    private final PravegaEventRouter<T> eventRouter;
+    final PravegaEventRouter<T> eventRouter;
 
-    // The pravega controller endpoint.
-    private final URI controllerURI;
+    // The destination stream.
+    final Stream stream;
 
-    // The scope name of the destination stream.
-    private final String scopeName;
-
-    // The pravega stream name to write events to.
-    private final String streamName;
-
+    // Various timeouts
     private final long txnTimeoutMillis;
     private final long txnGracePeriodMillis;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
+    private PravegaWriterMode writerMode;
 
     // Client factory for PravegaWriter instances
     private transient ClientFactory clientFactory = null;
 
     /**
-     * The flink pravega writer instance which can be added as a sink to a flink job.
+     * The flink pravega writer instance which can be added as a sink to a Flink job.
      *
-     * @param controllerURI         The pravega controller endpoint address.
-     * @param scope                 The destination stream's scope name.
-     * @param streamName            The destination stream Name.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
-     * @param router                The implementation to extract the partition key from the event.
-     */
-    public FlinkPravegaWriter(
-            final URI controllerURI,
-            final String scope,
-            final String streamName,
-            final SerializationSchema<T> serializationSchema,
-            final PravegaEventRouter<T> router) {
-
-        this(controllerURI, scope, streamName, serializationSchema, router,
-                DEFAULT_TXN_TIMEOUT_MILLIS, DEFAULT_TX_SCALE_GRACE_MILLIS);
-    }
-
-    /**
-     * The flink pravega writer instance which can be added as a sink to a flink job.
-     *
-     * @param controllerURI         The pravega controller endpoint address.
-     * @param scope                 The destination stream's scope name.
-     * @param streamName            The destination stream Name.
-     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
-     * @param router                The implementation to extract the partition key from the event.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     * @param writerMode            The Pravega writer mode.
      * @param txnTimeoutMillis      The number of milliseconds after which the transaction will be aborted.
      * @param txnGracePeriodMillis  The maximum amount of time, in milliseconds, until which transaction may
      *                              remain active, after a scale operation has been initiated on the underlying stream.
      */
-    public FlinkPravegaWriter(
-            final URI controllerURI,
-            final String scope,
-            final String streamName,
+    protected FlinkPravegaWriter(
+            final ClientConfig clientConfig,
+            final Stream stream,
             final SerializationSchema<T> serializationSchema,
-            final PravegaEventRouter<T> router,
+            final PravegaEventRouter<T> eventRouter,
+            final PravegaWriterMode writerMode,
             final long txnTimeoutMillis,
             final long txnGracePeriodMillis) {
 
-        Preconditions.checkNotNull(controllerURI, "controllerURI");
-        Preconditions.checkNotNull(scope, "scope");
-        Preconditions.checkNotNull(streamName, "streamName");
-        Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        Preconditions.checkNotNull(router, "router");
+        this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
+        this.stream = Preconditions.checkNotNull(stream, "stream");
+        this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
+        this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
+        this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnTimeoutMillis > 0, "txnTimeoutMillis must be > 0");
         Preconditions.checkArgument(txnGracePeriodMillis > 0, "txnGracePeriodMillis must be > 0");
-
-        this.controllerURI = controllerURI;
-        this.scopeName = scope;
-        this.streamName = streamName;
-        this.serializationSchema = serializationSchema;
-        this.eventRouter = router;
-
         this.txnTimeoutMillis = txnTimeoutMillis;
         this.txnGracePeriodMillis = txnGracePeriodMillis;
     }
@@ -166,24 +138,14 @@ public class FlinkPravegaWriter<T>
         return this.writerMode;
     }
 
-    /**
-     * Sets this writer's operating mode.
-     *
-     * @param writerMode    The mode of operation.
-     */
-    public void setPravegaWriterMode(PravegaWriterMode writerMode) {
-        Preconditions.checkNotNull(writerMode);
-        this.writerMode = writerMode;
-    }
-
     // ------------------------------------------------------------------------
 
     @Override
     public void open(Configuration parameters) throws Exception {
         initializeInternalWriter();
         writer.open();
-        log.info("Initialized Pravega writer for stream: {}/{} with controller URI: {}", scopeName,
-                streamName, controllerURI);
+        log.info("Initialized Pravega writer for stream: {} with controller URI: {}", stream,
+                clientConfig.getControllerURI());
     }
 
     @Override
@@ -255,8 +217,8 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
 
     @VisibleForTesting
-    protected ClientFactory createClientFactory(String scopeName, URI controllerURI) {
-        return ClientFactory.withScope(scopeName, controllerURI);
+    protected ClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
+        return ClientFactory.withScope(scopeName, clientConfig);
     }
 
     @VisibleForTesting
@@ -285,7 +247,7 @@ public class FlinkPravegaWriter<T>
             throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
         }
 
-        this.clientFactory = createClientFactory(scopeName, controllerURI);
+        this.clientFactory = createClientFactory(stream.getScope(), clientConfig);
         this.writer = createInternalWriter();
     }
 
@@ -295,6 +257,10 @@ public class FlinkPravegaWriter<T>
 
     protected String name() {
         return getRuntimeContext().getTaskNameWithSubtasks();
+    }
+
+    public static <T> FlinkPravegaWriter.Builder<T> builder() {
+        return new Builder<>();
     }
 
     // ------------------------------------------------------------------------
@@ -364,7 +330,7 @@ public class FlinkPravegaWriter<T>
                     .transactionTimeoutTime(txnTimeoutMillis)
                     .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
                     .build();
-            pravegaWriter = clientFactory.createEventWriter(streamName, eventSerializer, writerConfig);
+            pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
 
         abstract void open() throws Exception;
@@ -466,7 +432,9 @@ public class FlinkPravegaWriter<T>
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
 
             // store all pending transactions in the checkpoint state
-            return txnsPendingCommit.stream().map(v -> new PendingTransaction(v.transaction().getTxnId(), scopeName, streamName)).collect(Collectors.toList());
+            return txnsPendingCommit.stream()
+                    .map(v -> new PendingTransaction(v.transaction().getTxnId(), stream.getScope(), stream.getStreamName()))
+                    .collect(Collectors.toList());
         }
 
         @Override
@@ -567,7 +535,7 @@ public class FlinkPravegaWriter<T>
                         .build();
 
                 try (
-                    ClientFactory restoreClientFactory = createClientFactory(scope, controllerURI);
+                    ClientFactory restoreClientFactory = createClientFactory(scope, clientConfig);
                     EventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
                             eventSerializer,
                             writerConfig);
@@ -764,4 +732,130 @@ public class FlinkPravegaWriter<T>
         }
     }
 
+    // ------------------------------------------------------------------------
+    //  builder
+    // ------------------------------------------------------------------------
+
+    /**
+     * An abstract streaming writer builder.
+     *
+     * The builder is abstracted to act as the base for both the {@link FlinkPravegaWriter} and {@link FlinkPravegaTableSink} builders.
+     *
+     * @param <T> the element type.
+     * @param <B> the builder type.
+     */
+    public abstract static class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
+
+        protected PravegaWriterMode writerMode;
+        protected Time txnTimeout;
+        protected Time txnGracePeriod;
+
+        protected AbstractStreamingWriterBuilder() {
+            writerMode = PravegaWriterMode.ATLEAST_ONCE;
+            txnTimeout = Time.milliseconds(DEFAULT_TXN_TIMEOUT_MILLIS);
+            txnGracePeriod = Time.milliseconds(DEFAULT_TX_SCALE_GRACE_MILLIS);
+        }
+
+        /**
+         * Sets the writer mode to provide at-least-once or exactly-once guarantees.
+         * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
+         */
+        public B withWriterMode(PravegaWriterMode writerMode) {
+            this.writerMode = writerMode;
+            return builder();
+        }
+
+        /**
+         * Sets the transaction timeout.
+         *
+         * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist events to the Pravega stream.
+         * The timeout refers to the maximum amount of time that a transaction may remain uncommitted, after which the
+         * transaction will be aborted.  The default timeout is 2 hours.
+         *
+         * @param timeout the timeout
+         */
+        public B withTxnTimeout(Time timeout) {
+            Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
+            this.txnTimeout = timeout;
+            return builder();
+        }
+
+        /**
+         * Sets the transaction grace period.
+         *
+         * The grace period is the maximum amount of time for which a transaction may
+         * remain active, after a scale operation has been initiated on the underlying stream.
+         *
+         * @param timeout the timeout
+         */
+        public B withTxnGracePeriod(Time timeout) {
+            Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
+            this.txnGracePeriod = timeout;
+            return builder();
+        }
+
+        /**
+         * Creates the sink function for the current builder state.
+         *
+         * @param serializationSchema the deserialization schema to use.
+         * @param eventRouter the event router to use.
+         */
+        FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+            Preconditions.checkNotNull(serializationSchema, "serializationSchema");
+            Preconditions.checkNotNull(eventRouter, "eventRouter");
+            return new FlinkPravegaWriter<>(
+                    getPravegaConfig().getClientConfig(),
+                    resolveStream(),
+                    serializationSchema,
+                    eventRouter,
+                    writerMode,
+                    txnTimeout.toMilliseconds(),
+                    txnGracePeriod.toMilliseconds());
+        }
+    }
+
+    /**
+     * A builder for {@link FlinkPravegaWriter}.
+     *
+     * @param <T> the element type.
+     */
+    public static class Builder<T> extends AbstractStreamingWriterBuilder<T, Builder<T>> {
+
+        private SerializationSchema<T> serializationSchema;
+
+        private PravegaEventRouter<T> eventRouter;
+
+        protected Builder<T> builder() {
+            return this;
+        }
+
+        /**
+         * Sets the serialization schema.
+         *
+         * @param serializationSchema The serialization schema
+         */
+        public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
+            this.serializationSchema = serializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the event router.
+         *
+         * @param eventRouter the event router which produces a key per event.
+         */
+        public Builder<T> withEventRouter(PravegaEventRouter<T> eventRouter) {
+            this.eventRouter = eventRouter;
+            return builder();
+        }
+
+        /**
+         * Builds the {@link FlinkPravegaWriter}.
+         */
+        public FlinkPravegaWriter<T> build() {
+            Preconditions.checkState(eventRouter != null, "Event router must be supplied.");
+            Preconditions.checkState(serializationSchema != null, "Serialization schema must be supplied.");
+            return createSinkFunction(serializationSchema, eventRouter);
+        }
+    }
 }

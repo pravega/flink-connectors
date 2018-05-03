@@ -11,7 +11,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
 
 import lombok.Data;
@@ -125,8 +124,11 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
         // write the table to a Pravega stream (using the 'category' column as a routing key)
-        FlinkPravegaTableSink sink = new FlinkPravegaTableSink(
-                this.setupUtils.getControllerUri(), stream, JsonRowSerializationSchema::new, "category");
+        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withRoutingKeyField("category")
+                .build();
         table.writeToSink(sink);
 
         // register the Pravega stream as a table called 'samples'
@@ -187,8 +189,11 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
 
         // write the table to a Pravega stream (using the 'category' column as a routing key)
-        FlinkPravegaTableSink sink = new FlinkPravegaTableSink(
-                this.setupUtils.getControllerUri(), stream, JsonRowSerializationSchema::new, "category");
+        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withRoutingKeyField("category")
+                .build();
         table.writeToSink(sink);
 
         // register the Pravega stream as a table called 'samples'
