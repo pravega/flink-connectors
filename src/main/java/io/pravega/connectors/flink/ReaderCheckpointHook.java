@@ -81,7 +81,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // (we should change that by adding a shutdown() method to these hooks)
         // ths shutdown 
 
-        final ScheduledExecutorService scheduledExecutorService = Executors.newSingleThreadScheduledExecutor();
+        final ScheduledExecutorService scheduledExecutorService = createScheduledExecutorService();
 
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
@@ -113,6 +113,10 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     // ------------------------------------------------------------------------
     //  utils
     // ------------------------------------------------------------------------
+
+    protected ScheduledExecutorService createScheduledExecutorService() {
+        return Executors.newSingleThreadScheduledExecutor();
+    }
 
     static long parseCheckpointId(String checkpointName) {
         checkArgument(checkpointName.startsWith(PRAVEGA_CHECKPOINT_NAME_PREFIX));

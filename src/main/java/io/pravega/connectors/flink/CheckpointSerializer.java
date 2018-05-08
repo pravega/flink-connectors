@@ -14,6 +14,7 @@ import org.apache.commons.lang3.SerializationUtils;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * Simple serializer for {@link Checkpoint} objects.
@@ -23,7 +24,7 @@ import java.io.IOException;
  */
 class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
 
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     @Override
     public int getVersion() {
@@ -32,7 +33,10 @@ class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
 
     @Override
     public byte[] serialize(Checkpoint checkpoint) throws IOException {
-        return SerializationUtils.serialize(checkpoint);
+        ByteBuffer buf = checkpoint.toBytes();
+        byte[] b = new byte[buf.remaining()];
+        buf.get(b);
+        return b;
     }
 
     @Override
@@ -40,7 +44,6 @@ class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
         if (version != VERSION) {
             throw new IOException("Invalid format version for serialized Pravega Checkpoint: " + version);
         }
-
-        return (Checkpoint) SerializationUtils.deserialize(bytes);
+        return Checkpoint.fromBytes(ByteBuffer.wrap(bytes));
     }
 }
