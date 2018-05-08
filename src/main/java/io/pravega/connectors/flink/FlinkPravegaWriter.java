@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -80,6 +81,7 @@ public class FlinkPravegaWriter<T>
     final PravegaEventRouter<T> eventRouter;
 
     // The destination stream.
+    @SuppressFBWarnings("SE_BAD_FIELD")
     final Stream stream;
 
     // Various timeouts
