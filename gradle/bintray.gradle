@@ -7,6 +7,10 @@ apply plugin: 'maven'
 bintray {
     user = System.getProperty('BINTRAY_USER')
     key  = System.getProperty('BINTRAY_KEY')
+    if (user == null && key == null) {
+        user = System.getenv("BINTRAY_USER")
+        key = System.getenv("BINTRAY_KEY")
+    }
     pkg {
         repo = "${bintrayRepoName}"
         name = "${bintrayPackageName}"
