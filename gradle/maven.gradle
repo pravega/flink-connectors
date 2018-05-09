@@ -38,6 +38,10 @@ uploadShadow {
                     repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
                         def bintrayUser = System.getProperty('BINTRAY_USER')
                         def bintrayKey = System.getProperty('BINTRAY_KEY')
+                        if (bintrayUser == null && bintrayKey == null) {
+                            bintrayUser = System.getenv("BINTRAY_USER")
+                            bintrayKey = System.getenv("BINTRAY_KEY")
+                        }
                         authentication(userName: bintrayUser, password: bintrayKey)
                     }
                 }
