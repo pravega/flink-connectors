@@ -383,7 +383,7 @@ public class FlinkPravegaReader<T>
             if (this.readerGroupRefreshTime != null) {
                 rgConfigBuilder.groupRefreshTimeMillis(this.readerGroupRefreshTime.toMilliseconds());
             }
-            resolveStreams().forEach(s -> rgConfigBuilder.stream(s.getStream(), s.getFrom() /*, s.getTo() */));
+            resolveStreams().forEach(s -> rgConfigBuilder.stream(s.getStream(), s.getFrom(), s.getTo()));
             final ReaderGroupConfig rgConfig = rgConfigBuilder.build();
 
             // rgScope

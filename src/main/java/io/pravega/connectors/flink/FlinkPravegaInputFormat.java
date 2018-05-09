@@ -124,11 +124,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
             BatchClient batchClient = clientFactory.createBatchClient();
 
             for (StreamWithBoundaries stream : streams) {
-                // ISSUE: pravega/pravega#2518
-                StreamCut from = !stream.getFrom().equals(StreamCut.UNBOUNDED) ? stream.getFrom() : null;
-                StreamCut to = !stream.getTo().equals(StreamCut.UNBOUNDED) ? stream.getTo() : null;
                 Iterator<SegmentRange> segmentRangeIterator =
-                        batchClient.getSegments(stream.getStream(), from, to).getIterator();
+                        batchClient.getSegments(stream.getStream(), stream.getFrom(), stream.getTo()).getIterator();
                 while (segmentRangeIterator.hasNext()) {
                     splits.add(new PravegaInputSplit(splits.size(), segmentRangeIterator.next()));
                 }
