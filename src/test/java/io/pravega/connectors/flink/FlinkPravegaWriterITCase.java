@@ -28,9 +28,9 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Assert;
-import org.junit.BeforeClass;
+import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -54,35 +54,36 @@ public class FlinkPravegaWriterITCase {
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
 
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
-
     // Ensure each test completes within 120 seconds.
     @Rule
     public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
-    @BeforeClass
-    public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
+    // Setup utility.
+    protected SetupUtils setupUtils;
+
+    @Before
+    public void setup() throws Exception {
+        setupUtils = new SetupUtils();
+        setupUtils.startAllServices();
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
-        SETUP_UTILS.stopAllServices();
+    @After
+    public void tearDown() throws Exception {
+        setupUtils.stopAllServices();
     }
 
     @Test
     public void testEventTimeOrderedWriter() throws Exception {
         StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment();
 
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), "testEventTimeOrderedWriter");
-        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
+        Stream stream = Stream.of(setupUtils.getScope(), "testEventTimeOrderedWriter");
+        setupUtils.createTestStream(stream.getStreamName(), 1);
 
         DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE));
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(setupUtils.getPravegaConfig())
                 .forStream(stream)
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
@@ -108,13 +109,13 @@ public class FlinkPravegaWriterITCase {
 
         // Write the end marker.
         @Cleanup
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+        EventStreamWriter<Integer> eventWriter = setupUtils.getIntegerWriter(streamName);
         eventWriter.writeEvent("fixedkey", streamEndMarker);
         eventWriter.flush();
 
         // Read all data from the stream.
         @Cleanup
-        EventStreamReader<Integer> consumer = SETUP_UTILS.getIntegerReader(streamName);
+        EventStreamReader<Integer> consumer = setupUtils.getIntegerReader(streamName);
         List<Integer> elements = new ArrayList<>();
         while (true) {
             Integer event = consumer.readNextEvent(1000).getEvent();
@@ -135,7 +136,7 @@ public class FlinkPravegaWriterITCase {
     public void testAtLeastOnceWriter() throws Exception {
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 1);
+        setupUtils.createTestStream(streamName, 1);
 
         StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment()
                 .setParallelism(1)
@@ -147,7 +148,7 @@ public class FlinkPravegaWriterITCase {
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(setupUtils.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -183,7 +184,7 @@ public class FlinkPravegaWriterITCase {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 4);
+        setupUtils.createTestStream(streamName, 4);
 
         // launch the Flink program that writes and has a failure during writing, to
         // make sure that this does not introduce any duplicates
@@ -195,7 +196,7 @@ public class FlinkPravegaWriterITCase {
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(setupUtils.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -212,7 +213,7 @@ public class FlinkPravegaWriterITCase {
 
         // validate the written data - no duplicates within the first numElements events
 
-        try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
+        try (EventStreamReader<Integer> reader = setupUtils.getIntegerReader(streamName)) {
             final BitSet duplicateChecker = new BitSet();
 
             for (int numElementsRemaining = numElements; numElementsRemaining > 0;) {
