@@ -34,8 +34,8 @@ public class StreamWithBoundaries implements Serializable {
 
     public static StreamWithBoundaries of(Stream stream, StreamCut from, StreamCut to) {
         Preconditions.checkNotNull(stream, "stream");
-        Preconditions.checkNotNull(stream, "from");
-        Preconditions.checkNotNull(stream, "to");
+        Preconditions.checkNotNull(from, "from");
+        Preconditions.checkNotNull(to, "to");
         return new StreamWithBoundaries(stream, from, to);
     }
 }

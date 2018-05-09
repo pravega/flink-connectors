@@ -79,6 +79,7 @@ public class ReaderCheckpointHookTest {
     }
 
     @Test
+    @SuppressWarnings("deprecation")
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1));
