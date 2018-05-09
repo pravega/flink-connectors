@@ -1,0 +1,84 @@
+import java.text.SimpleDateFormat
+
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+apply plugin: 'maven'
+
+bintray {
+    user = System.getProperty('bintray.user')
+    key  = System.getProperty('bintray.key')
+    pkg {
+        repo = "${bintrayRepoName}"
+        name = "${bintrayPackageName}"
+        userOrg = "${bintrayOrgName}"
+        licenses = ['Apache-2.0']
+        publish = "${autoPublish}"
+        vcsUrl = 'https://github.com/pravega/flink-connectors.git'
+        version {
+            desc = 'Flink Pravega Connector Artifacts'
+            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZZ")
+            released = sdf.format(new Date())
+
+            gpg {
+                sign = true
+            }
+        }
+    }
+    publications = ['bintrayPublication']
+}
+
+def pomConfig = {
+    name "Pravega Flink Connectors"
+    url "http://pravega.io"
+    description "Streaming Storage Platform"
+    scm {
+        url 'https://github.com/pravega/flink-connectors/tree/master'
+        connection 'scm:git:git://github.com/pravega/flink-connectors.git'
+        developerConnection 'scm:git:https://github.com/pravega/flink-connectors.git'
+    }
+    licenses {
+        license {
+            name 'The Apache License, Version 2.0'
+            url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+        }
+    }
+    developers {
+        developer {
+            id 'fpj'
+            name 'Flavio Junqueira'
+        }
+    }
+}
+
+task publishToBintray (dependsOn: 'bintrayUpload') {
+    publishing {
+        publications {
+            bintrayPublication(MavenPublication) { publication ->
+
+                artifactId "${artifactsBaseName}"
+                project.shadow.component(publication)
+                artifact sourceJar
+                artifact javadocJar
+
+                pom.withXml { xml ->
+
+                    def root = xml.asNode()
+
+                    def dependenciesNode = asNode().getAt("dependencies")[0]
+                    project.configurations.shadowOnly.allDependencies.each { dep ->
+                        if (!(dep instanceof SelfResolvingDependency)) {
+                            def dependencyNode = dependenciesNode.appendNode('dependency')
+                            dependencyNode.appendNode('groupId', dep.group)
+                            dependencyNode.appendNode('artifactId', dep.name)
+                            dependencyNode.appendNode('version', dep.version)
+                            dependencyNode.appendNode('scope', 'provided')
+                        }
+                    }
+
+                    root.children().last() + pomConfig
+                }
+
+            }
+        }
+    }
+}

@@ -8,12 +8,15 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 language: java
+install: true
 jdk:
   - oraclejdk8
 env:
   global:
     - GRADLE_OPTS="-Xms128m"
     - ORG_GRADLE_PROJECT_logOutput=true
+    - secure: "Gsyetih5FgHl9irSYNsIYapV2H6OjqvJ4vEfyfJKgBY8aobbU3x3Rl+R0HlMI4je89V1d65pp3xSvXmZ5X+eipfwpfAg+nIvJCaDhu95ymqd0HxnPbpFcY6JhaTkku49Ffbt6y26nRfyj9HafOqvP4WZ7DZRzcO4DVilv+Va61B/e0riACB0S2WLwPwixif1ThIUH79bsf5xZ/iJVcMw+CQV7x8eZetbVwX0ptG7I7nbOCHPB0TPTOEBwnUKjnXoC63x0bpOBD47q3r3VdkkbgeR02b/QxXtVTr8P1fQy4rUDGvr9uM4QtEhe4yHay5o0AH7G/fs10JkHLF1K1IF1DPph72F27svEXRhoBLNm8ogJ1c5nOvbrcgg2kHAP0AATJ3/4fatbuABJ0ps6vpmsM0KImshwmj/hHoxNUfwdoBP44WdjLPSG2IvOHu5QzhcEzMMdBLd51GCbkvng2LtjSBpFDsvtJ2pFocGhltIIVZv1eoiQdPn9IumW1nPePhNOLYVOHSHPHEZSdDG7rCMuTH3efcRwJbtbBiUWxzeaLZAQYWCb/zHnMuWNS0V2OFHpIQs+2OzuY93sq7OLLHNSG9pmoI8swGx0NMvd9Y+6ZUg91hobypKagJSJAAmpxIWbKKwg1ezI63xh14kVrn8ptdXDc0hkbcriu6k694R13c="
+    - secure: "KebuOFCj2cGsh0JCsMXlnOYwqUcbgnIjXFXOfFVWNuk3rMj+bydZRFISljy7kHFjmi3+KWg+lq6Oys+V/xRUwOyOpCrDrV9TkFue6Q90yiFjVXHsFWcZLfhBQ8+oi09Knxtl67BxgElV8/ezVP/6Z8aIrQxHrG3eZ6Xs6JzmbticSB+Nths/urPLDTnuFk7TSqjBi7MiuWXSbObO5bPdUn+3wyzGVn220kVqHgqloEoOQC0uzQCigbJLGXvEeSIarM5MLiNsx2V5/KR0hwL7KF1MIwC1nwqgalkkH++aKm596LVy62+/ML+Va2npsdEdnKaxL7jbuZk/9JZDdmvTzIIofVfcGvr7YxAI9f7jrUtR6uCaymZKp/bnMEBQfgWZh2ll85P3br1O4oPuJJRSADqFsfla6SFdPr8vZBFijyPsF6MQXHPo4bIL28TNbJRUqzZYRdjhsQFhPoJC7bazv1ApU87pKlUdKkjAYBFUMHpoBcaJx8+HgGgsWUToZEvNioiJMgP7nCnAZGmlcYv0b5HJW9r8s9dAYgmZWrtJYp9CUrBji+Zw8Oh5oroUIrWTULed0uEmbs/VQvMsJMN6qzd+96OtjQ1tCFTKiwXA4zEXBhMQU/R1MnE7dVRLxuW4l/BNDq3SxiX9aDNYm75YsK6rtg13i0SrB/WtoX0IXL0="
 
 sudo: required
 
@@ -25,7 +28,19 @@ cache:
   - .gradle
   - $HOME/.gradle
   - $HOME/.m2
-  
+
+stages:
+  - name: build
+  - name: snapshot
+    if: branch = issue-119
+
+jobs:
+  include:
+    - stage: build
+      script: ./gradlew clean assemble
+    - stage: snapshot
+      script: ./gradlew clean assemble publishToRepo -PpublishUrl=jcenterSnapshot
+
 notifications:
   slack:
     matrix:

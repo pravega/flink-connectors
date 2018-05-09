@@ -15,11 +15,12 @@ buildscript {
     }
     dependencies {
         classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
     }
 }
 
 group = "io.pravega"
-version = connectorVersion
+version = getProjectVersion()
 
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
@@ -28,6 +29,7 @@ apply from: 'gradle/checkstyle.gradle'
 apply from: 'gradle/findbugs.gradle'
 apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
+apply from: 'gradle/bintray.gradle'
 
 repositories {
     mavenLocal()
@@ -137,4 +139,13 @@ javadoc {
     title = "Pravega Flink Connector"
     failOnError = false
     exclude "**/impl/**";
+}
+
+def getProjectVersion() {
+    def stdout = new ByteArrayOutputStream()
+    exec {
+        commandLine "./version.sh", project
+        standardOutput = stdout
+    }
+    return stdout.toString().trim()
 }
