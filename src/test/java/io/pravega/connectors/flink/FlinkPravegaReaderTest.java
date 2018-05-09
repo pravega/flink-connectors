@@ -232,22 +232,28 @@ public class FlinkPravegaReaderTest {
     public void testGenerateUid() {
         TestableStreamingReaderBuilder builder1 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT);
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
         String uid1 = builder1.generateUid();
 
         TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED)
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
         TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT2);
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT2, StreamCut.UNBOUNDED);
         String uid3 = builder3.generateUid();
+
+        TestableStreamingReaderBuilder builder4 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2);
+        String uid4 = builder4.generateUid();
 
         assertEquals(uid1, uid2);
         assertNotEquals(uid1, uid3);
+        assertNotEquals(uid1, uid4);
     }
 
     // endregion

@@ -415,7 +415,11 @@ public class FlinkPravegaReader<T>
         String generateUid() {
             StringBuilder sb = new StringBuilder();
             sb.append(readerGroupScope).append('\n');
-            resolveStreams().forEach(s -> sb.append(s.getStream().getScopedName()).append('/').append(s.getFrom()).append('/').append(s.getTo()).append('\n'));
+            resolveStreams().forEach(s -> sb
+                    .append(s.getStream().getScopedName())
+                    .append('/').append(s.getFrom().hashCode())
+                    .append('/').append(s.getTo().hashCode())
+                    .append('\n'));
             return Integer.toString(sb.toString().hashCode());
         }
     }

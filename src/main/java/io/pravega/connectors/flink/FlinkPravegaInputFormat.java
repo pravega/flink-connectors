@@ -18,7 +18,6 @@ import io.pravega.client.batch.BatchClient;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.stream.Serializer;
-import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
