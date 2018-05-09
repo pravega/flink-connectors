@@ -5,8 +5,8 @@ apply plugin: 'maven-publish'
 apply plugin: 'maven'
 
 bintray {
-    user = System.getProperty('bintray.user')
-    key  = System.getProperty('bintray.key')
+    user = System.getProperty('BINTRAY_USER')
+    key  = System.getProperty('BINTRAY_KEY')
     pkg {
         repo = "${bintrayRepoName}"
         name = "${bintrayPackageName}"
