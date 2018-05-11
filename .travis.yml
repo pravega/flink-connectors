@@ -11,6 +11,9 @@ language: java
 install: true
 jdk:
   - oraclejdk8
+
+# the secure configurations in env: section is for BINTRAY_USER=<USER> and BINTRAY_KEY=<KEY> properties
+# which will be used for publishing artifacts to snapshot repository
 env:
   global:
     - GRADLE_OPTS="-Xms128m"

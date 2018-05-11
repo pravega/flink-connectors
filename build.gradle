@@ -16,11 +16,9 @@ buildscript {
     dependencies {
         classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
+        classpath "org.ajoberstar:gradle-git:${gradleGitPluginVersion}"
     }
 }
-
-group = "io.pravega"
-version = getProjectVersion()
 
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
@@ -30,6 +28,10 @@ apply from: 'gradle/findbugs.gradle'
 apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
 apply from: 'gradle/bintray.gradle'
+apply plugin: 'org.ajoberstar.grgit'
+
+group = "io.pravega"
+version = getProjectVersion()
 
 repositories {
     mavenLocal()
@@ -142,10 +144,13 @@ javadoc {
 }
 
 def getProjectVersion() {
-    def stdout = new ByteArrayOutputStream()
-    exec {
-        commandLine "./version.sh", project
-        standardOutput = stdout
+    String ver = connectorVersion
+    if (ver.contains("-SNAPSHOT")) {
+        String versionLabel = ver.substring(0, ver.indexOf("-SNAPSHOT"))
+        def count = grgit.log(includes:['HEAD']).size()
+        def commitId = "${grgit.head().abbreviatedId}"
+        int curTime = new Date().getTime()/1000
+        ver = versionLabel + "-" + count + "." + commitId + "-" + curTime + "-SNAPSHOT"
     }
-    return stdout.toString().trim()
+    return ver
 }
