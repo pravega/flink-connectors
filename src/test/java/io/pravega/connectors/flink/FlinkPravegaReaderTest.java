@@ -323,7 +323,7 @@ public class FlinkPravegaReaderTest {
     /**
      * A reader subclass for test purposes.
      */
-    private static class TestableStreamingReaderBuilder extends FlinkPravegaReader.AbstractStreamingReaderBuilder<Integer, TestableStreamingReaderBuilder> {
+    private static class TestableStreamingReaderBuilder extends AbstractStreamingReaderBuilder<Integer, TestableStreamingReaderBuilder> {
         @Override
         protected TestableStreamingReaderBuilder builder() {
             return this;

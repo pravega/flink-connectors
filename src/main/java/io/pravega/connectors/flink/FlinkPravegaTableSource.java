@@ -101,8 +101,8 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
      * @param <T> the table source type.
      * @param <B> the builder type.
      */
-    public abstract static class BuilderBase<T extends FlinkPravegaTableSource, B extends FlinkPravegaReader.AbstractStreamingReaderBuilder>
-            extends FlinkPravegaReader.AbstractStreamingReaderBuilder<Row, B> {
+    public abstract static class BuilderBase<T extends FlinkPravegaTableSource, B extends AbstractStreamingReaderBuilder>
+            extends AbstractStreamingReaderBuilder<Row, B> {
 
         private TableSchema schema;
 
@@ -131,6 +131,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
 
         /**
          * Applies a configuration to the table source.
+         *
          * @param source the table source.
          */
         protected void configureTableSource(T source) {

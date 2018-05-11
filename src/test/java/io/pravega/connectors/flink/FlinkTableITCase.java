@@ -94,7 +94,7 @@ public class FlinkTableITCase {
     }
 
     /**
-     * Tests the end-to-end functionality of a streaming table source & sink.
+     * Tests the end-to-end functionality of a streaming table source and sink.
      *
      * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
      * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).
@@ -157,7 +157,7 @@ public class FlinkTableITCase {
 
 
     /**
-     * Tests the end-to-end functionality of a batch table source & sink.
+     * Tests the end-to-end functionality of a batch table source and sink.
      *
      * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
      * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).

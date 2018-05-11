@@ -143,7 +143,7 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      * @param <B> the builder type.
      */
     @Internal
-    public abstract static class AbstractTableSinkBuilder<B extends AbstractTableSinkBuilder> extends FlinkPravegaWriter.AbstractStreamingWriterBuilder<Row, B> {
+    public abstract static class AbstractTableSinkBuilder<B extends AbstractTableSinkBuilder> extends AbstractStreamingWriterBuilder<Row, B> {
 
         private String routingKeyFieldName;
 

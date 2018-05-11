@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 
 /**
  * A base builder for connectors that consume a Pravega stream.
+ *
  * @param <B> the builder class.
  */
 public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> implements Serializable {
@@ -41,6 +42,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
      * Set the Pravega client configuration, which includes connection info, security info, and a default scope.
      *
      * The default client configuration is obtained from {@code PravegaConfig.fromDefaults()}.
+     *
      * @param pravegaConfig the configuration to use.
      */
     public B withPravegaConfig(PravegaConfig pravegaConfig) {
@@ -50,6 +52,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the given start position in the stream.
+     *
      * @param streamSpec the unqualified or qualified name of the stream.
      * @param startStreamCut Start {@link StreamCut}
      * @return A builder to configure and create a reader.
@@ -60,6 +63,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the given start position in the stream.
+     *
      * @param streamSpec the unqualified or qualified name of the stream.
      * @param startStreamCut Start {@link StreamCut}
      * @param endStreamCut End {@link StreamCut}
@@ -72,6 +76,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the earliest available position in the stream.
+     *
      * @param streamSpec the unqualified or qualified name of the stream.
      * @return A builder to configure and create a reader.
      */
@@ -81,6 +86,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the given start position in the stream.
+     *
      * @param stream Stream.
      * @param startStreamCut Start {@link StreamCut}
      * @return A builder to configure and create a reader.
@@ -91,6 +97,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the given start position in the stream to the given end position.
+     *
      * @param stream Stream.
      * @param startStreamCut Start {@link StreamCut}
      * @param endStreamCut End {@link StreamCut}
@@ -103,6 +110,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Add a stream to be read by the source, from the earliest available position in the stream.
+     *
      * @param stream Stream.
      * @return A builder to configure and create a reader.
      */

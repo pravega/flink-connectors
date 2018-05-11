@@ -29,8 +29,8 @@ import java.util.Properties;
  */
 public class PravegaConfig implements Serializable {
 
-    public static final PravegaParameter CONTROLLER_PARAM = new PravegaParameter("controller", "pravega.controller.uri", "PRAVEGA_CONTROLLER_URI");
-    public static final PravegaParameter SCOPE_PARAM = new PravegaParameter("scope", "pravega.scope", "PRAVEGA_SCOPE");
+    static final PravegaParameter CONTROLLER_PARAM = new PravegaParameter("controller", "pravega.controller.uri", "PRAVEGA_CONTROLLER_URI");
+    static final PravegaParameter SCOPE_PARAM = new PravegaParameter("scope", "pravega.scope", "PRAVEGA_SCOPE");
 
     private static final long serialVersionUID = 1L;
 
@@ -45,10 +45,18 @@ public class PravegaConfig implements Serializable {
         this.defaultScope = SCOPE_PARAM.resolve(params, properties, env).orElse(null);
     }
 
+    /**
+     * Gets a configuration based on defaults obtained from the local environment.
+     */
     public static PravegaConfig fromDefaults() {
         return new PravegaConfig(System.getProperties(), System.getenv(), ParameterTool.fromMap(Collections.emptyMap()));
     }
 
+    /**
+     * Gets a configuration based on defaults obtained from the local environment plus the given program parameters.
+     *
+     * @param params the parameters to use.
+     */
     public static PravegaConfig fromParams(ParameterTool params) {
         return new PravegaConfig(System.getProperties(), System.getenv(), params);
     }
@@ -101,6 +109,7 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Configures the Pravega controller RPC URI.
+     *
      * @param controllerURI The URI.
      */
     public PravegaConfig withControllerURI(URI controllerURI) {
@@ -110,6 +119,7 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.
+     *
      * @param scope The scope to use.
      */
     public PravegaConfig withDefaultScope(String scope) {
@@ -129,11 +139,21 @@ public class PravegaConfig implements Serializable {
 
     // region Security
 
+    /**
+     * Configures the Pravega credentials to use.
+     *
+     * @param credentials a credentials object.
+     */
     public PravegaConfig withCredentials(Credentials credentials) {
         this.credentials = credentials;
         return this;
     }
 
+    /**
+     * Enables or disables TLS hostname validation (default: true).
+     *
+     * @param validateHostname a boolean indicating whether to validate the hostname on incoming requests.
+     */
     public PravegaConfig withHostnameValidation(boolean validateHostname) {
         this.validateHostname = validateHostname;
         return this;
