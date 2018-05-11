@@ -36,13 +36,13 @@ uploadShadow {
                 }
                 else if (publishUrl == "jcenterSnapshot") {
                     repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
-                        def bintrayUser = System.getProperty('BINTRAY_USER')
-                        def bintrayKey = System.getProperty('BINTRAY_KEY')
-                        if (bintrayUser == null && bintrayKey == null) {
-                            bintrayUser = System.getenv("BINTRAY_USER")
-                            bintrayKey = System.getenv("BINTRAY_KEY")
+                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        } else {
+                            def bintrayUser = System.getenv("BINTRAY_USER")
+                            def bintrayKey = System.getenv("BINTRAY_KEY")
+                            authentication(userName: bintrayUser, password: bintrayKey)
                         }
-                        authentication(userName: bintrayUser, password: bintrayKey)
                     }
                 }
                 else {

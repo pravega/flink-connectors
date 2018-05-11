@@ -14,7 +14,7 @@ compileJava {
     ])
 }
 
-archivesBaseName = "${artifactsBaseName}"
+archivesBaseName = "pravega-connectors-flink_2.11"
 
 assemble.dependsOn(shadowJar)
 
