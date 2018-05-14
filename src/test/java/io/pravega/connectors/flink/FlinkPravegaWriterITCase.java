@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
@@ -23,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -73,18 +75,18 @@ public class FlinkPravegaWriterITCase {
     public void testEventTimeOrderedWriter() throws Exception {
         StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment();
 
-        String streamName = "testEventTimeOrderedWriter";
-        SETUP_UTILS.createTestStream(streamName, 1);
+        Stream stream = Stream.of(SETUP_UTILS.getScope(), "testEventTimeOrderedWriter");
+        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
 
         DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE));
 
-        FlinkPravegaWriter<Integer> pravegaSink = new FlinkPravegaWriter<>(
-                SETUP_UTILS.getControllerUri(),
-                SETUP_UTILS.getScope(),
-                streamName,
-                new IntSerializer(),
-                event -> "fixedkey");
+        FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .forStream(stream)
+                .withSerializationSchema(new IntSerializer())
+                .withEventRouter(event -> "fixedkey")
+                .build();
 
         FlinkPravegaUtils.writeToPravegaInEventTimeOrder(dataStream, pravegaSink, 1);
         Assert.assertNotNull(execEnv.getExecutionPlan());
@@ -143,13 +145,13 @@ public class FlinkPravegaWriterITCase {
         DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(true, EVENT_COUNT_PER_SOURCE));
 
-        FlinkPravegaWriter<Integer> pravegaSink = new FlinkPravegaWriter<>(
-                SETUP_UTILS.getControllerUri(),
-                SETUP_UTILS.getScope(),
-                streamName,
-                new IntSerializer(),
-                event -> "fixedkey");
-        pravegaSink.setPravegaWriterMode(PravegaWriterMode.ATLEAST_ONCE);
+        FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
+                .forStream(streamName)
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withSerializationSchema(new IntSerializer())
+                .withEventRouter(event -> "fixedkey")
+                .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
+                .build();
         dataStream.addSink(pravegaSink).setParallelism(2);
 
         execEnv.execute();
@@ -191,20 +193,20 @@ public class FlinkPravegaWriterITCase {
                 .enableCheckpointing(100);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        FlinkPravegaWriter<Integer> pravegaWriter = new FlinkPravegaWriter<>(
-                SETUP_UTILS.getControllerUri(),
-                SETUP_UTILS.getScope(),
-                streamName,
-                new IntSerializer(),
-                event -> "fixedkey",
-                30 * 1000,  // 30 secs timeout
-                30 * 1000);
-        pravegaWriter.setPravegaWriterMode(PravegaWriterMode.EXACTLY_ONCE);
+        FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
+                .forStream(streamName)
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withSerializationSchema(new IntSerializer())
+                .withEventRouter(event -> "fixedkey")
+                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withTxnTimeout(Time.seconds(30))
+                .withTxnGracePeriod(Time.seconds(30))
+                .build();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(numElements))
                 .map(new FailingMapper<>(numElements / 2))
-                .addSink(pravegaWriter).setParallelism(2);
+                .addSink(pravegaSink).setParallelism(2);
 
         env.execute();
 

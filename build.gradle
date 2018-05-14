@@ -84,6 +84,8 @@ test {
 }
 
 dependencies {
+    compileOnly group: 'com.google.code.findbugs', name: 'annotations', version: findbugsVersion
+
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
 

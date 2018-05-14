@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink.util;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
@@ -23,7 +24,6 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -83,9 +83,9 @@ public class FlinkPravegaUtils {
     /**
      * Creates a Pravga {@link EventStreamReader}.
      *
-     * @param scopeName The destination stream's scope name.
-     * @param controllerURI The Pravega controller endpoint address.
+     * @param clientConfig The Pravega client configuration.
      * @param readerId The id of the Pravega reader.
+     * @param readerGroupScopeName The reader group scope name.
      * @param readerGroupName The reader group name.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      * @param readerConfig The reader configuration.
@@ -93,9 +93,9 @@ public class FlinkPravegaUtils {
      * @return the create Pravega reader.
      */
     public static <T> EventStreamReader<T> createPravegaReader(
-            String scopeName,
-            URI controllerURI,
+            ClientConfig clientConfig,
             String readerId,
+            String readerGroupScopeName,
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
             ReaderConfig readerConfig) {
@@ -106,7 +106,7 @@ public class FlinkPravegaUtils {
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
                 : new FlinkDeserializer<>(deserializationSchema);
 
-        return ClientFactory.withScope(scopeName, controllerURI)
+        return ClientFactory.withScope(readerGroupScopeName, clientConfig)
                 .createReader(readerId, readerGroupName, deserializer, readerConfig);
     }
 
