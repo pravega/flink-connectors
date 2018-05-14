@@ -35,7 +35,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -52,15 +51,15 @@ import static org.junit.Assert.assertNull;
 @Slf4j
 public class FlinkPravegaWriterITCase {
 
+    // Setup utility.
+    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
+
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
 
     // Ensure each test completes within 120 seconds.
     @Rule
     public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     @BeforeClass
     public static void setup() throws Exception {

@@ -37,15 +37,15 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase {
 
+    // Setup utility.
+    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
+
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
 
     //Ensure each test completes within 120 seconds.
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     @BeforeClass
     public static void setupPravega() throws Exception {
