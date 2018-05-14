@@ -60,8 +60,8 @@ public final class SetupUtils {
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    private static boolean enableAuth = false;
-    private static boolean enableTls = false;
+    private boolean enableAuth = false;
+    private boolean enableTls = false;
 
     // The test Scope name.
     @Getter
@@ -251,7 +251,7 @@ public final class SetupUtils {
         ClientConfig getClientConfig();
     }
 
-    static class InProcPravegaGateway implements PravegaGateway {
+    class InProcPravegaGateway implements PravegaGateway {
 
         // The pravega cluster.
         private InProcPravegaCluster inProcPravegaCluster = null;
