@@ -23,10 +23,10 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
-import org.junit.Before;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Rule;
+import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.util.concurrent.TimeUnit;
@@ -45,17 +45,16 @@ public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase 
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     // Setup utility.
-    protected SetupUtils setupUtils = new SetupUtils();
+    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
-    @Before
-    public void setupPravega() throws Exception {
-        setupUtils = new SetupUtils();
-        setupUtils.startAllServices();
+    @BeforeClass
+    public static void setupPravega() throws Exception {
+        SETUP_UTILS.startAllServices();
     }
 
-    @After
-    public void tearDownPravega() throws Exception {
-        setupUtils.stopAllServices();
+    @AfterClass
+    public static void tearDownPravega() throws Exception {
+        SETUP_UTILS.stopAllServices();
     }
 
     @Test
@@ -80,17 +79,17 @@ public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase 
     }
 
 
-    private void runTest(
+    private static void runTest(
             final int sourceParallelism,
             final int numPravegaSegments,
             final int numElements) throws Exception {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        setupUtils.createTestStream(streamName, numPravegaSegments);
+        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = setupUtils.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -126,7 +125,7 @@ public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase 
             // the Pravega reader
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                     .forStream(streamName)
-                    .withPravegaConfig(setupUtils.getPravegaConfig())
+                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 
