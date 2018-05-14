@@ -12,16 +12,16 @@ package io.pravega.connectors.flink;
 
 import com.google.common.base.Preconditions;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.batch.BatchClient;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
-import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
-import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
+import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
@@ -32,11 +32,9 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.core.io.InputSplitAssigner;
 
 import java.io.IOException;
-import java.net.URI;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Set;
 
 /**
  * A Flink {@link InputFormat} that can be added as a source to read from Pravega in a Flink batch job.
@@ -46,17 +44,19 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     private static final long serialVersionUID = 1L;
 
-    // The supplied event deserializer.
-    private final DeserializationSchema<T> deserializationSchema;
+    private static final String DEFAULT_CLIENT_SCOPE_NAME = "__NOT_USED";
 
-    // The pravega controller endpoint.
-    private final URI controllerURI;
+    // The Pravega client configuration.
+    private final ClientConfig clientConfig;
 
-    // The scope name of the destination stream.
-    private final String scopeName;
+    // The scope name to use to construct the Pravega client.
+    private final String clientScope;
 
     // The names of Pravega streams to read.
-    private final Set<String> streamNames;
+    private final List<StreamWithBoundaries> streams;
+
+    // The supplied event deserializer.
+    private final DeserializationSchema<T> deserializationSchema;
 
     // The factory used to create Pravega clients; closing this will also close all Pravega connections.
     private transient ClientFactory clientFactory;
@@ -70,30 +70,18 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     /**
      * Creates a new Flink Pravega {@link InputFormat} which can be added as a source to a Flink batch job.
      *
-     * <p>The number of created input splits is equivalent to the parallelism of the source. For each input split,
-     * a Pravega reader will be created to read from the specified Pravega streams. Each input split is closed when
-     * the next read event returns {@code null} on {@link EventRead#getEvent()}.
-     *
-     * @param controllerURI         The pravega controller endpoint address.
-     * @param scope                 The destination stream's scope name.
-     * @param streamNames           The list of stream names to read events from.
+     * @param clientConfig          The pravega client configuration.
+     * @param streams               The list of streams to read events from.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      */
-    public FlinkPravegaInputFormat(
-            final URI controllerURI,
-            final String scope,
-            final Set<String> streamNames,
-            final DeserializationSchema<T> deserializationSchema) {
-
-        Preconditions.checkNotNull(controllerURI, "controllerURI");
-        Preconditions.checkNotNull(scope, "scope");
-        Preconditions.checkNotNull(streamNames, "streamNames");
-        Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
-
-        this.controllerURI = controllerURI;
-        this.scopeName = scope;
-        this.deserializationSchema = deserializationSchema;
-        this.streamNames = streamNames;
+    protected FlinkPravegaInputFormat(
+            ClientConfig clientConfig,
+            List<StreamWithBoundaries> streams,
+            DeserializationSchema<T> deserializationSchema) {
+        this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
+        this.clientScope = DEFAULT_CLIENT_SCOPE_NAME;
+        this.streams = Preconditions.checkNotNull(streams, "streams");
+        this.deserializationSchema = Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
     }
 
     // ------------------------------------------------------------------------
@@ -104,7 +92,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     public void openInputFormat() throws IOException {
         super.openInputFormat();
 
-        this.clientFactory = ClientFactory.withScope(scopeName, controllerURI);
+        this.clientFactory = ClientFactory.withScope(clientScope, clientConfig);
         this.batchClient = clientFactory.createBatchClient();
     }
 
@@ -131,20 +119,19 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
         // createInputSplits() is called in the JM, so we have to establish separate
         // short-living connections to Pravega here to retrieve the segments list
-        try (ClientFactory clientFactory = ClientFactory.withScope(scopeName, controllerURI)) {
+        try (ClientFactory clientFactory = ClientFactory.withScope(clientScope, clientConfig)) {
             BatchClient batchClient = clientFactory.createBatchClient();
 
-            for (String stream : streamNames) {
-
+            for (StreamWithBoundaries stream : streams) {
                 Iterator<SegmentRange> segmentRangeIterator =
-                        batchClient.getSegments(Stream.of(scopeName, stream), null, null).getIterator();
+                        batchClient.getSegments(stream.getStream(), stream.getFrom(), stream.getTo()).getIterator();
                 while (segmentRangeIterator.hasNext()) {
-                    splits.add(new PravegaInputSplit(splits.size(),
-                            segmentRangeIterator.next()));
+                    splits.add(new PravegaInputSplit(splits.size(), segmentRangeIterator.next()));
                 }
             }
         }
 
+        log.info("Prepared {} input splits", splits.size());
         return splits.toArray(new PravegaInputSplit[splits.size()]);
     }
 
@@ -182,5 +169,46 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public void close() throws IOException {
         this.segmentIterator.close();
+    }
+
+    /**
+     * Gets a builder {@link FlinkPravegaInputFormat} to read Pravega streams using the Flink batch API.
+     * @param <T> the element type.
+     */
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
+    }
+
+    /**
+     * A builder for {@link FlinkPravegaInputFormat} to read Pravega streams using the Flink batch API.
+     *
+     * @param <T> the element type.
+     */
+    public static class Builder<T> extends AbstractReaderBuilder<FlinkPravegaInputFormat.Builder<T>> {
+
+        private DeserializationSchema<T> deserializationSchema;
+
+        protected Builder<T> builder() {
+            return this;
+        }
+
+        /**
+         * Sets the deserialization schema.
+         *
+         * @param deserializationSchema The deserialization schema
+         */
+        public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
+            this.deserializationSchema = deserializationSchema;
+            return builder();
+        }
+
+        protected DeserializationSchema<T> getDeserializationSchema() {
+            Preconditions.checkState(deserializationSchema != null, "Deserialization schema must not be null.");
+            return deserializationSchema;
+        }
+
+        public FlinkPravegaInputFormat<T> build() {
+            return new FlinkPravegaInputFormat<>(getPravegaConfig().getClientConfig(), resolveStreams(), getDeserializationSchema());
+        }
     }
 }

@@ -11,6 +11,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,6 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
-import org.apache.flink.streaming.util.serialization.AbstractDeserializationSchema;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -29,9 +29,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
-import java.io.IOException;
-import java.nio.ByteBuffer;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -110,11 +107,12 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
 
             // simple pipeline that reads from Pravega and collects the events
             DataSet<Integer> integers = env.createInput(
-                    new FlinkPravegaInputFormat<>(
-                            SETUP_UTILS.getControllerUri(),
-                            SETUP_UTILS.getScope(),
-                            streams,
-                            new IntDeserializer()),
+                    FlinkPravegaInputFormat.<Integer>builder()
+                            .forStream(streamName1)
+                            .forStream(streamName2)
+                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withDeserializationSchema(new IntegerDeserializationSchema())
+                            .build(),
                     BasicTypeInfo.INT_TYPE_INFO
             );
 
@@ -158,11 +156,11 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
 
             // simple pipeline that reads from Pravega and collects the events
             List<Integer> integers = env.createInput(
-                    new FlinkPravegaInputFormat<>(
-                            SETUP_UTILS.getControllerUri(),
-                            SETUP_UTILS.getScope(),
-                            Collections.singleton(streamName),
-                            new IntDeserializer()),
+                    FlinkPravegaInputFormat.<Integer>builder()
+                            .forStream(streamName)
+                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withDeserializationSchema(new IntegerDeserializationSchema())
+                            .build(),
                     BasicTypeInfo.INT_TYPE_INFO
             ).map(new FailOnceMapper(numElements / 2)).collect();
 
@@ -201,19 +199,6 @@ public class FlinkPravegaInputFormatITCase extends StreamingMultipleProgramsTest
             }
 
             return value;
-        }
-    }
-
-    private static class IntDeserializer extends AbstractDeserializationSchema<Integer> {
-
-        @Override
-        public Integer deserialize(byte[] message) throws IOException {
-            return ByteBuffer.wrap(message).getInt();
-        }
-
-        @Override
-        public boolean isEndOfStream(Integer nextElement) {
-            return false;
         }
     }
 }

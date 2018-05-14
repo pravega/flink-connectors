@@ -10,66 +10,58 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.util.StreamId;
-
+import io.pravega.client.ClientConfig;
+import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.Preconditions;
 
-import java.net.URI;
-import java.util.Collections;
-import java.util.function.Function;
+import java.util.List;
+import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * A table source to produce a streaming table from a Pravega stream.
+ * A {@link TableSource} to read Pravega streams using the Flink Table API.
+ *
+ * Supports both stream and batch environments.
  */
-public class FlinkPravegaTableSource implements StreamTableSource<Row> {
+public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row> {
 
-    /** The Pravega controller endpoint. */
-    private final URI controllerURI;
+    private final Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory;
 
-    /** The Pravega stream to use. */
-    private final StreamId stream;
+    private final Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory;
 
-    /** The start time from when to read events from. */
-    private final long startTime;
-
-    /** Deserialization schema to use for Pravega stream events. */
-    private final DeserializationSchema<Row> deserializationSchema;
+    private final TableSchema schema;
 
     /** Type information describing the result type. */
-    private final TypeInformation<Row> typeInfo;
+    private final TypeInformation<Row> returnType;
 
     /**
-     * Creates a Pravega {@link StreamTableSource}.
-     *
-     * <p>The {@code deserializationSchemaFactory} supplies a {@link DeserializationSchema}
-     * based on the result type information.
-     *
-     * @param controllerURI                The pravega controller endpoint address.
-     * @param stream                       The stream to read events from.
-     * @param startTime                    The start time from when to read events from.
-     * @param deserializationSchemaFactory The deserialization schema to use for stream events.
-     * @param typeInfo                     The type information describing the result type.
+     * Creates a Pravega {@link TableSource}.
+     * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
+     * @param inputFormatFactory a factory for the {@link FlinkPravegaInputFormat} to implement {@link BatchTableSource}
+     * @param schema the table schema
+     * @param returnType the return type based on the table schema
      */
-    public FlinkPravegaTableSource(
-            final URI controllerURI,
-            final StreamId stream,
-            final long startTime,
-            Function<TypeInformation<Row>, DeserializationSchema<Row>> deserializationSchemaFactory,
-            TypeInformation<Row> typeInfo) {
-        this.controllerURI = controllerURI;
-        this.stream = stream;
-        this.startTime = startTime;
-        checkNotNull(deserializationSchemaFactory, "Deserialization schema factory");
-        this.typeInfo = checkNotNull(typeInfo, "Type information");
-        this.deserializationSchema = deserializationSchemaFactory.apply(typeInfo);
+    protected FlinkPravegaTableSource(
+            Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory,
+            Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory,
+            TableSchema schema,
+            TypeInformation<Row> returnType) {
+        this.sourceFunctionFactory = checkNotNull(sourceFunctionFactory, "sourceFunctionFactory");
+        this.inputFormatFactory = checkNotNull(inputFormatFactory, "inputFormatFactory");
+        this.schema = checkNotNull(schema, "schema");
+        this.returnType = checkNotNull(returnType, "returnType");
     }
 
     /**
@@ -78,42 +70,85 @@ public class FlinkPravegaTableSource implements StreamTableSource<Row> {
      */
     @Override
     public DataStream<Row> getDataStream(StreamExecutionEnvironment env) {
-        FlinkPravegaReader<Row> reader = createFlinkPravegaReader();
+        FlinkPravegaReader<Row> reader = sourceFunctionFactory.get();
+        reader.initialize();
         return env.addSource(reader);
+    }
+
+    /**
+     * NOTE: This method is for internal use only for defining a TableSource.
+     *       Do not use it in Table API programs.
+     */
+    @Override
+    public DataSet<Row> getDataSet(ExecutionEnvironment env) {
+        FlinkPravegaInputFormat<Row> inputFormat = inputFormatFactory.get();
+        return env.createInput(inputFormat);
     }
 
     @Override
     public TypeInformation<Row> getReturnType() {
-        return typeInfo;
+        return returnType;
     }
 
     @Override
     public TableSchema getTableSchema() {
-        return TableSchema.fromTypeInfo(typeInfo);
+        return schema;
     }
 
     /**
-     * Returns the low-level reader.
-     */
-    protected FlinkPravegaReader<Row> createFlinkPravegaReader() {
-        return new FlinkPravegaReader<>(
-                controllerURI,
-                stream.getScope(), Collections.singleton(stream.getName()),
-                startTime,
-                deserializationSchema);
-    }
-
-    /**
-     * Returns the deserialization schema.
+     * A base builder for {@link FlinkPravegaTableSource} to read Pravega streams using the Flink Table API.
      *
-     * @return The deserialization schema
+     * @param <T> the table source type.
+     * @param <B> the builder type.
      */
-    protected DeserializationSchema<Row> getDeserializationSchema() {
-        return deserializationSchema;
-    }
+    public abstract static class BuilderBase<T extends FlinkPravegaTableSource, B extends AbstractStreamingReaderBuilder>
+            extends AbstractStreamingReaderBuilder<Row, B> {
 
-    @Override
-    public String explainSource() {
-        return "";
+        private TableSchema schema;
+
+        /**
+         * Sets the schema of the produced table.
+         *
+         * @param schema The schema of the produced table.
+         * @return The builder.
+         */
+        public B withSchema(TableSchema schema) {
+            Preconditions.checkNotNull(schema, "Schema must not be null.");
+            Preconditions.checkArgument(this.schema == null, "Schema has already been set.");
+            this.schema = schema;
+            return builder();
+        }
+
+        /**
+         * Returns the configured table schema.
+         *
+         * @return the configured table schema.
+         */
+        protected TableSchema getTableSchema() {
+            Preconditions.checkState(this.schema != null, "Schema hasn't been set.");
+            return this.schema;
+        }
+
+        /**
+         * Applies a configuration to the table source.
+         *
+         * @param source the table source.
+         */
+        protected void configureTableSource(T source) {
+        }
+
+        /**
+         * Gets a factory to build an {@link FlinkPravegaInputFormat} for using the Table API in a Flink batch environment.
+         *
+         * @return a supplier to eagerly validate the configuration and lazily construct the input format.
+         */
+        FlinkPravegaInputFormat<Row> buildInputFormat() {
+
+            final List<StreamWithBoundaries> streams = resolveStreams();
+            final ClientConfig clientConfig = getPravegaConfig().getClientConfig();
+            final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema();
+
+            return new FlinkPravegaInputFormat<>(clientConfig, streams, deserializationSchema);
+        }
     }
 }

@@ -9,8 +9,10 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.ClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.function.RunnableWithException;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
@@ -24,7 +26,6 @@ import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 
 import java.io.IOException;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.UUID;
@@ -49,7 +50,7 @@ public class FlinkPravegaWriterTest {
 
     // region Constants
 
-    private static final URI MOCK_CONTROLLER_URI = URI.create("tcp://localhost:9000");
+    private static final ClientConfig MOCK_CLIENT_CONFIG = ClientConfig.builder().build();
     private static final String MOCK_SCOPE_NAME = "scope";
     private static final String MOCK_STREAM_NAME = "stream";
     private static final String ROUTING_KEY = "fixed";
@@ -65,20 +66,10 @@ public class FlinkPravegaWriterTest {
     public void testConstructor() {
         EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
         PravegaEventRouter<Integer> eventRouter = new FixedEventRouter<>();
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter);
+        PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, writerMode);
         Assert.assertSame(eventRouter, sinkFunction.getEventRouter());
-    }
-
-    /**
-     * Test the DSL for the writer mode.
-     */
-    @Test
-    public void testSetWriterMode() {
-        EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), new FixedEventRouter<>());
-        Assert.assertSame(PravegaWriterMode.ATLEAST_ONCE, sinkFunction.getPravegaWriterMode());
-        sinkFunction.setPravegaWriterMode(PravegaWriterMode.EXACTLY_ONCE);
-        Assert.assertSame(PravegaWriterMode.EXACTLY_ONCE, sinkFunction.getPravegaWriterMode());
+        Assert.assertEquals(writerMode, sinkFunction.getPravegaWriterMode());
     }
 
     // endregion
@@ -91,7 +82,7 @@ public class FlinkPravegaWriterTest {
     @Test
     public void testOpenClose() throws Exception {
         ClientFactory clientFactory = mockClientFactory(null);
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>());
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>(), PravegaWriterMode.ATLEAST_ONCE);
         FlinkPravegaWriter.AbstractInternalWriter internalWriter = mock(FlinkPravegaWriter.AbstractInternalWriter.class);
         Mockito.doReturn(internalWriter).when(sinkFunction).createInternalWriter();
 
@@ -131,8 +122,7 @@ public class FlinkPravegaWriterTest {
             pravegaWriter = mockEventStreamWriter();
             eventRouter = new FixedEventRouter<>();
 
-            sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter);
-            sinkFunction.setPravegaWriterMode(writerMode);
+            sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, writerMode);
 
             // inject an instrumented, direct executor
             executorService = spy(new DirectExecutorService());
@@ -569,9 +559,10 @@ public class FlinkPravegaWriterTest {
         return clientFactory;
     }
 
-    private FlinkPravegaWriter<Integer> spySinkFunction(ClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter) {
-        FlinkPravegaWriter<Integer> writer = spy(new FlinkPravegaWriter<>(MOCK_CONTROLLER_URI, MOCK_SCOPE_NAME, MOCK_STREAM_NAME, new IntegerSerializationSchema(), eventRouter));
-        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CONTROLLER_URI);
+    private FlinkPravegaWriter<Integer> spySinkFunction(ClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter, PravegaWriterMode writerMode) {
+        FlinkPravegaWriter<Integer> writer = spy(new FlinkPravegaWriter<>(
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, 30));
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
         return writer;
     }
 

@@ -35,7 +35,7 @@ cache:
 stages:
   - name: build
   - name: snapshot
-    if: branch = issue-119
+    if: branch = master
 
 jobs:
   include:

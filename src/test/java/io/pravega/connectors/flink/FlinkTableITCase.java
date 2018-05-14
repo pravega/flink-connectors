@@ -10,30 +10,32 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
-import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
-import io.pravega.connectors.flink.util.StreamId;
+import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.SetupUtils;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.io.Serializable;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -68,10 +70,11 @@ public class FlinkTableITCase {
         }
     }
 
-    // The relational schema associated with SampleRecord.
-    private static final RowTypeInfo SAMPLE_SCHEMA = Types.ROW_NAMED(
-            new String[]{"category", "value"},
-            Types.STRING, Types.INT);
+    // The relational schema associated with SampleRecord:
+    // root
+    //  |-- category: String
+    //  |-- value: Integer
+    private static final TableSchema SAMPLE_SCHEMA = TableSchema.fromTypeInfo(TypeInformation.of(SampleRecord.class));
 
     // Ensure each test completes within 120 seconds.
     @Rule
@@ -91,7 +94,7 @@ public class FlinkTableITCase {
     }
 
     /**
-     * Tests the end-to-end functionality of table source & sink.
+     * Tests the end-to-end functionality of a streaming table source and sink.
      *
      * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
      * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).
@@ -104,11 +107,11 @@ public class FlinkTableITCase {
      * @throws Exception on exception
      */
     @Test
-    public void testEndToEnd() throws Exception {
+    public void testStreamingTable() throws Exception {
 
         // create a Pravega stream for test purposes
-        StreamId stream = new StreamId(setupUtils.getScope(), "FlinkTableITCase.testEndToEnd");
-        this.setupUtils.createTestStream(stream.getName(), 1);
+        Stream stream = Stream.of(setupUtils.getScope(), "FlinkTableITCase.testEndToEnd");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
@@ -121,17 +124,23 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
         // write the table to a Pravega stream (using the 'category' column as a routing key)
-        FlinkPravegaTableSink sink = new FlinkPravegaTableSink(
-                this.setupUtils.getControllerUri(), stream, JsonRowSerializationSchema::new, "category");
+        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withRoutingKeyField("category")
+                .build();
         table.writeToSink(sink);
 
         // register the Pravega stream as a table called 'samples'
-        FlinkPravegaTableSource source = new FlinkPravegaTableSource(
-                this.setupUtils.getControllerUri(), stream, 0, JsonRowDeserializationSchema::new, SAMPLE_SCHEMA);
+        FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withSchema(SAMPLE_SCHEMA)
+                .build();
         tableEnv.registerTableSource("samples", source);
 
         // select some sample data from the Pravega-backed table, as a view
-        Table view = tableEnv.sql("SELECT * FROM samples WHERE category IN ('A','B')");
+        Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
 
         // write the view to a test sink that verifies the data for test purposes
         tableEnv.toAppendStream(view, SampleRecord.class).addSink(new TestSink(SAMPLES));
@@ -146,6 +155,63 @@ public class FlinkTableITCase {
         }
     }
 
+
+    /**
+     * Tests the end-to-end functionality of a batch table source and sink.
+     *
+     * <p>This test uses the {@link FlinkPravegaTableSink} to emit an in-memory table
+     * containing sample data as a Pravega stream of 'append' events (i.e. as a changelog).
+     * The test then uses the {@link FlinkPravegaTableSource} to absorb the changelog as a new table.
+     *
+     * <p>Flink's ability to convert POJOs (e.g. {@link SampleRecord}) to/from table rows is also demonstrated.
+     *
+     * <p>Because the source is unbounded, the test must throw an exception to deliberately terminate the job.
+     *
+     * @throws Exception on exception
+     */
+    @Test
+    @Ignore("[issue-124] FlinkPravegaTableSink doesn't support BatchTableSink")
+    public void testBatchTable() throws Exception {
+
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "FlinkTableITCase.testEndToEnd");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
+        env.setParallelism(1);
+        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+
+        // define a table of sample data from a collection of POJOs.  Schema:
+        // root
+        //  |-- category: String
+        //  |-- value: Integer
+        Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
+
+        // write the table to a Pravega stream (using the 'category' column as a routing key)
+        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withRoutingKeyField("category")
+                .build();
+        table.writeToSink(sink);
+
+        // register the Pravega stream as a table called 'samples'
+        FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withSchema(SAMPLE_SCHEMA)
+                .build();
+        tableEnv.registerTableSource("samples", source);
+
+        // select some sample data from the Pravega-backed table, as a view
+        Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
+
+        // convert the view to a dataset and collect the results for comparison purposes
+        List<SampleRecord> results = tableEnv.toDataSet(view, SampleRecord.class).collect();
+        Assert.assertEquals(new HashSet<>(SAMPLES), new HashSet<>(results));
+    }
+
     private static class TestSink extends RichSinkFunction<SampleRecord> {
         private final LinkedList<SampleRecord> remainingSamples;
 
@@ -154,7 +220,7 @@ public class FlinkTableITCase {
         }
 
         @Override
-        public void invoke(SampleRecord value) throws Exception {
+        public void invoke(SampleRecord value, Context context) throws Exception {
             remainingSamples.remove(value);
             log.info("processed: {}", value);
 

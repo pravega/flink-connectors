@@ -49,7 +49,7 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
     // ------------------------------------------------------------------------
 
     @Override
-    public void invoke(Integer value) throws Exception {
+    public void invoke(Integer value, Context context) throws Exception {
         numElementsSoFar++;
         if (numElementsSoFar > numElementsTotal) {
             Assert.fail("Received more elements than expected");
