@@ -9,9 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.utils.SetupUtils;
 import lombok.extern.slf4j.Slf4j;
-import org.junit.Before;
+import org.junit.BeforeClass;
 
 /**
  * Integration tests for {@link FlinkPravegaWriter}.
@@ -19,10 +18,9 @@ import org.junit.Before;
 @Slf4j
 public class FlinkPravegaWriterEnableAuthITCase extends FlinkPravegaWriterITCase {
 
-    @Before
-    @Override
-    public void setup() throws Exception {
-        setupUtils = new SetupUtils(true, false);
-        setupUtils.startAllServices();
+    @BeforeClass
+    public static void setup() throws Exception {
+        // enable Pravega authentication, but not TLS
+        SETUP_UTILS.startSecureServices(SETUP_UTILS, true, false);
     }
 }

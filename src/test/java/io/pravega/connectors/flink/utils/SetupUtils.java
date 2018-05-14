@@ -20,7 +20,6 @@ import io.pravega.client.stream.impl.ControllerImplConfig;
 import io.pravega.client.stream.impl.DefaultCredentials;
 import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.controller.server.rpc.auth.StrongPasswordProcessor;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -35,9 +34,8 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.lang.reflect.Field;
 import java.net.URI;
-import java.security.NoSuchAlgorithmException;
-import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -51,7 +49,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 public final class SetupUtils {
 
     private static final ScheduledExecutorService DEFAULT_SCHEDULED_EXECUTOR_SERVICE = ExecutorServiceHelpers.newScheduledThreadPool(3, "SetupUtils");
-
     private static final String PRAVEGA_USERNAME = "admin";
     private static final String PRAVEGA_PASSWORD = "1111_aaaa";
     private static final String PASSWD_FILE = "./pravega/config/passwd";
@@ -63,22 +60,15 @@ public final class SetupUtils {
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
 
+    private static boolean enableAuth = false;
+    private static boolean enableTls = false;
+
     // The test Scope name.
     @Getter
     private final String scope = RandomStringUtils.randomAlphabetic(20);
 
-    private boolean enableAuth = false;
-    private boolean isEnableTls = false;
-
     public SetupUtils() {
         this(System.getProperty("pravega.uri"));
-    }
-
-    public SetupUtils(boolean enableAuth, boolean enableTls) {
-        this.enableAuth = enableAuth;
-        this.isEnableTls = enableTls;
-        log.info("Starting in-process secure Pravega services.");
-        gateway = new InProcPravegaGateway();
     }
 
     public SetupUtils(String externalUri) {
@@ -101,8 +91,12 @@ public final class SetupUtils {
             log.warn("Services already started, not attempting to start again");
             return;
         }
-
         gateway.start();
+    }
+
+    public void startSecureServices(final SetupUtils setupUtils, boolean enableAuth, boolean enableeTls) throws Exception {
+        SetupUtilsUpdate.updateSecureFlags(setupUtils, enableAuth, enableTls);
+        startAllServices();
     }
 
     /**
@@ -237,11 +231,6 @@ public final class SetupUtils {
                 ReaderConfig.builder().build());
     }
 
-    public String encryptPassword() throws InvalidKeySpecException, NoSuchAlgorithmException {
-        StrongPasswordProcessor passwordEncryptor = StrongPasswordProcessor.builder().build();
-        return passwordEncryptor.encryptPassword(PRAVEGA_PASSWORD);
-    }
-
     /**
      * A gateway interface to Pravega for integration test purposes.
      */
@@ -262,7 +251,7 @@ public final class SetupUtils {
         ClientConfig getClientConfig();
     }
 
-    class InProcPravegaGateway implements PravegaGateway {
+    static class InProcPravegaGateway implements PravegaGateway {
 
         // The pravega cluster.
         private InProcPravegaCluster inProcPravegaCluster = null;
@@ -285,7 +274,7 @@ public final class SetupUtils {
                     .isInProcSegmentStore(true)
                     .segmentStoreCount(1)
                     .containerCount(4)
-                    .enableTls(isEnableTls)
+                    .enableTls(enableTls)
                     .keyFile(KEY_FILE)
                     .certFile(CERT_FILE)   // pravega #2519
                     .enableAuth(enableAuth)
@@ -312,7 +301,6 @@ public final class SetupUtils {
             return ClientConfig.builder()
                     .controllerURI(URI.create(inProcPravegaCluster.getControllerURI()))
                     .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
-                    .trustStore(CERT_FILE)
                     .build();
         }
     }
@@ -338,6 +326,24 @@ public final class SetupUtils {
             return ClientConfig.builder()
                     .controllerURI(controllerUri)
                     .build();
+        }
+    }
+
+    /*
+     * A utility class to set flags for tests against secure Pravega.
+     */
+    public static class SetupUtilsUpdate {
+        public static void updateSecureFlags(final SetupUtils setup, boolean enableAuth, boolean enableTls) {
+            try {
+                final Field authField = SetupUtils.class.getDeclaredField("enableAuth");
+                authField.setAccessible(true);
+                authField.setBoolean(setup, enableAuth);
+                final Field tlsField = SetupUtils.class.getDeclaredField("enableTls");
+                tlsField.setAccessible(true);
+                tlsField.setBoolean(setup, enableTls);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
