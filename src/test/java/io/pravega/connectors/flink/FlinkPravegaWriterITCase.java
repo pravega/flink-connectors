@@ -51,11 +51,11 @@ import static org.junit.Assert.assertNull;
 @Slf4j
 public class FlinkPravegaWriterITCase {
 
+    // Setup utility.
+    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
+
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
-
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     // Ensure each test completes within 120 seconds.
     @Rule

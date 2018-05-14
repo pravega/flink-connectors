@@ -17,6 +17,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.impl.Controller;
 import io.pravega.client.stream.impl.ControllerImpl;
 import io.pravega.client.stream.impl.ControllerImplConfig;
+import io.pravega.client.stream.impl.DefaultCredentials;
 import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.local.InProcPravegaCluster;
@@ -33,6 +34,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.NotThreadSafe;
+import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
@@ -47,11 +49,19 @@ import org.apache.commons.lang3.RandomStringUtils;
 public final class SetupUtils {
 
     private static final ScheduledExecutorService DEFAULT_SCHEDULED_EXECUTOR_SERVICE = ExecutorServiceHelpers.newScheduledThreadPool(3, "SetupUtils");
+    private static final String PRAVEGA_USERNAME = "admin";
+    private static final String PRAVEGA_PASSWORD = "1111_aaaa";
+    private static final String PASSWD_FILE = "./pravega/config/passwd";
+    private static final String KEY_FILE = "./pravega/config/key.pem";
+    private static final String CERT_FILE = "./pravega/config/cert.pem";
 
     private final PravegaGateway gateway;
 
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
+
+    private boolean enableAuth = false;
+    private boolean enableTls = false;
 
     // The test Scope name.
     @Getter
@@ -81,8 +91,12 @@ public final class SetupUtils {
             log.warn("Services already started, not attempting to start again");
             return;
         }
-
         gateway.start();
+    }
+
+    public void startSecureServices(final SetupUtils setupUtils, boolean enableAuth, boolean enableeTls) throws Exception {
+        SetupUtilsUpdate.updateSecureFlags(setupUtils, enableAuth, enableTls);
+        startAllServices();
     }
 
     /**
@@ -123,7 +137,10 @@ public final class SetupUtils {
      * Fetch the {@link PravegaConfig} for integration test purposes.
      */
     public PravegaConfig getPravegaConfig() {
-        return PravegaConfig.fromDefaults().withControllerURI(getControllerUri()).withDefaultScope(getScope());
+        return PravegaConfig.fromDefaults()
+                .withControllerURI(getControllerUri())
+                .withDefaultScope(getScope())
+                .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME));
     }
 
     /**
@@ -159,7 +176,7 @@ public final class SetupUtils {
         Preconditions.checkArgument(numSegments > 0);
 
         @Cleanup
-        StreamManager streamManager = StreamManager.create(getControllerUri());
+        StreamManager streamManager = StreamManager.create(getClientConfig());
         streamManager.createScope(this.scope);
         streamManager.createStream(this.scope, streamName,
                 StreamConfiguration.builder()
@@ -181,7 +198,7 @@ public final class SetupUtils {
         Preconditions.checkState(this.started.get(), "Services not yet started");
         Preconditions.checkNotNull(streamName);
 
-        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getControllerUri());
+        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getClientConfig());
         return clientFactory.createEventWriter(
                 streamName,
                 new IntegerSerializer(),
@@ -199,13 +216,13 @@ public final class SetupUtils {
         Preconditions.checkState(this.started.get(), "Services not yet started");
         Preconditions.checkNotNull(streamName);
 
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getControllerUri());
+        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig());
         final String readerGroup = "testReaderGroup" + this.scope + streamName;
         readerGroupManager.createReaderGroup(
                 readerGroup,
                 ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
 
-        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getControllerUri());
+        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getClientConfig());
         final String readerGroupId = UUID.randomUUID().toString();
         return clientFactory.createReader(
                 readerGroupId,
@@ -234,7 +251,7 @@ public final class SetupUtils {
         ClientConfig getClientConfig();
     }
 
-    static class InProcPravegaGateway implements PravegaGateway {
+    class InProcPravegaGateway implements PravegaGateway {
 
         // The pravega cluster.
         private InProcPravegaCluster inProcPravegaCluster = null;
@@ -257,7 +274,13 @@ public final class SetupUtils {
                     .isInProcSegmentStore(true)
                     .segmentStoreCount(1)
                     .containerCount(4)
-                    .enableTls(false).keyFile("").certFile("").enableAuth(false).userName("").passwd("") // pravega#2519
+                    .enableTls(enableTls)
+                    .keyFile(KEY_FILE)
+                    .certFile(CERT_FILE)   // pravega #2519
+                    .enableAuth(enableAuth)
+                    .userName(PRAVEGA_USERNAME)
+                    .passwd(PRAVEGA_PASSWORD)
+                    .passwdFile(PASSWD_FILE)
                     .build();
             this.inProcPravegaCluster.setControllerPorts(new int[]{controllerPort});
             this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
@@ -277,6 +300,7 @@ public final class SetupUtils {
         public ClientConfig getClientConfig() {
             return ClientConfig.builder()
                     .controllerURI(URI.create(inProcPravegaCluster.getControllerURI()))
+                    .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .build();
         }
     }
@@ -302,6 +326,24 @@ public final class SetupUtils {
             return ClientConfig.builder()
                     .controllerURI(controllerUri)
                     .build();
+        }
+    }
+
+    /*
+     * A utility class to set flags for tests against secure Pravega.
+     */
+    public static class SetupUtilsUpdate {
+        public static void updateSecureFlags(final SetupUtils setup, boolean enableAuth, boolean enableTls) {
+            try {
+                final Field authField = SetupUtils.class.getDeclaredField("enableAuth");
+                authField.setAccessible(true);
+                authField.setBoolean(setup, enableAuth);
+                final Field tlsField = SetupUtils.class.getDeclaredField("enableTls");
+                tlsField.setAccessible(true);
+                tlsField.setBoolean(setup, enableTls);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
         }
     }
 }
