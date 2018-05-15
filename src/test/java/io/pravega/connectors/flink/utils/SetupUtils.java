@@ -45,7 +45,6 @@ import java.util.UUID;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
-import sun.net.ResourceManager;
 
 /**
  * Utility functions for creating the test setup.
