@@ -31,6 +31,7 @@ import io.pravega.client.stream.StreamConfiguration;
 import com.google.common.base.Preconditions;
 import lombok.Cleanup;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import javax.annotation.concurrent.NotThreadSafe;
@@ -60,7 +61,12 @@ public final class SetupUtils {
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
 
+    // Set to true to enable Pravega authentication
+    @Setter
     private boolean enableAuth = false;
+
+    // Set to true to enable TLS
+    @Setter
     private boolean enableTls = false;
 
     // The test Scope name.
@@ -81,6 +87,7 @@ public final class SetupUtils {
         }
     }
 
+
     /**
      * Start all pravega related services required for the test deployment.
      *
@@ -94,8 +101,9 @@ public final class SetupUtils {
         gateway.start();
     }
 
-    public void startSecureServices(final SetupUtils setupUtils, boolean enableAuth, boolean enableeTls) throws Exception {
-        SetupUtilsUpdate.updateSecureFlags(setupUtils, enableAuth, enableTls);
+    public void startSecureServices(boolean enableAuth, boolean enableTls) throws Exception {
+        setEnableAuth(enableAuth);
+        setEnableTls(enableTls);
         startAllServices();
     }
 
@@ -326,24 +334,6 @@ public final class SetupUtils {
             return ClientConfig.builder()
                     .controllerURI(controllerUri)
                     .build();
-        }
-    }
-
-    /*
-     * A utility class to set flags for tests against secure Pravega.
-     */
-    public static class SetupUtilsUpdate {
-        public static void updateSecureFlags(final SetupUtils setup, boolean enableAuth, boolean enableTls) {
-            try {
-                final Field authField = SetupUtils.class.getDeclaredField("enableAuth");
-                authField.setAccessible(true);
-                authField.setBoolean(setup, enableAuth);
-                final Field tlsField = SetupUtils.class.getDeclaredField("enableTls");
-                tlsField.setAccessible(true);
-                tlsField.setBoolean(setup, enableTls);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
         }
     }
 }

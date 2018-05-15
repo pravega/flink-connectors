@@ -13,7 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.BeforeClass;
 
 /**
- * Integration tests for {@link FlinkPravegaWriter}.
+ * Integration tests for {@link FlinkPravegaReader} in secure mode
  */
 @Slf4j
 public class FlinkPravegaReaderEnableAuthITCase extends FlinkPravegaReaderITCase {
@@ -21,6 +21,6 @@ public class FlinkPravegaReaderEnableAuthITCase extends FlinkPravegaReaderITCase
     @BeforeClass
     public static void setupPravega() throws Exception {
         // enable Pravega authentication, but not TLS
-        SETUP_UTILS.startSecureServices(SETUP_UTILS, true, false);
+        SETUP_UTILS.startSecureServices(true, false);
     }
 }
