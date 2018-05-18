@@ -105,12 +105,6 @@ public final class SetupUtils {
         gateway.start();
     }
 
-    public void startSecureServices(boolean enableAuth, boolean enableTls) throws Exception {
-        setEnableAuth(enableAuth);
-        setEnableTls(enableTls);
-        startAllServices();
-    }
-
     /**
      * Stop the pravega cluster and release all resources.
      *
@@ -353,6 +347,7 @@ public final class SetupUtils {
         public ClientConfig getClientConfig() {
             return ClientConfig.builder()
                     .controllerURI(controllerUri)
+                    .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .build();
         }
     }

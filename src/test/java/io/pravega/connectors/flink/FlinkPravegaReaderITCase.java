@@ -49,6 +49,8 @@ public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase 
 
     @BeforeClass
     public static void setupPravega() throws Exception {
+        SETUP_UTILS.setEnableAuth(true);
+        SETUP_UTILS.setEnableTls(false); // et to true after pravega TLS issue #2580 is fixed
         SETUP_UTILS.startAllServices();
     }
 
