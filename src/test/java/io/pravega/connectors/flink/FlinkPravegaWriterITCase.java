@@ -51,18 +51,20 @@ import static org.junit.Assert.assertNull;
 @Slf4j
 public class FlinkPravegaWriterITCase {
 
+    // Setup utility.
+    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
+
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 20;
 
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
-
     // Ensure each test completes within 120 seconds.
     @Rule
-    public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    public Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setup() throws Exception {
+        SETUP_UTILS.setEnableAuth(true);
+        SETUP_UTILS.setEnableTls(false); // set to true after pravega TLS issue #2580 is fixed
         SETUP_UTILS.startAllServices();
     }
 
