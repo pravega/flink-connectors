@@ -35,14 +35,14 @@ cache:
 stages:
   - name: build
   - name: snapshot
-    if: branch = master
+    if: branch = master AND NOT (type = pull_request)
 
 jobs:
   include:
     - stage: build
       script: ./gradlew clean assemble
     - stage: snapshot
-      script: ./gradlew clean assemble publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
+      script: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
 
 notifications:
   slack:
