@@ -35,7 +35,7 @@ cache:
 stages:
   - name: build
   - name: snapshot
-    if: branch = master AND NOT (type = pull_request)
+    if: branch = test-travis-configurations AND NOT (type = pull_request)
 
 jobs:
   include:
