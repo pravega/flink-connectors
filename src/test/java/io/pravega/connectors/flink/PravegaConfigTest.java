@@ -53,10 +53,9 @@ public class PravegaConfigTest {
         assertNull(config.getDefaultScope());
         assertEquals(expectedStream, config.resolve("scope1/stream1"));
 
-        // test an explicitly-configured default scope
+        // test an application-level default scope
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
-                .withDefaultScope("scope1");
-        assertEquals("scope1", config.getDefaultScope());
+                .withDefaultScope(expectedStream.getScope());
         assertEquals(expectedStream, config.resolve("stream1"));
     }
 
@@ -64,6 +63,19 @@ public class PravegaConfigTest {
     public void testStreamResolveWithoutDefaultScope() {
         PravegaConfig config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
         config.resolve("stream1");
+    }
+
+    @Test
+    public void testScopePriority() {
+        PravegaConfig config;
+
+        config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
+                .withDefaultScope("scope1");
+        assertEquals("scope1", config.getDefaultScope());
+
+        config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
+                .withDefaultScope("scope1");
+        assertEquals("scope2", config.getDefaultScope());
     }
 
     @Test

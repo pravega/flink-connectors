@@ -120,10 +120,12 @@ public class PravegaConfig implements Serializable {
     /**
      * Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.
      *
-     * @param scope The scope to use.
+     * @param scope The scope to use (with lowest priority).
      */
     public PravegaConfig withDefaultScope(String scope) {
-        this.defaultScope = scope;
+        if (this.defaultScope == null) {
+            this.defaultScope = scope;
+        }
         return this;
     }
 
