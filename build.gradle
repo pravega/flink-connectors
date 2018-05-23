@@ -15,11 +15,10 @@ buildscript {
     }
     dependencies {
         classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
+        classpath "org.ajoberstar:gradle-git:${gradleGitPluginVersion}"
     }
 }
-
-group = "io.pravega"
-version = connectorVersion
 
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
@@ -28,6 +27,11 @@ apply from: 'gradle/checkstyle.gradle'
 apply from: 'gradle/findbugs.gradle'
 apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
+apply from: 'gradle/bintray.gradle'
+apply plugin: 'org.ajoberstar.grgit'
+
+group = "io.pravega"
+version = getProjectVersion()
 
 repositories {
     mavenLocal()
@@ -139,4 +143,15 @@ javadoc {
     title = "Pravega Flink Connector"
     failOnError = false
     exclude "**/impl/**";
+}
+
+def getProjectVersion() {
+    String ver = connectorVersion
+    if (ver.contains("-SNAPSHOT")) {
+        String versionLabel = ver.substring(0, ver.indexOf("-SNAPSHOT"))
+        def count = grgit.log(includes:['HEAD']).size()
+        def commitId = "${grgit.head().abbreviatedId}"
+        ver = versionLabel + "-" + count + "." + commitId + "-SNAPSHOT"
+    }
+    return ver
 }

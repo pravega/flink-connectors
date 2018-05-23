@@ -34,6 +34,13 @@ uploadShadow {
                         authentication(userName: publishUsername, password: publishPassword)
                     }
                 }
+                else if (publishUrl == "jcenterSnapshot") {
+                    repository(url: "https://oss.jfrog.org/artifactory/oss-snapshot-local/") {
+                        if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                            authentication(userName: publishUsername, password: publishPassword)
+                        }
+                    }
+                }
                 else {
                     repository(url: publishUrl) {
                         // Only configure credentials if they are provided (allows publishing to the filesystem)
@@ -47,8 +54,8 @@ uploadShadow {
     }
 }
 
-task publish(dependsOn: uploadShadow) {
-    description = "Publish all artifacts to a repository"
+task publishToRepo(dependsOn: uploadShadow) {
+    description = "Publish all artifacts to repository"
 }
 
 tasks.withType(Upload) {
@@ -66,12 +73,6 @@ tasks.withType(Upload) {
                 license {
                     name 'The Apache License, Version 2.0'
                     url 'http://www.apache.org/licenses/LICENSE-2.0.txt'
-                }
-            }
-            developers {
-                developer {
-                    id 'fpj'
-                    name 'Flavio Junqueira'
                 }
             }
         }
