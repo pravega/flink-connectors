@@ -14,7 +14,7 @@ jdk:
 
 # the secure configurations in env: section is for BINTRAY_USER=<USER> and BINTRAY_KEY=<KEY> properties
 # which will be used for publishing artifacts to snapshot repository
-# test-travis-configurations-child branch
+# test-travis-configurations-child branch (rev-1)
 env:
   global:
     - GRADLE_OPTS="-Xms128m"
