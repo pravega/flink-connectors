@@ -23,7 +23,7 @@ import org.apache.flink.util.Preconditions;
  */
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
-    // the numbers below are picked somewhat arbitrarily at this point
+    // the numbers below are picked based on the default max settings in Pravega
     private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 30000; // 30 seconds
     private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 30000; // 30 seconds
 
