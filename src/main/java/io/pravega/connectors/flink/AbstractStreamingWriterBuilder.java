@@ -24,8 +24,8 @@ import org.apache.flink.util.Preconditions;
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked somewhat arbitrarily at this point
-    private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 2 * 60 * 60 * 1000; // 2 hours
-    private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 10 * 60 * 1000; // 10 minutes
+    private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 30000; // 30 seconds
+    private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 30000; // 30 seconds
 
     protected PravegaWriterMode writerMode;
     protected Time txnTimeout;
