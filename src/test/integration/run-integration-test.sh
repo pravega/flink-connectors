@@ -22,7 +22,7 @@ WAIT_SLEEP=${WAIT_SLEEP:-5}
 HTTP_OK=200
 
 WORK_DIR=$PWD
-FLINK_DIR=$HOME/flink/flink-${FLINK_VERSION}
+FLINK_DIR=$HOME/flink-${FLINK_VERSION}
 FLINK_BINARY=flink-${FLINK_VERSION}-bin-hadoop28-scala_${SCALA_VERSION}.tgz
 
 trap cleanup EXIT
@@ -53,7 +53,7 @@ wait_for_service() {
 rm -f $FLINK_DIR/log/*
 
 # Download flink
-cd $HOME/flink
+cd $HOME
 wget --no-check-certificate https://archive.apache.org/dist/flink/flink-${FLINK_VERSION}/${FLINK_BINARY}
 tar zxvf $FLINK_BINARY
 rm -f ${FLINK_BINARY}*
@@ -95,9 +95,6 @@ ${FLINK_DIR}/bin/flink run -c io.pravega.examples.flink.primer.process.ExactlyOn
 
 # start ExactlyOnceChecker
 ${FLINK_DIR}/bin/flink run -d -c io.pravega.examples.flink.primer.process.ExactlyOnceChecker flink-examples/build/install/pravega-flink-examples/lib/pravega-flink-examples-0.3.0-SNAPSHOT-all.jar --controller tcp://localhost:${PRAVEGA_CONTROLLER_PORT} --scope myscope --stream mystream 
-
-# wait for 5 second to for job to register
-sleep 2
 
 ${FLINK_DIR}/bin/flink list
 job_id=`${FLINK_DIR}/bin/flink list | grep ExactlyOnceChecker | awk '{print $4}'`
