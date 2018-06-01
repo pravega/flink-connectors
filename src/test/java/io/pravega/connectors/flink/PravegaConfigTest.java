@@ -95,7 +95,7 @@ public class PravegaConfigTest {
         // default controller URI
         PravegaConfig config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
         ClientConfig clientConfig = config.getClientConfig();
-        assertEquals(URI.create("tcp://localhost"), clientConfig.getControllerURI());
+        assertEquals(URI.create("tcp://localhost:9090"), clientConfig.getControllerURI());
         assertTrue(clientConfig.isValidateHostName());
 
         // explicitly-configured controller URI
