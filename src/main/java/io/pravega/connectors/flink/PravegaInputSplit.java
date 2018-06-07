@@ -79,7 +79,7 @@ public class PravegaInputSplit implements InputSplit {
         return splitId == that.splitId &&
                 segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
                 segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
-                segmentRange.getSegmentNumber() == that.getSegmentRange().getSegmentNumber();
+                segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
     }
 
     @Override
@@ -89,7 +89,7 @@ public class PravegaInputSplit implements InputSplit {
         int result = 1;
 
         result = result * prime + splitId;
-        result = result * prime + getSegmentRange().getSegmentNumber();
+        result = result * prime + Long.hashCode(getSegmentRange().getSegmentId());
         result = result * prime + Long.hashCode(getSegmentRange().getStartOffset());
         result = result * prime + Long.hashCode(getSegmentRange().getEndOffset());
 
