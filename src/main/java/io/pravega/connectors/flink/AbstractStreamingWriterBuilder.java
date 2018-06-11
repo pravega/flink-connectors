@@ -25,16 +25,13 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
 
     // the numbers below are picked based on the default max settings in Pravega
     private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 30000; // 30 seconds
-    private static final long DEFAULT_TX_SCALE_GRACE_MILLIS = 30000; // 30 seconds
 
     protected PravegaWriterMode writerMode;
     protected Time txnTimeout;
-    protected Time txnGracePeriod;
 
     protected AbstractStreamingWriterBuilder() {
         writerMode = PravegaWriterMode.ATLEAST_ONCE;
         txnTimeout = Time.milliseconds(DEFAULT_TXN_TIMEOUT_MILLIS);
-        txnGracePeriod = Time.milliseconds(DEFAULT_TX_SCALE_GRACE_MILLIS);
     }
 
     /**
@@ -63,20 +60,6 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
     }
 
     /**
-     * Sets the transaction grace period.
-     *
-     * The grace period is the maximum amount of time for which a transaction may
-     * remain active, after a scale operation has been initiated on the underlying stream.
-     *
-     * @param timeout the timeout
-     */
-    public B withTxnGracePeriod(Time timeout) {
-        Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
-        this.txnGracePeriod = timeout;
-        return builder();
-    }
-
-    /**
      * Creates the sink function for the current builder state.
      *
      * @param serializationSchema the deserialization schema to use.
@@ -91,7 +74,6 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 serializationSchema,
                 eventRouter,
                 writerMode,
-                txnTimeout.toMilliseconds(),
-                txnGracePeriod.toMilliseconds());
+                txnTimeout.toMilliseconds());
     }
 }
