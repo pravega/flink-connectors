@@ -79,7 +79,6 @@ public class FlinkPravegaWriter<T>
 
     // Various timeouts
     private final long txnTimeoutMillis;
-    private final long txnGracePeriodMillis;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode;
@@ -96,8 +95,6 @@ public class FlinkPravegaWriter<T>
      * @param eventRouter           The implementation to extract the partition key from the event.
      * @param writerMode            The Pravega writer mode.
      * @param txnTimeoutMillis      The number of milliseconds after which the transaction will be aborted.
-     * @param txnGracePeriodMillis  The maximum amount of time, in milliseconds, until which transaction may
-     *                              remain active, after a scale operation has been initiated on the underlying stream.
      */
     protected FlinkPravegaWriter(
             final ClientConfig clientConfig,
@@ -105,8 +102,7 @@ public class FlinkPravegaWriter<T>
             final SerializationSchema<T> serializationSchema,
             final PravegaEventRouter<T> eventRouter,
             final PravegaWriterMode writerMode,
-            final long txnTimeoutMillis,
-            final long txnGracePeriodMillis) {
+            final long txnTimeoutMillis) {
 
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
@@ -114,9 +110,7 @@ public class FlinkPravegaWriter<T>
         this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnTimeoutMillis > 0, "txnTimeoutMillis must be > 0");
-        Preconditions.checkArgument(txnGracePeriodMillis > 0, "txnGracePeriodMillis must be > 0");
         this.txnTimeoutMillis = txnTimeoutMillis;
-        this.txnGracePeriodMillis = txnGracePeriodMillis;
     }
 
     /**
@@ -323,7 +317,6 @@ public class FlinkPravegaWriter<T>
             Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
             EventWriterConfig writerConfig = EventWriterConfig.builder()
                     .transactionTimeoutTime(txnTimeoutMillis)
-                    .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
                     .build();
             pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
@@ -526,7 +519,6 @@ public class FlinkPravegaWriter<T>
                 Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
                 EventWriterConfig writerConfig = EventWriterConfig.builder()
                         .transactionTimeoutTime(txnTimeoutMillis)
-                        .transactionTimeoutScaleGracePeriod(txnGracePeriodMillis)
                         .build();
 
                 try (

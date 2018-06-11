@@ -561,7 +561,7 @@ public class FlinkPravegaWriterTest {
 
     private FlinkPravegaWriter<Integer> spySinkFunction(ClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter, PravegaWriterMode writerMode) {
         FlinkPravegaWriter<Integer> writer = spy(new FlinkPravegaWriter<>(
-                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, 30));
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30));
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
         return writer;
     }
