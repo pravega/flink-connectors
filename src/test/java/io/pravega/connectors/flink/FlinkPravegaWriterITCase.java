@@ -202,7 +202,6 @@ public class FlinkPravegaWriterITCase {
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnTimeout(Time.seconds(30))
-                .withTxnGracePeriod(Time.seconds(30))
                 .build();
 
         env
