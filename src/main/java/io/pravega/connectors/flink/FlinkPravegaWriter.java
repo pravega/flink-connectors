@@ -223,7 +223,7 @@ public class FlinkPravegaWriter<T>
 
     @VisibleForTesting
     protected ExecutorService createExecutorService() {
-        return Executors.newFixedThreadPool(5);
+        return Executors.newSingleThreadExecutor();
     }
 
     private void initializeInternalWriter() {
