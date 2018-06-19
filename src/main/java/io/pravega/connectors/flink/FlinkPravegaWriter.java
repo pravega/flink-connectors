@@ -78,7 +78,7 @@ public class FlinkPravegaWriter<T>
     final Stream stream;
 
     // Various timeouts
-    private final long txnTimeoutMillis;
+    private final long txnLeaseRenewalPeriod;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode;
@@ -94,7 +94,7 @@ public class FlinkPravegaWriter<T>
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      * @param writerMode            The Pravega writer mode.
-     * @param txnTimeoutMillis      The number of milliseconds after which the transaction will be aborted.
+     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
      */
     protected FlinkPravegaWriter(
             final ClientConfig clientConfig,
@@ -102,15 +102,15 @@ public class FlinkPravegaWriter<T>
             final SerializationSchema<T> serializationSchema,
             final PravegaEventRouter<T> eventRouter,
             final PravegaWriterMode writerMode,
-            final long txnTimeoutMillis) {
+            final long txnLeaseRenewalPeriod) {
 
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
-        Preconditions.checkArgument(txnTimeoutMillis > 0, "txnTimeoutMillis must be > 0");
-        this.txnTimeoutMillis = txnTimeoutMillis;
+        Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
+        this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
     }
 
     /**
@@ -316,7 +316,7 @@ public class FlinkPravegaWriter<T>
         AbstractInternalWriter(ClientFactory clientFactory) {
             Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
             EventWriterConfig writerConfig = EventWriterConfig.builder()
-                    .transactionTimeoutTime(txnTimeoutMillis)
+                    .transactionTimeoutTime(txnLeaseRenewalPeriod)
                     .build();
             pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
@@ -518,7 +518,7 @@ public class FlinkPravegaWriter<T>
 
                 Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
                 EventWriterConfig writerConfig = EventWriterConfig.builder()
-                        .transactionTimeoutTime(txnTimeoutMillis)
+                        .transactionTimeoutTime(txnLeaseRenewalPeriod)
                         .build();
 
                 try (

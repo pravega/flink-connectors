@@ -201,7 +201,7 @@ public class FlinkPravegaWriterITCase {
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
-                .withTxnTimeout(Time.seconds(30))
+                .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
         env

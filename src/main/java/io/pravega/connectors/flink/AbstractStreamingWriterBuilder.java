@@ -24,14 +24,14 @@ import org.apache.flink.util.Preconditions;
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked based on the default max settings in Pravega
-    private static final long DEFAULT_TXN_TIMEOUT_MILLIS = 30000; // 30 seconds
+    private static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000; // 30 seconds
 
     protected PravegaWriterMode writerMode;
-    protected Time txnTimeout;
+    protected Time txnLeaseRenewalPeriod;
 
     protected AbstractStreamingWriterBuilder() {
         writerMode = PravegaWriterMode.ATLEAST_ONCE;
-        txnTimeout = Time.milliseconds(DEFAULT_TXN_TIMEOUT_MILLIS);
+        txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     }
 
     /**
@@ -45,17 +45,18 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
     }
 
     /**
-     * Sets the transaction timeout.
+     * Sets the transaction lease renewal period.
      *
-     * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist events to the Pravega stream.
-     * The timeout refers to the maximum amount of time that a transaction may remain uncommitted, after which the
-     * transaction will be aborted.  The default timeout is 2 hours.
+     * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist
+     * events to the Pravega stream.  The transaction interval corresponds to the Flink checkpoint interval.
+     * Throughout that interval, the transaction is kept alive with a lease that is periodically renewed.
+     * This configuration setting sets the lease renewal period.  The default value is 30 seconds.
      *
-     * @param timeout the timeout
+     * @param period the lease renewal period
      */
-    public B withTxnTimeout(Time timeout) {
-        Preconditions.checkArgument(timeout.getSize() > 0, "The timeout must be a positive value.");
-        this.txnTimeout = timeout;
+    public B withTxnLeaseRenewalPeriod(Time period) {
+        Preconditions.checkArgument(period.getSize() > 0, "The timeout must be a positive value.");
+        this.txnLeaseRenewalPeriod = period;
         return builder();
     }
 
@@ -74,6 +75,6 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 serializationSchema,
                 eventRouter,
                 writerMode,
-                txnTimeout.toMilliseconds());
+                txnLeaseRenewalPeriod.toMilliseconds());
     }
 }
