@@ -18,17 +18,25 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.StreamCut;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
+import org.apache.flink.metrics.Gauge;
+import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.util.FlinkException;
+
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
 
@@ -43,6 +51,26 @@ public class FlinkPravegaReader<T>
         implements ResultTypeQueryable<T>, StoppableFunction, ExternallyInducedSource<T, Checkpoint> {
 
     private static final long serialVersionUID = 1L;
+
+    // ----- metrics field constants -----
+
+    private static final String PRAVEGA_READER_METRICS_GROUP = "PravegaReader";
+
+    private static final String READER_GROUP_METRICS_GROUP = "readerGroup";
+
+    private static final String STREAM_METRICS_GROUP = "stream";
+
+    private static final String UNREAD_BYTES_METRICS_GAUGE = "unreadBytes";
+
+    private static final String READER_GROUP_NAME_METRICS_GAUGE = "readerGroupName";
+
+    private static final String SCOPE_NAME_METRICS_GAUGE = "scope";
+
+    private static final String ONLINE_READERS_METRICS_GAUGE = "onlineReaders";
+
+    private static final String STREAM_NAMES_METRICS_GAUGE = "streams";
+
+    private static final String SEGMENT_POSITIONS_METRICS_GAUGE = "segmentPositions";
 
     // ----- configuration fields -----
 
@@ -69,6 +97,9 @@ public class FlinkPravegaReader<T>
 
     // the timeout for call that initiates the Pravega checkpoint 
     final Time checkpointInitiateTimeout;
+
+    // flag to enable/disable metrics
+    final boolean enableMetrics;
 
     // ----- runtime fields -----
 
@@ -101,10 +132,12 @@ public class FlinkPravegaReader<T>
      * @param deserializationSchema     The implementation to deserialize events from Pravega streams.
      * @param eventReadTimeout          The event read timeout.
      * @param checkpointInitiateTimeout The checkpoint initiation timeout.
+     * @param enableMetrics             Flag to indicate whether metrics needs to be enabled or not.
      */
     protected FlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                  ReaderGroupConfig readerGroupConfig, String readerGroupScope, String readerGroupName,
-                                 DeserializationSchema<T> deserializationSchema, Time eventReadTimeout, Time checkpointInitiateTimeout) {
+                                 DeserializationSchema<T> deserializationSchema, Time eventReadTimeout, Time checkpointInitiateTimeout,
+                                 boolean enableMetrics) {
 
         this.hookUid = Preconditions.checkNotNull(hookUid, "hookUid");
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
@@ -114,6 +147,7 @@ public class FlinkPravegaReader<T>
         this.deserializationSchema = Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
         this.eventReadTimeout = Preconditions.checkNotNull(eventReadTimeout, "eventReadTimeout");
         this.checkpointInitiateTimeout = Preconditions.checkNotNull(checkpointInitiateTimeout, "checkpointInitiateTimeout");
+        this.enableMetrics = enableMetrics;
     }
 
     /**
@@ -132,6 +166,10 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
+
+        if (enableMetrics) {
+            registerMetrics();
+        }
 
         final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
 
@@ -218,6 +256,150 @@ public class FlinkPravegaReader<T>
         }
 
         checkpointTrigger.triggerCheckpoint(checkpointId);
+    }
+
+    // ------------------------------------------------------------------------
+    //  metrics
+    // ------------------------------------------------------------------------
+
+    /**
+     * Gauge for getting the unread bytes information from reader group.
+     */
+    private static class UnreadBytesGauge implements Gauge<Long> {
+
+        private final ReaderGroup readerGroup;
+
+        public UnreadBytesGauge(ReaderGroup readerGroup) {
+            this.readerGroup = readerGroup;
+        }
+
+        @Override
+        public Long getValue() {
+            return readerGroup.getMetrics().unreadBytes();
+        }
+    }
+
+    /**
+     * Gauge for getting the reader group name information from reader group.
+     */
+    private static class ReaderGroupNameGauge implements Gauge<String> {
+
+        private final ReaderGroup readerGroup;
+
+        public ReaderGroupNameGauge(ReaderGroup readerGroup) {
+            this.readerGroup = readerGroup;
+        }
+
+        @Override
+        public String getValue() {
+            return readerGroup.getGroupName();
+        }
+    }
+
+    /**
+     * Gauge for getting the scope name information from reader group.
+     */
+    private static class ScopeNameGauge implements Gauge<String> {
+
+        private final ReaderGroup readerGroup;
+
+        public ScopeNameGauge(ReaderGroup readerGroup) {
+            this.readerGroup = readerGroup;
+        }
+
+        @Override
+        public String getValue() {
+            return readerGroup.getScope();
+        }
+    }
+
+    /**
+     * Gauge for getting online readers information from reader group.
+     */
+    private static class OnlineReadersGauge implements Gauge<String> {
+
+        private final ReaderGroup readerGroup;
+        private final String separator = ",";
+
+        public OnlineReadersGauge(ReaderGroup readerGroup) {
+            this.readerGroup = readerGroup;
+        }
+
+        @Override
+        public String getValue() {
+            return readerGroup.getOnlineReaders().stream().collect(Collectors.joining(separator));
+        }
+    }
+
+    /**
+     * Gauge for getting stream name information from reader group.
+     */
+    private static class StreamNamesGauge implements Gauge<String> {
+
+        private final ReaderGroup readerGroup;
+        private final String separator = ",";
+
+        public StreamNamesGauge(ReaderGroup readerGroup) {
+            this.readerGroup = readerGroup;
+        }
+
+        @Override
+        public String getValue() {
+            return readerGroup.getStreamNames().stream().collect(Collectors.joining(separator));
+        }
+    }
+
+    /**
+     * Gauge for getting position information of each segment of a stream from reader group.
+     */
+    private static class SegmentPositionsGauge implements Gauge<String> {
+
+        private final ReaderGroup readerGroup;
+        private final String stream;
+
+        public SegmentPositionsGauge(ReaderGroup readerGroup, String stream) {
+            this.readerGroup = readerGroup;
+            this.stream = stream;
+        }
+
+        @Override
+        public String getValue() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("stream=").append(stream).append(", segments={");
+            Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
+            Optional<Map.Entry<Stream, StreamCut>> optionalStreamCutEntry =
+                    streamCuts.entrySet().stream().filter(e -> e.getKey().getStreamName().equals(stream)).findFirst();
+            if (optionalStreamCutEntry.isPresent()) {
+                optionalStreamCutEntry.get().getValue().asImpl().getPositions().entrySet().stream().forEach(entry -> {
+                    builder.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
+                });
+            }
+            builder.append("}");
+            return builder.toString();
+        }
+    }
+
+    /**
+     * register reader group metrics
+     *
+     */
+    private void registerMetrics() {
+        ReaderGroup readerGroup = createReaderGroup();
+        MetricGroup pravegaReaderMetricGroup = getRuntimeContext().getMetricGroup().addGroup(PRAVEGA_READER_METRICS_GROUP);
+        MetricGroup readerGroupMetricGroup = pravegaReaderMetricGroup.addGroup(READER_GROUP_METRICS_GROUP);
+        readerGroupMetricGroup.gauge(UNREAD_BYTES_METRICS_GAUGE, new UnreadBytesGauge(readerGroup));
+        readerGroupMetricGroup.gauge(READER_GROUP_NAME_METRICS_GAUGE, new ReaderGroupNameGauge(readerGroup));
+        readerGroupMetricGroup.gauge(SCOPE_NAME_METRICS_GAUGE, new ScopeNameGauge(readerGroup));
+        readerGroupMetricGroup.gauge(ONLINE_READERS_METRICS_GAUGE, new OnlineReadersGauge(readerGroup));
+        readerGroupMetricGroup.gauge(STREAM_NAMES_METRICS_GAUGE, new StreamNamesGauge(readerGroup));
+
+        Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
+        for (Map.Entry<Stream, StreamCut> entry: streamCuts.entrySet()) {
+            Stream stream = entry.getKey();
+            MetricGroup streamMetricGroup = readerGroupMetricGroup.addGroup(STREAM_METRICS_GROUP + "." + stream.getStreamName());
+            streamMetricGroup.gauge(SEGMENT_POSITIONS_METRICS_GAUGE, new SegmentPositionsGauge(readerGroup, stream.getStreamName()));
+        }
+
     }
 
     // ------------------------------------------------------------------------

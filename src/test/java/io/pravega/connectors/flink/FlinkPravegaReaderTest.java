@@ -153,8 +153,9 @@ public class FlinkPravegaReaderTest {
     private static TestableFlinkPravegaReader<Integer> createReader() {
         ClientConfig clientConfig = ClientConfig.builder().build();
         ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
+        boolean enableMetrics = true;
         return new TestableFlinkPravegaReader<>(
-                "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, DESERIALIZATION_SCHEMA, READER_TIMEOUT, CHKPT_TIMEOUT);
+                "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, DESERIALIZATION_SCHEMA, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
     /**
@@ -303,8 +304,12 @@ public class FlinkPravegaReaderTest {
         @SuppressWarnings("unchecked")
         final EventStreamReader<T> eventStreamReader = mock(EventStreamReader.class);
 
-        protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig, ReaderGroupConfig readerGroupConfig, String readerGroupScope, String readerGroupName, DeserializationSchema<T> deserializationSchema, Time eventReadTimeout, Time checkpointInitiateTimeout) {
-            super(hookUid, clientConfig, readerGroupConfig, readerGroupScope, readerGroupName, deserializationSchema, eventReadTimeout, checkpointInitiateTimeout);
+        protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig,
+                                             ReaderGroupConfig readerGroupConfig, String readerGroupScope,
+                                             String readerGroupName, DeserializationSchema<T> deserializationSchema,
+                                             Time eventReadTimeout, Time checkpointInitiateTimeout,
+                                             boolean enableMetrics) {
+            super(hookUid, clientConfig, readerGroupConfig, readerGroupScope, readerGroupName, deserializationSchema, eventReadTimeout, checkpointInitiateTimeout, enableMetrics);
         }
 
         @Override
