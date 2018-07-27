@@ -158,3 +158,30 @@ def getProjectVersion() {
     }
     return ver
 }
+
+distributions {
+    release {
+        contents {
+            from shadowJar
+            from(project.configurations.shadow)
+            from javadocJar
+            from sourceJar
+        }
+    }
+    workspace {
+        contents {
+            from ('.') {
+                exclude "build"
+                exclude ".gradle"
+                exclude ".idea"
+                exclude "out"
+                exclude "pravega/*"
+            }
+        }
+    }
+}
+
+task distribution(type: Copy, dependsOn: [installReleaseDist, installWorkspaceDist, assembleWorkspaceDist]) {
+    from ("$buildDir/install/flink-connectors-release")
+    into ("$buildDir/distributions")
+}
