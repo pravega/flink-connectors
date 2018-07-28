@@ -345,7 +345,15 @@ public class FlinkPravegaReader<T>
 
         @Override
         public String getValue() {
-            return readerGroup.getStreamNames().stream().collect(Collectors.joining(separator));
+            StringBuilder builder = new StringBuilder();
+            readerGroup.getStreamCuts().keySet().stream().forEach(s -> {
+                if (builder.length() > 0) {
+                    builder.append(separator).append(s.getScopedName());
+                } else {
+                    builder.append(s.getScopedName());
+                }
+            });
+            return builder.toString();
         }
     }
 
@@ -355,20 +363,26 @@ public class FlinkPravegaReader<T>
     private static class SegmentPositionsGauge implements Gauge<String> {
 
         private final ReaderGroup readerGroup;
+        private final String scope;
         private final String stream;
 
-        public SegmentPositionsGauge(ReaderGroup readerGroup, String stream) {
+        public SegmentPositionsGauge(ReaderGroup readerGroup, String scope, String stream) {
             this.readerGroup = readerGroup;
+            this.scope = scope;
             this.stream = stream;
         }
 
         @Override
         public String getValue() {
             StringBuilder builder = new StringBuilder();
+            builder.append("scope=").append(scope).append(", ");
             builder.append("stream=").append(stream).append(", segments={");
             Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
             Optional<Map.Entry<Stream, StreamCut>> optionalStreamCutEntry =
-                    streamCuts.entrySet().stream().filter(e -> e.getKey().getStreamName().equals(stream)).findFirst();
+                    streamCuts.entrySet().stream()
+                            .filter(e -> e.getKey().getStreamName().equals(stream) &&
+                                    e.getKey().getScope().equals(scope))
+                            .findFirst();
             if (optionalStreamCutEntry.isPresent()) {
                 optionalStreamCutEntry.get().getValue().asImpl().getPositions().entrySet().stream().forEach(entry -> {
                     builder.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
@@ -396,8 +410,10 @@ public class FlinkPravegaReader<T>
         Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
         for (Map.Entry<Stream, StreamCut> entry: streamCuts.entrySet()) {
             Stream stream = entry.getKey();
-            MetricGroup streamMetricGroup = readerGroupMetricGroup.addGroup(STREAM_METRICS_GROUP + "." + stream.getStreamName());
-            streamMetricGroup.gauge(SEGMENT_POSITIONS_METRICS_GAUGE, new SegmentPositionsGauge(readerGroup, stream.getStreamName()));
+            MetricGroup streamMetricGroup = readerGroupMetricGroup
+                    .addGroup(STREAM_METRICS_GROUP + "." + stream.getScope()+ "_"+ stream.getStreamName());
+            streamMetricGroup.gauge(SEGMENT_POSITIONS_METRICS_GAUGE,
+                    new SegmentPositionsGauge(readerGroup, stream.getScope(), stream.getStreamName()));
         }
 
     }
