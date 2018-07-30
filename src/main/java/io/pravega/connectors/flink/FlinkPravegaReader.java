@@ -26,6 +26,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
@@ -110,6 +111,9 @@ public class FlinkPravegaReader<T>
     // checkpoint trigger callback, invoked when a checkpoint event is received.
     // no need to be volatile, the source is driven by only one thread
     private transient CheckpointTrigger checkpointTrigger;
+
+    // Pravega reader group
+    private transient ReaderGroup readerGroup = null;
 
     // ------------------------------------------------------------------------
 
@@ -221,6 +225,18 @@ public class FlinkPravegaReader<T>
     @Override
     public TypeInformation<T> getProducedType() {
         return this.deserializationSchema.getProducedType();
+    }
+
+    @Override
+    public void open(Configuration parameters) throws Exception {
+        createReaderGroup();
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (readerGroup != null) {
+            readerGroup.close();
+        }
     }
 
     // ------------------------------------------------------------------------
@@ -398,7 +414,7 @@ public class FlinkPravegaReader<T>
      *
      */
     private void registerMetrics() {
-        ReaderGroup readerGroup = createReaderGroup();
+        Preconditions.checkState(readerGroup != null, "Reader Group is not created");
         MetricGroup pravegaReaderMetricGroup = getRuntimeContext().getMetricGroup().addGroup(PRAVEGA_READER_METRICS_GROUP);
         MetricGroup readerGroupMetricGroup = pravegaReaderMetricGroup.addGroup(READER_GROUP_METRICS_GROUP);
         readerGroupMetricGroup.gauge(UNREAD_BYTES_METRICS_GAUGE, new UnreadBytesGauge(readerGroup));
@@ -426,9 +442,12 @@ public class FlinkPravegaReader<T>
      * Create the {@link ReaderGroup} for the current configuration.
      */
     protected ReaderGroup createReaderGroup() {
-        ReaderGroupManager readerGroupManager = createReaderGroupManager();
-        readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-        return readerGroupManager.getReaderGroup(this.readerGroupName);
+        if (readerGroup == null) {
+            ReaderGroupManager readerGroupManager = createReaderGroupManager();
+            readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
+            readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
+        }
+        return readerGroup;
     }
 
     /**
