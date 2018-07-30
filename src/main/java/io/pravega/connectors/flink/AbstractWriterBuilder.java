@@ -26,6 +26,8 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
 
     private StreamSpec stream;
 
+    private boolean enableMetrics = true;
+
     public AbstractWriterBuilder() {
         this.pravegaConfig = PravegaConfig.fromDefaults();
     }
@@ -79,6 +81,24 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
         Preconditions.checkState(stream != null, "A stream must be supplied.");
         PravegaConfig pravegaConfig = getPravegaConfig();
         return pravegaConfig.resolve(stream.streamSpec);
+    }
+
+    /**
+     * enable/disable pravega writer metrics (default: enabled).
+     *
+     * @param enable boolean
+     * @return A builder to configure and create a writer.
+     */
+    public B enableMetrics(boolean enable) {
+        this.enableMetrics = enable;
+        return builder();
+    }
+
+    /**
+     * getter to fetch the metrics flag.
+     */
+    protected boolean isMetricsEnabled() {
+        return enableMetrics;
     }
 
     protected abstract B builder();

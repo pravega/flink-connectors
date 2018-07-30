@@ -75,6 +75,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 serializationSchema,
                 eventRouter,
                 writerMode,
-                txnLeaseRenewalPeriod.toMilliseconds());
+                txnLeaseRenewalPeriod.toMilliseconds(),
+                isMetricsEnabled());
     }
 }
