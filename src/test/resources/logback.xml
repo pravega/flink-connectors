@@ -23,12 +23,14 @@
     </root>
 
     <!-- suppress unnecessary logging statements to keep the log file size minimum -->
-    <logger name="io.pravega.client.segment.impl" level="ERROR"/>
-    <logger name="io.pravega.client.netty.impl" level="ERROR"/>
+    <logger name="io.pravega" level="ERROR"/>
+    <logger name="io.netty" level="ERROR"/>
+    <logger name="io.grpc" level="ERROR"/>
     <logger name="org.apache.zookeeper" level="ERROR"/>
     <logger name="org.apache.curator" level="ERROR"/>
     <logger name="io.pravega.shared.protocol.netty.ExceptionLoggingHandler" level="OFF"/>
     <logger name="io.pravega.controller.util.Config" level="OFF"/>
     <logger name="io.pravega.segmentstore.server.host.handler.ServerConnectionInboundHandler" level="OFF"/>
+    <logger name="org.apache.curator.framework.recipes.leader.LeaderSelector" level="OFF"/>
 
 </configuration>
