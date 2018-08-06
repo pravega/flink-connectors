@@ -17,8 +17,18 @@
         </encoder>
     </appender>
 
-    <root level="error">
+    <root level="INFO">
         <appender-ref ref="STDOUT"/>
         <appender-ref ref="FILE" />
     </root>
+
+    <!-- suppress unnecessary logging statements to keep the log file size minimum -->
+    <logger name="io.pravega.client.segment.impl" level="ERROR"/>
+    <logger name="io.pravega.client.netty.impl" level="ERROR"/>
+    <logger name="org.apache.zookeeper" level="ERROR"/>
+    <logger name="org.apache.curator" level="ERROR"/>
+    <logger name="io.pravega.shared.protocol.netty.ExceptionLoggingHandler" level="OFF"/>
+    <logger name="io.pravega.controller.util.Config" level="OFF"/>
+    <logger name="io.pravega.segmentstore.server.host.handler.ServerConnectionInboundHandler" level="OFF"/>
+
 </configuration>
