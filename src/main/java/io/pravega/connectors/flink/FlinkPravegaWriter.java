@@ -187,11 +187,11 @@ public class FlinkPravegaWriter<T>
     /**
      * Gauge for getting the scoped name information.
      */
-    private static class ScopedStreamGauge implements Gauge<String> {
+    private static class StreamNameGauge implements Gauge<String> {
 
         final String scopedStream;
 
-        public ScopedStreamGauge(String scopedStream) {
+        public StreamNameGauge(String scopedStream) {
             this.scopedStream = scopedStream;
         }
 
@@ -207,7 +207,7 @@ public class FlinkPravegaWriter<T>
      */
     private void registerMetrics() {
         MetricGroup pravegaWriterMetricGroup = getRuntimeContext().getMetricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
-        pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new ScopedStreamGauge(stream.getScopedName()));
+        pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
     }
 
     // ------------------------------------------------------------------------

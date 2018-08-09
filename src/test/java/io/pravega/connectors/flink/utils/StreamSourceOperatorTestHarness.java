@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink.utils;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
+import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.operators.StreamSource;
@@ -109,5 +110,12 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
      */
     public ConcurrentLinkedQueue<Long> getTriggeredCheckpoints() {
         return triggeredCheckpoints;
+    }
+
+    /**
+     * Gets handle to the MetricGroup.
+     */
+    public MetricGroup getMetricGroup() {
+        return sourceOperator.getMetricGroup();
     }
 }

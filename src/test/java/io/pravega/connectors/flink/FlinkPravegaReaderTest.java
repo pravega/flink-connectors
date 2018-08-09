@@ -28,10 +28,13 @@ import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.metrics.scope.ScopeFormat;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.TestHarnessUtil;
+import org.junit.Assert;
 import org.junit.Test;
 
 import java.util.Collections;
@@ -39,6 +42,12 @@ import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import static io.pravega.connectors.flink.FlinkPravegaReader.ONLINE_READERS_METRICS_GAUGE;
+import static io.pravega.connectors.flink.FlinkPravegaReader.PRAVEGA_READER_METRICS_GROUP;
+import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_METRICS_GROUP;
+import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_NAME_METRICS_GAUGE;
+import static io.pravega.connectors.flink.FlinkPravegaReader.SEPARATOR;
+import static io.pravega.connectors.flink.FlinkPravegaReader.UNREAD_BYTES_METRICS_GAUGE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -120,7 +129,28 @@ public class FlinkPravegaReaderTest {
             Queue<Long> expectedChkpts = new ConcurrentLinkedQueue<>();
             expectedChkpts.add(42L);
             TestHarnessUtil.assertOutputEquals("Unexpected checkpoints", expectedChkpts, actualChkpts);
+
+            // verify if metrics are generated
+            MetricGroup pravegaReaderMetricGroup = testHarness.getMetricGroup().addGroup(PRAVEGA_READER_METRICS_GROUP);
+            MetricGroup readerGroupMetricGroup = pravegaReaderMetricGroup.addGroup(READER_GROUP_METRICS_GROUP);
+            String scopeString = ScopeFormat.concat(',', readerGroupMetricGroup.getScopeComponents());
+
+            validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
+            validateMetricGroup(scopeString, READER_GROUP_NAME_METRICS_GAUGE, readerGroupMetricGroup);
+            validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
+            validateMetricGroup(scopeString, ONLINE_READERS_METRICS_GAUGE, readerGroupMetricGroup);
+            validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
+
         }
+    }
+
+    /**
+     * helper method to validate the metrics
+     */
+    private void validateMetricGroup(String prefix, String metric, MetricGroup readerGroupMetricGroup) {
+        String expectedValue = prefix + SEPARATOR + metric;
+        Assert.assertTrue(metric, expectedValue.equals(readerGroupMetricGroup.getMetricIdentifier(metric)));
+
     }
 
     /**
@@ -323,6 +353,7 @@ public class FlinkPravegaReaderTest {
         protected EventStreamReader<T> createEventStreamReader(String readerId) {
             return eventStreamReader;
         }
+
     }
 
     /**

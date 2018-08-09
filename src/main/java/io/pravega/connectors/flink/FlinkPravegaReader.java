@@ -51,27 +51,29 @@ public class FlinkPravegaReader<T>
         extends RichParallelSourceFunction<T>
         implements ResultTypeQueryable<T>, StoppableFunction, ExternallyInducedSource<T, Checkpoint> {
 
-    private static final long serialVersionUID = 1L;
-
     // ----- metrics field constants -----
 
-    private static final String PRAVEGA_READER_METRICS_GROUP = "PravegaReader";
+    protected static final String PRAVEGA_READER_METRICS_GROUP = "PravegaReader";
 
-    private static final String READER_GROUP_METRICS_GROUP = "readerGroup";
+    protected static final String READER_GROUP_METRICS_GROUP = "readerGroup";
 
-    private static final String STREAM_METRICS_GROUP = "stream";
+    protected static final String STREAM_METRICS_GROUP = "stream";
 
-    private static final String UNREAD_BYTES_METRICS_GAUGE = "unreadBytes";
+    protected static final String UNREAD_BYTES_METRICS_GAUGE = "unreadBytes";
 
-    private static final String READER_GROUP_NAME_METRICS_GAUGE = "readerGroupName";
+    protected static final String READER_GROUP_NAME_METRICS_GAUGE = "readerGroupName";
 
-    private static final String SCOPE_NAME_METRICS_GAUGE = "scope";
+    protected static final String SCOPE_NAME_METRICS_GAUGE = "scope";
 
-    private static final String ONLINE_READERS_METRICS_GAUGE = "onlineReaders";
+    protected static final String ONLINE_READERS_METRICS_GAUGE = "onlineReaders";
 
-    private static final String STREAM_NAMES_METRICS_GAUGE = "streams";
+    protected static final String STREAM_NAMES_METRICS_GAUGE = "streams";
 
-    private static final String SEGMENT_POSITIONS_METRICS_GAUGE = "segmentPositions";
+    protected static final String SEGMENT_POSITIONS_METRICS_GAUGE = "segmentPositions";
+
+    protected static final String SEPARATOR = ",";
+
+    private static final long serialVersionUID = 1L;
 
     // ----- configuration fields -----
 
@@ -171,10 +173,6 @@ public class FlinkPravegaReader<T>
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
 
-        if (enableMetrics) {
-            registerMetrics();
-        }
-
         final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
 
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
@@ -230,6 +228,9 @@ public class FlinkPravegaReader<T>
     @Override
     public void open(Configuration parameters) throws Exception {
         createReaderGroup();
+        if (enableMetrics) {
+            registerMetrics();
+        }
     }
 
     @Override
@@ -335,7 +336,6 @@ public class FlinkPravegaReader<T>
     private static class OnlineReadersGauge implements Gauge<String> {
 
         private final ReaderGroup readerGroup;
-        private final String separator = ",";
 
         public OnlineReadersGauge(ReaderGroup readerGroup) {
             this.readerGroup = readerGroup;
@@ -343,7 +343,7 @@ public class FlinkPravegaReader<T>
 
         @Override
         public String getValue() {
-            return readerGroup.getOnlineReaders().stream().collect(Collectors.joining(separator));
+            return readerGroup.getOnlineReaders().stream().collect(Collectors.joining(SEPARATOR));
         }
     }
 
@@ -353,7 +353,6 @@ public class FlinkPravegaReader<T>
     private static class StreamNamesGauge implements Gauge<String> {
 
         private final ReaderGroup readerGroup;
-        private final String separator = ",";
 
         public StreamNamesGauge(ReaderGroup readerGroup) {
             this.readerGroup = readerGroup;
@@ -361,15 +360,8 @@ public class FlinkPravegaReader<T>
 
         @Override
         public String getValue() {
-            StringBuilder builder = new StringBuilder();
-            readerGroup.getStreamCuts().keySet().stream().forEach(s -> {
-                if (builder.length() > 0) {
-                    builder.append(separator).append(s.getScopedName());
-                } else {
-                    builder.append(s.getScopedName());
-                }
-            });
-            return builder.toString();
+            return readerGroup.getStreamCuts().keySet().stream()
+                    .map(Stream::getScopedName).collect(Collectors.joining(","));
         }
     }
 
@@ -400,9 +392,7 @@ public class FlinkPravegaReader<T>
                                     e.getKey().getScope().equals(scope))
                             .findFirst();
             if (optionalStreamCutEntry.isPresent()) {
-                optionalStreamCutEntry.get().getValue().asImpl().getPositions().entrySet().stream().forEach(entry -> {
-                    builder.append(entry.getKey()).append("=").append(entry.getValue()).append(", ");
-                });
+                builder.append(optionalStreamCutEntry.get().getValue().toString());
             }
             builder.append("}");
             return builder.toString();
@@ -441,12 +431,10 @@ public class FlinkPravegaReader<T>
     /**
      * Create the {@link ReaderGroup} for the current configuration.
      */
-    protected ReaderGroup createReaderGroup() {
-        if (readerGroup == null) {
-            ReaderGroupManager readerGroupManager = createReaderGroupManager();
-            readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-            readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
-        }
+    private ReaderGroup createReaderGroup() {
+        ReaderGroupManager readerGroupManager = createReaderGroupManager();
+        readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
+        readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
         return readerGroup;
     }
 
