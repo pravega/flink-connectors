@@ -185,19 +185,19 @@ public class FlinkPravegaWriter<T>
     }
 
     /**
-     * Gauge for getting the scoped name information.
+     * Gauge for getting the fully qualified stream name information.
      */
     private static class StreamNameGauge implements Gauge<String> {
 
-        final String scopedStream;
+        final String stream;
 
-        public StreamNameGauge(String scopedStream) {
-            this.scopedStream = scopedStream;
+        public StreamNameGauge(String stream) {
+            this.stream = stream;
         }
 
         @Override
         public String getValue() {
-            return scopedStream;
+            return stream;
         }
     }
 
