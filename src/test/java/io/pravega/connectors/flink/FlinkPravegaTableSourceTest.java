@@ -63,16 +63,17 @@ public class FlinkPravegaTableSourceTest {
     public void testBatchTableSource() {
         FlinkPravegaReader<Row> reader = mock(FlinkPravegaReader.class);
         FlinkPravegaInputFormat<Row> inputFormat = mock(FlinkPravegaInputFormat.class);
+        TypeInformation<Row> returnType = jsonSchemaToReturnType(SAMPLE_SCHEMA);
 
         TestableFlinkPravegaTableSource tableSource = new TestableFlinkPravegaTableSource(
                 () -> reader,
                 () -> inputFormat,
                 SAMPLE_SCHEMA,
-                jsonSchemaToReturnType(SAMPLE_SCHEMA)
+                returnType
         );
         ExecutionEnvironment batchEnv = mock(ExecutionEnvironment.class);
         tableSource.getDataSet(batchEnv);
-        verify(batchEnv).createInput(inputFormat);
+        verify(batchEnv).createInput(inputFormat, returnType);
     }
 
     @Test

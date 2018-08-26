@@ -19,13 +19,14 @@ import java.util.function.Function;
  * An append-only table sink to emit a streaming table as a Pravega stream containing JSON-formatted events.
  */
 public class FlinkPravegaJsonTableSink extends FlinkPravegaTableSink {
-    private FlinkPravegaJsonTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory) {
-        super(writerFactory);
+    private FlinkPravegaJsonTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
+                                      Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
+        super(writerFactory, outputFormatFactory);
     }
 
     @Override
     protected FlinkPravegaTableSink createCopy() {
-        return new FlinkPravegaJsonTableSink(writerFactory);
+        return new FlinkPravegaJsonTableSink(writerFactory, outputFormatFactory);
     }
 
     public static Builder builder() {
@@ -50,7 +51,7 @@ public class FlinkPravegaJsonTableSink extends FlinkPravegaTableSink {
          * Builds the {@link FlinkPravegaJsonTableSink}.
          */
         public FlinkPravegaJsonTableSink build() {
-            return new FlinkPravegaJsonTableSink(this::createSinkFunction);
+            return new FlinkPravegaJsonTableSink(this::createSinkFunction, this::createOutputFormat);
         }
     }
 }

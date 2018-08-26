@@ -13,10 +13,12 @@ import lombok.Getter;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
+import org.apache.flink.table.sinks.BatchTableSink;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
@@ -30,10 +32,13 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * An append-only table sink to emit a streaming table as a Pravega stream.
  */
-public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row> {
+public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
 
     /** A factory for the stream writer. */
     protected final Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory;
+
+    /** A factory for output format. */
+    protected final Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory;
 
     /** The effective table sink configuration */
     private TableSinkConfiguration tableSinkConfiguration;
@@ -45,9 +50,12 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      * The specified field must of type {@code STRING}.
      *
      * @param writerFactory                A factory for the stream writer.
+     * @param outputFormatFactory          A factory for the output format.
      */
-    protected FlinkPravegaTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory) {
+    protected FlinkPravegaTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
+                                    Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
         this.writerFactory = Preconditions.checkNotNull(writerFactory, "writerFactory");
+        this.outputFormatFactory = Preconditions.checkNotNull(outputFormatFactory, "outputFormatFactory");
     }
 
     /**
@@ -64,6 +72,13 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
         checkState(tableSinkConfiguration != null, "Table sink is not configured");
         FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
         dataStream.addSink(writer);
+    }
+
+    @Override
+    public void emitDataSet(DataSet<Row> dataSet) {
+        checkState(tableSinkConfiguration != null, "Table sink is not configured");
+        FlinkPravegaOutputFormat<Row> outputFormat = outputFormatFactory.apply(tableSinkConfiguration);
+        dataSet.output(outputFormat);
     }
 
     @Override
@@ -179,6 +194,25 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
             PravegaEventRouter<Row> eventRouter = new RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
             return createSinkFunction(serializationSchema, eventRouter);
         }
+
+        /**
+         * Creates FlinkPravegaOutputFormat based on the given table sink configuration and current builder state.
+         *
+         * @param configuration the table sink configuration, incl. projected fields
+         */
+        protected FlinkPravegaOutputFormat<Row> createOutputFormat(TableSinkConfiguration configuration) {
+            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
+            SerializationSchema<Row> serializationSchema = getSerializationSchema(configuration.getFieldNames());
+            PravegaEventRouter<Row> eventRouter = new RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
+            return new FlinkPravegaOutputFormat<>(
+                            getPravegaConfig().getClientConfig(),
+                            resolveStream(),
+                            serializationSchema,
+                            eventRouter,
+                            txnLeaseRenewalPeriod.toMilliseconds()
+                    );
+        }
+
 
         // endregion
     }
