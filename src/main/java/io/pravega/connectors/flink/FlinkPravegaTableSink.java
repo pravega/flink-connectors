@@ -208,11 +208,9 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
                             getPravegaConfig().getClientConfig(),
                             resolveStream(),
                             serializationSchema,
-                            eventRouter,
-                            txnLeaseRenewalPeriod.toMilliseconds()
+                            eventRouter
                     );
         }
-
 
         // endregion
     }

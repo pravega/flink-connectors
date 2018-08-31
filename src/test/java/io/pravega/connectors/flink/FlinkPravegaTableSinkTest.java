@@ -13,6 +13,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.types.Row;
@@ -65,6 +66,17 @@ public class FlinkPravegaTableSinkTest {
         DataStream<Row> dataStream = mock(DataStream.class);
         tableSink.emitDataStream(dataStream);
         verify(dataStream).addSink(writer);
+    }
+
+    @Test
+    public void testEmitDataSet() {
+        FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
+                .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
+        DataSet<Row> dataSet = mock(DataSet.class);
+        tableSink.emitDataSet(dataSet);
+        verify(dataSet).output(outputFormat);
     }
 
     @Test

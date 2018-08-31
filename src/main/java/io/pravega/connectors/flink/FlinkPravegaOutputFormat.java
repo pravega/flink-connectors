@@ -17,10 +17,10 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.io.RichOutputFormat;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
@@ -61,9 +61,6 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
     // Pravega event writer instance.
     private transient EventStreamWriter<T> pravegaWriter;
 
-    // Various timeouts
-    private final long txnLeaseRenewalPeriod;
-
     // Error which will be detected asynchronously and reported to Flink.
     private final AtomicReference<Throwable> writeError;
 
@@ -79,22 +76,18 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
      * @param stream                The stream to write the events.
      * @param serializationSchema   The implementation to serialize events that will be written to pravega stream.
      * @param eventRouter           The event router to be used while writing the events.
-     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
      */
     protected FlinkPravegaOutputFormat(
             final ClientConfig clientConfig,
             final Stream stream,
             final SerializationSchema<T> serializationSchema,
-            final PravegaEventRouter<T> eventRouter,
-            final long txnLeaseRenewalPeriod) {
+            final PravegaEventRouter<T> eventRouter) {
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         Preconditions.checkNotNull(stream, "stream");
         this.stream = stream.getStreamName();
         this.scope = stream.getScope();
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
-        Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
-        this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.writeError = new AtomicReference<>(null);
         this.pendingWritesCount = new AtomicInteger(0);
     }
@@ -108,12 +101,10 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
     @Override
     public void open(int taskNumber, int numTasks) throws IOException {
         Serializer<T> eventSerializer = new FlinkPravegaWriter.FlinkSerializer<>(serializationSchema);
-        EventWriterConfig writerConfig = EventWriterConfig.builder()
-                .transactionTimeoutTime(txnLeaseRenewalPeriod)
-                .build();
-        clientFactory = ClientFactory.withScope(scope, clientConfig);
+        EventWriterConfig writerConfig = EventWriterConfig.builder().build();
+        clientFactory = createClientFactory(scope, clientConfig);
         pravegaWriter = clientFactory.createEventWriter(stream, eventSerializer, writerConfig);
-        this.executorService = Executors.newSingleThreadExecutor();
+        this.executorService = createExecutorService();
     }
 
     @Override
@@ -187,11 +178,22 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
         checkWriteError();
     }
 
-    private void checkWriteError() throws IOException {
+    @VisibleForTesting
+    protected void checkWriteError() throws IOException {
         Throwable error = this.writeError.getAndSet(null);
         if (error != null) {
             throw new IOException("Write failure", error);
         }
+    }
+
+    @VisibleForTesting
+    protected ClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
+        return ClientFactory.withScope(scopeName, clientConfig);
+    }
+
+    @VisibleForTesting
+    protected ExecutorService createExecutorService() {
+        return Executors.newSingleThreadExecutor();
     }
 
     public static <T> FlinkPravegaOutputFormat.Builder<T> builder() {
@@ -200,28 +202,9 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
 
     public static class Builder<T> extends AbstractWriterBuilder<Builder<T>> {
 
-        private static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000;
-
-        private Time txnLeaseRenewalPeriod;
-
         private SerializationSchema<T> serializationSchema;
 
         private PravegaEventRouter<T> eventRouter;
-
-        public Builder() {
-            txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
-        }
-
-        /**
-         * Sets the transaction lease renewal period.
-         *
-         * @param period the lease renewal period
-         */
-        public Builder<T> withTxnLeaseRenewalPeriod(Time period) {
-            Preconditions.checkArgument(period.getSize() > 0, "The timeout must be a positive value.");
-            this.txnLeaseRenewalPeriod = period;
-            return builder();
-        }
 
         /**
          * Sets the serialization schema.
@@ -258,8 +241,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
                             getPravegaConfig().getClientConfig(),
                             resolveStream(),
                             serializationSchema,
-                            eventRouter,
-                            txnLeaseRenewalPeriod.toMilliseconds()
+                            eventRouter
                     );
         }
     }
