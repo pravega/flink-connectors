@@ -129,7 +129,7 @@ public class FlinkPravegaTableITCase {
 
         testTableSourceStream(source);
 
-        tesTableSourceBatch(source);
+        testTableSourceBatch(source);
 
     }
 
@@ -165,7 +165,7 @@ public class FlinkPravegaTableITCase {
         assertTrue("Output does not match expected result", compare);
     }
 
-    public void tesTableSourceBatch(FlinkPravegaJsonTableSource source) throws Exception {
+    public void testTableSourceBatch(FlinkPravegaJsonTableSource source) throws Exception {
 
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
