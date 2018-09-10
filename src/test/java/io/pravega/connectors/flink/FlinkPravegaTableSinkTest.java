@@ -88,11 +88,14 @@ public class FlinkPravegaTableSinkTest {
                 .withRoutingKeyField(TUPLE1.getFieldNames()[0]);
         FlinkPravegaWriter<Row> writer = builder.createSinkFunction(config);
         assertNotNull(writer);
-        FlinkPravegaOutputFormat<Row> outputFormat = builder.createOutputFormat(config);
-        assertNotNull(outputFormat);
         assertSame(SERIALIZER1, writer.serializationSchema);
         assertEquals(STREAM1, writer.stream);
         assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) writer.eventRouter).getKeyIndex());
+        FlinkPravegaOutputFormat<Row> outputFormat = builder.createOutputFormat(config);
+        assertNotNull(outputFormat);
+        assertEquals(SERIALIZER1, outputFormat.getSerializationSchema());
+        assertEquals(STREAM1, Stream.of(outputFormat.getScope(), outputFormat.getStream()));
+        assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) outputFormat.getEventRouter()).getKeyIndex());
     }
 
     private static class TestableFlinkPravegaTableSink extends FlinkPravegaTableSink {

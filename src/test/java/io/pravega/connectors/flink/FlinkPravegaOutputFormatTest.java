@@ -24,10 +24,11 @@ import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.spy;
@@ -129,31 +130,37 @@ public class FlinkPravegaOutputFormatTest {
         ExecutorService executorService = spy(new DirectExecutorService());
         Mockito.doReturn(executorService).when(spyFlinkPravegaOutputFormat).createExecutorService();
 
-        // test writeRecord
-        spyFlinkPravegaOutputFormat.writeRecord("test");
-        verify(spyFlinkPravegaOutputFormat).writeRecord("test");
+        // test writeRecord success
+        spyFlinkPravegaOutputFormat.writeRecord("test-1");
+        assertEquals(1, spyFlinkPravegaOutputFormat.getPendingWritesCount().get());
         writeFuture.complete(null);
 
-        // test writeRecord for failure
-        doThrow(new IOException()).when(spyFlinkPravegaOutputFormat).checkWriteError();
+        // test writeRecord induce failure
+        spyFlinkPravegaOutputFormat.writeRecord("test-2");
+        writeFuture.completeExceptionally(new Exception("test simulated"));
+
+        // test writeRecord after a failure
         try {
-            spyFlinkPravegaOutputFormat.writeRecord("test");
+            spyFlinkPravegaOutputFormat.writeRecord("test-3");
         } catch (Exception e) {
             Assert.assertTrue(e instanceof IOException);
+            assertTrue(spyFlinkPravegaOutputFormat.isErrorOccurred());
+            assertEquals("test simulated", e.getCause().getMessage());
+            assertEquals(0, spyFlinkPravegaOutputFormat.getPendingWritesCount().get());
         }
 
         // test close error
         try {
             spyFlinkPravegaOutputFormat.close();
-            verify(spyFlinkPravegaOutputFormat).close();
         } catch (Exception e) {
             Assert.assertTrue(e instanceof IOException);
         }
 
         // test close
+        reset(clientFactory);
         reset(spyFlinkPravegaOutputFormat);
         spyFlinkPravegaOutputFormat.close();
-        verify(spyFlinkPravegaOutputFormat).close();
+        verify(clientFactory).close();
     }
 
     private static class FixedEventRouter<T> implements PravegaEventRouter<T> {

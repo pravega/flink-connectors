@@ -196,6 +196,36 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
         return Executors.newSingleThreadExecutor();
     }
 
+    @VisibleForTesting
+    protected SerializationSchema<T> getSerializationSchema() {
+        return serializationSchema;
+    }
+
+    @VisibleForTesting
+    protected String getStream() {
+        return stream;
+    }
+
+    @VisibleForTesting
+    protected String getScope() {
+        return scope;
+    }
+
+    @VisibleForTesting
+    protected boolean isErrorOccurred() {
+        return writeError.get() != null;
+    }
+
+    @VisibleForTesting
+    protected AtomicInteger getPendingWritesCount() {
+        return pendingWritesCount;
+    }
+
+    @VisibleForTesting
+    protected PravegaEventRouter<T> getEventRouter() {
+        return eventRouter;
+    }
+
     public static <T> FlinkPravegaOutputFormat.Builder<T> builder() {
         return new Builder<>();
     }
