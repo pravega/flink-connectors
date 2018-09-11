@@ -37,6 +37,7 @@ import org.apache.flink.util.FlinkException;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
@@ -360,8 +361,7 @@ public class FlinkPravegaReader<T>
 
         @Override
         public String getValue() {
-            return readerGroup.getStreamCuts().keySet().stream()
-                    .map(Stream::getScopedName).collect(Collectors.joining(","));
+            return readerGroup.getStreamNames().stream().collect(Collectors.joining(","));
         }
     }
 
@@ -413,15 +413,15 @@ public class FlinkPravegaReader<T>
         readerGroupMetricGroup.gauge(ONLINE_READERS_METRICS_GAUGE, new OnlineReadersGauge(readerGroup));
         readerGroupMetricGroup.gauge(STREAM_NAMES_METRICS_GAUGE, new StreamNamesGauge(readerGroup));
 
-        Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
-        for (Map.Entry<Stream, StreamCut> entry: streamCuts.entrySet()) {
-            Stream stream = entry.getKey();
+        Set<String> streamNames = readerGroup.getStreamNames();
+        for (String scopedStream: streamNames) {
+            String[] streamInfo = scopedStream.split("/", 2);
+            Preconditions.checkArgument(streamInfo.length == 2, "not a fully qualified stream expected: scopeName/streamName");
             MetricGroup streamMetricGroup = readerGroupMetricGroup
-                    .addGroup(STREAM_METRICS_GROUP + "." + stream.getScope()+ "_"+ stream.getStreamName());
+                    .addGroup(STREAM_METRICS_GROUP + "." + streamInfo[0]+ "_"+ streamInfo[1]);
             streamMetricGroup.gauge(SEGMENT_POSITIONS_METRICS_GAUGE,
-                    new SegmentPositionsGauge(readerGroup, stream.getScope(), stream.getStreamName()));
+                    new SegmentPositionsGauge(readerGroup, streamInfo[0], streamInfo[1]));
         }
-
     }
 
     // ------------------------------------------------------------------------
