@@ -22,7 +22,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
+import org.apache.flink.test.util.AbstractTestBase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -35,7 +35,7 @@ import java.util.concurrent.TimeUnit;
  * Integration tests for {@link FlinkPravegaReader}.
  */
 @Slf4j
-public class FlinkPravegaReaderITCase extends StreamingMultipleProgramsTestBase {
+public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     // Setup utility.
     protected static final SetupUtils SETUP_UTILS = new SetupUtils();
