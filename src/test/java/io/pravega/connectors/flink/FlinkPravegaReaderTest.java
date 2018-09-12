@@ -46,7 +46,6 @@ import static io.pravega.connectors.flink.FlinkPravegaReader.ONLINE_READERS_METR
 import static io.pravega.connectors.flink.FlinkPravegaReader.PRAVEGA_READER_METRICS_GROUP;
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_METRICS_GROUP;
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_NAME_METRICS_GAUGE;
-import static io.pravega.connectors.flink.FlinkPravegaReader.SEPARATOR;
 import static io.pravega.connectors.flink.FlinkPravegaReader.UNREAD_BYTES_METRICS_GAUGE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -133,7 +132,7 @@ public class FlinkPravegaReaderTest {
             // verify if metrics are generated
             MetricGroup pravegaReaderMetricGroup = testHarness.getMetricGroup().addGroup(PRAVEGA_READER_METRICS_GROUP);
             MetricGroup readerGroupMetricGroup = pravegaReaderMetricGroup.addGroup(READER_GROUP_METRICS_GROUP);
-            String scopeString = ScopeFormat.concat(',', readerGroupMetricGroup.getScopeComponents());
+            String scopeString = ScopeFormat.concat('.', readerGroupMetricGroup.getScopeComponents());
 
             validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
             validateMetricGroup(scopeString, READER_GROUP_NAME_METRICS_GAUGE, readerGroupMetricGroup);
@@ -148,9 +147,8 @@ public class FlinkPravegaReaderTest {
      * helper method to validate the metrics
      */
     private void validateMetricGroup(String prefix, String metric, MetricGroup readerGroupMetricGroup) {
-        String expectedValue = prefix + SEPARATOR + metric;
+        String expectedValue = prefix.concat(".").concat(metric);
         Assert.assertTrue(metric, expectedValue.equals(readerGroupMetricGroup.getMetricIdentifier(metric)));
-
     }
 
     /**
