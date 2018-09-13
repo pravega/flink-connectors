@@ -115,7 +115,6 @@ dependencies {
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
     testCompile group: 'org.apache.flink', name: 'flink-tests_2.11', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_2.11', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-streaming-contrib_2.11', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_2.11', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_2.11', classifier: 'tests', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
@@ -157,4 +156,31 @@ def getProjectVersion() {
         ver = versionLabel + "-" + count + "." + commitId + "-SNAPSHOT"
     }
     return ver
+}
+
+distributions {
+    release {
+        contents {
+            from shadowJar
+            from(project.configurations.shadow)
+            from javadocJar
+            from sourceJar
+        }
+    }
+    workspace {
+        contents {
+            from ('.') {
+                exclude "build"
+                exclude ".gradle"
+                exclude ".idea"
+                exclude "out"
+                exclude "pravega/*"
+            }
+        }
+    }
+}
+
+task distribution(type: Copy, dependsOn: [installReleaseDist, installWorkspaceDist, assembleWorkspaceDist]) {
+    from ("$buildDir/install/flink-connectors-release")
+    into ("$buildDir/distributions")
 }
