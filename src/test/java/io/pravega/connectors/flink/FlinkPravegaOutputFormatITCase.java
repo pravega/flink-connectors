@@ -18,7 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.streaming.util.StreamingMultipleProgramsTestBase;
+import org.apache.flink.test.util.AbstractTestBase;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -31,7 +31,7 @@ import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
-public class FlinkPravegaOutputFormatITCase extends StreamingMultipleProgramsTestBase {
+public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
