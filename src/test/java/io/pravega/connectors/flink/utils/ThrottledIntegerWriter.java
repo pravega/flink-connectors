@@ -70,7 +70,7 @@ public class ThrottledIntegerWriter extends CheckedThread implements AutoCloseab
                 }
             }
 
-            eventWriter.writeEvent(String.valueOf(i), i);
+            eventWriter.writeEvent(String.valueOf(i), i).get();
         }
     }
 
