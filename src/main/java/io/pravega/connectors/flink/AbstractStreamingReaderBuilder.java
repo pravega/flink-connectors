@@ -151,7 +151,8 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
                 rgName,
                 getDeserializationSchema(),
                 this.eventReadTimeout,
-                this.checkpointInitiateTimeout);
+                this.checkpointInitiateTimeout,
+                isMetricsEnabled());
     }
 
     /**

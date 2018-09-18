@@ -33,6 +33,8 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     private PravegaConfig pravegaConfig;
 
+    private boolean enableMetrics = true;
+
     protected AbstractReaderBuilder() {
         this.streams = new ArrayList<>(1);
         this.pravegaConfig = PravegaConfig.fromDefaults();
@@ -135,6 +137,24 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
         return streams.stream()
                 .map(s -> StreamWithBoundaries.of(pravegaConfig.resolve(s.streamSpec), s.from, s.to))
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * enable/disable pravega reader metrics (default: enabled).
+     *
+     * @param enable boolean
+     * @return A builder to configure and create a reader.
+     */
+    public B enableMetrics(boolean enable) {
+        this.enableMetrics = enable;
+        return builder();
+    }
+
+    /**
+     * getter to fetch the metrics flag.
+     */
+    protected boolean isMetricsEnabled() {
+        return enableMetrics;
     }
 
     protected abstract B builder();

@@ -127,6 +127,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
             // the Pravega reader
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                     .forStream(streamName)
+                    .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();

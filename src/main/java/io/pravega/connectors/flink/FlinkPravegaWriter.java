@@ -21,6 +21,8 @@ import io.pravega.common.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.metrics.Gauge;
+import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
@@ -57,6 +59,15 @@ public class FlinkPravegaWriter<T>
         implements ListCheckpointed<FlinkPravegaWriter.PendingTransaction>, CheckpointListener {
 
     private static final long serialVersionUID = 1L;
+
+    // ----- metrics field constants -----
+
+    private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
+
+    private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
+
+    // flag to enable/disable metrics
+    final boolean enableMetrics;
 
     // Writer interface to assist exactly-once and at-least-once functionality
     @VisibleForTesting
@@ -95,6 +106,7 @@ public class FlinkPravegaWriter<T>
      * @param eventRouter           The implementation to extract the partition key from the event.
      * @param writerMode            The Pravega writer mode.
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     protected FlinkPravegaWriter(
             final ClientConfig clientConfig,
@@ -102,7 +114,8 @@ public class FlinkPravegaWriter<T>
             final SerializationSchema<T> serializationSchema,
             final PravegaEventRouter<T> eventRouter,
             final PravegaWriterMode writerMode,
-            final long txnLeaseRenewalPeriod) {
+            final long txnLeaseRenewalPeriod,
+            final boolean enableMetrics) {
 
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
@@ -111,6 +124,7 @@ public class FlinkPravegaWriter<T>
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
+        this.enableMetrics = enableMetrics;
     }
 
     /**
@@ -135,6 +149,9 @@ public class FlinkPravegaWriter<T>
         writer.open();
         log.info("Initialized Pravega writer for stream: {} with controller URI: {}", stream,
                 clientConfig.getControllerURI());
+        if (enableMetrics) {
+            registerMetrics();
+        }
     }
 
     @Override
@@ -165,6 +182,32 @@ public class FlinkPravegaWriter<T>
         if (exception != null) {
             throw exception;
         }
+    }
+
+    /**
+     * Gauge for getting the fully qualified stream name information.
+     */
+    private static class StreamNameGauge implements Gauge<String> {
+
+        final String stream;
+
+        public StreamNameGauge(String stream) {
+            this.stream = stream;
+        }
+
+        @Override
+        public String getValue() {
+            return stream;
+        }
+    }
+
+    /**
+     * register metrics
+     *
+     */
+    private void registerMetrics() {
+        MetricGroup pravegaWriterMetricGroup = getRuntimeContext().getMetricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
+        pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
     }
 
     // ------------------------------------------------------------------------

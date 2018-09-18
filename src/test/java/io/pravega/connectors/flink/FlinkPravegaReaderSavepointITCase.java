@@ -194,6 +194,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         // the Pravega reader
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                 .forStream(streamName)
+                .enableMetrics(false)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withDeserializationSchema(new IntegerDeserializationSchema())
                 .uid("my_reader_name")
