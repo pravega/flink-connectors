@@ -28,7 +28,6 @@ import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -170,7 +169,6 @@ public class FlinkTableITCase {
      * @throws Exception on exception
      */
     @Test
-    @Ignore("[issue-124] FlinkPravegaTableSink doesn't support BatchTableSink")
     public void testBatchTable() throws Exception {
 
         // create a Pravega stream for test purposes
@@ -195,6 +193,7 @@ public class FlinkTableITCase {
                 .withRoutingKeyField("category")
                 .build();
         table.writeToSink(sink);
+        env.execute();
 
         // register the Pravega stream as a table called 'samples'
         FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()

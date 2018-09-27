@@ -13,6 +13,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.types.Row;
@@ -39,7 +40,8 @@ public class FlinkPravegaTableSinkTest {
     @SuppressWarnings("unchecked")
     public void testConfigure() {
         FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
-        FlinkPravegaTableSink tableSinkUnconfigured = new TestableFlinkPravegaTableSink(config -> writer);
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSinkUnconfigured = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat);
 
         FlinkPravegaTableSink tableSink1 = tableSinkUnconfigured.configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
         assertNotSame(tableSinkUnconfigured, tableSink1);
@@ -58,11 +60,23 @@ public class FlinkPravegaTableSinkTest {
     @SuppressWarnings("unchecked")
     public void testEmitDataStream() {
         FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
-        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer)
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
                 .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
         DataStream<Row> dataStream = mock(DataStream.class);
         tableSink.emitDataStream(dataStream);
         verify(dataStream).addSink(writer);
+    }
+
+    @Test
+    public void testEmitDataSet() {
+        FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
+                .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
+        DataSet<Row> dataSet = mock(DataSet.class);
+        tableSink.emitDataSet(dataSet);
+        verify(dataSet).output(outputFormat);
     }
 
     @Test
@@ -77,17 +91,23 @@ public class FlinkPravegaTableSinkTest {
         assertSame(SERIALIZER1, writer.serializationSchema);
         assertEquals(STREAM1, writer.stream);
         assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) writer.eventRouter).getKeyIndex());
+        FlinkPravegaOutputFormat<Row> outputFormat = builder.createOutputFormat(config);
+        assertNotNull(outputFormat);
+        assertEquals(SERIALIZER1, outputFormat.getSerializationSchema());
+        assertEquals(STREAM1, Stream.of(outputFormat.getScope(), outputFormat.getStream()));
+        assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) outputFormat.getEventRouter()).getKeyIndex());
     }
 
     private static class TestableFlinkPravegaTableSink extends FlinkPravegaTableSink {
 
-        protected TestableFlinkPravegaTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory) {
-            super(writerFactory);
+        protected TestableFlinkPravegaTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
+                                                Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
+            super(writerFactory, outputFormatFactory);
         }
 
         @Override
         protected FlinkPravegaTableSink createCopy() {
-            return new TestableFlinkPravegaTableSink(writerFactory);
+            return new TestableFlinkPravegaTableSink(writerFactory, outputFormatFactory);
         }
 
         static class Builder extends AbstractTableSinkBuilder<Builder> {

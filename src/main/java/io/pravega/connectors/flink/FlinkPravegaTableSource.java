@@ -82,7 +82,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     @Override
     public DataSet<Row> getDataSet(ExecutionEnvironment env) {
         FlinkPravegaInputFormat<Row> inputFormat = inputFormatFactory.get();
-        return env.createInput(inputFormat);
+        return env.createInput(inputFormat, returnType);
     }
 
     @Override
