@@ -65,8 +65,6 @@ public class FlinkPravegaTableSourceTest {
         FlinkPravegaInputFormat<Row> inputFormat = mock(FlinkPravegaInputFormat.class);
         TypeInformation<Row> returnType = jsonSchemaToReturnType(SAMPLE_SCHEMA);
 
-        TypeInformation<Row> returnType = jsonSchemaToReturnType(SAMPLE_SCHEMA);
-
         TestableFlinkPravegaTableSource tableSource = new TestableFlinkPravegaTableSource(
                 () -> reader,
                 () -> inputFormat,
