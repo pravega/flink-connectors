@@ -19,12 +19,21 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.api.Types;
+import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.sources.BatchTableSource;
+import org.apache.flink.table.sources.DefinedProctimeAttribute;
+import org.apache.flink.table.sources.DefinedRowtimeAttributes;
+import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
 import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.table.sources.tsextractors.TimestampExtractor;
+import org.apache.flink.table.sources.wmstrategies.WatermarkStrategy;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
+import scala.Option;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -35,7 +44,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * Supports both stream and batch environments.
  */
-public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row> {
+public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row>,
+        DefinedProctimeAttribute, DefinedRowtimeAttributes {
 
     private final Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory;
 
@@ -45,6 +55,12 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
 
     /** Type information describing the result type. */
     private final TypeInformation<Row> returnType;
+
+    /** Field name of the processing time attribute, null if no processing time field is defined. */
+    private String proctimeAttribute;
+
+    /** Descriptor for a rowtime attribute. */
+    private List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors;
 
     /**
      * Creates a Pravega {@link TableSource}.
@@ -95,6 +111,53 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
         return schema;
     }
 
+    @Override
+    public String getProctimeAttribute() {
+        return proctimeAttribute;
+    }
+
+    @Override
+    public List<RowtimeAttributeDescriptor> getRowtimeAttributeDescriptors() {
+        return rowtimeAttributeDescriptors;
+    }
+
+    /**
+     * Declares a field of the schema to be the processing time attribute.
+     *
+     * @param proctimeAttribute The name of the field that becomes the processing time field.
+     */
+    protected void setProctimeAttribute(String proctimeAttribute) {
+        if (proctimeAttribute != null) {
+            // validate that field exists and is of correct type
+            Option<TypeInformation<?>> tpe = schema.getType(proctimeAttribute);
+            if (tpe.isEmpty()) {
+                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not present in TableSchema.");
+            } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
+                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type SQL_TIMESTAMP.");
+            }
+        }
+        this.proctimeAttribute = proctimeAttribute;
+    }
+
+    /**
+     * Declares a list of fields to be rowtime attributes.
+     *
+     * @param rowtimeAttributeDescriptors The descriptors of the rowtime attributes.
+     */
+    protected void setRowtimeAttributeDescriptors(List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors) {
+        // validate that all declared fields exist and are of correct type
+        for (RowtimeAttributeDescriptor desc : rowtimeAttributeDescriptors) {
+            String rowtimeAttribute = desc.getAttributeName();
+            Option<TypeInformation<?>> tpe = schema.getType(rowtimeAttribute);
+            if (tpe.isEmpty()) {
+                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not present in TableSchema.");
+            } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
+                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type SQL_TIMESTAMP.");
+            }
+        }
+        this.rowtimeAttributeDescriptors = rowtimeAttributeDescriptors;
+    }
+
     /**
      * A base builder for {@link FlinkPravegaTableSource} to read Pravega streams using the Flink Table API.
      *
@@ -106,6 +169,10 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
 
         private TableSchema schema;
 
+        private String proctimeAttribute;
+
+        private RowtimeAttributeDescriptor rowtimeAttributeDescriptor;
+
         /**
          * Sets the schema of the produced table.
          *
@@ -116,6 +183,48 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
             Preconditions.checkNotNull(schema, "Schema must not be null.");
             Preconditions.checkArgument(this.schema == null, "Schema has already been set.");
             this.schema = schema;
+            return builder();
+        }
+
+        /**
+         * Configures a field of the table to be a processing time attribute.
+         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP()}.
+         *
+         * @param proctimeAttribute The name of the processing time attribute in the table schema.
+         * @return The builder.
+         */
+        public B withProctimeAttribute(String proctimeAttribute) {
+            Preconditions.checkNotNull(proctimeAttribute, "Proctime attribute must not be null.");
+            Preconditions.checkArgument(!proctimeAttribute.isEmpty(), "Proctime attribute must not be empty.");
+            Preconditions.checkArgument(this.proctimeAttribute == null, "Proctime attribute has already been set.");
+            this.proctimeAttribute = proctimeAttribute;
+            return builder();
+        }
+
+        /**
+         * Configures a field of the table to be a rowtime attribute.
+         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP()}.
+         *
+         * @param rowtimeAttribute The name of the rowtime attribute in the table schema.
+         * @param timestampExtractor The {@link TimestampExtractor} to extract the rowtime attribute from the physical type.
+         * @param watermarkStrategy The {@link WatermarkStrategy} to generate watermarks for the rowtime attribute.
+         * @return The builder.
+         */
+        public B withRowtimeAttribute(
+                String rowtimeAttribute,
+                TimestampExtractor timestampExtractor,
+                WatermarkStrategy watermarkStrategy) {
+            Preconditions.checkNotNull(rowtimeAttribute, "Rowtime attribute must not be null.");
+            Preconditions.checkArgument(!rowtimeAttribute.isEmpty(), "Rowtime attribute must not be empty.");
+            Preconditions.checkNotNull(timestampExtractor, "Timestamp extractor must not be null.");
+            Preconditions.checkNotNull(watermarkStrategy, "Watermark assigner must not be null.");
+            Preconditions.checkArgument(this.rowtimeAttributeDescriptor == null,
+                    "Currently, only one rowtime attribute is supported.");
+
+            this.rowtimeAttributeDescriptor = new RowtimeAttributeDescriptor(
+                    rowtimeAttribute,
+                    timestampExtractor,
+                    watermarkStrategy);
             return builder();
         }
 
@@ -135,6 +244,14 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
          * @param source the table source.
          */
         protected void configureTableSource(T source) {
+            // configure processing time attributes
+            source.setProctimeAttribute(proctimeAttribute);
+            // configure rowtime attributes
+            if (rowtimeAttributeDescriptor == null) {
+                source.setRowtimeAttributeDescriptors(Collections.emptyList());
+            } else {
+                source.setRowtimeAttributeDescriptors(Collections.singletonList(rowtimeAttributeDescriptor));
+            }
         }
 
         /**
