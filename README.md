@@ -9,15 +9,15 @@ You may obtain a copy of the License at
 -->
 # Pravega Flink Connectors [![Build Status](https://travis-ci.org/pravega/flink-connectors.svg?branch=master)](https://travis-ci.org/pravega/flink-connectors)
 
-### Project Status
+## Project Status
 
 ## Table of Contents
 - [Overview](#overview)
 - [Requirements](#requirements)
-- [Quick Start](#quick-start)
+- Quick Start
     - [Creating a Flink stream processing project](https://github.com/pravega/flink-connectors/wiki/Project-Setup#creating-a-flink-stream-processing-project)
     - [Add the connector dependencies](https://github.com/pravega/flink-connectors/wiki/Project-Setup#add-the-connector-dependencies)
-    - [Running / deploying the application](
+    - [Running/deploying the application](
 https://github.com/pravega/flink-connectors/wiki/Project-Setup#running--deploying-the-application)
 - [Usage](https://github.com/pravega/flink-connectors/wiki/Configuration)
   - [Configurations](https://github.com/pravega/flink-connectors/wiki/Configuration)
@@ -79,7 +79,7 @@ We can build end-to-end stream processing pipelines using Pravega as the stream 
 
 ### Key Features
 
-  - **Exactly-Once Semantics:** Pravega ensures that each event is delivered and processed exactly once, with exact ordering guarantees, despite failures in clients, servers or the network. Thus, offering **[Exactly-once processing guarantees]**(http://pravega.io/docs/v0.3.2/key-features/#exactly-once-semantics)for both reader and writer, supporting **end-to-end exactly-once processing pipelines**.
+  - **Exactly-Once Semantics:** Pravega ensures that each event is delivered and processed exactly once, with exact ordering guarantees, despite failures in clients, servers or the network. Thus, offering **[Exactly-once processing guarantees]**(http://pravega.io/docs/v0.3.2/key-features/#exactly-once-semantics) for both reader and writer, supporting **end-to-end exactly-once processing pipelines**.
 
   - Possess seamless integration with [Flink's checkpoints and savepoints](https://github.com/pravega/flink-connectors/wiki/Streaming-Connector#checkpointing).
 
@@ -88,8 +88,8 @@ We can build end-to-end stream processing pipelines using Pravega as the stream 
 ## Requirements
 
   - **Java 8** or greater is required.
-  - [Apache Flink](https://flink.apache.org/downloads.html#binaries)version 1.4 or newer.
-# Quick Start
+  - [Apache Flink](https://flink.apache.org/downloads.html#binaries) version 1.4 or newer.
+## Quick Start
 
 ## Setting up your IDE
 
@@ -113,6 +113,6 @@ For more insights into the project, please visit the following links:
 - [Apache Flink](https://flink.apache.org/).
 - [Apache Flink Connectors for Pravega](https://github.com/pravega/flink-connectors/wiki) provides   information on how to build and use the Flink Connector library.
 
-# Releases
+## Releases
 
-# Contributing
+## Contributing
