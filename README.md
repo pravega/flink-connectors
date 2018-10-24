@@ -81,7 +81,7 @@ We can build end-to-end stream processing pipelines using Pravega as the stream 
 
 ### Key Features
 
-  - **Exactly-Once Semantics:** Pravega ensures that each event is delivered and processed exactly once, with exact ordering guarantees, despite failures in clients, servers or the network. Thus, offering **[Exactly-once processing guarantees]**(http://pravega.io/docs/v0.3.2/key-features/#exactly-once-semantics) for both reader and writer, supporting **end-to-end exactly-once processing pipelines**.
+  - **Exactly-Once Semantics:** Pravega ensures that each event is delivered and processed exactly once, with exact ordering guarantees, despite failures in clients, servers or the network. Thus, offering [Exactly-once processing guarantees](http://pravega.io/docs/v0.3.2/key-features/#exactly-once-semantics) for both reader and writer, supporting **end-to-end exactly-once processing pipelines**.
 
   - Possess seamless integration with [Flink's checkpoints and savepoints](https://github.com/pravega/flink-connectors/wiki/Streaming-Connector#checkpointing).
 
