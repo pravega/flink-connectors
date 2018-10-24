@@ -15,6 +15,7 @@ You may obtain a copy of the License at
 - [Overview](#overview)
 - [Requirements](#requirements)
 - Quick Start
+    - [Flink Connector Examples for Pravega](https://github.com/pravega/pravega-samples/tree/master/flink-connector-examples)
     - [Creating a Flink stream processing project](https://github.com/pravega/flink-connectors/wiki/Project-Setup#creating-a-flink-stream-processing-project)
     - [Add the connector dependencies](https://github.com/pravega/flink-connectors/wiki/Project-Setup#add-the-connector-dependencies)
     - [Running/deploying the application](
@@ -64,6 +65,7 @@ https://github.com/pravega/flink-connectors/wiki/Project-Setup#running--deployin
       - [Building against another Scala version](https://github.com/pravega/flink-connectors/wiki/Building#building-against-another-scala-version)
       - [Setting up your IDE](#setting-up-your-ide)
       - [Updating the Pravega dependency](https://github.com/pravega/flink-connectors/wiki/Building#updating-the-pravega-dependency)
+- Event Router
 - Metrics
 - Release Management
 - Releases
@@ -90,6 +92,43 @@ We can build end-to-end stream processing pipelines using Pravega as the stream 
   - **Java 8** or greater is required.
   - [Apache Flink](https://flink.apache.org/downloads.html#binaries) version 1.4 or newer.
 ## Quick Start
+
+### Pravega Build Instructions
+
+ If you want to build Pravega from source, you may need to generate the latest Pravega `jar` files and install them to
+ your local Maven repository. To build Pravega from sources and use it here, please run the following commands:
+
+ ```
+ $ git clone https://github.com/pravega/pravega.git
+ $ cd pravega
+ $ ./gradlew install
+ ```
+
+ The above command should generate the required `jar` files into your local Maven repository.
+
+ > Hint: For using in the sample applications the Pravega version you just built, you need to update the
+ `pravegaVersion=<local_maven_pravega_version>` property in `gradle.properties` file
+ of `pravega-samples`.
+
+ For more information, please visit [Pravega](https://github.com/pravega/pravega).
+
+ ### Flink Connector Build Instructions
+
+ To build the Flink connector from source, follow the below steps to build and publish artifacts from
+ source to local Maven repository:
+
+ ```
+ $ git clone --recursive https://github.com/pravega/flink-connectors.git
+ $ cd flink-connectors
+ $ ./gradlew install
+ ```
+
+ > Hint: For using in the sample applications the Flink connector version you just built, you need to update the
+ `flinkConnectorVersion=<local_maven_flink_connector_version>` property in `gradle.properties` file
+ of `pravega-samples`.
+
+
+ For more information, please visit [Flink Connectors](https://github.com/pravega/flink-connectors).
 
 ## Setting up your IDE
 
