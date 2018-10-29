@@ -16,7 +16,8 @@ buildscript {
     dependencies {
         classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
-        classpath "org.ajoberstar:gradle-git:${gradleGitPluginVersion}"
+        classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
+        classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
     }
 }
 
@@ -29,6 +30,7 @@ apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
 apply from: 'gradle/bintray.gradle'
 apply plugin: 'org.ajoberstar.grgit'
+apply from: 'gradle/mkdocs.gradle'
 
 group = "io.pravega"
 version = getProjectVersion()

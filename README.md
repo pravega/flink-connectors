@@ -9,18 +9,20 @@ You may obtain a copy of the License at
 -->
 # Pravega Flink Connectors [![Build Status](https://travis-ci.org/pravega/flink-connectors.svg?branch=master)](https://travis-ci.org/pravega/flink-connectors)
 
-Connectors to read and write [Pravega](http://pravega.io/) streams with [Apache Flink](http://flink.apache.org/) stream processing applications.
+Connectors to read and write [Pravega](http://pravega.io/) Streams with [Apache Flink](http://flink.apache.org/) stream processing framework.
 
 Build end-to-end stream processing pipelines that use Pravega as the stream storage and message bus, and Apache Flink for computation over the streams.
 
 
 ## Features & Highlights
 
-  - **Exactly-once processing guarantees** for both reader and writer, supporting **end-to-end exactly-once processing pipelines**
+  - **Exactly-once processing guarantees** for both Reader and Writer, supporting **end-to-end exactly-once processing pipelines**
 
-  - Seamless integration with Flink's checkpoints & savepoints
+  - Seamless integration with Flink's checkpoints and savepoints.
 
-  - Parallel readers and writers supporting high throughput and low latency processing
+  - Parallel Readers and Writers supporting high throughput and low latency processing.
+
+  - Table API support to access Pravega Streams for both **Batch** and **Streaming** use case.
 
 ## Documentation
 See the [Project Wiki](https://github.com/pravega/flink-connectors/wiki) for documentation on how to build and use the Flink Connector library.
