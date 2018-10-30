@@ -59,6 +59,9 @@ public final class SetupUtils {
     private static final String PASSWD_FILE = "passwd";
     private static final String KEY_FILE = "key.pem";
     private static final String CERT_FILE = "cert.pem";
+    private static final String BOOKIE_KEYSTORE_FILE = "bookie.keystore.jks";
+    private static final String BOOKIE_TRUSTSTORE_FILE = "bookie.truststore.jks";
+    private static final String BOOKIE_KEYSTORE_PASSWD_FILE = "bookie.keystore.jks.passwd";
 
     private final PravegaGateway gateway;
 
@@ -287,6 +290,9 @@ public final class SetupUtils {
                     .userName(PRAVEGA_USERNAME)
                     .passwd(PRAVEGA_PASSWORD)
                     .passwdFile(getFileFromResource(PASSWD_FILE))
+                    .jksKeyFile(getFileFromResource(BOOKIE_KEYSTORE_FILE))
+                    .jksTrustFile(getFileFromResource(BOOKIE_TRUSTSTORE_FILE))
+                    .keyPasswordFile(getFileFromResource(BOOKIE_KEYSTORE_PASSWD_FILE))
                     .build();
             this.inProcPravegaCluster.setControllerPorts(new int[]{controllerPort});
             this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
