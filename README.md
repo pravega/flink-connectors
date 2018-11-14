@@ -25,4 +25,12 @@ Build end-to-end stream processing pipelines that use Pravega as the stream stor
   - Table API support to access Pravega Streams for both **Batch** and **Streaming** use case.
 
 ## Documentation
-See the [Project Wiki](https://github.com/pravega/flink-connectors/wiki) for documentation on how to build and use the Flink Connector library.
+To learn more about how to build and use the Flink Connector library, follow the connector documentation [here](http://pravega.io/).
+
+More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples) repository.
+
+## About
+
+Flink connectors for Pravega is 100% open source and community-driven. All components are available
+under [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0.html) on GitHub.
+

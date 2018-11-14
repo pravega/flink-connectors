@@ -9,7 +9,7 @@ You may obtain a copy of the License at
 -->
 ## Apache Flink Connectors for Pravega
 
-This wiki describes the connectors API and it's usage to read and write [Pravega](http://pravega.io/) streams with [Apache Flink](http://flink.apache.org/) stream processing framework.
+This documentation describes the connectors API and it's usage to read and write [Pravega](http://pravega.io/) streams with [Apache Flink](http://flink.apache.org/) stream processing framework.
 
 Build end-to-end stream processing pipelines that use Pravega as the stream storage and message bus, and Apache Flink for computation over the streams.   See the [Pravega Concepts](http://pravega.io/docs/pravega-concepts/) page for more information.
 

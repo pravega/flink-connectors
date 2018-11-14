@@ -16,7 +16,7 @@ You may obtain a copy of the License at
 Please use the following project templates and setup guidelines, to set up a stream processing project with Apache Flink:
 
   - [Project template for Java](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/java_api_quickstart.html)
-  - [Project template for Scala](https://ci.apache.org/projects/flink/flink-docs-release-1.6/quickstart/scala_api_quickstart.html)
+  - [Project template for Scala](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/scala_api_quickstart.html)
 
 Once after the set up, please follow the below instructions to add the **Flink Pravega connectors** to the project.
 
@@ -36,7 +36,7 @@ To add the Pravega connector dependencies to your project, add the following ent
 
 Use appropriate version as necessary. The snapshot versions are published to [`jcenter`](https://oss.jfrog.org/artifactory/jfrog-dependencies/io/pravega/pravega-connectors-flink_2.11/) repository and the release artifacts are available in [`Maven Central`](https://mvnrepository.com/artifact/io.pravega/pravega-connectors-flink_2.11) repository.
 
-Alternatively, we could build and publish the connector project to local maven repository by following the below steps and make use of that version as your application dependency.
+Alternatively, we could build and publish the connector artifacts to local maven repository by executing the following command and make use of that version as your application dependency.
 
 ```
 ./gradlew clean install

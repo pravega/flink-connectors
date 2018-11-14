@@ -103,7 +103,7 @@ The checkpoint mechanism works as a two-step process:
 
 Flink requires the events’ timestamps (each element in the stream needs to have its event timestamp assigned). This is achieved by accessing/extracting the timestamp from some field in the element. These are used to tell the system about progress in event time.
 Pravega is not aware (or does not track) of event time and does _not_ store event timestamps or watermarks.
-Nonetheless it is possible to use event time semantics via an application-specific timestamp assigner and watermark generator as described in [Flink documentation](https://ci.apache.org/projects/flink/flink-docs-release-1.3/dev/event_timestamps_watermarks.html#timestamp-assigners--watermark-generators).  
+Nonetheless it is possible to use event time semantics via an application-specific timestamp assigner and watermark generator as described in [Flink documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/event_timestamps_watermarks.html#timestamp-assigners--watermark-generators).  
 
 Specify an `AssignerWithPeriodicWatermarks` or `AssignerWithPunctuatedWatermarks` on the `DataStream` as normal.
 
@@ -168,6 +168,16 @@ Every event written to a Pravega Stream has an associated Routing Key.  The Rout
 
 When constructing the `FlinkPravegaWriter`, please provide an implementation of `io.pravega.connectors.flink.PravegaEventRouter` which will guarantee the event ordering. In Pravega, events are guaranteed to be ordered at the segment level.
 
+For example, to guarantee write order specific to sensor id, you could provide a router implementation like below.
+```
+private static class SensorEventRouter<SensorEvent> implements PravegaEventRouter<SensorEvent> {
+        @Override
+        public String getRoutingKey(SensorEvent event) {
+            return event.getId();
+        }
+    }
+   
+```
 
 ### Event Time Ordering
 

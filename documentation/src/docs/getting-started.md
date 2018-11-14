@@ -58,7 +58,7 @@ We can check and change the Flink version that Pravega builds against via the `f
 
 #### Building against another Scala version
 
-This section is only relevant if you use [Scala](https://www.scala-lang.org/) in the stream processing application in with Flink and Pravega.
+This section is only relevant if you use [Scala](https://www.scala-lang.org/) in the stream processing application with Flink and Pravega.
 
 Parts of the Apache Flink use the language or depend on libraries written in Scala. Because Scala is **not** strictly compatible across versions, there exist different versions of Flink compiled for different Scala versions.
 If we use Scala code in the same application where we use the Apache Flink or the Flink connectors, we typically have to make sure we use a version of Flink that uses the same Scala version as our application.
@@ -88,16 +88,8 @@ The latest releases can be found on the [Github Release](https://github.com/prav
 ## Support
 
 Don’t hesitate to ask! Contact the developers and community on the  [Slack](https://pravega-io.slack.com/) if you need any help.
-Open an issue if you found a bug on [Github
-Issues](https://github.com/pravega/flink-connectors/issues).
+Open an issue if you found a bug on [Github Issues](https://github.com/pravega/flink-connectors/issues).
 
-## Documentation
-See the [Project Wiki](https://github.com/pravega/flink-connectors/wiki) for documentation on how to build and use the Flink Connector library.
+## Samples
 
-More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples) repository.
-
-## About
-
-Flink connectors for Pravega is 100% open source and community-driven. All components are available
-under [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0.html) on
-GitHub.
+Follow the [Pravega Samples](https://github.com/pravega/pravega-samples) repository to learn more about how to build and use the Flink Connector library.

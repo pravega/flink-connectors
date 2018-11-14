@@ -127,7 +127,7 @@ table.writeToSink(sink);
 ```
 
 ### Parameters
-A builder API is provided to construct an instance of `FlinkPravegaJsonTableSink`.  See the table below for a summary of builder properties.  Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) wiki page for more information.
+A builder API is provided to construct an instance of `FlinkPravegaJsonTableSink`.  See the table below for a summary of builder properties.  Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) page for more information.
 
 Note that the table sink supports both the Flink streaming and batch environments.  In the streaming environment, the table sink uses a [`FlinkPravegaWriter`](streaming.md#flinkpravegawriter) connector.  In the batch environment, the table sink uses a [`FlinkPravegaOutputFormat`](batch.md#flinkpravegaoutpuformat) connector.  Please see the documentation of [Streaming Connector](streaming.md) and [Batch Connector](#batch.md) to have a better understanding on the below mentioned parameter list.
 
