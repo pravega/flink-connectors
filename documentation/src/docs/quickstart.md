@@ -13,7 +13,7 @@ You may obtain a copy of the License at
 
 **Note**: _You can skip this step if you have a streaming project set up already._
 
-Please use the following project templates and setup guidelines, to set up a stream processing project with Apache Flink:
+Please use the following project templates and setup guidelines, to set up a stream processing project with Apache Flink using Connectors
 
   - [Project template for Java](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/java_api_quickstart.html)
   - [Project template for Scala](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/scala_api_quickstart.html)
@@ -23,8 +23,6 @@ Once after the set up, please follow the below instructions to add the **Flink P
 ## Add the Connector Dependencies
 
 To add the Pravega connector dependencies to your project, add the following entry to your project file: (For example, `pom.xml` for Maven)
-
-
 
 ```
 <dependency>

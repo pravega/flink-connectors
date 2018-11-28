@@ -61,7 +61,7 @@ A builder API is provided to construct an instance of `FlinkPravegaInputFormat`.
 |`withDeserializationSchema`|The deserialization schema which describes how to turn byte messages into events.|
 
 ### Input Stream(s)
-Each Pravega stream exists within a scope. A scope defines a namespace for streams such that names are unique. Across scopes, streams can have the same name. For example, if we have scopes `A` and `B`, then we can have a stream called `myStream` in each one of them. We cannot have a stream with the same name in the same scope. The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) is able to read from numerous streams in parallel, even across scopes.  The builder API accepts both **qualified** and **unqualified** stream names.  
+Each Pravega stream exists within a scope. A scope defines a namespace for streams such that names are unique. Across scopes, streams can have the same name. For example, if we have scopes `A` and `B`, then we can have a stream called `myStream` in each one of them. We cannot have a stream with the same name in the same scope. The builder API accepts both **qualified** and **unqualified** stream names.
 
   - In qualified stream names, the scope is explicitly specified, e.g. `my-scope/my-stream`.
   - In unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`. See the [configurations](configurations.md) page for more information on default scope.
@@ -70,6 +70,8 @@ A stream may be specified in one of three ways:
 1. As a string containing a qualified name, in the form `scope/stream`.
 2. As a string containing an unqualified name, in the form `stream`.  Such streams are resolved to the default scope.
 3. As an instance of `io.pravega.client.stream.Stream`, e.g. `Stream.of("my-scope", "my-stream")`.
+
+Multiple streams can be passed as parameter option (using the builder API). The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) implementation is capable of reading from numerous streams in parallel, even across scopes.
 
 ### StreamCuts
 

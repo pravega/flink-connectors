@@ -118,6 +118,8 @@ StreamCuts, please refer to documentation on [StreamCut](https://github.com/prav
 
 Historical processing refers to processing stream data from a specific position in the stream rather than from the stream's tail.  The builder API provides an overloaded method `forStream` that accepts a `StreamCut` parameter for this purpose.
 
+One such example is re-processing a stream, where we may have to process the data from the beginning (or from a certain point in the stream) to re-derive the output. For instance, in situations where the computation logic has been changed to address new additional criteria, or we fixed a bug or doing a typical A/B testing etc., where the ability to consume historical data as a stream is critical.
+
 ## FlinkPravegaWriter
 A Pravega Stream may be used as a data sink within a Flink program using an instance of `io.pravega.connectors.flink.FlinkPravegaWriter`. Add an instance of the writer to the dataflow program using the method [`DataStream::addSink`](https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/streaming/api/datastream/DataStream.html#addSink-org.apache.flink.streaming.api.functions.sink.SinkFunction-).
 
@@ -198,7 +200,7 @@ See the [Pravega documentation](http://pravega.io/docs/latest/pravega-concepts/#
 
 # Metrics
 Metrics are reported by default unless it is explicitly disabled using `enableMetrics(false)` option.
-See [Metrics](metrics.md) page for more details on type of metrics that are reported._
+See [Metrics](metrics.md) page for more details on type of metrics that are reported.
 
 # Serialization
 See the [serialization](serialization.md) page for more information on how to use the _serializer_ and _deserializer_.

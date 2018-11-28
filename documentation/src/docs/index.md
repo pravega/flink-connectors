@@ -24,6 +24,3 @@ Build end-to-end stream processing pipelines that use Pravega as the stream stor
 - [Metrics](metrics.md)
 - [Configurations](configurations.md)
 - [Serialization](serialization.md)
-- Releasing Connectors
-	- [How To Release](how-to-release.md)
-	- [Publishing Artifacts](publishing-artifacts.md)

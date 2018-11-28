@@ -15,7 +15,7 @@ Flink defines a standard interface for data serialization to/from byte messages 
 - [`org.apache.flink.streaming.util.serialization.SerializationSchema`]( https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/streaming/util/serialization/SerializationSchema.html)
 - [`org.apache.flink.streaming.util.serialization.DeserializationSchema`]( https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/streaming/util/serialization/DeserializationSchema.html)
 
-In-built serializers include:
+Built-in serializers include:
 - [`org.apache.flink.streaming.util.serialization.SimpleStringSchema`](https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/streaming/util/serialization/SimpleStringSchema.html)
 - [`org.apache.flink.streaming.util.serialization.TypeInformationSerializationSchema`](https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/streaming/util/serialization/TypeInformationSerializationSchema.html)
 
