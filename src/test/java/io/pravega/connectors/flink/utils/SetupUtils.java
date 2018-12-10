@@ -10,7 +10,7 @@
 package io.pravega.connectors.flink.utils;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.Stream;
@@ -164,10 +164,10 @@ public final class SetupUtils {
     }
 
     /**
-     * Create a {@link ClientFactory} for this cluster and scope.
+     * Create a {@link EventStreamClientFactory} for this cluster and scope.
      */
-    public ClientFactory newClientFactory() {
-        return ClientFactory.withScope(this.scope, getControllerUri());
+    public EventStreamClientFactory newClientFactory() {
+        return EventStreamClientFactory.withScope(this.scope, getClientConfig());
     }
 
     /**
@@ -207,7 +207,7 @@ public final class SetupUtils {
         Preconditions.checkState(this.started.get(), "Services not yet started");
         Preconditions.checkNotNull(streamName);
 
-        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getClientConfig());
+        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
         return clientFactory.createEventWriter(
                 streamName,
                 new IntegerSerializer(),
@@ -231,7 +231,7 @@ public final class SetupUtils {
                 readerGroup,
                 ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
 
-        ClientFactory clientFactory = ClientFactory.withScope(this.scope, getClientConfig());
+        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
         final String readerGroupId = UUID.randomUUID().toString();
         return clientFactory.createReader(
                 readerGroupId,

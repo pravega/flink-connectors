@@ -11,7 +11,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
@@ -53,7 +53,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
     private final SerializationSchema<T> serializationSchema;
 
     // The factory used to create Pravega clients; closing this will also close all Pravega connections.
-    private transient ClientFactory clientFactory;
+    private transient EventStreamClientFactory clientFactory;
 
     // The Pravega client config.
     private final ClientConfig clientConfig;
@@ -190,8 +190,8 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
     }
 
     @VisibleForTesting
-    protected ClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-        return ClientFactory.withScope(scopeName, clientConfig);
+    protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
+        return EventStreamClientFactory.withScope(scopeName, clientConfig);
     }
 
     @VisibleForTesting

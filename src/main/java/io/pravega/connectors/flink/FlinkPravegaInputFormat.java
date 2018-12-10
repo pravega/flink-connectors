@@ -13,8 +13,7 @@ package io.pravega.connectors.flink;
 import com.google.common.base.Preconditions;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
-import io.pravega.client.batch.BatchClient;
+import io.pravega.client.BatchClientFactory;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.stream.Serializer;
@@ -58,11 +57,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     // The supplied event deserializer.
     private final DeserializationSchema<T> deserializationSchema;
 
-    // The factory used to create Pravega clients; closing this will also close all Pravega connections.
-    private transient ClientFactory clientFactory;
-
-    // The batch client used to read Pravega segments; this client is reused for all segments read by this input format.
-    private transient BatchClient batchClient;
+    // The batch client factory implementation used to read Pravega segments; this instance is reused for all segments read by this input format.
+    private transient BatchClientFactory batchClientFactory;
 
     // The iterator for the currently read input split (i.e. a Pravega segment).
     private transient SegmentIterator<T> segmentIterator;
@@ -91,15 +87,13 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public void openInputFormat() throws IOException {
         super.openInputFormat();
-
-        this.clientFactory = ClientFactory.withScope(clientScope, clientConfig);
-        this.batchClient = clientFactory.createBatchClient();
+        this.batchClientFactory = BatchClientFactory.withScope(clientScope, clientConfig);
     }
 
     @Override
     public void closeInputFormat() throws IOException {
         // closing the client factory also closes the batch client connection
-        this.clientFactory.close();
+        this.batchClientFactory.close();
     }
 
     @Override
@@ -119,12 +113,13 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
         // createInputSplits() is called in the JM, so we have to establish separate
         // short-living connections to Pravega here to retrieve the segments list
-        try (ClientFactory clientFactory = ClientFactory.withScope(clientScope, clientConfig)) {
-            BatchClient batchClient = clientFactory.createBatchClient();
+        try (
+                BatchClientFactory batchClientFactory = BatchClientFactory.withScope(clientScope, clientConfig)
+            ) {
 
             for (StreamWithBoundaries stream : streams) {
                 Iterator<SegmentRange> segmentRangeIterator =
-                        batchClient.getSegments(stream.getStream(), stream.getFrom(), stream.getTo()).getIterator();
+                        batchClientFactory.getSegments(stream.getStream(), stream.getFrom(), stream.getTo()).getIterator();
                 while (segmentRangeIterator.hasNext()) {
                     splits.add(new PravegaInputSplit(splits.size(), segmentRangeIterator.next()));
                 }
@@ -153,7 +148,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
                 : new FlinkPravegaUtils.FlinkDeserializer<>(deserializationSchema);
 
         // build a new iterator for each input split.  Note that the endOffset parameter is not used by the Batch API at the moment.
-        this.segmentIterator = batchClient.readSegment(split.getSegmentRange(), deserializer);
+        this.segmentIterator = batchClientFactory.readSegment(split.getSegmentRange(), deserializer);
     }
 
     @Override
