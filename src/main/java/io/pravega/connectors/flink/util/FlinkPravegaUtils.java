@@ -10,7 +10,7 @@
 package io.pravega.connectors.flink.util;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
@@ -106,7 +106,7 @@ public class FlinkPravegaUtils {
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
                 : new FlinkDeserializer<>(deserializationSchema);
 
-        return ClientFactory.withScope(readerGroupScopeName, clientConfig)
+        return EventStreamClientFactory.withScope(readerGroupScopeName, clientConfig)
                 .createReader(readerId, readerGroupName, deserializer, readerConfig);
     }
 

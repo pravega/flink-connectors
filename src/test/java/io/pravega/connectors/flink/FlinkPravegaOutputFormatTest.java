@@ -10,7 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -117,7 +117,7 @@ public class FlinkPravegaOutputFormatTest {
         when(pravegaConfig.resolve(anyString())).thenReturn(stream);
 
         EventStreamWriter<String> pravegaWriter = mockEventStreamWriter();
-        ClientFactory clientFactory = mockClientFactory(pravegaWriter);
+        EventStreamClientFactory clientFactory = mockClientFactory(pravegaWriter);
         FlinkPravegaOutputFormat<String> spyFlinkPravegaOutputFormat = spyFlinkPravegaOutputFormat(clientFactory);
 
         // test open
@@ -175,13 +175,13 @@ public class FlinkPravegaOutputFormatTest {
         return mock(EventStreamWriter.class);
     }
 
-    private <T> ClientFactory mockClientFactory(EventStreamWriter<T> eventWriter) {
-        ClientFactory clientFactory = mock(ClientFactory.class);
+    private <T> EventStreamClientFactory mockClientFactory(EventStreamWriter<T> eventWriter) {
+        EventStreamClientFactory clientFactory = mock(EventStreamClientFactory.class);
         when(clientFactory.<T>createEventWriter(anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
         return clientFactory;
     }
 
-    private FlinkPravegaOutputFormat<String> spyFlinkPravegaOutputFormat(ClientFactory clientFactory) {
+    private FlinkPravegaOutputFormat<String> spyFlinkPravegaOutputFormat(EventStreamClientFactory clientFactory) {
 
         FlinkPravegaOutputFormat<String> flinkPravegaOutputFormat = FlinkPravegaOutputFormat.<String>builder()
                 .withEventRouter(eventRouter)

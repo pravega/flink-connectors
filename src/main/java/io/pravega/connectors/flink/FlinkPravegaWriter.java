@@ -11,13 +11,15 @@ package io.pravega.connectors.flink;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.pravega.client.ClientConfig;
-import io.pravega.client.ClientFactory;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
@@ -95,7 +97,7 @@ public class FlinkPravegaWriter<T>
     private PravegaWriterMode writerMode;
 
     // Client factory for PravegaWriter instances
-    private transient ClientFactory clientFactory = null;
+    private transient EventStreamClientFactory clientFactory = null;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a Flink job.
@@ -249,8 +251,8 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
 
     @VisibleForTesting
-    protected ClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-        return ClientFactory.withScope(scopeName, clientConfig);
+    protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
+        return EventStreamClientFactory.withScope(scopeName, clientConfig);
     }
 
     @VisibleForTesting
@@ -354,14 +356,22 @@ public class FlinkPravegaWriter<T>
     @VisibleForTesting
     abstract class AbstractInternalWriter {
 
-        protected final EventStreamWriter<T> pravegaWriter;
+        @Getter
+        private EventStreamWriter<T> pravegaWriter;
 
-        AbstractInternalWriter(ClientFactory clientFactory) {
+        @Getter
+        private TransactionalEventStreamWriter<T> pravegaTxnWriter;
+
+        AbstractInternalWriter(EventStreamClientFactory clientFactory, boolean txnWriter) {
             Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
             EventWriterConfig writerConfig = EventWriterConfig.builder()
                     .transactionTimeoutTime(txnLeaseRenewalPeriod)
                     .build();
-            pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+            if (txnWriter) {
+                pravegaTxnWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+            } else {
+                pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+            }
         }
 
         abstract void open() throws Exception;
@@ -369,7 +379,12 @@ public class FlinkPravegaWriter<T>
         abstract void write(T event) throws Exception;
 
         void close() throws Exception {
-            pravegaWriter.close();
+            if (pravegaWriter != null) {
+                pravegaWriter.close();
+            }
+            if (pravegaTxnWriter != null) {
+                pravegaTxnWriter.close();
+            }
         }
 
         abstract List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception;
@@ -399,15 +414,15 @@ public class FlinkPravegaWriter<T>
         @VisibleForTesting
         final ArrayDeque<TransactionAndCheckpoint<T>> txnsPendingCommit;
 
-        TransactionalWriter(ClientFactory clientFactory) {
-            super(clientFactory);
+        TransactionalWriter(EventStreamClientFactory clientFactory) {
+            super(clientFactory, true);
             this.txnsPendingCommit = new ArrayDeque<>();
         }
 
         @Override
         public void open() throws Exception {
             // start the transaction that will hold the elements till the first checkpoint
-            this.currentTxn = pravegaWriter.beginTxn();
+            this.currentTxn = this.getPravegaTxnWriter().beginTxn();
             log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
         }
 
@@ -457,7 +472,7 @@ public class FlinkPravegaWriter<T>
             this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
 
             // start the next transaction for what comes after this checkpoint
-            this.currentTxn = pravegaWriter.beginTxn();
+            this.currentTxn = this.getPravegaTxnWriter().beginTxn();
 
             log.debug("{} - started new transaction '{}'", name(), this.currentTxn.getTxnId());
             log.debug("{} - storing pending transactions {}", name(), txnsPendingCommit);
@@ -565,8 +580,8 @@ public class FlinkPravegaWriter<T>
                         .build();
 
                 try (
-                    ClientFactory restoreClientFactory = createClientFactory(scope, clientConfig);
-                    EventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createEventWriter(stream,
+                        EventStreamClientFactory restoreClientFactory = createClientFactory(scope, clientConfig);
+                        TransactionalEventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createTransactionalEventWriter(stream,
                             eventSerializer,
                             writerConfig);
                     ) {
@@ -628,8 +643,8 @@ public class FlinkPravegaWriter<T>
         // Thread pool for handling callbacks from write events.
         private final ExecutorService executorService;
 
-        NonTransactionalWriter(ClientFactory clientFactory, ExecutorService executorService) {
-            super(clientFactory);
+        NonTransactionalWriter(EventStreamClientFactory clientFactory, ExecutorService executorService) {
+            super(clientFactory, false);
             this.writeError = new AtomicReference<>(null);
             this.pendingWritesCount = new AtomicInteger(0);
             this.executorService = executorService;
@@ -645,7 +660,7 @@ public class FlinkPravegaWriter<T>
             checkWriteError();
 
             this.pendingWritesCount.incrementAndGet();
-            final CompletableFuture<Void> future = pravegaWriter.writeEvent(eventRouter.getRoutingKey(event), event);
+            final CompletableFuture<Void> future = this.getPravegaWriter().writeEvent(eventRouter.getRoutingKey(event), event);
             future.whenCompleteAsync(
                     (result, e) -> {
                         if (e != null) {
@@ -711,7 +726,7 @@ public class FlinkPravegaWriter<T>
         // Wait until all pending writes are completed and throw any errors detected.
         @VisibleForTesting
         void flushAndVerify() throws Exception {
-            pravegaWriter.flush();
+            this.getPravegaWriter().flush();
 
             // Wait until all errors, if any, have been recorded.
             synchronized (this) {
