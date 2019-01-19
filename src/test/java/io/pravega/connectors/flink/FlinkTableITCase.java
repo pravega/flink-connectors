@@ -25,6 +25,7 @@ import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.descriptors.Json;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -210,6 +211,75 @@ public class FlinkTableITCase {
         List<SampleRecord> results = tableEnv.toDataSet(view, SampleRecord.class).collect();
         Assert.assertEquals(new HashSet<>(SAMPLES), new HashSet<>(results));
     }
+
+    @Test
+    public void testStreamingTableUsingDescriptor() throws Exception {
+
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "FlinkTableITCase.testEndToEnd");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+
+        Pravega pravega = new Pravega();
+        pravega.tableSourceWriterBuilder()
+                .withRoutingKeyField("category")
+                .forStream(stream)
+                .withPravegaConfig(setupUtils.getPravegaConfig());
+
+        tableEnv.connect(pravega)
+                .withFormat(
+                    new Json()
+                            .failOnMissingField(false)
+                            .deriveSchema()
+                )
+                .inAppendMode();
+
+
+        // define a table of sample data from a collection of POJOs.  Schema:
+        // root
+        //  |-- category: String
+        //  |-- value: Integer
+        Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
+        tableEnv.toAppendStream(table, SampleRecord.class);
+
+        /*
+        // write the table to a Pravega stream (using the 'category' column as a routing key)
+        FlinkPravegaTableSink sink = FlinkPravegaJsonTableSink.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withRoutingKeyField("category")
+                .build();
+        table.writeToSink(sink);
+
+        // register the Pravega stream as a table called 'samples'
+        FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()
+                .forStream(stream)
+                .withPravegaConfig(this.setupUtils.getPravegaConfig())
+                .withSchema(SAMPLE_SCHEMA)
+                .build();
+        tableEnv.registerTableSource("samples", source);
+
+        // select some sample data from the Pravega-backed table, as a view
+        Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
+
+        // write the view to a test sink that verifies the data for test purposes
+        tableEnv.toAppendStream(view, SampleRecord.class).addSink(new TestSink(SAMPLES));
+        */
+
+        // execute the topology
+        try {
+            env.execute();
+            //Assert.fail("expected an exception");
+        } catch (JobExecutionException e) {
+            // we expect the job to fail because the test sink throws a deliberate exception.
+            //Assert.assertTrue(e.getCause() instanceof TestCompletionException);
+            Assert.fail();
+        }
+    }
+
 
     private static class TestSink extends RichSinkFunction<SampleRecord> {
         private final LinkedList<SampleRecord> remainingSamples;

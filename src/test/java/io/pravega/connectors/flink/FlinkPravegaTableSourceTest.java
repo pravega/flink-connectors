@@ -18,9 +18,30 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableSchema;
+
+import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.table.descriptors.Json;
+import org.apache.flink.table.descriptors.JsonValidator;
+import org.apache.flink.table.descriptors.Rowtime;
+import org.apache.flink.table.descriptors.Schema;
+import org.apache.flink.table.descriptors.TableDescriptor;
+import org.apache.flink.table.descriptors.SchematicDescriptor;
+import org.apache.flink.table.descriptors.FormatDescriptor;
+import org.apache.flink.table.descriptors.FormatDescriptorValidator;
+import org.apache.flink.table.descriptors.ConnectorDescriptor;
+import org.apache.flink.table.descriptors.StreamableDescriptor;
+import org.apache.flink.table.descriptors.StreamTableDescriptorValidator;
+import org.apache.flink.table.factories.StreamTableSourceFactory;
+import org.apache.flink.table.factories.TableFactoryService;
+import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.table.sources.TableSourceUtil;
+import org.apache.flink.table.sources.tsextractors.ExistingField;
+import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
 import org.junit.Test;
 
+import java.net.URI;
+import java.util.Map;
 import java.util.function.Supplier;
 
 import static org.junit.Assert.assertEquals;
@@ -86,6 +107,74 @@ public class FlinkPravegaTableSourceTest {
         assertNotNull(inputFormat);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTableSourceDefinition() {
+        final String cityName = "fruitName";
+        final String total = "count";
+        final String eventTime = "eventTime";
+        final String procTime = "procTime";
+        final String controllerUri = "tcp://localhost:9090";
+        final long delay = 3000L;
+        final String streamName = "test";
+        final String scopeName = "test";
+
+        final TableSchema tableSchema = TableSchema.builder()
+                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                .build();
+
+        Stream stream = Stream.of(scopeName, streamName);
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(controllerUri))
+                .withDefaultScope(scopeName);
+
+        FlinkPravegaJsonTableSource flinkPravegaJsonTableSource = FlinkPravegaJsonTableSource.builder()
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig)
+                .failOnMissingField(true)
+                .withProctimeAttribute(procTime)
+                .withRowtimeAttribute(eventTime,
+                        new ExistingField(eventTime),
+                        new BoundedOutOfOrderTimestamps(delay))
+                .withSchema(tableSchema)
+                .withReaderGroupScope(stream.getScope())
+                .build();
+
+        TableSourceUtil.validateTableSource(flinkPravegaJsonTableSource);
+
+        // construct table source using descriptors and table source factory
+        Pravega pravega = new Pravega();
+        pravega.tableSourceReaderBuilder()
+                .withReaderGroupScope(stream.getScope())
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
+
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withSchema(
+                        new Schema()
+                                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                    .rowtime(new Rowtime()
+                                                .timestampsFromField(eventTime)
+                                                .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
+                                            )
+                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime())
+                .inAppendMode();
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
+        final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
+                .createStreamTableSource(propertiesMap);
+
+        assertNotNull(actualSource);
+
+        TableSourceUtil.validateTableSource(actualSource);
+    }
+
     /** Converts the JSON schema into into the return type. */
     private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
         return new RowTypeInfo(jsonSchema.getTypes(), jsonSchema.getColumnNames());
@@ -114,6 +203,60 @@ public class FlinkPravegaTableSourceTest {
                 TableSchema tableSchema = getTableSchema();
                 return new JsonRowDeserializationSchema(jsonSchemaToReturnType(tableSchema));
             }
+        }
+    }
+
+    /**
+     * Test Table descriptor wrapper
+     */
+    static class TestTableDescriptor implements TableDescriptor, SchematicDescriptor<TestTableDescriptor>, StreamableDescriptor<TestTableDescriptor> {
+
+        private FormatDescriptor formatDescriptor;
+        private Schema schemaDescriptor;
+        private ConnectorDescriptor connectorDescriptor;
+        private String updateMode;
+
+        public TestTableDescriptor(ConnectorDescriptor connectorDescriptor) {
+            this.connectorDescriptor = connectorDescriptor;
+        }
+
+        @Override
+        public TestTableDescriptor withFormat(FormatDescriptor format) {
+            this.formatDescriptor = format;
+            return this;
+        }
+
+        @Override
+        public TestTableDescriptor withSchema(Schema schema) {
+            this.schemaDescriptor = schema;
+            return this;
+        }
+
+        @Override
+        public void addProperties(DescriptorProperties properties) {
+            connectorDescriptor.addProperties(properties);
+            formatDescriptor.addFormatProperties(properties);
+            schemaDescriptor.addProperties(properties);
+            properties.putString(FormatDescriptorValidator.FORMAT_TYPE(), JsonValidator.FORMAT_TYPE_VALUE);
+            properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
+        }
+
+        @Override
+        public TestTableDescriptor inAppendMode() {
+            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND();
+            return this;
+        }
+
+        @Override
+        public TestTableDescriptor inRetractMode() {
+            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_RETRACT();
+            return this;
+        }
+
+        @Override
+        public TestTableDescriptor inUpsertMode() {
+            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_UPSERT();
+            return this;
         }
     }
 }
