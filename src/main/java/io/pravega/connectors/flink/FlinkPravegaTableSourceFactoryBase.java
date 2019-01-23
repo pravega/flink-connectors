@@ -12,17 +12,24 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import io.pravega.client.stream.impl.DefaultCredentials;
+import io.pravega.client.stream.impl.Credentials;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.SchemaValidator;
 import org.apache.flink.table.factories.DeserializationSchemaFactory;
 import org.apache.flink.table.factories.SerializationSchemaFactory;
 import org.apache.flink.table.factories.TableFactoryService;
+import org.apache.flink.table.sources.BatchTableSource;
+import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.types.Row;
 
 import java.net.URI;
@@ -32,12 +39,44 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.function.Supplier;
 
-import static io.pravega.connectors.flink.Pravega.*;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TYPE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TOKEN;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_VALIDATE_HOSTNAME;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_TRUST_STORE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_END_STREAMCUT;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_UID;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_SCOPE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_NAME;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_METRICS;
+
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_SCOPE;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
-import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
-import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
 import static org.apache.flink.table.descriptors.FormatDescriptorValidator.FORMAT;
 import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_TIMESTAMPS_CLASS;
@@ -54,13 +93,12 @@ import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_TYPE;
 
-public class FlinkPravegaTableSourceFactoryBase {
+public abstract class FlinkPravegaTableSourceFactoryBase {
 
     protected Map<String, String> getRequiredContext() {
         Map<String, String> context = new HashMap<>();
         context.put(CONNECTOR_TYPE(), CONNECTOR_TYPE_VALUE_PRAVEGA);
         context.put(CONNECTOR_PROPERTY_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
-        context.put(UPDATE_MODE(), UPDATE_MODE_VALUE_APPEND());
         context.put(CONNECTOR_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
         return context;
     }
@@ -150,6 +188,106 @@ public class FlinkPravegaTableSourceFactoryBase {
                 this.getClass().getClassLoader());
         return formatFactory.createDeserializationSchema(properties);
     }
+
+    protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
+        final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
+        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
+        final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema(properties);
+
+        ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
+        connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.READER);
+
+        Pravega.TableSourceReaderBuilder tableSourceReaderBuilder = new Pravega().tableSourceReaderBuilder();
+
+        AbstractStreamingReaderBuilder abstractStreamingReaderBuilder = tableSourceReaderBuilder;
+        if (connectorConfigurations.getUid().isPresent()) {
+            abstractStreamingReaderBuilder.uid(connectorConfigurations.getUid().get());
+        }
+        if (connectorConfigurations.getRgScope().isPresent()) {
+            abstractStreamingReaderBuilder.withReaderGroupScope(connectorConfigurations.getRgScope().get());
+        }
+        if (connectorConfigurations.getRgName().isPresent()) {
+            abstractStreamingReaderBuilder.withReaderGroupName(connectorConfigurations.getRgName().get());
+        }
+        if (connectorConfigurations.getRefreshInterval().isPresent()) {
+            abstractStreamingReaderBuilder.withReaderGroupRefreshTime(Time.milliseconds(connectorConfigurations.getRefreshInterval().get()));
+        }
+        if (connectorConfigurations.getEventReadTimeoutInterval().isPresent()) {
+            abstractStreamingReaderBuilder.withEventReadTimeout(Time.milliseconds(connectorConfigurations.getEventReadTimeoutInterval().get()));
+        }
+        if (connectorConfigurations.getCheckpointInitiateTimeoutInterval().isPresent()) {
+            abstractStreamingReaderBuilder.withCheckpointInitiateTimeout(Time.milliseconds(connectorConfigurations.getCheckpointInitiateTimeoutInterval().get()));
+        }
+
+        AbstractReaderBuilder abstractReaderBuilder = abstractStreamingReaderBuilder;
+
+        abstractReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+
+        if (connectorConfigurations.getMetrics().isPresent()) {
+            abstractReaderBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
+        }
+
+        abstractReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+
+        for (StreamWithBoundaries streamWithBoundaries: connectorConfigurations.getReaderStreams()) {
+            if (streamWithBoundaries.getFrom() != StreamCut.UNBOUNDED && streamWithBoundaries.getTo() != StreamCut.UNBOUNDED) {
+                abstractReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom(), streamWithBoundaries.getTo());
+            } else if (streamWithBoundaries.getFrom() != StreamCut.UNBOUNDED) {
+                abstractReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom());
+            } else {
+                abstractReaderBuilder.forStream(streamWithBoundaries.getStream());
+            }
+        }
+
+        tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
+
+        Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory = abstractStreamingReaderBuilder::buildSourceFunction;
+        Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory = tableSourceReaderBuilder::buildInputFormat;
+        RowTypeInfo returnType = new RowTypeInfo(schema.getTypes(), schema.getColumnNames());
+
+        FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl flinkPravegaTableSourceImpl =
+                new FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl(sourceFunctionFactory,
+                        inputFormatFactory, schema, returnType);
+        flinkPravegaTableSourceImpl.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
+        Optional<String> procTimeAttribute = SchemaValidator.deriveProctimeAttribute(descriptorProperties);
+        if (procTimeAttribute.isPresent()) {
+            flinkPravegaTableSourceImpl.setProctimeAttribute(procTimeAttribute.get());
+        }
+
+        return flinkPravegaTableSourceImpl;
+    }
+
+    protected FlinkPravegaTableSink createFlinkPravegaTableSink(Map<String, String> properties) {
+        final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
+        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
+        SerializationSchema<Row> serializationSchema = getSerializationSchema(properties);
+
+        ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
+        connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.WRITER);
+
+        Pravega.TableSinkWriterBuilder tableSinkWriterBuilder = new Pravega().tableSinkWriterBuilder();
+        AbstractWriterBuilder abstractWriterBuilder = tableSinkWriterBuilder;
+
+        if (connectorConfigurations.getTxnLeaseRenewalInterval().isPresent()) {
+            tableSinkWriterBuilder.withTxnLeaseRenewalPeriod(Time.milliseconds(connectorConfigurations.getTxnLeaseRenewalInterval().get().longValue()));
+        }
+        if (connectorConfigurations.getWriterMode().isPresent()) {
+            tableSinkWriterBuilder.withWriterMode(connectorConfigurations.getWriterMode().get());
+        }
+        if (connectorConfigurations.getMetrics().isPresent()) {
+            tableSinkWriterBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
+        }
+        tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+        tableSinkWriterBuilder.withRoutingKeyField(connectorConfigurations.getRoutingKey());
+        tableSinkWriterBuilder.withSerializationSchema(serializationSchema);
+        abstractWriterBuilder.forStream(connectorConfigurations.getWriterStream());
+        abstractWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+
+        return new FlinkPravegaStreamTableSinkFactory.FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
+                tableSinkWriterBuilder::createOutputFormat)
+                .configure(schema.getColumnNames(), schema.getTypes());
+    }
+
 
     @Data
     public static final class ConnectorConfigurations {
@@ -258,11 +396,12 @@ public class FlinkPravegaTableSourceFactoryBase {
         }
 
         private void createPravegaConfig(final String scope) {
-            //TODO get auth type and auth token and create a new Security impl instance
             pravegaConfig = PravegaConfig.fromDefaults()
                     .withControllerURI(URI.create(controllerUri))
-                    .withDefaultScope(scope)
-                    .withCredentials(new DefaultCredentials("1111_aaaa", "admin"));
+                    .withDefaultScope(scope);
+            if (authType.isPresent() && authToken.isPresent()) {
+                pravegaConfig.withCredentials(new SimpleCredentials(authType.get(), authToken.get()));
+            }
             if (validateHostName.isPresent()) {
                 pravegaConfig = pravegaConfig.withHostnameValidation(validateHostName.get());
             }
@@ -276,6 +415,63 @@ public class FlinkPravegaTableSourceFactoryBase {
             WRITER
         }
 
+    }
+
+    @Data
+    @EqualsAndHashCode
+    public static class SimpleCredentials implements Credentials {
+
+        private final String authType;
+
+        private final String authToken;
+
+        @Override
+        public String getAuthenticationType() {
+            return authType;
+        }
+
+        @Override
+        public String getAuthenticationToken() {
+            return authToken;
+        }
+    }
+
+    public static class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {
+
+        /**
+         * Creates a Pravega Table Source Implementation Instance {@link FlinkPravegaTableSource}.
+         *
+         * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
+         * @param inputFormatFactory    a factory for the {@link FlinkPravegaInputFormat} to implement {@link BatchTableSource}
+         * @param schema                the table schema
+         * @param returnType            the return type based on the table schema
+         */
+        protected FlinkPravegaTableSourceImpl(Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory,
+                                              Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory,
+                                              TableSchema schema, TypeInformation<Row> returnType) {
+            super(sourceFunctionFactory, inputFormatFactory, schema, returnType);
+        }
+
+        @Override
+        public String explainSource() {
+            return "FlinkPravegaTableSource";
+        }
+    }
+
+    /**
+     * Pravega table sink implementation.
+     */
+    public static class FlinkPravegaTableSinkImpl extends FlinkPravegaTableSink {
+
+        protected FlinkPravegaTableSinkImpl(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
+                                            Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
+            super(writerFactory, outputFormatFactory);
+        }
+
+        @Override
+        protected FlinkPravegaTableSink createCopy() {
+            return new FlinkPravegaTableSinkImpl(writerFactory, outputFormatFactory);
+        }
     }
 
 }

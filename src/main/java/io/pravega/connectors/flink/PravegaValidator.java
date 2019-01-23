@@ -44,7 +44,8 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         validateConnectionConfig(properties);
         if (properties.containsKey(CONNECTOR_READER)) {
             validateReaderConfigurations(properties);
-        } else if (properties.containsKey(CONNECTOR_WRITER)) {
+        }
+        if (properties.containsKey(CONNECTOR_WRITER)) {
             validateWriterConfigurations(properties);
         }
     }

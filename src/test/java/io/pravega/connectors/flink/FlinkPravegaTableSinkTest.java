@@ -127,7 +127,7 @@ public class FlinkPravegaTableSinkTest {
 
         // construct table sink using descriptors and table sink factory
         Pravega pravega = new Pravega();
-        pravega.tableSourceWriterBuilder()
+        pravega.tableSinkWriterBuilder()
                 .withRoutingKeyField(cityName)
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .forStream(stream)

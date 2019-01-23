@@ -81,7 +81,7 @@ public class Pravega extends ConnectorDescriptor {
 
     private TableSourceReaderBuilder tableSourceReaderBuilder = null;
 
-    private TableSourceWriterBuilder tableSourceWriterBuilder = null;
+    private TableSinkWriterBuilder tableSinkWriterBuilder = null;
 
     public Pravega() {
         super(CONNECTOR_TYPE_VALUE_PRAVEGA, CONNECTOR_VERSION_VALUE, true);
@@ -93,14 +93,29 @@ public class Pravega extends ConnectorDescriptor {
     @Override
     public void addConnectorProperties(DescriptorProperties properties) {
         properties.putString(CONNECTOR_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
+
+        if (tableSourceReaderBuilder == null && tableSinkWriterBuilder == null) {
+            throw new RuntimeException("Missing both reader and writer configurations.");
+        }
+
+        PravegaConfig pravegaConfig = tableSourceReaderBuilder != null ?
+                tableSourceReaderBuilder.getPravegaConfig() : tableSinkWriterBuilder.getPravegaConfig();
+        populateConnectionConfig(pravegaConfig, properties);
+
+        boolean metrics = tableSourceReaderBuilder != null ?
+                tableSourceReaderBuilder.isMetricsEnabled() : tableSinkWriterBuilder.isMetricsEnabled();
+        properties.putBoolean(CONNECTOR_METRICS, metrics);
+
         if (tableSourceReaderBuilder != null) {
             populateReaderProperties(properties);
-        } else if (tableSourceWriterBuilder != null) {
+        }
+        if (tableSinkWriterBuilder != null) {
             populateWriterProperties(properties);
         }
     }
 
     private void populateConnectionConfig(PravegaConfig pravegaConfig, DescriptorProperties properties) {
+
         String controllerUri = pravegaConfig.getClientConfig().getControllerURI().toString();
         properties.putString(CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI, controllerUri);
 
@@ -135,23 +150,20 @@ public class Pravega extends ConnectorDescriptor {
      */
     private void populateWriterProperties(DescriptorProperties properties) {
         properties.putBoolean(CONNECTOR_WRITER, true);
-        populateConnectionConfig(tableSourceWriterBuilder.getPravegaConfig(), properties);
+        properties.putString(CONNECTOR_WRITER_SCOPE, tableSinkWriterBuilder.resolveStream().getScope());
+        properties.putString(CONNECTOR_WRITER_STREAM, tableSinkWriterBuilder.resolveStream().getStreamName());
 
-        properties.putString(CONNECTOR_WRITER_SCOPE, tableSourceWriterBuilder.resolveStream().getScope());
-        properties.putString(CONNECTOR_WRITER_STREAM, tableSourceWriterBuilder.resolveStream().getStreamName());
-        properties.putBoolean(CONNECTOR_METRICS, tableSourceWriterBuilder.isMetricsEnabled());
-
-        if (tableSourceWriterBuilder.writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+        if (tableSinkWriterBuilder.writerMode == PravegaWriterMode.ATLEAST_ONCE) {
             properties.putString(CONNECTOR_WRITER_MODE, CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE);
 
-        } else if (tableSourceWriterBuilder.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+        } else if (tableSinkWriterBuilder.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             properties.putString(CONNECTOR_WRITER_MODE, CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE);
         }
 
-        properties.putLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL, tableSourceWriterBuilder.txnLeaseRenewalPeriod.toMilliseconds());
+        properties.putLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL, tableSinkWriterBuilder.txnLeaseRenewalPeriod.toMilliseconds());
 
-        if (tableSourceWriterBuilder.routingKeyFieldName != null) {
-            properties.putString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME, tableSourceWriterBuilder.routingKeyFieldName);
+        if (tableSinkWriterBuilder.routingKeyFieldName != null) {
+            properties.putString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME, tableSinkWriterBuilder.routingKeyFieldName);
         }
     }
 
@@ -161,9 +173,6 @@ public class Pravega extends ConnectorDescriptor {
      */
     private void populateReaderProperties(DescriptorProperties properties) {
         properties.putBoolean(CONNECTOR_READER, true);
-
-        // connection config
-        populateConnectionConfig(tableSourceReaderBuilder.getPravegaConfig(), properties);
 
         // reader stream information
         AbstractStreamingReaderBuilder.ReaderGroupInfo readerGroupInfo = tableSourceReaderBuilder.buildReaderGroupInfo();
@@ -195,7 +204,6 @@ public class Pravega extends ConnectorDescriptor {
         properties.putLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL, readerGroupInfo.getReaderGroupConfig().getGroupRefreshTimeMillis());
         properties.putLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL, tableSourceReaderBuilder.eventReadTimeout.toMilliseconds());
         properties.putLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL, tableSourceReaderBuilder.checkpointInitiateTimeout.toMilliseconds());
-        properties.putBoolean(CONNECTOR_METRICS, tableSourceReaderBuilder.isMetricsEnabled());
     }
 
     public TableSourceReaderBuilder tableSourceReaderBuilder() {
@@ -203,9 +211,9 @@ public class Pravega extends ConnectorDescriptor {
         return tableSourceReaderBuilder;
     }
 
-    public TableSourceWriterBuilder tableSourceWriterBuilder() {
-        tableSourceWriterBuilder = new TableSourceWriterBuilder();
-        return tableSourceWriterBuilder;
+    public TableSinkWriterBuilder tableSinkWriterBuilder() {
+        tableSinkWriterBuilder = new TableSinkWriterBuilder();
+        return tableSinkWriterBuilder;
     }
 
     public static class TableSourceReaderBuilder<T extends AbstractStreamingReaderBuilder>
@@ -245,8 +253,8 @@ public class Pravega extends ConnectorDescriptor {
         }
     }
 
-    public static class TableSourceWriterBuilder<T extends AbstractStreamingWriterBuilder>
-            extends AbstractStreamingWriterBuilder<Row, TableSourceWriterBuilder> {
+    public static class TableSinkWriterBuilder<T extends AbstractStreamingWriterBuilder>
+            extends AbstractStreamingWriterBuilder<Row, TableSinkWriterBuilder> {
 
         private String routingKeyFieldName;
 
@@ -256,7 +264,7 @@ public class Pravega extends ConnectorDescriptor {
          * Sets the field name to use as a Pravega event routing key.
          * @param fieldName the field name.
          */
-        public TableSourceWriterBuilder withRoutingKeyField(String fieldName) {
+        public TableSinkWriterBuilder withRoutingKeyField(String fieldName) {
             this.routingKeyFieldName = fieldName;
             return builder();
         }
@@ -265,13 +273,13 @@ public class Pravega extends ConnectorDescriptor {
          * Pass the serialization schema to be used.
          * @param serializationSchema the serialization schema.
          */
-        public TableSourceWriterBuilder withSerializationSchema(SerializationSchema<Row> serializationSchema) {
+        public TableSinkWriterBuilder withSerializationSchema(SerializationSchema<Row> serializationSchema) {
             this.serializationSchema = serializationSchema;
             return builder();
         }
 
         @Override
-        protected TableSourceWriterBuilder builder() {
+        protected TableSinkWriterBuilder builder() {
             return this;
         }
 
