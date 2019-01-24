@@ -17,6 +17,8 @@ import org.apache.flink.types.Row;
 import java.util.List;
 import java.util.Map;
 
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
+
 public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableSourceFactoryBase implements BatchTableSourceFactory<Row> {
 
     @Override
@@ -33,4 +35,10 @@ public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableSource
     public BatchTableSource<Row> createBatchTableSource(Map<String, String> properties) {
         return createFlinkPravegaTableSource(properties);
     }
+
+    @Override
+    protected String getVersion() {
+        return String.valueOf(CONNECTOR_VERSION_VALUE);
+    }
+
 }

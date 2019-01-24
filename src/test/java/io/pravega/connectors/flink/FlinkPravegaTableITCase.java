@@ -79,8 +79,6 @@ public class FlinkPravegaTableITCase {
 
     @BeforeClass
     public static void setup() throws Exception {
-        SETUP_UTILS.setEnableAuth(true);
-        SETUP_UTILS.setEnableTls(false);
         SETUP_UTILS.startAllServices();
     }
 
@@ -250,7 +248,6 @@ public class FlinkPravegaTableITCase {
                 .field("uri", Types.STRING())
                 .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
-                                .timestampsFromExtractor(new ExistingField("accessTime"))
                                 .watermarksPeriodicBounded(30000L));
 
         Pravega pravega = new Pravega();
@@ -308,7 +305,6 @@ public class FlinkPravegaTableITCase {
                 .field("uri", Types.STRING())
                 .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
-                                .timestampsFromExtractor(new ExistingField("accessTime"))
                                 .watermarksPeriodicBounded(30000L));
 
         Pravega pravega = new Pravega();

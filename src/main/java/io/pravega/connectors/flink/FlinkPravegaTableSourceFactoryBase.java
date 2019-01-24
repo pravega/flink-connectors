@@ -66,7 +66,6 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_METRICS;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
@@ -98,8 +97,8 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
     protected Map<String, String> getRequiredContext() {
         Map<String, String> context = new HashMap<>();
         context.put(CONNECTOR_TYPE(), CONNECTOR_TYPE_VALUE_PRAVEGA);
-        context.put(CONNECTOR_PROPERTY_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
-        context.put(CONNECTOR_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
+        context.put(CONNECTOR_PROPERTY_VERSION(), "1");
+        context.put(CONNECTOR_VERSION(), getVersion());
         return context;
     }
 
@@ -160,6 +159,8 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
 
         return properties;
     }
+
+    protected abstract String getVersion();
 
     protected DescriptorProperties getValidatedProperties(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = new DescriptorProperties(true);
@@ -241,14 +242,12 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
 
         tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
 
-        Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory = abstractStreamingReaderBuilder::buildSourceFunction;
-        Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory = tableSourceReaderBuilder::buildInputFormat;
-        RowTypeInfo returnType = new RowTypeInfo(schema.getTypes(), schema.getColumnNames());
-
         FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl flinkPravegaTableSourceImpl =
-                new FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl(sourceFunctionFactory,
-                        inputFormatFactory, schema, returnType);
+                new FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl(abstractStreamingReaderBuilder::buildSourceFunction,
+                        tableSourceReaderBuilder::buildInputFormat, schema, new RowTypeInfo(schema.getTypes(), schema.getColumnNames()));
+
         flinkPravegaTableSourceImpl.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
+
         Optional<String> procTimeAttribute = SchemaValidator.deriveProctimeAttribute(descriptorProperties);
         if (procTimeAttribute.isPresent()) {
             flinkPravegaTableSourceImpl.setProctimeAttribute(procTimeAttribute.get());
@@ -333,6 +332,8 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
             validateHostName =  descriptorProperties.getOptionalBoolean(CONNECTOR_CONNECTION_CONFIG_SECURITY_VALIDATE_HOSTNAME);
             trustStore = descriptorProperties.getOptionalString(CONNECTOR_CONNECTION_CONFIG_SECURITY_TRUST_STORE);
 
+            createPravegaConfig();
+
             if (configurationType == ConfigurationType.READER) {
                 uid = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_UID);
                 rgScope = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
@@ -345,39 +346,60 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
                     throw new ValidationException("Must supply either " + CONNECTOR_READER_READER_GROUP_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
                 }
 
-                final String scope = defaultScope.isPresent() ? defaultScope.get() : rgScope.get();
-
-                createPravegaConfig(scope);
-
-                final List<Map<String, String>> streamPropsList = descriptorProperties.getFixedIndexedProperties(
+                final List<Map<String, String>> streamPropsList = descriptorProperties.getVariableIndexedProperties(
                         CONNECTOR_READER_STREAM_INFO,
-                        Arrays.asList(CONNECTOR_READER_STREAM_INFO_SCOPE,
-                                CONNECTOR_READER_STREAM_INFO_STREAM,
-                                CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                                CONNECTOR_READER_STREAM_INFO_END_STREAMCUT));
+                        Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
+                if (streamPropsList.isEmpty()) {
+                    throw new ValidationException(CONNECTOR_READER_STREAM_INFO + " cannot be empty");
+                }
                 for (Map<String, String> propsMap : streamPropsList) {
-                    String scopeInfo = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_SCOPE));
-                    String streamInfo = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_STREAM));
-                    String startCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT));
-                    String endCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT));
-                    Stream stream = Stream.of(scopeInfo, streamInfo);
+                    if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE) && !defaultScope.isPresent()) {
+                        throw new ValidationException("Must supply either " + CONNECTOR_READER_STREAM_INFO + "." + CONNECTOR_READER_STREAM_INFO_SCOPE +
+                                " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
+                    }
+                    String scopeName = (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE)) ?
+                            descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_SCOPE)) : defaultScope.get();
+
+                    if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_STREAM)) {
+                        throw new ValidationException(CONNECTOR_READER_STREAM_INFO + "." +  CONNECTOR_READER_STREAM_INFO_STREAM + " cannot be empty");
+                    }
+                    String streamName = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_STREAM));
+
+                    String startCut = StreamCut.UNBOUNDED.asText();
+                    if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT)) {
+                        startCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT));
+                    }
+
+                    String endCut = StreamCut.UNBOUNDED.asText();
+                    if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT)) {
+                        endCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT));
+                    }
+
+                    Stream stream = Stream.of(scopeName, streamName);
                     readerStreams.add(new StreamWithBoundaries(stream, StreamCut.from(startCut), StreamCut.from(endCut)));
                 }
-            } else if (configurationType == ConfigurationType.WRITER) {
+            }
+
+            if (configurationType == ConfigurationType.WRITER) {
                 Optional<String> streamScope = descriptorProperties.getOptionalString(CONNECTOR_WRITER_SCOPE);
 
                 if (!defaultScope.isPresent() && !streamScope.isPresent()) {
                     throw new ValidationException("Must supply either " + CONNECTOR_WRITER_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
                 }
 
-                final String scope = defaultScope.isPresent() ? defaultScope.get() : streamScope.get();
-                createPravegaConfig(scope);
-
                 final String scopeVal = streamScope.isPresent() ? streamScope.get() : defaultScope.get();
+
+                if (!descriptorProperties.containsKey(CONNECTOR_WRITER_STREAM)) {
+                    throw new ValidationException("Missing " + CONNECTOR_WRITER_STREAM + " configuration.");
+                }
                 final String streamName = descriptorProperties.getString(CONNECTOR_WRITER_STREAM);
                 writerStream = Stream.of(scopeVal, streamName);
 
                 txnLeaseRenewalInterval = descriptorProperties.getOptionalLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL);
+
+                if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
+                    throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
+                }
                 routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
                 Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);
@@ -395,10 +417,13 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
             }
         }
 
-        private void createPravegaConfig(final String scope) {
+        private void createPravegaConfig() {
             pravegaConfig = PravegaConfig.fromDefaults()
-                    .withControllerURI(URI.create(controllerUri))
-                    .withDefaultScope(scope);
+                    .withControllerURI(URI.create(controllerUri));
+
+            if (defaultScope.isPresent()) {
+                pravegaConfig.withDefaultScope(defaultScope.get());
+            }
             if (authType.isPresent() && authToken.isPresent()) {
                 pravegaConfig.withCredentials(new SimpleCredentials(authType.get(), authToken.get()));
             }
@@ -414,7 +439,6 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
             READER,
             WRITER
         }
-
     }
 
     @Data

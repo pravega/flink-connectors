@@ -17,6 +17,7 @@ import org.apache.flink.types.Row;
 import java.util.List;
 import java.util.Map;
 
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
@@ -38,4 +39,10 @@ public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableSourc
     public StreamTableSource<Row> createStreamTableSource(Map<String, String> properties) {
         return createFlinkPravegaTableSource(properties);
     }
+
+    @Override
+    protected String getVersion() {
+        return String.valueOf(CONNECTOR_VERSION_VALUE);
+    }
+
 }

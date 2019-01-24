@@ -20,6 +20,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_END_STREAMCUT;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
@@ -58,10 +60,16 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         final Map<String, Consumer<String>> streamPropertyValidators = new HashMap<>();
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_SCOPE,
-                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_SCOPE, false, 1));
+                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_SCOPE, true, 1));
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_STREAM,
                 prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_STREAM, false, 0));
+        streamPropertyValidators.put(
+                CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
+                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_START_STREAMCUT, true, 1));
+        streamPropertyValidators.put(
+                CONNECTOR_READER_STREAM_INFO_END_STREAMCUT,
+                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_END_STREAMCUT, true, 1));
         properties.validateFixedIndexedProperties(CONNECTOR_READER_STREAM_INFO, false, streamPropertyValidators);
 
         // for readers we need default-scope from connection config or reader group scope
@@ -73,6 +81,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
     }
 
     private void validateWriterConfigurations(DescriptorProperties properties) {
+        properties.validateString(CONNECTOR_WRITER_SCOPE, true, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_STREAM, false, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME, false, 1, Integer.MAX_VALUE);
 

@@ -28,7 +28,10 @@ import java.io.IOException;
  * the specified fields.
  *
  * <p>Failure during deserialization are forwarded as wrapped IOExceptions.
+ *
+ * @deprecated Please use {@link org.apache.flink.formats.json.JsonRowDeserializationSchema} from flink-json module
  */
+@Deprecated
 public class JsonRowDeserializationSchema implements DeserializationSchema<Row> {
 
     /** Type information describing the result type. */
