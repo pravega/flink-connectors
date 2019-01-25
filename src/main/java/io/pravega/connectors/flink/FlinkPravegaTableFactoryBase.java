@@ -452,10 +452,9 @@ public abstract class FlinkPravegaTableFactoryBase {
 
     @Data
     @EqualsAndHashCode
-    public static class SimpleCredentials implements Credentials {
+    public static final class SimpleCredentials implements Credentials {
 
         private final String authType;
-
         private final String authToken;
 
         @Override
@@ -469,7 +468,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         }
     }
 
-    public static class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {
+    public static final class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {
 
         /**
          * Creates a Pravega Table Source Implementation Instance {@link FlinkPravegaTableSource}.
@@ -494,7 +493,7 @@ public abstract class FlinkPravegaTableFactoryBase {
     /**
      * Pravega table sink implementation.
      */
-    public static class FlinkPravegaTableSinkImpl extends FlinkPravegaTableSink {
+    public static final class FlinkPravegaTableSinkImpl extends FlinkPravegaTableSink {
 
         protected FlinkPravegaTableSinkImpl(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
                                             Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {

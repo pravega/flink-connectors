@@ -10,7 +10,7 @@ You may obtain a copy of the License at
 # Table Connector
 The Flink connector library for Pravega provides a table source and table sink for use with the Flink Table API.  The Table API provides a unified API for both the Flink streaming and batch environment.  See the below sections for details.
 
-> We have deprecated `FlinkPravegaJsonTableSource` and `FlinkPravegaJsonTableSink` implementation and replaced it with [ConnectorDescriptor](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/descriptors/ConnectorDescriptor.java) / [TableFactory](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/factories/TableFactory.java) based implementation introduced in Flink 1.6. With these changes, it is possible to use the Pravega Table API either **programmatically** (using Pravega Descriptor) or **declaratively** through YAML configuration files for the SQL client.
+> `FlinkPravegaJsonTableSource` and `FlinkPravegaJsonTableSink` implementation has been deprecated and replaced with [ConnectorDescriptor](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/descriptors/ConnectorDescriptor.java) / [TableFactory](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/factories/TableFactory.java) based implementation introduced in Flink 1.6. With these changes, it is possible to use the Pravega Table API either **programmatically** (using Pravega Descriptor) or **declaratively** through YAML configuration files for the SQL client.
 
 ## Table of Contents
 - [Table Source](#table-source)
@@ -20,6 +20,8 @@ The Flink connector library for Pravega provides a table source and table sink f
 - [Table Sink](#table-sink)
   - [Parameters](#parameters-1)
   - [Custom Formats](#custom-formats-1)
+- [Using SQL Client](#using-sql-client)
+  - [Environment File](#environment-file)
 
 ## Table Source
 A Pravega Stream may be used as a table source within a Flink table program. The Flink Table API is oriented around Flink's `TableSchema` classes which describe the table fields.  A concrete subclass of `FlinkPravegaTableSource` is then used to parse raw stream data as `Row` objects that conform to the table schema.
@@ -249,7 +251,7 @@ table.writeToSink(sink);
 ### Parameters
 A builder API is provided to construct an concrete subclass of `FlinkPravegaTableSink`.  See the table below for a summary of builder properties.  Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) page for more information.
 
-Note that the table sink supports both the Flink streaming and batch environments.  In the streaming environment, the table sink uses a [`FlinkPravegaWriter`](streaming.md#flinkpravegawriter) connector.  In the batch environment, the table sink uses a [`FlinkPravegaOutputFormat`](batch.md#flinkpravegaoutpuformat) connector.  Please see the documentation of [Streaming Connector](streaming.md) and [Batch Connector](#batch.md) to have a better understanding on the below mentioned parameter list.
+Note that the table sink supports both the Flink streaming and batch environments.  In the streaming environment, the table sink uses a [FlinkPravegaWriter](streaming.md#flinkpravegawriter) connector.  In the batch environment, the table sink uses a [FlinkPravegaOutputFormat](batch.md#flinkpravegaoutpuformat) connector.  Please see the documentation of [Streaming Connector](streaming.md) and [Batch Connector](#batch.md) to have a better understanding on the below mentioned parameter list.
 
 |Method                |Description|
 |----------------------|-----------------------------------------------------------------------|
@@ -268,4 +270,128 @@ Note that the table sink supports both the Flink streaming and batch environment
 ### Custom Formats
 @deprecated applicable only for `FlinkPravegaJsonTableSink` implementation
 
-To work with stream events in a format other than JSON, extend `FlinkPravegaTableSink`. Please see the implementation of [`FlinkPravegaJsonTableSink`](https://github.com/pravega/flink-connectors/blob/master/src/main/java/io/pravega/connectors/flink/FlinkPravegaJsonTableSink.java) for more details.
+To work with stream events in a format other than JSON, extend `FlinkPravegaTableSink`. Please see the implementation of [FlinkPravegaJsonTableSink](https://github.com/pravega/flink-connectors/blob/master/src/main/java/io/pravega/connectors/flink/FlinkPravegaJsonTableSink.java) for more details.
+
+## Using SQL Client
+The *SQL Client* introduced in Flink 1.6 release aims at providing an easy way to debug and submit table programs to Flink cluster without having a need to write the code. It can be achieved by providing the table API specific configurations through YAML configuration file. Please see [Sql Client](https://ci.apache.org/projects/flink/flink-docs-master/dev/table/sqlClient.html) for more details on how to use the client.
+
+For accessing SQL client with Pravega connector, the following files have to copied to Flink cluster library `$FLINK_HOME/lib` path
+- Pravega connector jar
+- Flink JSON jar
+
+### Environment File
+The YAML configuration file schema for providing Pravega table API specific connector configuration is provided below.
+
+```yaml
+tables:
+  - name: sample                            # name the new table
+    type: source                            # declare if the table should be "source", "sink", or "both". If "both" provide both reader and writer configurations
+    update-mode: append                     # specify the update-mode *only* for streaming tables
+
+    # declare the external system to connect to
+    connector:
+      type: pravega
+      version: "1"
+      metrics:                              # optional (true|false)
+      connection-config:
+        controller-uri:                     # mandatory
+        default-scope:                      # optional (assuming reader or writer provides scope)
+        security:                           # optional
+          auth-type:                        # optional (base64 encoded string)
+          auth-token:                       # optional (base64 encoded string)
+          validate-hostname:                # optional (true|false)
+          trust-store:                      # optional (truststore filename)
+      reader:                               # required only if type: source
+        stream-info:
+          - scope: test                     # optional (uses default-scope value or else throws error)
+            stream: stream1                 # mandatory
+            start-streamcut:                # optional (base64 encoded string)
+            end-streamcut:                  # optional (base64 encoded string)
+          - scope: test                     # repeating info to provide multiple stream configurations
+            stream: stream2
+            start-streamcut:
+            end-streamcut:
+        reader-group:                       # optional
+          uid:                              # optional
+          scope:                            # optional (uses default-scope or else throws error)
+          name:                             # optional
+          refresh-interval:                 # optional (long milliseconds)
+          event-read-timeout-interval:      # optional (long milliseconds)
+          checkpoint-initiate-timeout-interval:  # optional (long milliseconds)
+      writer:                               # required only if type: sink
+        scope: foo                          # optional (uses default-scope value)
+        stream: bar                         # mandatory
+        mode:                               # optional (exactly_once | atleast_once)
+        txn-lease-renewal-interval:         # optional (long milliseconds)
+	    routingkey-field-name:              # mandatory (provide field name from schema that has to be used as routing key)
+
+    # declare a format for this system (refer flink documentation for details) 
+    format:
+
+    # declare the schema of the table (refer flink documentation for details)
+    schema:
+```
+
+### Sample Environment File
+Here is a sample environment file for reference which can be used as a source as well as sink to read from and write data into Pravega as table records
+
+```yaml
+tables:
+  - name: sample
+    type: both
+    update-mode: append
+    # declare the external system to connect to
+    connector:
+      type: pravega
+      version: "1"
+      metrics: true
+      connection-config:
+        controller-uri: "tcp://localhost:9090"
+        default-scope: wVamQsOSaCxvYiHQVhRl
+      reader:
+        stream-info:
+          - stream: streamX
+      writer:
+        stream: streamX
+        mode: atleast_once
+        txn-lease-renewal-interval: 10000
+        routingkey-field-name: category
+    format:
+      type: json
+      fail-on-missing-field: true
+      derive-schema: true
+    schema:
+      - name: category
+        type: VARCHAR
+      - name: value
+        type: INT
+
+functions: [] 
+
+execution:
+  # 'batch' or 'streaming' execution
+  type: streaming
+  # allow 'event-time' or only 'processing-time' in sources
+  time-characteristic: event-time
+  # interval in ms for emitting periodic watermarks
+  periodic-watermarks-interval: 200
+  # 'changelog' or 'table' presentation of results
+  result-mode: table
+  # parallelism of the program
+  parallelism: 1
+  # maximum parallelism
+  max-parallelism: 128
+  # minimum idle state retention in ms
+  min-idle-state-retention: 0
+  # maximum idle state retention in ms
+  max-idle-state-retention: 0
+
+deployment:
+  # general cluster communication timeout in ms
+  response-timeout: 5000
+  # (optional) address from cluster to gateway
+  gateway-address: ""
+  # (optional) port from cluster to gateway
+  gateway-port: 0
+
+```

@@ -251,11 +251,7 @@ public class FlinkPravegaTableITCase {
                 .withPravegaConfig(pravegaConfig);
 
         StreamTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(
-                        new Json()
-                                .failOnMissingField(true)
-                                .deriveSchema()
-                )
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema)
                 .inAppendMode();
 
@@ -305,11 +301,7 @@ public class FlinkPravegaTableITCase {
                 .withPravegaConfig(pravegaConfig);
 
         BatchTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(
-                        new Json()
-                                .failOnMissingField(true)
-                                .deriveSchema()
-                )
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema);
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);

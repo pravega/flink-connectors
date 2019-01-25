@@ -372,11 +372,7 @@ public class FlinkTableITCase {
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
         StreamTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(
-                        new Json()
-                                .failOnMissingField(false)
-                                .deriveSchema()
-                )
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
                 .inAppendMode();
         desc.registerTableSink("test");
@@ -410,11 +406,7 @@ public class FlinkTableITCase {
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
         BatchTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(
-                        new Json()
-                                .failOnMissingField(false)
-                                .deriveSchema()
-                )
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
         desc.registerTableSink("test");
 

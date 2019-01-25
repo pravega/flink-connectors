@@ -57,7 +57,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         properties.validateString(CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI, false, 1, Integer.MAX_VALUE);
     }
 
-    protected void validateReaderConfigurations(DescriptorProperties properties) {
+    private void validateReaderConfigurations(DescriptorProperties properties) {
         final Map<String, Consumer<String>> streamPropertyValidators = new HashMap<>();
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_SCOPE,
@@ -81,7 +81,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         }
     }
 
-    protected void validateWriterConfigurations(DescriptorProperties properties) {
+    private void validateWriterConfigurations(DescriptorProperties properties) {
         properties.validateString(CONNECTOR_WRITER_SCOPE, true, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_STREAM, false, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME, false, 1, Integer.MAX_VALUE);
