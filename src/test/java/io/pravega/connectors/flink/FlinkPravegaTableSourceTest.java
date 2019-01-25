@@ -109,7 +109,7 @@ public class FlinkPravegaTableSourceTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testTableSourceDefinition() {
+    public void testTableSourceDescriptor() {
         final String cityName = "fruitName";
         final String total = "count";
         final String eventTime = "eventTime";
@@ -169,9 +169,7 @@ public class FlinkPravegaTableSourceTest {
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
-
         assertNotNull(actualSource);
-
         TableSourceUtil.validateTableSource(actualSource);
     }
 
@@ -234,11 +232,19 @@ public class FlinkPravegaTableSourceTest {
 
         @Override
         public void addProperties(DescriptorProperties properties) {
-            connectorDescriptor.addProperties(properties);
-            formatDescriptor.addFormatProperties(properties);
-            schemaDescriptor.addProperties(properties);
-            properties.putString(FormatDescriptorValidator.FORMAT_TYPE(), JsonValidator.FORMAT_TYPE_VALUE);
-            properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
+            if (formatDescriptor != null) {
+                formatDescriptor.addFormatProperties(properties);
+                properties.putString(FormatDescriptorValidator.FORMAT_TYPE(), JsonValidator.FORMAT_TYPE_VALUE);
+            }
+            if (connectorDescriptor != null) {
+                connectorDescriptor.addProperties(properties);
+            }
+            if (schemaDescriptor != null) {
+                schemaDescriptor.addProperties(properties);
+            }
+            if (updateMode != null) {
+                properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
+            }
         }
 
         @Override

@@ -110,7 +110,7 @@ public class FlinkPravegaTableSinkTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testTableSinkDefinition() {
+    public void testTableSinkDescriptor() {
         final String cityName = "fruitName";
         final String total = "count";
         final String eventTime = "eventTime";

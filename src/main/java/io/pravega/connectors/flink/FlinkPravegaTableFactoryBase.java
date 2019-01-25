@@ -42,6 +42,8 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
+import static io.pravega.connectors.flink.Pravega.TableSinkWriterBuilder;
+import static io.pravega.connectors.flink.Pravega.TableSourceReaderBuilder;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TYPE;
@@ -64,7 +66,6 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_METRICS;
-
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
@@ -74,6 +75,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ROUTING_KEY_F
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_SCOPE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
+
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
@@ -92,11 +94,12 @@ import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_TYPE;
 
-public abstract class FlinkPravegaTableSourceFactoryBase {
+public abstract class FlinkPravegaTableFactoryBase {
 
     protected Map<String, String> getRequiredContext() {
         Map<String, String> context = new HashMap<>();
         context.put(CONNECTOR_TYPE(), CONNECTOR_TYPE_VALUE_PRAVEGA);
+        // to preserve backward compatibility (see org.apache.flink.table.descriptors.ConnectorDescriptorValidator).
         context.put(CONNECTOR_PROPERTY_VERSION(), "1");
         context.put(CONNECTOR_VERSION(), getVersion());
         return context;
@@ -105,7 +108,7 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
     protected List<String> getSupportedProperties() {
         List<String> properties = new ArrayList<>();
 
-        // pravega
+        // Pravega
         properties.add(CONNECTOR_METRICS);
 
         properties.add(CONNECTOR_CONNECTION_CONFIG);
@@ -198,62 +201,55 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
         connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.READER);
 
-        Pravega.TableSourceReaderBuilder tableSourceReaderBuilder = new Pravega().tableSourceReaderBuilder();
+        // create source from the reader builder by using the supplied properties
+        TableSourceReaderBuilder tableSourceReaderBuilder = new Pravega().tableSourceReaderBuilder();
+        tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
 
-        AbstractStreamingReaderBuilder abstractStreamingReaderBuilder = tableSourceReaderBuilder;
         if (connectorConfigurations.getUid().isPresent()) {
-            abstractStreamingReaderBuilder.uid(connectorConfigurations.getUid().get());
+            tableSourceReaderBuilder.uid(connectorConfigurations.getUid().get());
         }
         if (connectorConfigurations.getRgScope().isPresent()) {
-            abstractStreamingReaderBuilder.withReaderGroupScope(connectorConfigurations.getRgScope().get());
+            tableSourceReaderBuilder.withReaderGroupScope(connectorConfigurations.getRgScope().get());
         }
         if (connectorConfigurations.getRgName().isPresent()) {
-            abstractStreamingReaderBuilder.withReaderGroupName(connectorConfigurations.getRgName().get());
+            tableSourceReaderBuilder.withReaderGroupName(connectorConfigurations.getRgName().get());
         }
         if (connectorConfigurations.getRefreshInterval().isPresent()) {
-            abstractStreamingReaderBuilder.withReaderGroupRefreshTime(Time.milliseconds(connectorConfigurations.getRefreshInterval().get()));
+            tableSourceReaderBuilder.withReaderGroupRefreshTime(Time.milliseconds(connectorConfigurations.getRefreshInterval().get()));
         }
         if (connectorConfigurations.getEventReadTimeoutInterval().isPresent()) {
-            abstractStreamingReaderBuilder.withEventReadTimeout(Time.milliseconds(connectorConfigurations.getEventReadTimeoutInterval().get()));
+            tableSourceReaderBuilder.withEventReadTimeout(Time.milliseconds(connectorConfigurations.getEventReadTimeoutInterval().get()));
         }
         if (connectorConfigurations.getCheckpointInitiateTimeoutInterval().isPresent()) {
-            abstractStreamingReaderBuilder.withCheckpointInitiateTimeout(Time.milliseconds(connectorConfigurations.getCheckpointInitiateTimeoutInterval().get()));
+            tableSourceReaderBuilder.withCheckpointInitiateTimeout(Time.milliseconds(connectorConfigurations.getCheckpointInitiateTimeoutInterval().get()));
         }
 
-        AbstractReaderBuilder abstractReaderBuilder = abstractStreamingReaderBuilder;
-
-        abstractReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
-
+        tableSourceReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
         if (connectorConfigurations.getMetrics().isPresent()) {
-            abstractReaderBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
+            tableSourceReaderBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
         }
-
-        abstractReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
-
+        tableSourceReaderBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
         for (StreamWithBoundaries streamWithBoundaries: connectorConfigurations.getReaderStreams()) {
             if (streamWithBoundaries.getFrom() != StreamCut.UNBOUNDED && streamWithBoundaries.getTo() != StreamCut.UNBOUNDED) {
-                abstractReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom(), streamWithBoundaries.getTo());
+                tableSourceReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom(), streamWithBoundaries.getTo());
             } else if (streamWithBoundaries.getFrom() != StreamCut.UNBOUNDED) {
-                abstractReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom());
+                tableSourceReaderBuilder.forStream(streamWithBoundaries.getStream(), streamWithBoundaries.getFrom());
             } else {
-                abstractReaderBuilder.forStream(streamWithBoundaries.getStream());
+                tableSourceReaderBuilder.forStream(streamWithBoundaries.getStream());
             }
         }
 
-        tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
-
-        FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl flinkPravegaTableSourceImpl =
-                new FlinkPravegaStreamTableSourceFactory.FlinkPravegaTableSourceImpl(abstractStreamingReaderBuilder::buildSourceFunction,
-                        tableSourceReaderBuilder::buildInputFormat, schema, new RowTypeInfo(schema.getTypes(), schema.getColumnNames()));
-
-        flinkPravegaTableSourceImpl.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
-
+        FlinkPravegaTableSource flinkPravegaTableSource = new FlinkPravegaTableSourceImpl(
+                                                                    tableSourceReaderBuilder::buildSourceFunction,
+                                                                    tableSourceReaderBuilder::buildInputFormat, schema,
+                                                                    new RowTypeInfo(schema.getTypes(), schema.getColumnNames()));
+        flinkPravegaTableSource.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
         Optional<String> procTimeAttribute = SchemaValidator.deriveProctimeAttribute(descriptorProperties);
         if (procTimeAttribute.isPresent()) {
-            flinkPravegaTableSourceImpl.setProctimeAttribute(procTimeAttribute.get());
+            flinkPravegaTableSource.setProctimeAttribute(procTimeAttribute.get());
         }
 
-        return flinkPravegaTableSourceImpl;
+        return flinkPravegaTableSource;
     }
 
     protected FlinkPravegaTableSink createFlinkPravegaTableSink(Map<String, String> properties) {
@@ -264,9 +260,7 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
         connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.WRITER);
 
-        Pravega.TableSinkWriterBuilder tableSinkWriterBuilder = new Pravega().tableSinkWriterBuilder();
-        AbstractWriterBuilder abstractWriterBuilder = tableSinkWriterBuilder;
-
+        TableSinkWriterBuilder tableSinkWriterBuilder = new Pravega().tableSinkWriterBuilder();
         if (connectorConfigurations.getTxnLeaseRenewalInterval().isPresent()) {
             tableSinkWriterBuilder.withTxnLeaseRenewalPeriod(Time.milliseconds(connectorConfigurations.getTxnLeaseRenewalInterval().get().longValue()));
         }
@@ -279,15 +273,18 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
         tableSinkWriterBuilder.withRoutingKeyField(connectorConfigurations.getRoutingKey());
         tableSinkWriterBuilder.withSerializationSchema(serializationSchema);
-        abstractWriterBuilder.forStream(connectorConfigurations.getWriterStream());
-        abstractWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+        tableSinkWriterBuilder.forStream(connectorConfigurations.getWriterStream());
+        tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
 
-        return new FlinkPravegaStreamTableSinkFactory.FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
+        return new FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
                 tableSinkWriterBuilder::createOutputFormat)
                 .configure(schema.getColumnNames(), schema.getTypes());
     }
 
 
+    /**
+     * Pravega connector configurations.
+     */
     @Data
     public static final class ConnectorConfigurations {
 
@@ -335,84 +332,96 @@ public abstract class FlinkPravegaTableSourceFactoryBase {
             createPravegaConfig();
 
             if (configurationType == ConfigurationType.READER) {
-                uid = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_UID);
-                rgScope = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
-                rgName = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_NAME);
-                refreshInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL);
-                eventReadTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
-                checkpointInitiateTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
-
-                if (!defaultScope.isPresent() && !rgScope.isPresent()) {
-                    throw new ValidationException("Must supply either " + CONNECTOR_READER_READER_GROUP_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
-                }
-
-                final List<Map<String, String>> streamPropsList = descriptorProperties.getVariableIndexedProperties(
-                        CONNECTOR_READER_STREAM_INFO,
-                        Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
-                if (streamPropsList.isEmpty()) {
-                    throw new ValidationException(CONNECTOR_READER_STREAM_INFO + " cannot be empty");
-                }
-                for (Map<String, String> propsMap : streamPropsList) {
-                    if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE) && !defaultScope.isPresent()) {
-                        throw new ValidationException("Must supply either " + CONNECTOR_READER_STREAM_INFO + "." + CONNECTOR_READER_STREAM_INFO_SCOPE +
-                                " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
-                    }
-                    String scopeName = (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE)) ?
-                            descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_SCOPE)) : defaultScope.get();
-
-                    if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_STREAM)) {
-                        throw new ValidationException(CONNECTOR_READER_STREAM_INFO + "." +  CONNECTOR_READER_STREAM_INFO_STREAM + " cannot be empty");
-                    }
-                    String streamName = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_STREAM));
-
-                    String startCut = StreamCut.UNBOUNDED.asText();
-                    if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT)) {
-                        startCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT));
-                    }
-
-                    String endCut = StreamCut.UNBOUNDED.asText();
-                    if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT)) {
-                        endCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT));
-                    }
-
-                    Stream stream = Stream.of(scopeName, streamName);
-                    readerStreams.add(new StreamWithBoundaries(stream, StreamCut.from(startCut), StreamCut.from(endCut)));
-                }
+                populateReaderConfig(descriptorProperties);
             }
 
             if (configurationType == ConfigurationType.WRITER) {
-                Optional<String> streamScope = descriptorProperties.getOptionalString(CONNECTOR_WRITER_SCOPE);
+                populateWriterConfig(descriptorProperties);
+            }
+        }
 
-                if (!defaultScope.isPresent() && !streamScope.isPresent()) {
-                    throw new ValidationException("Must supply either " + CONNECTOR_WRITER_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
+        private void populateReaderConfig(DescriptorProperties descriptorProperties) {
+            uid = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_UID);
+            rgScope = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
+            rgName = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_NAME);
+            refreshInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL);
+            eventReadTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
+            checkpointInitiateTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
+
+            if (!defaultScope.isPresent() && !rgScope.isPresent()) {
+                throw new ValidationException("Must supply either " + CONNECTOR_READER_READER_GROUP_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
+            }
+
+            final List<Map<String, String>> streamPropsList = descriptorProperties.getVariableIndexedProperties(
+                    CONNECTOR_READER_STREAM_INFO,
+                    Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
+
+            if (streamPropsList.isEmpty()) {
+                throw new ValidationException(CONNECTOR_READER_STREAM_INFO + " cannot be empty");
+            }
+
+            int index = 0;
+            for (Map<String, String> propsMap : streamPropsList) {
+                if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE) && !defaultScope.isPresent()) {
+                    throw new ValidationException("Must supply either " + CONNECTOR_READER_STREAM_INFO + "." + index + "." + CONNECTOR_READER_STREAM_INFO_SCOPE +
+                            " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
+                }
+                String scopeName = (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_SCOPE)) ?
+                        descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_SCOPE)) : defaultScope.get();
+
+                if (!propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_STREAM)) {
+                    throw new ValidationException(CONNECTOR_READER_STREAM_INFO + "." + index + "." +  CONNECTOR_READER_STREAM_INFO_STREAM + " cannot be empty");
+                }
+                String streamName = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_STREAM));
+
+                String startCut = StreamCut.UNBOUNDED.asText();
+                if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT)) {
+                    startCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_START_STREAMCUT));
                 }
 
-                final String scopeVal = streamScope.isPresent() ? streamScope.get() : defaultScope.get();
-
-                if (!descriptorProperties.containsKey(CONNECTOR_WRITER_STREAM)) {
-                    throw new ValidationException("Missing " + CONNECTOR_WRITER_STREAM + " configuration.");
+                String endCut = StreamCut.UNBOUNDED.asText();
+                if (propsMap.containsKey(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT)) {
+                    endCut = descriptorProperties.getString(propsMap.get(CONNECTOR_READER_STREAM_INFO_END_STREAMCUT));
                 }
-                final String streamName = descriptorProperties.getString(CONNECTOR_WRITER_STREAM);
-                writerStream = Stream.of(scopeVal, streamName);
 
-                txnLeaseRenewalInterval = descriptorProperties.getOptionalLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL);
+                Stream stream = Stream.of(scopeName, streamName);
+                readerStreams.add(new StreamWithBoundaries(stream, StreamCut.from(startCut), StreamCut.from(endCut)));
+                index++;
+            }
+        }
 
-                if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
-                    throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
-                }
-                routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
+        private void populateWriterConfig(DescriptorProperties descriptorProperties) {
+            Optional<String> streamScope = descriptorProperties.getOptionalString(CONNECTOR_WRITER_SCOPE);
 
-                Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);
-                if (optionalMode.isPresent()) {
-                  String mode = optionalMode.get();
-                  if (mode.equals(CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE)) {
-                      writerMode = Optional.of(PravegaWriterMode.ATLEAST_ONCE);
-                  } else if (mode.equals(CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE)) {
-                      writerMode = Optional.of(PravegaWriterMode.EXACTLY_ONCE);
-                  } else {
-                      throw new ValidationException("Invalid writer mode " + mode + " passed. Supported values: ("
-                              + CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE + " or " + CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE + ")");
-                  }
+            if (!defaultScope.isPresent() && !streamScope.isPresent()) {
+                throw new ValidationException("Must supply either " + CONNECTOR_WRITER_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
+            }
+
+            final String scopeVal = streamScope.isPresent() ? streamScope.get() : defaultScope.get();
+
+            if (!descriptorProperties.containsKey(CONNECTOR_WRITER_STREAM)) {
+                throw new ValidationException("Missing " + CONNECTOR_WRITER_STREAM + " configuration.");
+            }
+            final String streamName = descriptorProperties.getString(CONNECTOR_WRITER_STREAM);
+            writerStream = Stream.of(scopeVal, streamName);
+
+            txnLeaseRenewalInterval = descriptorProperties.getOptionalLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL);
+
+            if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
+                throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
+            }
+            routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
+
+            Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);
+            if (optionalMode.isPresent()) {
+                String mode = optionalMode.get();
+                if (mode.equals(CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE)) {
+                    writerMode = Optional.of(PravegaWriterMode.ATLEAST_ONCE);
+                } else if (mode.equals(CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE)) {
+                    writerMode = Optional.of(PravegaWriterMode.EXACTLY_ONCE);
+                } else {
+                    throw new ValidationException("Invalid writer mode " + mode + " passed. Supported values: ("
+                            + CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE + " or " + CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE + ")");
                 }
             }
         }

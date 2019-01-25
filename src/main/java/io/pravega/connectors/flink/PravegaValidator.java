@@ -14,6 +14,7 @@ import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptorValidator;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -56,7 +57,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         properties.validateString(CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI, false, 1, Integer.MAX_VALUE);
     }
 
-    private void validateReaderConfigurations(DescriptorProperties properties) {
+    protected void validateReaderConfigurations(DescriptorProperties properties) {
         final Map<String, Consumer<String>> streamPropertyValidators = new HashMap<>();
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_SCOPE,
@@ -70,7 +71,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_END_STREAMCUT,
                 prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_END_STREAMCUT, true, 1));
-        properties.validateFixedIndexedProperties(CONNECTOR_READER_STREAM_INFO, false, streamPropertyValidators);
+        properties.validateVariableIndexedProperties(CONNECTOR_READER_STREAM_INFO, false, streamPropertyValidators, Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
 
         // for readers we need default-scope from connection config or reader group scope
         Optional<String> readerGroupScope = properties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
@@ -80,7 +81,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         }
     }
 
-    private void validateWriterConfigurations(DescriptorProperties properties) {
+    protected void validateWriterConfigurations(DescriptorProperties properties) {
         properties.validateString(CONNECTOR_WRITER_SCOPE, true, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_STREAM, false, 1, Integer.MAX_VALUE);
         properties.validateString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME, false, 1, Integer.MAX_VALUE);

@@ -123,9 +123,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * @return an uninitiailized reader as a source function.
      */
     FlinkPravegaReader<T> buildSourceFunction() {
-
         ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
-
         return new FlinkPravegaReader<>(
                 Optional.ofNullable(this.uid).orElseGet(this::generateUid),
                 getPravegaConfig().getClientConfig(),
@@ -139,11 +137,11 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     }
 
     /**
-     * Build reader group configuration from the values passed.
+     * Build reader group configuration
      *
+     * @return {@link ReaderGroupInfo}
      */
     ReaderGroupInfo buildReaderGroupInfo() {
-
         // rgConfig
         ReaderGroupConfig.ReaderGroupConfigBuilder rgConfigBuilder = ReaderGroupConfig
                 .builder()
@@ -162,7 +160,6 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
         // rgName
         final String rgName = Optional.ofNullable(this.readerGroupName).orElseGet(FlinkPravegaUtils::generateRandomReaderGroupName);
-
         return new ReaderGroupInfo(rgConfig, rgScope, rgName);
     }
 
@@ -184,7 +181,6 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     }
 
     static class ReaderGroupInfo {
-
         private final ReaderGroupConfig readerGroupConfig;
         private final String readerGroupScope;
         private final String readerGroupName;

@@ -1,4 +1,4 @@
-package io.pravega.connectors.flink; /**
+/**
  * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -7,6 +7,7 @@ package io.pravega.connectors.flink; /**
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
+package io.pravega.connectors.flink;
 
 import org.apache.flink.table.factories.BatchTableSinkFactory;
 import org.apache.flink.table.sinks.BatchTableSink;
@@ -17,7 +18,7 @@ import java.util.Map;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 
-public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableSourceFactoryBase implements BatchTableSinkFactory<Row> {
+public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryBase implements BatchTableSinkFactory<Row> {
 
     @Override
     public BatchTableSink<Row> createBatchTableSink(Map<String, String> properties) {

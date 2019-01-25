@@ -357,4 +357,19 @@ public final class SetupUtils {
                     .build();
         }
     }
+
+    public static void main(String ... args) {
+        final String controllerUri = "tcp://localhost:9090";
+        SetupUtils setupUtils = new SetupUtils(controllerUri);
+        try {
+            setupUtils.startAllServices();
+            String scope = setupUtils.getScope();
+            String stream = "streamX";
+            setupUtils.createTestStream(stream, 3);
+            System.out.println("Stream [" + scope + "/" + stream + "] created successfully");
+            setupUtils.stopAllServices();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 }

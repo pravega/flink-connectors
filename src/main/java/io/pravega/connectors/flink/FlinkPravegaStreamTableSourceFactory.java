@@ -21,7 +21,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
-public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableSourceFactoryBase implements StreamTableSourceFactory<Row> {
+public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableFactoryBase implements StreamTableSourceFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {

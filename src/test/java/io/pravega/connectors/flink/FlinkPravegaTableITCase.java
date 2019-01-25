@@ -199,7 +199,6 @@ public class FlinkPravegaTableITCase {
 
     @Test
     public void testTableSourceUsingDescriptor() throws Exception {
-
         StreamExecutionEnvironment execEnvWrite = StreamExecutionEnvironment.getExecutionEnvironment();
         execEnvWrite.setParallelism(1);
 
@@ -207,7 +206,6 @@ public class FlinkPravegaTableITCase {
         SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
 
         String[] fieldNames = {"user", "uri", "accessTime"};
-
         PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
 
         // Write some data to the stream
@@ -222,24 +220,20 @@ public class FlinkPravegaTableITCase {
                 .build();
 
         dataStream.addSink(pravegaSink);
-
         Assert.assertNotNull(execEnvWrite.getExecutionPlan());
-
         execEnvWrite.execute("PopulateRowData");
 
-        testTableSourceUsingDescriptorForStreaming(stream, pravegaConfig);
-
-        testTableSourceUsingDescriptorForBatch(stream, pravegaConfig);
+        testTableSourceStreamingDescriptor(stream, pravegaConfig);
+        testTableSourceBatchDescriptor(stream, pravegaConfig);
     }
 
-    private void testTableSourceUsingDescriptorForStreaming(Stream stream, PravegaConfig pravegaConfig) throws Exception {
+    private void testTableSourceStreamingDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
         final StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
         execEnvRead.setParallelism(1);
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
-
         RESULTS.clear();
 
         // read data from the stream using Table reader
@@ -270,9 +264,7 @@ public class FlinkPravegaTableITCase {
                 .createStreamTableSource(propertiesMap);
 
         tableEnv.registerTableSource("MyTableRow", source);
-
         String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
-
         Table result = tableEnv.sqlQuery(sqlQuery);
 
         DataStream<Tuple2<Boolean, Row>> resultSet = tableEnv.toRetractStream(result, Row.class);
@@ -288,12 +280,11 @@ public class FlinkPravegaTableITCase {
         }
 
         log.info("results: {}", RESULTS);
-
         boolean compare = compare(RESULTS, getExpectedResultsRetracted());
         assertTrue("Output does not match expected result", compare);
     }
 
-    private void testTableSourceUsingDescriptorForBatch(Stream stream, PravegaConfig pravegaConfig) throws Exception {
+    private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
 
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
@@ -326,14 +317,13 @@ public class FlinkPravegaTableITCase {
                 .createBatchTableSource(propertiesMap);
 
         tableEnv.registerTableSource("MyTableRow", source);
-
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
                 "COUNT(uri) AS cnt " +
                 "from MyTableRow GROUP BY " +
                 "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
-        Table result = tableEnv.sqlQuery(sqlQuery);
 
+        Table result = tableEnv.sqlQuery(sqlQuery);
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
         List<Row> results = resultSet.collect();

@@ -19,7 +19,7 @@ import java.util.Map;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 
-public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableSourceFactoryBase implements BatchTableSourceFactory<Row> {
+public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableFactoryBase implements BatchTableSourceFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {

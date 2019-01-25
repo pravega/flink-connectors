@@ -1,4 +1,4 @@
-package io.pravega.connectors.flink; /**
+/**
  * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -7,6 +7,7 @@ package io.pravega.connectors.flink; /**
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
+package io.pravega.connectors.flink;
 
 import org.apache.flink.table.factories.StreamTableSinkFactory;
 import org.apache.flink.table.sinks.StreamTableSink;
@@ -19,7 +20,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
-public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableSourceFactoryBase implements StreamTableSinkFactory<Row> {
+public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableFactoryBase implements StreamTableSinkFactory<Row> {
 
     @Override
     public StreamTableSink<Row> createStreamTableSink(Map<String, String> properties) {

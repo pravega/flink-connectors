@@ -16,6 +16,7 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
@@ -95,7 +96,7 @@ public class Pravega extends ConnectorDescriptor {
         properties.putString(CONNECTOR_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
 
         if (tableSourceReaderBuilder == null && tableSinkWriterBuilder == null) {
-            throw new RuntimeException("Missing both reader and writer configurations.");
+            throw new ValidationException("Missing both reader and writer configurations.");
         }
 
         PravegaConfig pravegaConfig = tableSourceReaderBuilder != null ?
@@ -114,6 +115,11 @@ public class Pravega extends ConnectorDescriptor {
         }
     }
 
+    /**
+     * Prepare Pravega connection specific configurations
+     * @param pravegaConfig
+     * @param properties
+     */
     private void populateConnectionConfig(PravegaConfig pravegaConfig, DescriptorProperties properties) {
 
         String controllerUri = pravegaConfig.getClientConfig().getControllerURI().toString();
@@ -145,7 +151,7 @@ public class Pravega extends ConnectorDescriptor {
     }
 
     /**
-     * Populate all the writer configurations that are configured through the builder
+     * Populate all the writer configurations based on the values supplied through {@link TableSinkWriterBuilder}
      * @param properties
      */
     private void populateWriterProperties(DescriptorProperties properties) {
@@ -168,7 +174,7 @@ public class Pravega extends ConnectorDescriptor {
     }
 
     /**
-     * Populate all the reader configurations that are configured through the builder
+     * Populate all the reader configurations based on the values supplied through {@link TableSourceReaderBuilder}
      * @param properties
      */
     private void populateReaderProperties(DescriptorProperties properties) {
@@ -216,6 +222,11 @@ public class Pravega extends ConnectorDescriptor {
         return tableSinkWriterBuilder;
     }
 
+    /**
+     * Reader builder which can be used to define the Pravega reader configurations. The supplied configurations will be used
+     * to create appropriate Table source implementation.
+     *
+     */
     public static class TableSourceReaderBuilder<T extends AbstractStreamingReaderBuilder>
             extends AbstractStreamingReaderBuilder<Row, TableSourceReaderBuilder> {
 
@@ -253,6 +264,11 @@ public class Pravega extends ConnectorDescriptor {
         }
     }
 
+    /**
+     * Writer builder which can be used to define the Pravega writer configurations. The supplied configurations will be used
+     * to create appropriate Table sink implementation.
+     *
+     */
     public static class TableSinkWriterBuilder<T extends AbstractStreamingWriterBuilder>
             extends AbstractStreamingWriterBuilder<Row, TableSinkWriterBuilder> {
 

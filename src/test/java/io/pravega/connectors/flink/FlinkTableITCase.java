@@ -263,6 +263,7 @@ public class FlinkTableITCase {
                 )
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
                 .inAppendMode();
+        desc.registerTableSourceAndSink("test");
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
@@ -329,6 +330,7 @@ public class FlinkTableITCase {
                                 .deriveSchema()
                 )
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
+        desc.registerTableSourceAndSink("test");
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
@@ -348,6 +350,80 @@ public class FlinkTableITCase {
         // convert the view to a dataset and collect the results for comparison purposes
         List<SampleRecord> results = tableEnv.toDataSet(view, SampleRecord.class).collect();
         Assert.assertEquals(new HashSet<>(SAMPLES), new HashSet<>(results));
+    }
+
+    @Test
+    public void testStreamTableSinkUsingDescriptor() throws Exception {
+
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "testStreamTableSinkUsingDescriptor");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+
+        Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
+
+        Pravega pravega = new Pravega();
+        pravega.tableSinkWriterBuilder()
+                .withRoutingKeyField("category")
+                .forStream(stream)
+                .withPravegaConfig(setupUtils.getPravegaConfig());
+
+        StreamTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(
+                        new Json()
+                                .failOnMissingField(false)
+                                .deriveSchema()
+                )
+                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .inAppendMode();
+        desc.registerTableSink("test");
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+                .createStreamTableSink(propertiesMap);
+
+        table.writeToSink(sink);
+        env.execute();
+    }
+
+    @Test
+    public void testBatchTableSinkUsingDescriptor() throws Exception {
+
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "testBatchTableSinkUsingDescriptor");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
+        env.setParallelism(1);
+        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+
+        Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
+
+        Pravega pravega = new Pravega();
+        pravega.tableSinkWriterBuilder()
+                .withRoutingKeyField("category")
+                .forStream(stream)
+                .withPravegaConfig(setupUtils.getPravegaConfig());
+
+        BatchTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(
+                        new Json()
+                                .failOnMissingField(false)
+                                .deriveSchema()
+                )
+                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
+        desc.registerTableSink("test");
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
+                .createBatchTableSink(propertiesMap);
+
+        table.writeToSink(sink);
+        env.execute();
     }
 
     private static class TestSink extends RichSinkFunction<SampleRecord> {
