@@ -277,7 +277,8 @@ The *SQL Client* introduced in Flink 1.6 release aims at providing an easy way t
 
 For accessing SQL client with Pravega connector, the following files have to copied to Flink cluster library `$FLINK_HOME/lib` path
 - Pravega connector jar
-- Flink JSON jar
+- Flink JSON jar (if format type json is required)
+- Flink Avro jar (if format type avro is required)
 
 ### Environment File
 The YAML configuration file schema for providing Pravega table API specific connector configuration is provided below.
@@ -323,7 +324,7 @@ tables:
         stream: bar                         # mandatory
         mode:                               # optional (exactly_once | atleast_once)
         txn-lease-renewal-interval:         # optional (long milliseconds)
-	    routingkey-field-name:              # mandatory (provide field name from schema that has to be used as routing key)
+        routingkey-field-name:              # mandatory (provide field name from schema that has to be used as routing key)
 
     # declare a format for this system (refer flink documentation for details) 
     format:

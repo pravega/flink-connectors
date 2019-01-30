@@ -26,6 +26,7 @@ import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.descriptors.Avro;
 import org.apache.flink.table.descriptors.BatchTableDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.Json;
@@ -413,6 +414,50 @@ public class FlinkTableITCase {
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
+
+        table.writeToSink(sink);
+        env.execute();
+    }
+
+    @Test
+    public void testStreamTableSinkUsingDescriptorForAvro() throws Exception {
+
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "testStreamTableSinkUsingDescriptorForAvro");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+
+        Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
+
+        Pravega pravega = new Pravega();
+        pravega.tableSinkWriterBuilder()
+                .withRoutingKeyField("category")
+                .forStream(stream)
+                .withPravegaConfig(setupUtils.getPravegaConfig());
+
+        Avro avro = new Avro();
+        String avroSchema =  "{" +
+                "  \"type\": \"record\"," +
+                "  \"name\": \"test\"," +
+                "  \"fields\" : [" +
+                "    {\"name\": \"category\", \"type\": \"string\"}," +
+                "    {\"name\": \"value\", \"type\": \"int\"}" +
+                "  ]" +
+                "}";
+        avro.avroSchema(avroSchema);
+
+        StreamTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(avro)
+                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .inAppendMode();
+        desc.registerTableSink("test");
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+                .createStreamTableSink(propertiesMap);
 
         table.writeToSink(sink);
         env.execute();

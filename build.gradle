@@ -112,6 +112,7 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
 
     testCompile group: 'junit', name: 'junit', version: junitVersion
@@ -127,6 +128,7 @@ dependencies {
     shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 }
 
 shadowJar {
