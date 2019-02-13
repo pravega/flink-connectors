@@ -46,8 +46,8 @@ public class FlinkPravegaTableFactoryTest {
     final static String CONTROLLER_URI = "tcp://localhost:9090";
 
     final static PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults()
-                                                            .withControllerURI(URI.create(CONTROLLER_URI))
-                                                            .withDefaultScope(SCOPE);
+            .withControllerURI(URI.create(CONTROLLER_URI))
+            .withDefaultScope(SCOPE);
 
     /**
      * Scope should be supplied either through {@link PravegaConfig} or {@link Pravega.TableSourceReaderBuilder}.

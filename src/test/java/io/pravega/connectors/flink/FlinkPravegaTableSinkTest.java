@@ -135,7 +135,7 @@ public class FlinkPravegaTableSinkTest {
                 .withPravegaConfig(pravegaConfig);
 
         final FlinkPravegaTableSourceTest.TestTableDescriptor testDesc = new FlinkPravegaTableSourceTest.TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withFormat(new Json().failOnMissingField(false).deriveSchema())
                 .withSchema(
                         new Schema()
                                 .field(cityName, org.apache.flink.table.api.Types.STRING())
@@ -145,7 +145,8 @@ public class FlinkPravegaTableSinkTest {
                                         .timestampsFromField(eventTime)
                                         .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                 )
-                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime())
+                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime()
+                )
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
