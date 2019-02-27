@@ -117,8 +117,8 @@ public class Pravega extends ConnectorDescriptor {
 
     /**
      * Prepare Pravega connection specific configurations
-     * @param pravegaConfig
-     * @param properties
+     * @param pravegaConfig the Pravega configuration to use.
+     * @param properties the supplied descriptor properties.
      */
     private void populateConnectionConfig(PravegaConfig pravegaConfig, DescriptorProperties properties) {
 
@@ -152,7 +152,7 @@ public class Pravega extends ConnectorDescriptor {
 
     /**
      * Populate all the writer configurations based on the values supplied through {@link TableSinkWriterBuilder}
-     * @param properties
+     * @param properties the supplied descriptor properties.
      */
     private void populateWriterProperties(DescriptorProperties properties) {
         properties.putBoolean(CONNECTOR_WRITER, true);
@@ -175,7 +175,7 @@ public class Pravega extends ConnectorDescriptor {
 
     /**
      * Populate all the reader configurations based on the values supplied through {@link TableSourceReaderBuilder}
-     * @param properties
+     * @param properties the supplied descriptor properties.
      */
     private void populateReaderProperties(DescriptorProperties properties) {
         properties.putBoolean(CONNECTOR_READER, true);
@@ -301,7 +301,6 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Creates the sink function based on the given table sink configuration and current builder state.
-         *
          * @param configuration the table sink configuration, incl. projected fields
          */
         protected FlinkPravegaWriter<Row> createSinkFunction(FlinkPravegaTableSink.TableSinkConfiguration configuration) {
@@ -313,7 +312,6 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Creates FlinkPravegaOutputFormat based on the given table sink configuration and current builder state.
-         *
          * @param configuration the table sink configuration, incl. projected fields
          */
         protected FlinkPravegaOutputFormat<Row> createOutputFormat(FlinkPravegaTableSink.TableSinkConfiguration configuration) {

@@ -18,6 +18,9 @@ import java.util.Map;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 
+/**
+ * A batch table sink factory implementation of {@link BatchTableSinkFactory} to access Pravega streams.
+ */
 public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryBase implements BatchTableSinkFactory<Row> {
 
     @Override
@@ -38,5 +41,10 @@ public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryB
     @Override
     protected String getVersion() {
         return String.valueOf(CONNECTOR_VERSION_VALUE);
+    }
+
+    @Override
+    protected boolean isStreamEnvironment() {
+        return false;
     }
 }

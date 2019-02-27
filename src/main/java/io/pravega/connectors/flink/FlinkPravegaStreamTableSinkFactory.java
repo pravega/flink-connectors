@@ -20,6 +20,9 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
+/**
+ * A stream table sink factory implementation of {@link StreamTableSinkFactory} to access Pravega streams.
+ */
 public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableFactoryBase implements StreamTableSinkFactory<Row> {
 
     @Override
@@ -42,6 +45,11 @@ public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableFactory
     @Override
     protected String getVersion() {
         return String.valueOf(CONNECTOR_VERSION_VALUE);
+    }
+
+    @Override
+    protected boolean isStreamEnvironment() {
+        return true;
     }
 
 }
