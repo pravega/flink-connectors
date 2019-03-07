@@ -186,3 +186,9 @@ task distribution(type: Copy, dependsOn: [installReleaseDist, installWorkspaceDi
     from ("$buildDir/install/flink-connectors-release")
     into ("$buildDir/distributions")
 }
+
+//allow system properties to be passed to the test program
+// for e.g., to use standalone Pravega for running the system test "./gradlew clean build -Dpravega.uri=tcp://localhost:9090"
+test {
+    systemProperties = System.properties
+}

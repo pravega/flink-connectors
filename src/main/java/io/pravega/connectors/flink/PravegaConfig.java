@@ -38,6 +38,7 @@ public class PravegaConfig implements Serializable {
     private String defaultScope;
     private Credentials credentials;
     private boolean validateHostname = true;
+    private String trustStore;
 
     // region Factory methods
     PravegaConfig(Properties properties, Map<String, String> env, ParameterTool params) {
@@ -74,6 +75,9 @@ public class PravegaConfig implements Serializable {
         }
         if (credentials != null) {
             builder.credentials(credentials);
+        }
+        if (trustStore != null) {
+            builder.trustStore(trustStore);
         }
         return builder.build();
     }
@@ -114,6 +118,16 @@ public class PravegaConfig implements Serializable {
      */
     public PravegaConfig withControllerURI(URI controllerURI) {
         this.controllerURI = controllerURI;
+        return this;
+    }
+
+    /**
+     * Configures truststore value.
+     * @param trustStore truststore name.
+     * @return current instance of PravegaConfig.
+     */
+    public PravegaConfig withTrustStore(String trustStore) {
+        this.trustStore = trustStore;
         return this;
     }
 

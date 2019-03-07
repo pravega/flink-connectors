@@ -49,8 +49,6 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.setEnableAuth(true);
-        SETUP_UTILS.setEnableTls(false); // set to true after pravega TLS issue #2580 is fixed
         SETUP_UTILS.startAllServices();
     }
 
@@ -122,7 +120,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
             // we currently need this to work around the case where tasks are
             // started too late, a checkpoint was already triggered, and some tasks
             // never see the checkpoint event
-            env.getCheckpointConfig().setCheckpointTimeout(2000);
+            env.getCheckpointConfig().setCheckpointTimeout(20000);
 
             // the Pravega reader
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()

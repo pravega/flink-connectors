@@ -68,8 +68,6 @@ public class FlinkPravegaTableITCase {
 
     @BeforeClass
     public static void setup() throws Exception {
-        SETUP_UTILS.setEnableAuth(false);
-        SETUP_UTILS.setEnableTls(false);
         SETUP_UTILS.startAllServices();
     }
 

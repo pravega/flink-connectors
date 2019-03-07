@@ -63,8 +63,6 @@ public class FlinkPravegaWriterITCase {
 
     @BeforeClass
     public static void setup() throws Exception {
-        SETUP_UTILS.setEnableAuth(true);
-        SETUP_UTILS.setEnableTls(false); // set to true after pravega TLS issue #2580 is fixed
         SETUP_UTILS.startAllServices();
     }
 
