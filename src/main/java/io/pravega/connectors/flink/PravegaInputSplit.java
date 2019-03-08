@@ -41,7 +41,7 @@ public class PravegaInputSplit implements InputSplit {
     }
 
     // --------------------------------------------------------------------
-    // ctor protects segment range from being null
+    // cconstructor guards segment range from being null
     @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE")
     @Override
     public boolean equals(Object o) {
