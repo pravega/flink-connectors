@@ -10,6 +10,7 @@
 
 package io.pravega.connectors.flink;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.google.common.base.Preconditions;
 import io.pravega.client.batch.SegmentRange;
 import org.apache.flink.core.io.InputSplit;
@@ -40,7 +41,8 @@ public class PravegaInputSplit implements InputSplit {
     }
 
     // --------------------------------------------------------------------
-
+    // ctor protects segment range from being null
+    @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE")
     @Override
     public boolean equals(Object o) {
 
