@@ -71,7 +71,7 @@ configurations {
     all {
         resolutionStrategy {
             // pravega/pravega/issues/2464
-            force 'io.netty:netty-tcnative-boringssl-static:2.0.8.Final'
+            force "io.netty:netty-tcnative-boringssl-static:" + nettyBoringSSLVersion
         }
     }
 

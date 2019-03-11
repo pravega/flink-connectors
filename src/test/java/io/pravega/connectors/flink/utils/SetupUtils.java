@@ -74,10 +74,12 @@ public final class SetupUtils {
 
     // Set to true to enable TLS
     @Setter
-    private boolean enableTls = false;
+    private boolean enableTls = true;
 
     @Setter
     private boolean enableHostNameValidation = false;
+
+    private boolean enableRestServer = true;
 
     // The test Scope name.
     @Getter
@@ -300,6 +302,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
+                    .secureZK(enableTls)
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
@@ -312,6 +315,8 @@ public final class SetupUtils {
                     .containerCount(4)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
+                    .enableRestServer(enableRestServer)
+                    .enableMetrics(false)
                     .certFile(getFileFromResource(CERT_FILE))   // pravega #2519
                     .keyFile(getFileFromResource(KEY_FILE))
                     .jksKeyFile(getFileFromResource(STANDALONE_KEYSTORE_FILE))
