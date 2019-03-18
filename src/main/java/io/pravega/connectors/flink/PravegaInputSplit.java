@@ -83,7 +83,7 @@ public class PravegaInputSplit implements InputSplit {
                     segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
         }
 
-        // based on other checks earlier - 
+        // based on other checks earlier - df
         // segnent Range == null
         // splitId == that.splitId
         // thatSegmentRange == null
