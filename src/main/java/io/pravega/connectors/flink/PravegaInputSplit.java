@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import com.google.common.base.Preconditions;
 import io.pravega.client.batch.SegmentRange;
 import org.apache.flink.core.io.InputSplit;
@@ -42,7 +41,6 @@ public class PravegaInputSplit implements InputSplit {
 
     // --------------------------------------------------------------------
     // cconstructor guards segment range from being null
-    @SuppressFBWarnings("NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE")
     @Override
     public boolean equals(Object o) {
 
@@ -56,8 +54,8 @@ public class PravegaInputSplit implements InputSplit {
 
         PravegaInputSplit that = (PravegaInputSplit) o;
 
-        if ( (segmentRange == null && that.getSegmentRange() != null) ||
-                (segmentRange != null && that.getSegmentRange() == null) ) {
+        if ((segmentRange == null && that.getSegmentRange() != null) ||
+                (segmentRange != null && that.getSegmentRange() == null)) {
             return false;
         }
 
@@ -66,22 +64,30 @@ public class PravegaInputSplit implements InputSplit {
             return false;
         }
 
-        String thisScope = segmentRange.getScope();
-        String thatScope = that.getSegmentRange().getScope();
-        if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
-            return false;
+        if (segmentRange != null) {
+            String thisScope = segmentRange.getScope();
+            String thatScope = that.getSegmentRange().getScope();
+            if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
+                return false;
+            }
+
+            String thisStream = segmentRange.getStreamName();
+            String thatStream = that.getSegmentRange().getStreamName();
+            if (thisStream == null ? thatStream != null : !thisStream.equals(thatStream)) {
+                return false;
+            }
+
+            return splitId == that.splitId &&
+                    segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
+                    segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
+                    segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
         }
 
-        String thisStream = segmentRange.getStreamName();
-        String thatStream = that.getSegmentRange().getStreamName();
-        if (thisStream == null ? thatStream != null : !thisStream.equals(thatStream)) {
-            return false;
-        }
-
-        return splitId == that.splitId &&
-                segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
-                segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
-                segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
+        // based on other checks earlier - 
+        // segnent Range == null
+        // splitId == that.splitId
+        // thatSegmentRange == null
+        return true;
     }
 
     @Override

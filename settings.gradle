@@ -8,7 +8,19 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
  */
+pluginManagement {
+  it.resolutionStrategy {
+      it.eachPlugin {
+        if (it.requested.id.id == 'com.github.spotbugs') {
+          it.useVersion("${spotbugsPluginVersion}")
+        }
+    }
+  }
+}
+
 rootProject.name='flink-connectors'
+
+
 
 includeBuild('pravega') {
     if (usePravegaVersionSubModule.toBoolean()) {

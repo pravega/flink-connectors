@@ -22,15 +22,12 @@ buildscript {
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
-        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:1.6.9"
+        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
-
-plugins {
-  id "com.github.spotbugs" version "1.6.9"
-
-}
-
+    plugins {
+       id "com.github.spotbugs" 
+    }
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
 apply from: 'gradle/java.gradle'
