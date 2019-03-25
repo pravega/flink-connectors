@@ -54,40 +54,12 @@ public class PravegaInputSplit implements InputSplit {
 
         PravegaInputSplit that = (PravegaInputSplit) o;
 
-        if ((segmentRange == null && that.getSegmentRange() != null) ||
-                (segmentRange != null && that.getSegmentRange() == null)) {
-            return false;
-        }
-
-        if (segmentRange == null && that.segmentRange == null &&
-                splitId != that.splitId) {
-            return false;
-        }
-
-        if (segmentRange != null) {
-            String thisScope = segmentRange.getScope();
-            String thatScope = that.getSegmentRange().getScope();
-            if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
+        if (!(this.getSegmentRange().equals(that.getSegmentRange()))) {
                 return false;
-            }
-
-            String thisStream = segmentRange.getStreamName();
-            String thatStream = that.getSegmentRange().getStreamName();
-            if (thisStream == null ? thatStream != null : !thisStream.equals(thatStream)) {
-                return false;
-            }
-
-            return splitId == that.splitId &&
-                    segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
-                    segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
-                    segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
         }
 
-        // based on other checks earlier - df
-        // segnent Range == null
-        // splitId == that.splitId
-        // thatSegmentRange == null
-        return true;
+        return splitId == that.splitId;
+
     }
 
     @Override
