@@ -68,7 +68,7 @@ public final class SetupUtils {
     // Manage the state of the class.
     private final AtomicBoolean started = new AtomicBoolean(false);
 
-    // auth enabled by default. Set it to false to disable Pravega authentication
+    // auth enabled by default. Set it to false to disable Pravega authentication and authorization.
     @Setter
     private boolean enableAuth = true;
 
@@ -302,7 +302,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(enableTls)
+                    .secureZK(enableTls) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
@@ -313,10 +313,10 @@ public final class SetupUtils {
                     .isInProcSegmentStore(true)
                     .segmentStoreCount(1)
                     .containerCount(4)
+                    .enableMetrics(false)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
                     .enableRestServer(enableRestServer)
-                    .enableMetrics(false)
                     .certFile(getFileFromResource(CERT_FILE))   // pravega #2519
                     .keyFile(getFileFromResource(KEY_FILE))
                     .jksKeyFile(getFileFromResource(STANDALONE_KEYSTORE_FILE))

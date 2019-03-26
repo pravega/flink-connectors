@@ -67,14 +67,6 @@ configurations.all {
 configurations {
     shadowOnly {
     }
-
-    all {
-        resolutionStrategy {
-            // pravega/pravega/issues/2464
-            force "io.netty:netty-tcnative-boringssl-static:" + nettyBoringSSLVersion
-        }
-    }
-
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
