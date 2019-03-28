@@ -31,6 +31,7 @@ apply from: 'gradle/maven.gradle'
 apply from: 'gradle/bintray.gradle'
 apply plugin: 'org.ajoberstar.grgit'
 apply from: 'gradle/mkdocs.gradle'
+apply from: 'gradle/jacoco.gradle'
 
 group = "io.pravega"
 version = getProjectVersion()
