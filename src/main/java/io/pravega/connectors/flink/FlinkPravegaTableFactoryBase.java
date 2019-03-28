@@ -90,16 +90,16 @@ public abstract class FlinkPravegaTableFactoryBase {
 
     protected Map<String, String> getRequiredContext() {
         Map<String, String> context = new HashMap<>();
-        context.put(CONNECTOR_TYPE(), CONNECTOR_TYPE_VALUE_PRAVEGA);
+        context.put(CONNECTOR_TYPE, CONNECTOR_TYPE_VALUE_PRAVEGA);
 
         // to preserve backward compatibility in case the connector property format changes
         // It is not clear on how the framework is making use of the "connector.property-version" but all the implementation classes supplies value as "1"
         // https://github.com/apache/flink/blob/release-1.6.0/flink-libraries/flink-table/src/main/scala/org/apache/flink/table/descriptors/ConnectorDescriptorValidator.scala#L45
         // https://github.com/apache/flink/blob/release-1.6.0/flink-libraries/flink-table/src/main/scala/org/apache/flink/table/factories/TableFactoryService.scala#L202
         // https://github.com/apache/flink/blob/release-1.6.0/flink-connectors/flink-connector-kafka-base/src/main/java/org/apache/flink/streaming/connectors/kafka/KafkaTableSourceSinkFactoryBase.java#L98
-        context.put(CONNECTOR_PROPERTY_VERSION(), "1");
+        context.put(CONNECTOR_PROPERTY_VERSION, "1");
 
-        context.put(CONNECTOR_VERSION(), getVersion());
+        context.put(CONNECTOR_VERSION, getVersion());
         return context;
     }
 
@@ -156,7 +156,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(SCHEMA() + ".#." + ROWTIME_WATERMARKS_DELAY());
 
         // format wildcard
-        properties.add(FORMAT() + ".*");
+        properties.add(FORMAT + ".*");
 
         return properties;
     }
@@ -245,7 +245,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         FlinkPravegaTableSource flinkPravegaTableSource = new FlinkPravegaTableSourceImpl(
                                                                     tableSourceReaderBuilder::buildSourceFunction,
                                                                     tableSourceReaderBuilder::buildInputFormat, schema,
-                                                                    new RowTypeInfo(schema.getTypes(), schema.getColumnNames()));
+                                                                    new RowTypeInfo(schema.getFieldTypes(), schema.getFieldNames()));
         flinkPravegaTableSource.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
         Optional<String> procTimeAttribute = SchemaValidator.deriveProctimeAttribute(descriptorProperties);
         if (procTimeAttribute.isPresent()) {
@@ -281,7 +281,7 @@ public abstract class FlinkPravegaTableFactoryBase {
 
         return new FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
                 tableSinkWriterBuilder::createOutputFormat)
-                .configure(schema.getColumnNames(), schema.getTypes());
+                .configure(schema.getFieldNames(), schema.getFieldTypes());
     }
 
     public static final class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {

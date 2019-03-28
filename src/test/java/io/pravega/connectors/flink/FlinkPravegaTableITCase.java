@@ -32,7 +32,6 @@ import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.BatchTableDescriptor;
-import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
@@ -255,7 +254,7 @@ public class FlinkPravegaTableITCase {
                 .withSchema(schema)
                 .inAppendMode();
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
 
@@ -304,7 +303,7 @@ public class FlinkPravegaTableITCase {
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema);
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
 

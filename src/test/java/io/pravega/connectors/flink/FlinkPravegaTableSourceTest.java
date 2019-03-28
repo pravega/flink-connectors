@@ -21,13 +21,11 @@ import org.apache.flink.table.api.TableSchema;
 
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.Json;
-import org.apache.flink.table.descriptors.JsonValidator;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
 import org.apache.flink.table.descriptors.TableDescriptor;
 import org.apache.flink.table.descriptors.SchematicDescriptor;
 import org.apache.flink.table.descriptors.FormatDescriptor;
-import org.apache.flink.table.descriptors.FormatDescriptorValidator;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.StreamableDescriptor;
 import org.apache.flink.table.descriptors.StreamTableDescriptorValidator;
@@ -166,7 +164,7 @@ public class FlinkPravegaTableSourceTest {
                                 .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime())
                 .inAppendMode();
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
+        final Map<String, String> propertiesMap = testDesc.toProperties();
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
@@ -207,7 +205,7 @@ public class FlinkPravegaTableSourceTest {
     /**
      * Test Table descriptor wrapper
      */
-    static class TestTableDescriptor implements TableDescriptor, SchematicDescriptor<TestTableDescriptor>, StreamableDescriptor<TestTableDescriptor> {
+    static class TestTableDescriptor extends TableDescriptor implements SchematicDescriptor<TestTableDescriptor>, StreamableDescriptor<TestTableDescriptor> {
 
         private FormatDescriptor formatDescriptor;
         private Schema schemaDescriptor;
@@ -231,23 +229,6 @@ public class FlinkPravegaTableSourceTest {
         }
 
         @Override
-        public void addProperties(DescriptorProperties properties) {
-            if (formatDescriptor != null) {
-                formatDescriptor.addFormatProperties(properties);
-                properties.putString(FormatDescriptorValidator.FORMAT_TYPE(), JsonValidator.FORMAT_TYPE_VALUE);
-            }
-            if (connectorDescriptor != null) {
-                connectorDescriptor.addProperties(properties);
-            }
-            if (schemaDescriptor != null) {
-                schemaDescriptor.addProperties(properties);
-            }
-            if (updateMode != null) {
-                properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
-            }
-        }
-
-        @Override
         public TestTableDescriptor inAppendMode() {
             this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND();
             return this;
@@ -263,6 +244,24 @@ public class FlinkPravegaTableSourceTest {
         public TestTableDescriptor inUpsertMode() {
             this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_UPSERT();
             return this;
+        }
+
+        @Override
+        public Map<String, String> toProperties() {
+            final DescriptorProperties properties = new DescriptorProperties();
+            if (formatDescriptor != null) {
+                properties.putProperties(formatDescriptor.toProperties());
+            }
+            if (connectorDescriptor != null) {
+                properties.putProperties(connectorDescriptor.toProperties());
+            }
+            if (schemaDescriptor != null) {
+                properties.putProperties(schemaDescriptor.toProperties());
+            }
+            if (updateMode != null) {
+                properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
+            }
+            return properties.asMap();
         }
     }
 }
