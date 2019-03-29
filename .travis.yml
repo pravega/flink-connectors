@@ -34,9 +34,6 @@ cache:
 
 stages:
   - name: build
-    after_success:
-         - bash <(curl -s https://codecov.io/bash) -t 9c42ff48-d98f-4444-af05-cf734aa1dbd0
-
   - name: snapshot
     if: branch = master AND NOT (type = pull_request)
 
@@ -44,6 +41,8 @@ jobs:
   include:
     - stage: build
       script: ./gradlew clean build
+      after_success: bash <(curl -s https://codecov.io/bash) -t 9c42ff48-d98f-4444-af05-cf734aa1dbd0
+    
     - stage: snapshot
       script: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
 
