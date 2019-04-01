@@ -31,6 +31,7 @@ import java.util.Map;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.fail;
 
 /**
  * Unit test that validates configurations that can be passed to create source and sink factory.
@@ -70,6 +71,7 @@ public class FlinkPravegaTableFactoryTest {
 
         FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
+        fail("scope validation failed");
     }
 
     /**
@@ -118,6 +120,7 @@ public class FlinkPravegaTableFactoryTest {
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         TableSourceUtil.validateTableSource(source);
+        fail("update mode configuration validation failed");
     }
 
     /**
@@ -136,9 +139,9 @@ public class FlinkPravegaTableFactoryTest {
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
-        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+        TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
-        assertNotNull(sink);
+        fail("stream name validation failed");
     }
 
     /**
@@ -159,9 +162,9 @@ public class FlinkPravegaTableFactoryTest {
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
-        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+        TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
-        assertNotNull(sink);
+        fail("routingKey field name validation failed");
     }
 
     @Test (expected = ValidationException.class)
@@ -182,13 +185,13 @@ public class FlinkPravegaTableFactoryTest {
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
         Map<String, String> test = new HashMap<>(propertiesMap);
         test.put(CONNECTOR_WRITER_MODE, "foo");
-        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, test)
+        TableFactoryService.find(StreamTableSinkFactory.class, test)
                 .createStreamTableSink(test);
-        assertNotNull(sink);
+        fail("writer mode validation failed");
     }
 
     @Test
-    public void testValidWriterModeAtleasetOnce() {
+    public void testValidWriterModeAtleastOnce() {
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);
 
@@ -244,9 +247,9 @@ public class FlinkPravegaTableFactoryTest {
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
-        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+        TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
-        assertNotNull(sink);
+        fail("table factory validation failed");
     }
 
     @Test (expected = ValidationException.class)
@@ -264,9 +267,9 @@ public class FlinkPravegaTableFactoryTest {
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
-        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+        TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
-        assertNotNull(sink);
+        fail("missing schema validation failed");
     }
 
 }

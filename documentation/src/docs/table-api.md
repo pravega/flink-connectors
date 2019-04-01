@@ -280,6 +280,18 @@ It is now possible to access Pravega streams using standard SQL commands through
 - Flink JSON jar (to serialize/deserialize data in json format)
 - Flink Avro jar (to serialize/deserialize data in avro format)
 
+Flink format jars can be downloaded from [maven central repository](http://central.maven.org/maven2/org/apache/flink).
+
+In a nutshell, here is what we need to do to use Flink SQL client with Pravega.
+1. Download Flink binary version supported by the connector.
+2. Make sure to copy flink-table*.jar and flink-sql-client*.jar from $FLINK-HOME/opt/ to $FLINK-HOME/lib/ location.
+3. Copy Flink format jars (json, avro) from maven central to $FLINK-HOME/lib/ location.
+4. Copy Flink Pravega connector jar file to $FLINK-HOME/lib/ location. 
+5. Prepare SQL client configuration file (that contains Pravega connector descriptor configurations). Make sure to create any Pravega streams that you will be accessing from SQL client shell ahead of time. 
+6. Run SQL client shell in embedded mode using the command `$FLINK-HOME/bin/sql-client.sh embedded -d <SQL_configuration_file>`
+7. Run `SELECT 'Hello World'` from SQL client shell and make sure it does not throw any errors. It should show an empty results screen if there are no errors.
+8. After these steps, you could run SQL commands from the SQL client shell prompt to interact with Pravega. 
+
 For more details on how to setup, configure and access the SQL client shell, please follow the [getting started](https://ci.apache.org/projects/flink/flink-docs-master/dev/table/sqlClient.html#getting-started) documentation.
 
 ### Environment File
