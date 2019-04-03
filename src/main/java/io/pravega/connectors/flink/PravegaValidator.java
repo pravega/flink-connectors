@@ -38,6 +38,9 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
 
+/**
+ * Pravega descriptor validation implementation for validating the Pravega reader and writer configurations.
+ */
 public class PravegaValidator extends ConnectorDescriptorValidator {
 
     @Override

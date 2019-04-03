@@ -54,7 +54,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
 
 /**
- * Pravega connector configurations used to parse and map the {@link DescriptorProperties} .
+ * Pravega connector configurations used to parse and map the {@link DescriptorProperties}.
  */
 @Data
 public final class ConnectorConfigurations {
