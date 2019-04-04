@@ -59,7 +59,7 @@ public class FlinkPravegaWriterITCase {
 
     // Ensure each test completes within 120 seconds.
     @Rule
-    public Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
+    public Timeout globalTimeout = new Timeout(240, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setup() throws Exception {
