@@ -40,7 +40,7 @@ public class PravegaInputSplit implements InputSplit {
     }
 
     // --------------------------------------------------------------------
-
+    // constructor guards segment range from being null
     @Override
     public boolean equals(Object o) {
 
@@ -54,32 +54,12 @@ public class PravegaInputSplit implements InputSplit {
 
         PravegaInputSplit that = (PravegaInputSplit) o;
 
-        if ( (segmentRange == null && that.getSegmentRange() != null) ||
-                (segmentRange != null && that.getSegmentRange() == null) ) {
-            return false;
+        if (!(this.getSegmentRange().equals(that.getSegmentRange()))) {
+                return false;
         }
 
-        if (segmentRange == null && that.segmentRange == null &&
-                splitId != that.splitId) {
-            return false;
-        }
+        return splitId == that.splitId;
 
-        String thisScope = segmentRange.getScope();
-        String thatScope = that.getSegmentRange().getScope();
-        if (thisScope == null ? thatScope != null : !thisScope.equals(thatScope)) {
-            return false;
-        }
-
-        String thisStream = segmentRange.getStreamName();
-        String thatStream = that.getSegmentRange().getStreamName();
-        if (thisStream == null ? thatStream != null : !thisStream.equals(thatStream)) {
-            return false;
-        }
-
-        return splitId == that.splitId &&
-                segmentRange.getStartOffset() == that.getSegmentRange().getStartOffset() &&
-                segmentRange.getEndOffset() == that.getSegmentRange().getEndOffset() &&
-                segmentRange.getSegmentId() == that.getSegmentRange().getSegmentId();
     }
 
     @Override

@@ -1,3 +1,13 @@
+<!--
+ * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+-->
 <FindBugsFilter>
     <Match> <!-- does not work well with futures -->
         <Bug pattern="NP_NONNULL_PARAM_VIOLATION" />
@@ -8,7 +18,7 @@
     <Match> <!-- No practical consequence and generate a lot of warnings -->
         <Bug pattern="SS_SHOULD_BE_STATIC" />
     </Match>
-    <Match> <!-- Usually doen in a context where the developer knows the value to be positive -->
+    <Match> <!-- Usually done in a context where the developer knows the value to be positive -->
         <Bug pattern="IM_BAD_CHECK_FOR_ODD" />
     </Match>
     <Match> <!-- No practical consequence and generate a lot of warnings -->
@@ -23,18 +33,20 @@
     <Match> <!-- Lots of harmless calls to System.exit() in our codebase -->
         <Bug pattern="DM_EXIT" />
     </Match>
+    <Match> <!-- does not work from JDK11 onwards https://github.com/spotbugs/spotbugs/issues/756 -->
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE" />
+    </Match>
+    <Match> <!-- does not work from JDK11 onwards https://github.com/spotbugs/spotbugs/issues/756 -->
+        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
+    </Match>
+    <Match> <!-- Returning a java.lang.Boolean is common with Streams/Lambdas -->
+        <Bug pattern="NP_BOOLEAN_RETURN_NULL" />
+    </Match>
     <Match> <!-- This is intended in these and only these classes -->
         <Or>
             <Bug pattern="EI_EXPOSE_REP" />
             <Bug pattern="EI_EXPOSE_REP2" />
         </Or>
-    </Match>
-    <Match> <!-- generated code -->
-        <Or> 
-            <Method name="equals"/>
-            <Method name="hashCode"/>
-        </Or>
-        <Bug pattern="RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE" />
     </Match>
     <Match> <!-- These patterns while normally bad practice, are common in tests -->
         <Class name="~.*\.*Tests?" />
