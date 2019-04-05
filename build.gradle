@@ -25,9 +25,9 @@ buildscript {
         classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
-    plugins {
-       id "com.github.spotbugs" 
-    }
+plugins {
+    id "com.github.spotbugs" 
+ }
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
 apply from: 'gradle/java.gradle'
@@ -39,7 +39,7 @@ apply from: 'gradle/bintray.gradle'
 apply plugin: 'org.ajoberstar.grgit'
 apply from: 'gradle/mkdocs.gradle'
 
- tasks.withType(com.github.spotbugs.SpotBugsTask) {
+tasks.withType(com.github.spotbugs.SpotBugsTask) {
      reports {
         xml.enabled = false
         html.enabled = true

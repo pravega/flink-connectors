@@ -40,7 +40,7 @@ public class PravegaInputSplit implements InputSplit {
     }
 
     // --------------------------------------------------------------------
-    // cconstructor guards segment range from being null
+    // constructor guards segment range from being null
     @Override
     public boolean equals(Object o) {
 
