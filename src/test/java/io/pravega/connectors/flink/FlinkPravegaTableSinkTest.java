@@ -16,9 +16,19 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.table.descriptors.Json;
+import org.apache.flink.table.descriptors.Rowtime;
+import org.apache.flink.table.descriptors.Schema;
+import org.apache.flink.table.factories.StreamTableSinkFactory;
+import org.apache.flink.table.factories.TableFactoryService;
+import org.apache.flink.table.sinks.TableSink;
+import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
 import org.junit.Test;
 
+import java.net.URI;
+import java.util.Map;
 import java.util.function.Function;
 
 import static org.junit.Assert.assertArrayEquals;
@@ -96,6 +106,54 @@ public class FlinkPravegaTableSinkTest {
         assertEquals(SERIALIZER1, outputFormat.getSerializationSchema());
         assertEquals(STREAM1, Stream.of(outputFormat.getScope(), outputFormat.getStream()));
         assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) outputFormat.getEventRouter()).getKeyIndex());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTableSinkDescriptor() {
+        final String cityName = "fruitName";
+        final String total = "count";
+        final String eventTime = "eventTime";
+        final String procTime = "procTime";
+        final String controllerUri = "tcp://localhost:9090";
+        final long delay = 3000L;
+        final String streamName = "test";
+        final String scopeName = "test";
+
+        Stream stream = Stream.of(scopeName, streamName);
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(controllerUri))
+                .withDefaultScope(scopeName);
+
+        // construct table sink using descriptors and table sink factory
+        Pravega pravega = new Pravega();
+        pravega.tableSinkWriterBuilder()
+                .withRoutingKeyField(cityName)
+                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .forStream(stream)
+                .enableMetrics(true)
+                .withPravegaConfig(pravegaConfig);
+
+        final FlinkPravegaTableSourceTest.TestTableDescriptor testDesc = new FlinkPravegaTableSourceTest.TestTableDescriptor(pravega)
+                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withSchema(
+                        new Schema()
+                                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .rowtime(new Rowtime()
+                                        .timestampsFromField(eventTime)
+                                        .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
+                                )
+                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime()
+                )
+                .inAppendMode();
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
+        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+                .createStreamTableSink(propertiesMap);
+
+        assertNotNull(sink);
     }
 
     private static class TestableFlinkPravegaTableSink extends FlinkPravegaTableSink {

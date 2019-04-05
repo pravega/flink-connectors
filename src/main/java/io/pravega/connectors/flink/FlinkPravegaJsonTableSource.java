@@ -9,9 +9,9 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.types.Row;
 
@@ -19,7 +19,11 @@ import java.util.function.Supplier;
 
 /**
  * A {@link TableSource} to read JSON-formatted Pravega streams using the Flink Table API.
+ *
+ * @deprecated Use the {@link Pravega} descriptor along with schema and format descriptors to define {@link FlinkPravegaTableSource}
+ * See {@link org.apache.flink.table.api.TableEnvironment#connect(ConnectorDescriptor)}for more details on descriptors.
  */
+@Deprecated
 public class FlinkPravegaJsonTableSource extends FlinkPravegaTableSource {
 
     protected FlinkPravegaJsonTableSource(
@@ -72,8 +76,10 @@ public class FlinkPravegaJsonTableSource extends FlinkPravegaTableSource {
         }
 
         @Override
-        protected JsonRowDeserializationSchema getDeserializationSchema() {
-            JsonRowDeserializationSchema deserSchema = new JsonRowDeserializationSchema(jsonSchemaToReturnType(getTableSchema()));
+        @SuppressWarnings("deprecation")
+        protected io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema getDeserializationSchema() {
+            io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema deserSchema = new
+                    io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema(jsonSchemaToReturnType(getTableSchema()));
             deserSchema.setFailOnMissingField(failOnMissingField);
             return deserSchema;
         }

@@ -123,7 +123,25 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * @return an uninitiailized reader as a source function.
      */
     FlinkPravegaReader<T> buildSourceFunction() {
+        ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
+        return new FlinkPravegaReader<>(
+                Optional.ofNullable(this.uid).orElseGet(this::generateUid),
+                getPravegaConfig().getClientConfig(),
+                readerGroupInfo.getReaderGroupConfig(),
+                readerGroupInfo.getReaderGroupScope(),
+                readerGroupInfo.getReaderGroupName(),
+                getDeserializationSchema(),
+                this.eventReadTimeout,
+                this.checkpointInitiateTimeout,
+                isMetricsEnabled());
+    }
 
+    /**
+     * Build reader group configuration
+     *
+     * @return {@link ReaderGroupInfo}
+     */
+    ReaderGroupInfo buildReaderGroupInfo() {
         // rgConfig
         ReaderGroupConfig.ReaderGroupConfigBuilder rgConfigBuilder = ReaderGroupConfig
                 .builder()
@@ -142,17 +160,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
         // rgName
         final String rgName = Optional.ofNullable(this.readerGroupName).orElseGet(FlinkPravegaUtils::generateRandomReaderGroupName);
-
-        return new FlinkPravegaReader<>(
-                Optional.ofNullable(this.uid).orElseGet(this::generateUid),
-                getPravegaConfig().getClientConfig(),
-                rgConfig,
-                rgScope,
-                rgName,
-                getDeserializationSchema(),
-                this.eventReadTimeout,
-                this.checkpointInitiateTimeout,
-                isMetricsEnabled());
+        return new ReaderGroupInfo(rgConfig, rgScope, rgName);
     }
 
     /**
@@ -170,5 +178,29 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
                 .append('/').append(s.getTo().hashCode())
                 .append('\n'));
         return Integer.toString(sb.toString().hashCode());
+    }
+
+    static class ReaderGroupInfo {
+        private final ReaderGroupConfig readerGroupConfig;
+        private final String readerGroupScope;
+        private final String readerGroupName;
+
+        public ReaderGroupInfo(ReaderGroupConfig rgConfig, String rgScope, String rgName) {
+            this.readerGroupConfig = rgConfig;
+            this.readerGroupScope = rgScope;
+            this.readerGroupName = rgName;
+        }
+
+        public ReaderGroupConfig getReaderGroupConfig() {
+            return readerGroupConfig;
+        }
+
+        public String getReaderGroupScope() {
+            return readerGroupScope;
+        }
+
+        public String getReaderGroupName() {
+            return readerGroupName;
+        }
     }
 }

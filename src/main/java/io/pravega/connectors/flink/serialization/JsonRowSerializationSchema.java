@@ -26,7 +26,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
  *
  * <p>Result <code>byte[]</code> messages can be deserialized using
  * {@link JsonRowDeserializationSchema}.
+ *
+ * @deprecated Please use {@link org.apache.flink.formats.json.JsonRowSerializationSchema} from flink-json module
  */
+@Deprecated
 public class JsonRowSerializationSchema implements SerializationSchema<Row> {
 
     /**

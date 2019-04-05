@@ -9,15 +9,19 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.types.Row;
 
 import java.util.function.Function;
 
 /**
  * An append-only table sink to emit a streaming table as a Pravega stream containing JSON-formatted events.
+ *
+ * @deprecated Use the {@link Pravega} descriptor along with schema and format descriptors to define {@link FlinkPravegaTableSink}
+ * See {@link org.apache.flink.table.api.TableEnvironment#connect(ConnectorDescriptor)}for more details on descriptors.
  */
+@Deprecated
 public class FlinkPravegaJsonTableSink extends FlinkPravegaTableSink {
     private FlinkPravegaJsonTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
                                       Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
@@ -43,8 +47,9 @@ public class FlinkPravegaJsonTableSink extends FlinkPravegaTableSink {
         }
 
         @Override
+        @SuppressWarnings("deprecation")
         protected SerializationSchema<Row> getSerializationSchema(String[] fieldNames) {
-            return new JsonRowSerializationSchema(fieldNames);
+            return new io.pravega.connectors.flink.serialization.JsonRowSerializationSchema(fieldNames);
         }
 
         /**

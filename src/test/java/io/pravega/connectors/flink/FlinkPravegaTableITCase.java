@@ -31,6 +31,16 @@ import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.descriptors.BatchTableDescriptor;
+import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.table.descriptors.Json;
+import org.apache.flink.table.descriptors.Rowtime;
+import org.apache.flink.table.descriptors.Schema;
+import org.apache.flink.table.descriptors.StreamTableDescriptor;
+import org.apache.flink.table.factories.BatchTableSourceFactory;
+import org.apache.flink.table.factories.StreamTableSourceFactory;
+import org.apache.flink.table.factories.TableFactoryService;
+import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
@@ -46,6 +56,7 @@ import static org.junit.Assert.assertTrue;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -117,7 +128,6 @@ public class FlinkPravegaTableITCase {
                                                 .forStream(stream)
                                                 .withPravegaConfig(pravegaConfig)
                                                 .failOnMissingField(true)
-                                                //.withProctimeAttribute("accessTime")
                                                 .withRowtimeAttribute("accessTime",
                                                         new ExistingField("accessTime"),
                                                         new BoundedOutOfOrderTimestamps(30000L))
@@ -185,7 +195,134 @@ public class FlinkPravegaTableITCase {
 
         boolean compare = compare(results, getExpectedResultsAppend());
         assertTrue("Output does not match expected result", compare);
+    }
 
+    @Test
+    public void testTableSourceUsingDescriptor() throws Exception {
+        StreamExecutionEnvironment execEnvWrite = StreamExecutionEnvironment.getExecutionEnvironment();
+        execEnvWrite.setParallelism(1);
+
+        Stream stream = Stream.of(SETUP_UTILS.getScope(), "testJsonTableSource1");
+        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
+
+        String[] fieldNames = {"user", "uri", "accessTime"};
+        PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
+
+        // Write some data to the stream
+        DataStreamSource<Row> dataStream = execEnvWrite
+                .addSource(new TableEventSource(EVENT_COUNT_PER_SOURCE));
+
+        FlinkPravegaWriter<Row> pravegaSink = FlinkPravegaWriter.<Row>builder()
+                .withPravegaConfig(pravegaConfig)
+                .forStream(stream)
+                .withSerializationSchema(new JsonRowSerializationSchema(fieldNames))
+                .withEventRouter((Row event) -> "fixedkey")
+                .build();
+
+        dataStream.addSink(pravegaSink);
+        Assert.assertNotNull(execEnvWrite.getExecutionPlan());
+        execEnvWrite.execute("PopulateRowData");
+
+        testTableSourceStreamingDescriptor(stream, pravegaConfig);
+        testTableSourceBatchDescriptor(stream, pravegaConfig);
+    }
+
+    private void testTableSourceStreamingDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
+        final StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
+        execEnvRead.setParallelism(1);
+        execEnvRead.enableCheckpointing(100);
+        execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        RESULTS.clear();
+
+        // read data from the stream using Table reader
+        Schema schema = new Schema()
+                .field("user", Types.STRING())
+                .field("uri", Types.STRING())
+                .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
+                        new Rowtime().timestampsFromField("accessTime")
+                                .watermarksPeriodicBounded(30000L));
+
+        Pravega pravega = new Pravega();
+        pravega.tableSourceReaderBuilder()
+                .withReaderGroupScope(stream.getScope())
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
+
+        StreamTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(schema)
+                .inAppendMode();
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
+                .createStreamTableSource(propertiesMap);
+
+        tableEnv.registerTableSource("MyTableRow", source);
+        String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
+        Table result = tableEnv.sqlQuery(sqlQuery);
+
+        DataStream<Tuple2<Boolean, Row>> resultSet = tableEnv.toRetractStream(result, Row.class);
+        StringSink2 stringSink = new StringSink2(EVENT_COUNT_PER_SOURCE);
+        resultSet.addSink(stringSink);
+
+        try {
+            execEnvRead.execute("ReadRowData");
+        } catch (Exception e) {
+            if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                throw e;
+            }
+        }
+
+        log.info("results: {}", RESULTS);
+        boolean compare = compare(RESULTS, getExpectedResultsRetracted());
+        assertTrue("Output does not match expected result", compare);
+    }
+
+    private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
+
+        ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
+        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        execEnvRead.setParallelism(1);
+
+        // read data from the stream using Table reader
+        Schema schema = new Schema()
+                .field("user", Types.STRING())
+                .field("uri", Types.STRING())
+                .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
+                        new Rowtime().timestampsFromField("accessTime")
+                                .watermarksPeriodicBounded(30000L));
+
+        Pravega pravega = new Pravega();
+        pravega.tableSourceReaderBuilder()
+                .withReaderGroupScope(stream.getScope())
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
+
+        BatchTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(schema);
+
+        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
+                .createBatchTableSource(propertiesMap);
+
+        tableEnv.registerTableSource("MyTableRow", source);
+        String sqlQuery = "SELECT user, " +
+                "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
+                "COUNT(uri) AS cnt " +
+                "from MyTableRow GROUP BY " +
+                "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
+
+        Table result = tableEnv.sqlQuery(sqlQuery);
+        DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
+
+        List<Row> results = resultSet.collect();
+        log.info("results: {}", results);
+
+        boolean compare = compare(results, getExpectedResultsAppend());
+        assertTrue("Output does not match expected result", compare);
     }
 
     static boolean compare(List<Row> results, List<Row> expectedResults) {
