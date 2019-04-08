@@ -14,7 +14,6 @@ import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptorValidator;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
@@ -46,7 +45,7 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
     @Override
     public void validate(DescriptorProperties properties) {
         super.validate(properties);
-        properties.validateValue(CONNECTOR_TYPE(), CONNECTOR_TYPE_VALUE_PRAVEGA, false);
+        properties.validateValue(CONNECTOR_TYPE, CONNECTOR_TYPE_VALUE_PRAVEGA, false);
         validateConnectionConfig(properties);
         if (properties.containsKey(CONNECTOR_READER)) {
             validateReaderConfigurations(properties);
@@ -64,17 +63,17 @@ public class PravegaValidator extends ConnectorDescriptorValidator {
         final Map<String, Consumer<String>> streamPropertyValidators = new HashMap<>();
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_SCOPE,
-                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_SCOPE, true, 1));
+                prefix -> properties.validateString(prefix, true, 1));
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_STREAM,
-                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_STREAM, false, 0));
+                prefix -> properties.validateString(prefix, false, 0));
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_START_STREAMCUT, true, 1));
+                prefix -> properties.validateString(prefix, true, 1));
         streamPropertyValidators.put(
                 CONNECTOR_READER_STREAM_INFO_END_STREAMCUT,
-                prefix -> properties.validateString(prefix + CONNECTOR_READER_STREAM_INFO_END_STREAMCUT, true, 1));
-        properties.validateVariableIndexedProperties(CONNECTOR_READER_STREAM_INFO, false, streamPropertyValidators, Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
+                prefix -> properties.validateString(prefix, true, 1));
+        properties.validateFixedIndexedProperties(CONNECTOR_READER_STREAM_INFO, true, streamPropertyValidators);
 
         // for readers we need default-scope from connection config or reader group scope
         Optional<String> readerGroupScope = properties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);

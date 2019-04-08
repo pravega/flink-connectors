@@ -91,8 +91,9 @@ public class Pravega extends ConnectorDescriptor {
      * Internal method for connector properties conversion.
      */
     @Override
-    public void addConnectorProperties(DescriptorProperties properties) {
-        properties.putString(CONNECTOR_VERSION(), String.valueOf(CONNECTOR_VERSION_VALUE));
+    protected Map<String, String> toConnectorProperties() {
+        final DescriptorProperties properties = new DescriptorProperties();
+        properties.putString(CONNECTOR_VERSION, String.valueOf(CONNECTOR_VERSION_VALUE));
 
         if (tableSourceReaderBuilder == null && tableSinkWriterBuilder == null) {
             throw new ValidationException("Missing both reader and writer configurations.");
@@ -112,6 +113,7 @@ public class Pravega extends ConnectorDescriptor {
         if (tableSinkWriterBuilder != null) {
             populateWriterProperties(properties);
         }
+        return properties.asMap();
     }
 
     /**

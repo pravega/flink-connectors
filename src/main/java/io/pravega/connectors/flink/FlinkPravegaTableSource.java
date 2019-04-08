@@ -31,10 +31,10 @@ import org.apache.flink.table.sources.tsextractors.TimestampExtractor;
 import org.apache.flink.table.sources.wmstrategies.WatermarkStrategy;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
-import scala.Option;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Supplier;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -129,8 +129,8 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     protected void setProctimeAttribute(String proctimeAttribute) {
         if (proctimeAttribute != null) {
             // validate that field exists and is of correct type
-            Option<TypeInformation<?>> tpe = schema.getType(proctimeAttribute);
-            if (tpe.isEmpty()) {
+            Optional<TypeInformation<?>> tpe = schema.getFieldType(proctimeAttribute);
+            if (!tpe.isPresent()) {
                 throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not present in TableSchema.");
             } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
                 throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type SQL_TIMESTAMP.");
@@ -148,8 +148,8 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
         // validate that all declared fields exist and are of correct type
         for (RowtimeAttributeDescriptor desc : rowtimeAttributeDescriptors) {
             String rowtimeAttribute = desc.getAttributeName();
-            Option<TypeInformation<?>> tpe = schema.getType(rowtimeAttribute);
-            if (tpe.isEmpty()) {
+            Optional<TypeInformation<?>> tpe = schema.getFieldType(rowtimeAttribute);
+            if (!tpe.isPresent()) {
                 throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not present in TableSchema.");
             } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
                 throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type SQL_TIMESTAMP.");

@@ -28,7 +28,6 @@ import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.Avro;
 import org.apache.flink.table.descriptors.BatchTableDescriptor;
-import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Schema;
 import org.apache.flink.table.descriptors.StreamTableDescriptor;
@@ -266,7 +265,7 @@ public class FlinkTableITCase {
                 .inAppendMode();
         desc.registerTableSourceAndSink("test");
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
@@ -333,7 +332,7 @@ public class FlinkTableITCase {
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
         desc.registerTableSourceAndSink("test");
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
@@ -378,7 +377,7 @@ public class FlinkTableITCase {
                 .inAppendMode();
         desc.registerTableSink("test");
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
@@ -411,7 +410,7 @@ public class FlinkTableITCase {
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
         desc.registerTableSink("test");
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
 
@@ -455,7 +454,7 @@ public class FlinkTableITCase {
                 .inAppendMode();
         desc.registerTableSink("test");
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 

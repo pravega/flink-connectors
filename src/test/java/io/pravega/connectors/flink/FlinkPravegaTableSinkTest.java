@@ -16,7 +16,6 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
@@ -149,7 +148,7 @@ public class FlinkPravegaTableSinkTest {
                 )
                 .inAppendMode();
 
-        final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(testDesc);
+        final Map<String, String> propertiesMap = testDesc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 

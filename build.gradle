@@ -125,24 +125,24 @@ dependencies {
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
-    compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_2.11', version: flinkVersion // provided by application
-    compileOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_'+flinkScalaVersion, version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
 
     testCompile group: 'junit', name: 'junit', version: junitVersion
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
-    testCompile group: 'org.apache.flink', name: 'flink-tests_2.11', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-test-utils_2.11', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-streaming-java_2.11', classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-runtime_2.11', classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-tests_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.11', version: flinkVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-table_2.11', version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-table_'+flinkScalaVersion, version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 }
