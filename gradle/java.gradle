@@ -26,7 +26,7 @@ compileJava {
     ])
 }
 
-archivesBaseName = "pravega-connectors-flink_2.11"
+archivesBaseName = "pravega-connectors-flink_" + flinkScalaVersion
 
 assemble.dependsOn(shadowJar)
 
