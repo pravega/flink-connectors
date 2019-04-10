@@ -83,14 +83,6 @@ configurations.all {
 configurations {
     shadowOnly {
     }
-
-    all {
-        resolutionStrategy {
-            // pravega/pravega/issues/2464
-            force 'io.netty:netty-tcnative-boringssl-static:2.0.8.Final'
-        }
-    }
-
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -205,4 +197,10 @@ distributions {
 task distribution(type: Copy, dependsOn: [installReleaseDist, installWorkspaceDist, assembleWorkspaceDist]) {
     from ("$buildDir/install/flink-connectors-release")
     into ("$buildDir/distributions")
-} 
+}
+
+//allow system properties to be passed to the test program
+// for e.g., to use standalone Pravega for running the system test "./gradlew clean build -Dpravega.uri=tcp://localhost:9090"
+test {
+    systemProperties = System.properties
+}

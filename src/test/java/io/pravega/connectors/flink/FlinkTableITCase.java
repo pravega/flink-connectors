@@ -241,9 +241,7 @@ public class FlinkTableITCase {
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
-        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(setupUtils.getControllerUri())
-                .withDefaultScope(setupUtils.getScope());
+        PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
 
         Pravega pravega = new Pravega();
         pravega.tableSinkWriterBuilder()
@@ -309,9 +307,7 @@ public class FlinkTableITCase {
         env.setParallelism(1);
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
-        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(setupUtils.getControllerUri())
-                .withDefaultScope(setupUtils.getScope());
+        PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
 
         Pravega pravega = new Pravega();
         pravega.tableSinkWriterBuilder()
