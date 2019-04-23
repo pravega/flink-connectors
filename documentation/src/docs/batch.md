@@ -8,7 +8,7 @@ You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 -->
 # Batch Connector
-The Flink connector library for Pravega makes it possible to use a Pravega Stream as a data source and data sink in a batch program.  See the below sections for details.
+The Flink Connector library for Pravega makes it possible to use a Pravega Stream as a data source and data sink in a batch program.  See the below sections for details.
 
 ## Table of Contents
 - [FlinkPravegaInputFormat](#flinkpravegainputformat)
@@ -64,9 +64,11 @@ A builder API is provided to construct an instance of `FlinkPravegaInputFormat`.
 Each Pravega stream exists within a scope. A scope defines a namespace for streams such that names are unique. Across scopes, streams can have the same name. For example, if we have scopes `A` and `B`, then we can have a stream called `myStream` in each one of them. We cannot have a stream with the same name in the same scope. The builder API accepts both **qualified** and **unqualified** stream names.
 
   - In qualified stream names, the scope is explicitly specified, e.g. `my-scope/my-stream`.
-  - In unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`. See the [configurations](configurations.md) page for more information on default scope.
+  - In unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`. 
+ See the [configurations](configurations.md) page for more information on default scope.
 
 A stream may be specified in one of three ways:
+
 1. As a string containing a qualified name, in the form `scope/stream`.
 2. As a string containing an unqualified name, in the form `stream`.  Such streams are resolved to the default scope.
 3. As an instance of `io.pravega.client.stream.Stream`, e.g. `Stream.of("my-scope", "my-stream")`.
@@ -75,7 +77,7 @@ Multiple streams can be passed as parameter option (using the builder API). The 
 
 ### StreamCuts
 
-A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) accepts a `StreamCut` as the start and/or end position of a given stream.  For further reading on StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/v0.3.2/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) accepts a `StreamCut` as the start and/or end position of a given stream.  For further reading on StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/v0.5.0/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
 If stream cuts are not provided then the default start position requested is assumed to be the earliest available data in the stream and the default end position is assumed to be all available data in that stream as of when the job execution begins.
 
