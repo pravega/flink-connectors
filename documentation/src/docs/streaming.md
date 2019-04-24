@@ -189,6 +189,7 @@ Use the method `FlinkPravegaUtils::writeToPravegaInEventTimeOrder` to write a gi
 
 ### Writer Modes
 Writer modes relate to guarantees about the persistence of events emitted by the sink to a Pravega Stream.  The writer supports three writer modes:
+
 1. **Best-effort** - Any write failures will be ignored hence there could be data loss.
 2. **At-least-once** - All events are persisted in Pravega. Duplicate events
 are possible, due to retries or in case of failure and subsequent recovery.
