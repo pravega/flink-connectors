@@ -23,6 +23,7 @@
     </root>
 
     <!-- suppress unnecessary logging statements to keep the log file size minimum -->
+    <logger name="io.pravega.connectors" level="INFO"/>
     <logger name="io.pravega" level="ERROR"/>
     <logger name="io.netty" level="ERROR"/>
     <logger name="io.grpc" level="ERROR"/>

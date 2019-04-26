@@ -247,7 +247,7 @@ public class FlinkPravegaReader<T>
 
     @Override
     public MasterTriggerRestoreHook<Checkpoint> createMasterTriggerRestoreHook() {
-        return new ReaderCheckpointHook(this.hookUid, createReaderGroup(), this.checkpointInitiateTimeout);
+        return new ReaderCheckpointHook(this.hookUid, createReaderGroup(), this.checkpointInitiateTimeout, this.readerGroupConfig);
     }
 
     @Override
