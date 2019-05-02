@@ -113,7 +113,11 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     }
 
     /**
-     * Configures the maximum outstanding checkpoint request to Pravega.
+     * Configures the maximum outstanding checkpoint request to Pravega (default=3).
+     * In situations where an excessive checkpoint request is being triggered to Pravega,
+     * (say a checkpoint request timesout on the ReaderCheckpointHook but Pravega is still working on it),
+     * this configurations allows Pravega to limit any further checkpoint request being made to the ReaderGroup.
+     * This configuration can be useful when multiple checkpoint request needs to be honored (e.g., frequent savepoint request being triggered).
      *
      * @param maxOutstandingCheckpointRequest maximum outstanding checkpoint request.
      */
