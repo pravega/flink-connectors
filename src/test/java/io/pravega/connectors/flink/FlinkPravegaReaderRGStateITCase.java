@@ -52,7 +52,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 6. Flink restart strategy should kick in and the reader hook should reinitialize the state of the readers to beginning position
  * 7. Validate and make sure that we are not missing any events.
  */
-
+@Slf4j
 public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
 
     // Setup utility.
@@ -124,6 +124,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
                 env.execute();
             } catch (Exception e) {
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                    log.error("testReaderState failed with exception", e);
                     Assert.fail();
                 }
             }

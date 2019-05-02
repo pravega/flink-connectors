@@ -112,7 +112,8 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
     @Override
     public void reset() {
-        // reset the reset group to starting point. This can happen when job is being restarted after a failure but no checkpoint has been taken.
+        // To avoid the data loss, reset the reader group using the reader config that was initially passed to the job.
+        // This can happen when the job recovery happens after a failure but no checkpoint has been taken.
         log.info("resetting the reader group to initial state using the RG config {}", this.readerGroupConfig);
         this.readerGroup.resetReaderGroup(this.readerGroupConfig);
     }
