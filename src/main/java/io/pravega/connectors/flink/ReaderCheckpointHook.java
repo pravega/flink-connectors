@@ -12,6 +12,7 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 
+import io.pravega.client.stream.ReaderGroupConfig;
 import lombok.extern.slf4j.Slf4j;
 
 import org.apache.flink.api.common.time.Time;
@@ -53,12 +54,16 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     /** The timeout on the future returned by the 'initiateCheckpoint()' call */
     private final Time triggerTimeout;
 
+    // The Pravega reader group config.
+    private final ReaderGroupConfig readerGroupConfig;
 
-    ReaderCheckpointHook(String hookUid, ReaderGroup readerGroup, Time triggerTimeout) {
+
+    ReaderCheckpointHook(String hookUid, ReaderGroup readerGroup, Time triggerTimeout, ReaderGroupConfig readerGroupConfig) {
 
         this.hookUid = checkNotNull(hookUid);
         this.readerGroup = checkNotNull(readerGroup);
         this.triggerTimeout = triggerTimeout;
+        this.readerGroupConfig = readerGroupConfig;
         this.checkpointSerializer = new CheckpointSerializer();
     }
 
@@ -103,6 +108,21 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         if (checkpoint != null) {
             this.readerGroup.resetReadersToCheckpoint(checkpoint);
         }
+    }
+
+    @Override
+    public void reset() {
+        // To avoid the data loss, reset the reader group using the reader config that was initially passed to the job.
+        // This can happen when the job recovery happens after a failure but no checkpoint has been taken.
+        log.info("resetting the reader group to initial state using the RG config {}", this.readerGroupConfig);
+        this.readerGroup.resetReaderGroup(this.readerGroupConfig);
+    }
+
+    @Override
+    public void close() {
+        // close the reader group properly
+        log.info("closing the reader group");
+        this.readerGroup.close();
     }
 
     @Override
