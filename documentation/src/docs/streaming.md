@@ -9,7 +9,7 @@ You may obtain a copy of the License at
 -->
 # Streaming Connector
 
-The Flink connector library for Pravega provides a data source and data sink
+The Flink Connector library for Pravega provides a data source and data sink
 for use with the Flink Streaming API. See the below sections for details.
 
 ## Table of Contents
@@ -112,7 +112,7 @@ Each parallel instance of the source processes one or more stream segments in pa
 
 ### StreamCuts
 A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on
-StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/v0.4.2/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
 #### Historical Stream Processing
 
@@ -178,7 +178,7 @@ private static class SensorEventRouter<SensorEvent> implements PravegaEventRoute
             return event.getId();
         }
     }
-   
+
 ```
 
 ### Event Time Ordering
@@ -189,6 +189,7 @@ Use the method `FlinkPravegaUtils::writeToPravegaInEventTimeOrder` to write a gi
 
 ### Writer Modes
 Writer modes relate to guarantees about the persistence of events emitted by the sink to a Pravega Stream.  The writer supports three writer modes:
+
 1. **Best-effort** - Any write failures will be ignored hence there could be data loss.
 2. **At-least-once** - All events are persisted in Pravega. Duplicate events
 are possible, due to retries or in case of failure and subsequent recovery.
