@@ -78,6 +78,7 @@ public class FlinkPravegaReaderTest {
     private static final IntegerDeserializationSchema DESERIALIZATION_SCHEMA = new TestDeserializationSchema();
     private static final Time READER_TIMEOUT = Time.seconds(1);
     private static final Time CHKPT_TIMEOUT = Time.seconds(1);
+    private static final int MAX_OUTSTANDING_CHECKPOINT_REQUEST = 5;
 
     // region Source Function Tests
 
@@ -213,6 +214,7 @@ public class FlinkPravegaReaderTest {
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT)
                 .withReaderGroupScope(SAMPLE_SCOPE)
                 .withReaderGroupName(GROUP_NAME)
+                .withMaxOutstandingCheckpointRequest(MAX_OUTSTANDING_CHECKPOINT_REQUEST)
                 .withReaderGroupRefreshTime(GROUP_REFRESH_TIME);
 
         FlinkPravegaReader<Integer> reader = builder.buildSourceFunction();
@@ -220,6 +222,7 @@ public class FlinkPravegaReaderTest {
         assertNotNull(reader.hookUid);
         assertNotNull(reader.clientConfig);
         assertEquals(-1L, reader.readerGroupConfig.getAutomaticCheckpointIntervalMillis());
+        assertEquals(MAX_OUTSTANDING_CHECKPOINT_REQUEST, reader.readerGroupConfig.getMaxOutstandingCheckpointRequest());
         assertEquals(GROUP_REFRESH_TIME.toMilliseconds(), reader.readerGroupConfig.getGroupRefreshTimeMillis());
         assertEquals(GROUP_NAME, reader.readerGroupName);
         assertEquals(Collections.singletonMap(SAMPLE_STREAM, SAMPLE_CUT), reader.readerGroupConfig.getStartingStreamCuts());
