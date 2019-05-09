@@ -29,6 +29,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
     private static final Time DEFAULT_EVENT_READ_TIMEOUT = Time.seconds(1);
     private static final Time DEFAULT_CHECKPOINT_INITIATE_TIMEOUT = Time.seconds(5);
+    private static final int  DEFAULT_MAX_OUTSTANDING_CHECKPOINT_REQUEST = 3;
 
     protected String uid;
     protected String readerGroupScope;
@@ -36,10 +37,12 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     protected Time readerGroupRefreshTime;
     protected Time checkpointInitiateTimeout;
     protected Time eventReadTimeout;
+    protected int maxOutstandingCheckpointRequest;
 
     protected AbstractStreamingReaderBuilder() {
         this.checkpointInitiateTimeout = DEFAULT_CHECKPOINT_INITIATE_TIMEOUT;
         this.eventReadTimeout = DEFAULT_EVENT_READ_TIMEOUT;
+        this.maxOutstandingCheckpointRequest = DEFAULT_MAX_OUTSTANDING_CHECKPOINT_REQUEST;
     }
 
     /**
@@ -109,6 +112,20 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
         return builder();
     }
 
+    /**
+     * Configures the maximum outstanding checkpoint requests to Pravega (default=3).
+     * Upon requesting more checkpoints than the specified maximum,
+     * (say a checkpoint request timesout on the ReaderCheckpointHook but Pravega is still working on it),
+     * this configurations allows Pravega to limit any further checkpoint request being made to the ReaderGroup.
+     * This configuration is particularly relevant when multiple checkpoint requests need to be honored (e.g., frequent savepoint requests being triggered concurrently).
+     *
+     * @param maxOutstandingCheckpointRequest maximum outstanding checkpoint request.
+     */
+    public B withMaxOutstandingCheckpointRequest(int maxOutstandingCheckpointRequest) {
+        this.maxOutstandingCheckpointRequest = maxOutstandingCheckpointRequest;
+        return builder();
+    }
+
     protected abstract DeserializationSchema<T> getDeserializationSchema();
 
     /**
@@ -145,6 +162,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
         // rgConfig
         ReaderGroupConfig.ReaderGroupConfigBuilder rgConfigBuilder = ReaderGroupConfig
                 .builder()
+                .maxOutstandingCheckpointRequest(this.maxOutstandingCheckpointRequest)
                 .disableAutomaticCheckpoints();
         if (this.readerGroupRefreshTime != null) {
             rgConfigBuilder.groupRefreshTimeMillis(this.readerGroupRefreshTime.toMilliseconds());
