@@ -99,13 +99,16 @@ public class ThrottledIntegerGeneratingSource
         // note: this indicates that to handle finite jobs with 2PC outputs more
         // easily, we need a primitive like "finish-with-checkpoint" in Flink
 
+        // FLIP-34 will address this shortcomings which will take care of completing a savepoint/checkpoint
+        // when the task is finishing successfully ensuring the end-to-end exactly once guarantee for the sink
+
         final long lastCheckpoint;
         synchronized (ctx.getCheckpointLock()) {
             lastCheckpoint = this.lastCheckpointTriggered;
         }
 
         synchronized (this.blocker) {
-            while (this.lastCheckpointConfirmed <= lastCheckpoint + 1) {
+            while (this.lastCheckpointConfirmed <= lastCheckpoint + 4) {
                 this.blocker.wait();
             }
         }

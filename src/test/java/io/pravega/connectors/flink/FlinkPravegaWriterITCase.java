@@ -40,6 +40,9 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.assertFalse;
@@ -185,48 +188,72 @@ public class FlinkPravegaWriterITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, 4);
 
-        // launch the Flink program that writes and has a failure during writing, to
-        // make sure that this does not introduce any duplicates
+        CountDownLatch latch = new CountDownLatch(2);
 
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
-                .setParallelism(1)
-                .enableCheckpointing(100);
-        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
+        Runnable writeTask = () -> {
+            // launch the Flink program that writes and has a failure during writing, to
+            // make sure that this does not introduce any duplicates
+            final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
+                    .setParallelism(1)
+                    .enableCheckpointing(100);
+            env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
-                .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
-                .withSerializationSchema(new IntSerializer())
-                .withEventRouter(event -> "fixedkey")
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
-                .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+            FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
+                    .forStream(streamName)
+                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withSerializationSchema(new IntSerializer())
+                    .withEventRouter(event -> "fixedkey")
+                    .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                    .withTxnLeaseRenewalPeriod(Time.seconds(30))
+                    .build();
 
-        env
-                .addSource(new ThrottledIntegerGeneratingSource(numElements))
-                .map(new FailingMapper<>(numElements / 2))
-                .addSink(pravegaSink).setParallelism(2);
+            env
+                    .addSource(new ThrottledIntegerGeneratingSource(numElements))
+                    .map(new FailingMapper<>(numElements / 2))
+                    .addSink(pravegaSink).setParallelism(2);
 
-        env.execute();
-
-        // validate the written data - no duplicates within the first numElements events
-
-        try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
-            final BitSet duplicateChecker = new BitSet();
-
-            for (int numElementsRemaining = numElements; numElementsRemaining > 0;) {
-                final EventRead<Integer> eventRead = reader.readNextEvent(1000);
-                final Integer event = eventRead.getEvent();
-
-                if (event != null) {
-                    numElementsRemaining--;
-                    assertFalse("found a duplicate", duplicateChecker.get(event));
-                    duplicateChecker.set(event);
-                }
+            try {
+                env.execute();
+            } catch (Exception e) {
+                Assert.fail("Error while writing to Pravega");
+            } finally {
+                latch.countDown();
             }
+        };
 
-            // no more events should be there
-            assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+        Runnable readTask = () -> {
+            // validate the written data - no duplicates within the first numElements events
+            try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
+                final BitSet duplicateChecker = new BitSet();
+
+                for (int numElementsRemaining = numElements; numElementsRemaining > 0;) {
+                    final EventRead<Integer> eventRead = reader.readNextEvent(1000);
+                    final Integer event = eventRead.getEvent();
+
+                    if (event != null) {
+                        numElementsRemaining--;
+                        assertFalse("found a duplicate", duplicateChecker.get(event));
+                        duplicateChecker.set(event);
+                    }
+                }
+
+                // no more events should be there
+                assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                latch.countDown();
+            }
+        };
+
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        executorService.execute(writeTask);
+        executorService.execute(readTask);
+
+        boolean wait = latch.await(30, TimeUnit.SECONDS);
+        if (!wait) {
+            Assert.fail("Read/Write operations taking more time to complete");
+        }
+        executorService.shutdown();
+        if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
+            executorService.shutdownNow();
         }
     }
 
