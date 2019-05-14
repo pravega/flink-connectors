@@ -565,11 +565,11 @@ public class FlinkPravegaWriterTest {
      *
      */
     @Test
-    public void testTransactionalWriterRestoreStateForMultipleStream() throws Exception {
+    public void testTransactionalWriterRestoreStateForMultipleStreams() throws Exception {
         try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
             List<Transaction<Integer>> pendingTransactions = prepareMockInstancesForRestore(context.txnSinkFunction);
 
-            // verify the behavior by passing multiple transaction instance
+            // verify the behavior by passing multiple transaction instances.
             Map<Transaction.Status, List<Transaction<Integer>>> txnMap = new HashMap<>();
             List<FlinkPravegaWriter.PendingTransaction> pendingTransactionList = new ArrayList<>();
             int count = 5;
