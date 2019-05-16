@@ -22,6 +22,7 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.RichInputFormat;
@@ -87,7 +88,12 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public void openInputFormat() throws IOException {
         super.openInputFormat();
-        this.batchClientFactory = BatchClientFactory.withScope(clientScope, clientConfig);
+        this.batchClientFactory = getBatchClientFactory(clientScope, clientConfig);
+    }
+
+    @VisibleForTesting
+    protected BatchClientFactory getBatchClientFactory(String clientScope, ClientConfig clientConfig) {
+        return BatchClientFactory.withScope(clientScope, clientConfig);
     }
 
     @Override
@@ -114,7 +120,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
         // createInputSplits() is called in the JM, so we have to establish separate
         // short-living connections to Pravega here to retrieve the segments list
         try (
-                BatchClientFactory batchClientFactory = BatchClientFactory.withScope(clientScope, clientConfig)
+                BatchClientFactory batchClientFactory = getBatchClientFactory(clientScope, clientConfig)
             ) {
 
             for (StreamWithBoundaries stream : streams) {
