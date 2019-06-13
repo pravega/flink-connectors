@@ -191,7 +191,7 @@ public class FlinkPravegaOutputFormatTest {
                 .build();
 
         FlinkPravegaOutputFormat<String> spyFlinkPravegaOutputFormat = spy(flinkPravegaOutputFormat);
-        doReturn(clientFactory).when(spyFlinkPravegaOutputFormat).createClientFactory(stream.getScope(), clientConfig);
+        doReturn(clientFactory).when(spyFlinkPravegaOutputFormat).createClientFactory(anyString(), anyObject());
         return spyFlinkPravegaOutputFormat;
     }
 
