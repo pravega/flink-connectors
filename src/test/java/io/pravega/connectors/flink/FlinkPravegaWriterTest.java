@@ -28,7 +28,11 @@ import org.mockito.invocation.InvocationOnMock;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
@@ -40,6 +44,7 @@ import java.util.function.Function;
 
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
+import static org.mockito.Matchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -55,6 +60,14 @@ public class FlinkPravegaWriterTest {
     private static final String MOCK_SCOPE_NAME = "scope";
     private static final String MOCK_STREAM_NAME = "stream";
     private static final String ROUTING_KEY = "fixed";
+
+    private static final String MOCK_SCOPE_NAME_1 = "scope1";
+    private static final String MOCK_SCOPE_NAME_2 = "scope2";
+    private static final String MOCK_STREAM_NAME_1 = "stream1";
+    private static final String MOCK_STREAM_NAME_2 = "stream2";
+    private static final String MOCK_STREAM_NAME_3 = "stream3";
+    private static final String MOCK_STREAM_NAME_4 = "stream4";
+    private static final String MOCK_STREAM_NAME_5 = "stream5";
 
     // endregion
 
@@ -546,6 +559,85 @@ public class FlinkPravegaWriterTest {
         }
     }
 
+
+    /**
+     * Tests the {@code restoreState} method by simulating with multiple transactions from different streams.
+     *
+     */
+    @Test
+    public void testTransactionalWriterRestoreStateForMultipleStreams() throws Exception {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+            List<Transaction<Integer>> pendingTransactions = prepareMockInstancesForRestore(context.txnSinkFunction);
+
+            // verify the behavior by passing multiple transaction instances.
+            Map<Transaction.Status, List<Transaction<Integer>>> txnMap = new HashMap<>();
+            List<FlinkPravegaWriter.PendingTransaction> pendingTransactionList = new ArrayList<>();
+            int count = 5;
+
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.setup();
+
+                for (int i = 0; i < count; i++) {
+                    Transaction<Integer> integerTransaction = pendingTransactions.get(i);
+                    Transaction.Status status;
+
+                    if (i % 2 == 0) {
+                        status = Transaction.Status.OPEN;
+                    } else {
+                        if (i == 1) {
+                            status = Transaction.Status.COMMITTING;
+                        } else {
+                            status = Transaction.Status.ABORTED;
+                        }
+                    }
+
+                    switch (i) {
+                        case 0:
+                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_1));
+                            break;
+                        case 1:
+                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_2));
+                            break;
+                        case 2:
+                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_3));
+                            break;
+                        case 3:
+                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_4));
+                            break;
+                        case 4:
+                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_5));
+                            break;
+                        default:
+                            break;
+                    }
+
+                    when(integerTransaction.checkStatus()).thenReturn(status);
+
+                    if (txnMap.containsKey(status)) {
+                        txnMap.get(status).add(integerTransaction);
+                    } else {
+                        List<Transaction<Integer>> txnList = new ArrayList<>();
+                        txnList.add(integerTransaction);
+                        txnMap.put(status, txnList);
+                    }
+                }
+                context.txnSinkFunction.restoreState(pendingTransactionList);
+
+                for (Transaction.Status status: txnMap.keySet()) {
+                    if (status == Transaction.Status.OPEN) {
+                        for (Transaction<Integer> txn: txnMap.get(status)) {
+                            verify(txn, times(1)).commit();
+                        }
+                    } else if (status == Transaction.Status.COMMITTING || status == Transaction.Status.ABORTED) {
+                        for (Transaction<Integer> txn: txnMap.get(status)) {
+                            verify(txn, never()).commit();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // endregion
 
     // region Utilities
@@ -582,6 +674,64 @@ public class FlinkPravegaWriterTest {
                 MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, true));
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
         return writer;
+    }
+
+    private <T> List<Transaction<Integer>> prepareMockInstancesForRestore(FlinkPravegaWriter<Integer> writer) {
+
+        EventStreamClientFactory clientFactory = mock(EventStreamClientFactory.class);
+        List<Transaction<Integer>> transactions = new ArrayList<>();
+
+        TransactionalEventStreamWriter<T> txnEventStreamWriter1 = mockTxnEventStreamWriter();
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_1), anyObject(), anyObject())).thenReturn(txnEventStreamWriter1);
+        Transaction<Integer> trans1 = mockTransaction();
+        UUID txnId1 = UUID.randomUUID();
+        Mockito.doReturn(txnId1).when(trans1).getTxnId();
+        Mockito.doReturn(trans1).when(txnEventStreamWriter1).beginTxn();
+        Mockito.doReturn(trans1).when(txnEventStreamWriter1).getTxn(txnId1);
+        transactions.add(trans1);
+
+        TransactionalEventStreamWriter<T> txnEventStreamWriter2 = mockTxnEventStreamWriter();
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_2), anyObject(), anyObject())).thenReturn(txnEventStreamWriter2);
+        Transaction<Integer> trans2 = mockTransaction();
+        UUID txnId2 = UUID.randomUUID();
+        Mockito.doReturn(txnId2).when(trans2).getTxnId();
+        Mockito.doReturn(trans2).when(txnEventStreamWriter2).beginTxn();
+        Mockito.doReturn(trans2).when(txnEventStreamWriter2).getTxn(txnId2);
+        transactions.add(trans2);
+
+        TransactionalEventStreamWriter<T> txnEventStreamWriter3 = mockTxnEventStreamWriter();
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_3), anyObject(), anyObject())).thenReturn(txnEventStreamWriter3);
+        Transaction<Integer> trans3 = mockTransaction();
+        UUID txnId3 = UUID.randomUUID();
+        Mockito.doReturn(txnId3).when(trans3).getTxnId();
+        Mockito.doReturn(trans3).when(txnEventStreamWriter3).beginTxn();
+        Mockito.doReturn(trans3).when(txnEventStreamWriter3).getTxn(txnId3);
+        transactions.add(trans3);
+
+        TransactionalEventStreamWriter<T> txnEventStreamWriter4 = mockTxnEventStreamWriter();
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_2, MOCK_CLIENT_CONFIG);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_4), anyObject(), anyObject())).thenReturn(txnEventStreamWriter4);
+        Transaction<Integer> trans4 = mockTransaction();
+        UUID txnId4 = UUID.randomUUID();
+        Mockito.doReturn(txnId4).when(trans4).getTxnId();
+        Mockito.doReturn(trans4).when(txnEventStreamWriter4).beginTxn();
+        Mockito.doReturn(trans4).when(txnEventStreamWriter4).getTxn(txnId4);
+        transactions.add(trans4);
+
+        TransactionalEventStreamWriter<T> txnEventStreamWriter5 = mockTxnEventStreamWriter();
+        Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_2, MOCK_CLIENT_CONFIG);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_5), anyObject(), anyObject())).thenReturn(txnEventStreamWriter5);
+        Transaction<Integer> trans5 = mockTransaction();
+        UUID txnId5 = UUID.randomUUID();
+        Mockito.doReturn(txnId5).when(trans5).getTxnId();
+        Mockito.doReturn(trans5).when(txnEventStreamWriter5).beginTxn();
+        Mockito.doReturn(trans5).when(txnEventStreamWriter5).getTxn(txnId5);
+        transactions.add(trans5);
+
+        return transactions;
     }
 
     private FlinkPravegaWriter.AbstractInternalWriter spyInternalWriter(InvocationOnMock invoke) throws Throwable {
