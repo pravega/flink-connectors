@@ -146,6 +146,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        execEnvRead.getConfig().disableClosureCleaner();
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         tableEnv.registerTableSource("MyTableRow", source);
@@ -177,6 +178,7 @@ public class FlinkPravegaTableITCase {
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         execEnvRead.setParallelism(1);
+        execEnvRead.getConfig().disableClosureCleaner();
 
         tableEnv.registerTableSource("MyTableRow", source);
 
@@ -231,6 +233,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        execEnvRead.getConfig().disableClosureCleaner();
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         RESULTS.clear();
