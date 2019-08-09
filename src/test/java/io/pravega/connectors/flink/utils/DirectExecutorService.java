@@ -25,6 +25,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
+/* This code is originally from the Apache Flink project. */
 /** The direct executor service directly executes the runnables and the callables in the calling thread. */
 public class DirectExecutorService implements ExecutorService {
     static final DirectExecutorService INSTANCE = new DirectExecutorService();

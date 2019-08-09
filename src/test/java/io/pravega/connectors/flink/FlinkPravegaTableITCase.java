@@ -16,6 +16,7 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -146,7 +147,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        execEnvRead.getConfig().disableClosureCleaner();
+        execEnvRead.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         tableEnv.registerTableSource("MyTableRow", source);
@@ -178,7 +179,7 @@ public class FlinkPravegaTableITCase {
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         execEnvRead.setParallelism(1);
-        execEnvRead.getConfig().disableClosureCleaner();
+        execEnvRead.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
 
         tableEnv.registerTableSource("MyTableRow", source);
 
@@ -233,7 +234,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        execEnvRead.getConfig().disableClosureCleaner();
+        execEnvRead.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
 
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
         RESULTS.clear();
