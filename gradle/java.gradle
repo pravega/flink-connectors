@@ -21,8 +21,8 @@ compileJava {
             "-Xlint:fallthrough",
             "-Xlint:finally",
             "-Xlint:overrides",
-            "-Xlint:path",
-            "-Werror"
+            "-Xlint:path"
+//            "-Werror"
     ])
 }
 
