@@ -192,7 +192,7 @@ public class FlinkPravegaReaderTest {
      */
     private <T, F extends SourceFunction<T>> StreamSourceOperatorTestHarness<T, F> createTestHarness(
             F sourceFunction, int maxParallelism, int parallelism, int subtaskIndex) throws Exception {
-        StreamSourceOperatorTestHarness harness = new StreamSourceOperatorTestHarness<T, F>(sourceFunction, maxParallelism, parallelism, subtaskIndex);
+        StreamSourceOperatorTestHarness harness = new StreamSourceOperatorTestHarness<>(sourceFunction, maxParallelism, parallelism, subtaskIndex);
         harness.setTimeCharacteristic(TimeCharacteristic.ProcessingTime);
         return harness;
     }

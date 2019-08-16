@@ -15,22 +15,21 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.Avro;
-import org.apache.flink.table.descriptors.BatchTableDescriptor;
+import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.StreamTableDescriptor;
 import org.apache.flink.table.factories.BatchTableSinkFactory;
 import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSinkFactory;
@@ -128,7 +127,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
         // define a table of sample data from a collection of POJOs.  Schema:
         // root
@@ -141,8 +140,11 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(this.setupUtils.getPravegaConfig())
                 .withRoutingKeyField("category")
-                .build();
-        table.writeToSink(sink);
+                .build()
+                .configure(SAMPLE_SCHEMA.getFieldNames(), SAMPLE_SCHEMA.getFieldTypes());
+
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
 
         // register the Pravega stream as a table called 'samples'
         FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()
@@ -192,7 +194,7 @@ public class FlinkTableITCase {
         // create a Flink Table environment
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
-        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(env);
 
         // define a table of sample data from a collection of POJOs.  Schema:
         // root
@@ -205,8 +207,11 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(this.setupUtils.getPravegaConfig())
                 .withRoutingKeyField("category")
-                .build();
-        table.writeToSink(sink);
+                .build()
+                .configure(SAMPLE_SCHEMA.getFieldNames(), SAMPLE_SCHEMA.getFieldTypes());
+
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
         env.execute();
 
         // register the Pravega stream as a table called 'samples'
@@ -239,7 +244,7 @@ public class FlinkTableITCase {
         this.setupUtils.createTestStream(stream.getStreamName(), 1);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
         PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
 
@@ -253,7 +258,7 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
-        StreamTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(
                     new Json()
                             .failOnMissingField(false)
@@ -270,7 +275,9 @@ public class FlinkTableITCase {
                 .createStreamTableSource(propertiesMap);
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
-        table.writeToSink(sink);
+
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
 
         tableEnv.registerTableSource("samples", source);
 
@@ -286,7 +293,7 @@ public class FlinkTableITCase {
             Assert.fail("expected an exception");
         } catch (JobExecutionException e) {
             // we expect the job to fail because the test sink throws a deliberate exception.
-            Assert.assertTrue(e.getCause() instanceof TestCompletionException);
+            Assert.assertTrue(ExceptionUtils.getRootCause(e) instanceof TestCompletionException);
         }
     }
 
@@ -305,7 +312,7 @@ public class FlinkTableITCase {
 
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
-        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(env);
 
         PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
 
@@ -319,7 +326,7 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
-        BatchTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(
                         new Json()
                                 .failOnMissingField(false)
@@ -335,7 +342,9 @@ public class FlinkTableITCase {
                 .createBatchTableSource(propertiesMap);
 
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
-        table.writeToSink(sink);
+
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
         env.execute();
 
         tableEnv.registerTableSource("samples", source);
@@ -357,7 +366,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
@@ -367,7 +376,7 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
-        StreamTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
                 .inAppendMode();
@@ -377,7 +386,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        table.writeToSink(sink);
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
         env.execute();
     }
 
@@ -391,7 +401,7 @@ public class FlinkTableITCase {
         // create a Flink Table environment
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
-        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(env);
 
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
 
@@ -401,7 +411,7 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
-        BatchTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
         desc.registerTableSink("test");
@@ -410,7 +420,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
 
-        table.writeToSink(sink);
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
         env.execute();
     }
 
@@ -423,7 +434,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
@@ -444,7 +455,7 @@ public class FlinkTableITCase {
                 "}";
         avro.avroSchema(avroSchema);
 
-        StreamTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(avro)
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
                 .inAppendMode();
@@ -454,7 +465,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        table.writeToSink(sink);
+        tableEnv.registerTableSink("Pravega Sink", sink);
+        table.insertInto("Pravega Sink");
         env.execute();
     }
 

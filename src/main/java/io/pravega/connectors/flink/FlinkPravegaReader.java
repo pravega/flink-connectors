@@ -215,11 +215,6 @@ public class FlinkPravegaReader<T>
         this.running = false;
     }
 
-//    @Override
-//    public void stop() {
-//        this.running = false;
-//    }
-
     @Override
     public TypeInformation<T> getProducedType() {
         return this.deserializationSchema.getProducedType();

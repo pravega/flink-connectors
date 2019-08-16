@@ -21,7 +21,7 @@ import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.table.sources.TableSourceUtil;
+import org.apache.flink.table.sources.TableSourceValidation;
 import org.junit.Test;
 
 import java.net.URI;
@@ -118,7 +118,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
-        TableSourceUtil.validateTableSource(source);
+        TableSourceValidation.validateTableSource(source);
         fail("update mode configuration validation failed");
     }
 
@@ -231,7 +231,7 @@ public class FlinkPravegaTableFactoryTest {
         assertNotNull(sink);
     }
 
-    @Test (expected = NoMatchingTableFactoryException.class)
+    @Test (expected = ValidationException.class)
     public void testMissingFormatDefinition() {
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);

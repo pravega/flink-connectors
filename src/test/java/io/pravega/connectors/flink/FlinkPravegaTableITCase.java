@@ -26,16 +26,14 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.descriptors.BatchTableDescriptor;
+import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.StreamTableDescriptor;
 import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
@@ -147,7 +145,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
         tableEnv.registerTableSource("MyTableRow", source);
 
         String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
@@ -175,7 +173,7 @@ public class FlinkPravegaTableITCase {
     public void testTableSourceBatch(FlinkPravegaJsonTableSource source) throws Exception {
 
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
         execEnvRead.setParallelism(1);
 
         tableEnv.registerTableSource("MyTableRow", source);
@@ -232,7 +230,7 @@ public class FlinkPravegaTableITCase {
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
         RESULTS.clear();
 
         // read data from the stream using Table reader
@@ -249,7 +247,7 @@ public class FlinkPravegaTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
-        StreamTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema)
                 .inAppendMode();
@@ -282,7 +280,7 @@ public class FlinkPravegaTableITCase {
     private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
 
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-        BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
         execEnvRead.setParallelism(1);
 
         // read data from the stream using Table reader
@@ -299,7 +297,7 @@ public class FlinkPravegaTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
-        BatchTableDescriptor desc = tableEnv.connect(pravega)
+        ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema);
 
