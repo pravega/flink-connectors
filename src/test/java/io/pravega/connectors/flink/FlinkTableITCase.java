@@ -166,7 +166,7 @@ public class FlinkTableITCase {
             Assert.fail("expected an exception");
         } catch (JobExecutionException e) {
             // we expect the job to fail because the test sink throws a deliberate exception.
-            Assert.assertTrue(e.getCause() instanceof TestCompletionException);
+            Assert.assertTrue(ExceptionUtils.getRootCause(e) instanceof TestCompletionException);
         }
     }
 
