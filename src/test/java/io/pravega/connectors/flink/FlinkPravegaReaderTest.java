@@ -296,10 +296,8 @@ public class FlinkPravegaReaderTest {
      * Generates a sequence of {@link EventRead} instances, including events, checkpoints, and idleness.
      */
     private static class TestEventGenerator<T> {
-        private long sequence = 0;
-
         public EventRead<T> event(T evt) {
-            return new EventReadImpl<>(Sequence.create(0, sequence++), evt, mock(Position.class), mock(EventPointer.class), null);
+            return new EventReadImpl<>(evt, mock(Position.class), mock(EventPointer.class), null);
         }
 
         public EventRead<T> idle() {
@@ -309,7 +307,7 @@ public class FlinkPravegaReaderTest {
         @SuppressWarnings("unchecked")
         public EventRead<T> checkpoint(long checkpointId) {
             String checkpointName = ReaderCheckpointHook.createCheckpointName(checkpointId);
-            return new EventReadImpl<>(Sequence.create(0, sequence++), null, mock(Position.class), mock(EventPointer.class), checkpointName);
+            return new EventReadImpl<>(null, mock(Position.class), mock(EventPointer.class), checkpointName);
         }
     }
 

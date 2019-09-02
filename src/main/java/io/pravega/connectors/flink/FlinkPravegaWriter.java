@@ -368,9 +368,9 @@ public class FlinkPravegaWriter<T>
                     .transactionTimeoutTime(txnLeaseRenewalPeriod)
                     .build();
             if (txnWriter) {
-                pravegaTxnWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+                pravegaTxnWriter = clientFactory.createTransactionalEventWriter(name(), stream.getStreamName(), eventSerializer, writerConfig);
             } else {
-                pravegaWriter = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+                pravegaWriter = clientFactory.createEventWriter(name(), stream.getStreamName(), eventSerializer, writerConfig);
             }
         }
 
@@ -581,9 +581,11 @@ public class FlinkPravegaWriter<T>
 
                 try (
                         EventStreamClientFactory restoreClientFactory = createClientFactory(scope, clientConfig);
-                        TransactionalEventStreamWriter<T> restorePravegaWriter = restoreClientFactory.createTransactionalEventWriter(stream,
-                            eventSerializer,
-                            writerConfig);
+                        TransactionalEventStreamWriter<T> restorePravegaWriter =
+                                restoreClientFactory.createTransactionalEventWriter(name(),
+                                        stream,
+                                        eventSerializer,
+                                        writerConfig);
                     ) {
 
                     log.info("restore state for the scope: {} and stream: {}", scope, stream);
