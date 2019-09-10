@@ -9,6 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
+import io.pravega.connectors.flink.watermark.TimestampExtractor;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
@@ -82,6 +84,16 @@ public class FlinkPravegaJsonTableSource extends FlinkPravegaTableSource {
                     io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema(jsonSchemaToReturnType(getTableSchema()));
             deserSchema.setFailOnMissingField(failOnMissingField);
             return deserSchema;
+        }
+
+        @Override
+        protected TimeCharacteristicMode getTimeCharacteristicMode() {
+            return TimeCharacteristicMode.PROCESSING_TIME;
+        }
+
+        @Override
+        protected TimestampExtractor<Row> getTimestampExtractor() {
+            return null;
         }
 
         /**

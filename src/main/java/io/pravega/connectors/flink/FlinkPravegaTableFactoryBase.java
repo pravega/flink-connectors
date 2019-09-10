@@ -13,6 +13,8 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.ConnectorConfigurations;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
+import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
+import io.pravega.connectors.flink.watermark.TimestampExtractor;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -25,6 +27,7 @@ import org.apache.flink.table.factories.DeserializationSchemaFactory;
 import org.apache.flink.table.factories.SerializationSchemaFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.BatchTableSource;
+import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
 import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.types.Row;
 
@@ -196,10 +199,32 @@ public abstract class FlinkPravegaTableFactoryBase {
         return formatFactory.createDeserializationSchema(properties);
     }
 
+
+    protected TimeCharacteristicMode getTimeCharacteristicMode(DescriptorProperties descriptorProperties) {
+        List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors =
+                SchemaValidator.deriveRowtimeAttributes(descriptorProperties);
+        if (rowtimeAttributeDescriptors.isEmpty()) {
+            return TimeCharacteristicMode.PROCESSING_TIME;
+        }
+        return TimeCharacteristicMode.EVENT_TIME;
+    }
+
+    // TODO: get config from properties map
+    protected TimestampExtractor<Row> getTimestampExtractor(DescriptorProperties descriptorProperties) {
+        List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors =
+                SchemaValidator.deriveRowtimeAttributes(descriptorProperties);
+        if (rowtimeAttributeDescriptors.isEmpty()) {
+            return null;
+        }
+        return (Row row) -> 1L;
+    }
+
     protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
         final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
         final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema(properties);
+        final TimeCharacteristicMode timeCharacteristicMode = getTimeCharacteristicMode(descriptorProperties);
+        final TimestampExtractor<Row> timestampExtractor = getTimestampExtractor(descriptorProperties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
         connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.READER);
@@ -207,6 +232,8 @@ public abstract class FlinkPravegaTableFactoryBase {
         // create source from the reader builder by using the supplied properties
         TableSourceReaderBuilder tableSourceReaderBuilder = new Pravega().tableSourceReaderBuilder();
         tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
+        tableSourceReaderBuilder.withTimeCharacteristicMode(timeCharacteristicMode);
+        tableSourceReaderBuilder.withTimestampExtractor(timestampExtractor);
 
         if (connectorConfigurations.getUid().isPresent()) {
             tableSourceReaderBuilder.uid(connectorConfigurations.getUid().get());

@@ -14,6 +14,8 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
+import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
+import io.pravega.connectors.flink.watermark.TimestampExtractor;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.table.api.ValidationException;
@@ -232,10 +234,22 @@ public class Pravega extends ConnectorDescriptor {
             extends AbstractStreamingReaderBuilder<Row, TableSourceReaderBuilder> {
 
         private DeserializationSchema<Row> deserializationSchema;
+        private TimeCharacteristicMode timeCharacteristicMode;
+        private TimestampExtractor<Row> timestampExtractor;
 
         @Override
         protected DeserializationSchema<Row> getDeserializationSchema() {
             return this.deserializationSchema;
+        }
+
+        @Override
+        protected TimeCharacteristicMode getTimeCharacteristicMode() {
+            return this.timeCharacteristicMode;
+        }
+
+        @Override
+        protected TimestampExtractor<Row> getTimestampExtractor() {
+            return this.timestampExtractor;
         }
 
         @Override
@@ -250,6 +264,28 @@ public class Pravega extends ConnectorDescriptor {
          */
         protected TableSourceReaderBuilder withDeserializationSchema(DeserializationSchema<Row> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            return this;
+        }
+
+        /**
+         * Configures the time characteristic mode processing time or event time .
+         *
+         * @param timeCharacteristicMode The time characteristic mode of {@code PROCESSING_TIME}, {@code EVENT_TIME}.
+         * @return TableSourceReaderBuilder instance.
+         */
+        protected TableSourceReaderBuilder withTimeCharacteristicMode(TimeCharacteristicMode timeCharacteristicMode) {
+            this.timeCharacteristicMode = timeCharacteristicMode;
+            return this;
+        }
+
+        /**
+         * Configures the timestamp extractor.
+         *
+         * @param timestampExtractor the timestamp extractor.
+         * @return TableSourceReaderBuilder instance.
+         */
+        protected TableSourceReaderBuilder withTimestampExtractor(TimestampExtractor<Row> timestampExtractor) {
+            this.timestampExtractor = timestampExtractor;
             return this;
         }
 
