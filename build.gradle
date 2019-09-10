@@ -108,10 +108,11 @@ test {
 }
 
 dependencies {
-       compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
-       testCompile group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
-       compileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
-       testCompile group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
+    compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
+    testCompile group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
+    compileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
+    testCompile group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
+
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
 

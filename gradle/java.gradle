@@ -26,7 +26,12 @@ compileJava {
     ])
 }
 
-archivesBaseName = "pravega-connectors-flink_" + flinkScalaVersion
+def getFlinkMajorMinorVersion() {
+    String ver = flinkVersion
+    return ver.substring(0, ver.lastIndexOf('.'))
+}
+
+archivesBaseName = "pravega-connectors-flink-" + getFlinkMajorMinorVersion() + '_' + flinkScalaVersion
 
 assemble.dependsOn(shadowJar)
 
