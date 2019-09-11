@@ -20,10 +20,7 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import io.pravega.connectors.flink.watermark.PeriodicWatermarkEmitter;
-import io.pravega.connectors.flink.watermark.PravegaWatermarkAssigner;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -101,11 +98,8 @@ public class FlinkPravegaReader<T>
     // The supplied event deserializer.
     final DeserializationSchema<T> deserializationSchema;
 
-    // The source's time characteristic mode. This is used to enable Pravega watermark integration.
-    final TimeCharacteristicMode timeCharacteristicMode;
-
-    // The supplied event timestamp extractor.
-    final TimestampExtractor<T> timestampExtractor;
+    // The supplied event timestamp and watermark assigner.
+    final AssignerWithTimeWindows<T> assignerWithTimeWindows;
 
     // the timeout for reading events from Pravega 
     final Time eventReadTimeout;
@@ -148,8 +142,7 @@ public class FlinkPravegaReader<T>
      * @param readerGroupScope          The reader group scope name.
      * @param readerGroupName           The reader group name.
      * @param deserializationSchema     The implementation to deserialize events from Pravega streams.
-     * @param timeCharacteristicMode    The time characteristic mode to Pravega streams.
-     * @param timestampExtractor        The implementation to extract timestamp from deserialized events (only in event-time mode).
+     * @param assignerWithTimeWindows        The implementation to extract timestamp from deserialized events (only in event-time mode).
      * @param eventReadTimeout          The event read timeout.
      * @param checkpointInitiateTimeout The checkpoint initiation timeout.
      * @param enableMetrics             Flag to indicate whether metrics needs to be enabled or not.
@@ -157,8 +150,7 @@ public class FlinkPravegaReader<T>
     protected FlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                  ReaderGroupConfig readerGroupConfig, String readerGroupScope, String readerGroupName,
                                  DeserializationSchema<T> deserializationSchema,
-                                 TimeCharacteristicMode timeCharacteristicMode,
-                                 TimestampExtractor<T> timestampExtractor,
+                                 AssignerWithTimeWindows<T> assignerWithTimeWindows,
                                  Time eventReadTimeout, Time checkpointInitiateTimeout,
                                  boolean enableMetrics) {
 
@@ -168,15 +160,10 @@ public class FlinkPravegaReader<T>
         this.readerGroupScope = Preconditions.checkNotNull(readerGroupScope, "readerGroupScope");
         this.readerGroupName = Preconditions.checkNotNull(readerGroupName, "readerGroupName");
         this.deserializationSchema = Preconditions.checkNotNull(deserializationSchema, "deserializationSchema");
-        this.timeCharacteristicMode = Preconditions.checkNotNull(timeCharacteristicMode, "timeCharacteristicMode");
         this.eventReadTimeout = Preconditions.checkNotNull(eventReadTimeout, "eventReadTimeout");
         this.checkpointInitiateTimeout = Preconditions.checkNotNull(checkpointInitiateTimeout, "checkpointInitiateTimeout");
         this.enableMetrics = enableMetrics;
-        if (timeCharacteristicMode == TimeCharacteristicMode.EVENT_TIME) {
-            this.timestampExtractor = Preconditions.checkNotNull(timestampExtractor, "timestampExtractor");
-        } else {
-            this.timestampExtractor = null;
-        }
+        this.assignerWithTimeWindows = assignerWithTimeWindows;
     }
 
     /**
@@ -187,6 +174,10 @@ public class FlinkPravegaReader<T>
         //       See https://github.com/pravega/flink-connectors/issues/130.
         log.info("Creating reader group: {}/{} for the Flink job", this.readerGroupScope, this.readerGroupName);
         createReaderGroup();
+    }
+
+    private boolean isEventTimeMode() {
+        return assignerWithTimeWindows != null;
     }
 
     // ------------------------------------------------------------------------
@@ -205,14 +196,12 @@ public class FlinkPravegaReader<T>
 
             log.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.clientConfig.getControllerURI());
 
+            long previousTimestamp = Long.MIN_VALUE;
             // If it is event time, register a watermark emitter
-            if (timeCharacteristicMode == TimeCharacteristicMode.EVENT_TIME) {
+            if (isEventTimeMode()) {
                 PeriodicWatermarkEmitter periodicEmitter = new PeriodicWatermarkEmitter(
-                        new PravegaWatermarkAssigner<T>(pravegaReader) {
-                            public long extractTimestamp(T element) {
-                                return timestampExtractor.extractTimestamp(element);
-                            }
-                        },
+                        pravegaReader,
+                        assignerWithTimeWindows,
                         ctx,
                         ((StreamingRuntimeContext) getRuntimeContext()).getProcessingTimeService(),
                         getRuntimeContext().getExecutionConfig().getAutoWatermarkInterval());
@@ -236,8 +225,10 @@ public class FlinkPravegaReader<T>
                     }
 
                     synchronized (ctx.getCheckpointLock()) {
-                        if (timeCharacteristicMode == TimeCharacteristicMode.EVENT_TIME) {
-                            ctx.collectWithTimestamp(event, timestampExtractor.extractTimestamp(event));
+                        if (isEventTimeMode()) {
+                            long currentTimestamp = assignerWithTimeWindows.extractTimestamp(event, previousTimestamp);
+                            ctx.collectWithTimestamp(event, currentTimestamp);
+                            previousTimestamp = currentTimestamp;
                         } else {
                             ctx.collect(event);
                         }
@@ -520,8 +511,7 @@ public class FlinkPravegaReader<T>
     public static class Builder<T> extends AbstractStreamingReaderBuilder<T, Builder<T>> {
 
         private DeserializationSchema<T> deserializationSchema;
-        private TimeCharacteristicMode timeCharacteristicMode;
-        private TimestampExtractor<T> timestampExtractor;
+        private AssignerWithTimeWindows<T> assignerWithTimeWindows;
 
         protected Builder<T> builder() {
             return this;
@@ -539,24 +529,13 @@ public class FlinkPravegaReader<T>
         }
 
         /**
-         * Configures the time characteristic mode processing time or event time.
+         * Sets the timestamp and watermark assigner.
          *
-         * @param timeCharacteristicMode The time characteristic mode of {@code PROCESSING_TIME}, {@code EVENT_TIME}.
+         * @param assignerWithTimeWindows The timestamp and watermark assigner.
          * @return Builder instance.
          */
-        protected Builder<T> withTimeCharacteristicMode(TimeCharacteristicMode timeCharacteristicMode) {
-            this.timeCharacteristicMode = timeCharacteristicMode;
-            return this;
-        }
-
-        /**
-         * Sets the timestamp extractor.
-         *
-         * @param timestampExtractor The timestamp extractor.
-         * @return Builder instance.
-         */
-        protected Builder<T> withTimestampExtractor(TimestampExtractor<T> timestampExtractor) {
-            this.timestampExtractor = timestampExtractor;
+        protected Builder<T> withTimestampAndWatermark(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
+            this.assignerWithTimeWindows = assignerWithTimeWindows;
             return this;
         }
 
@@ -567,19 +546,8 @@ public class FlinkPravegaReader<T>
         }
 
         @Override
-        protected TimeCharacteristicMode getTimeCharacteristicMode() {
-            Preconditions.checkState(timeCharacteristicMode != null, "Time Characteristic Mode must not be null.");
-            return timeCharacteristicMode;
-        }
-
-        @Override
-        protected TimestampExtractor<T> getTimestampExtractor() {
-            if (timeCharacteristicMode == TimeCharacteristicMode.EVENT_TIME) {
-                Preconditions.checkState(timestampExtractor != null,
-                        "Timestamp extractor must not be null in event-time mode.");
-
-            }
-            return timestampExtractor;
+        protected AssignerWithTimeWindows<T> getAssignerWithTimeWindows() {
+            return assignerWithTimeWindows;
         }
 
         /**

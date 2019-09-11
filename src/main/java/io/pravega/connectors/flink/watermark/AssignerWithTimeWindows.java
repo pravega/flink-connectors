@@ -9,10 +9,13 @@
  */
 package io.pravega.connectors.flink.watermark;
 
-import java.io.Serializable;
+import io.pravega.client.stream.TimeWindow;
+import org.apache.flink.streaming.api.functions.TimestampAssigner;
+import org.apache.flink.streaming.api.watermark.Watermark;
 
-public interface TimestampExtractor<T> extends Serializable {
+
+public interface AssignerWithTimeWindows<T> extends TimestampAssigner<T> {
 
     // app must implement the timestamp extraction
-    public long extractTimestamp(T element);
+    Watermark getWatermark(TimeWindow window);
 }

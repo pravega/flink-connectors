@@ -17,7 +17,6 @@ import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -129,7 +128,6 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
-                    .withTimeCharacteristicMode(TimeCharacteristicMode.PROCESSING_TIME)
                     .build();
 
             env

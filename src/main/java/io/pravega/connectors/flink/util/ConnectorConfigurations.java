@@ -15,10 +15,13 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.impl.Credentials;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.types.Row;
+import org.apache.flink.util.InstantiationUtil;
 
 import java.net.URI;
 import java.util.ArrayList;
@@ -45,6 +48,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_E
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
@@ -82,6 +86,9 @@ public final class ConnectorConfigurations {
     // reader stream info
     private List<StreamWithBoundaries> readerStreams = new ArrayList<>();
 
+    // reader user info
+    private Optional<AssignerWithTimeWindows<Row>> assignerWithTimeWindows;
+
     // writer info
     private Stream writerStream;
     private Optional<PravegaWriterMode> writerMode;
@@ -111,6 +118,7 @@ public final class ConnectorConfigurations {
         }
     }
 
+    @SuppressWarnings("unchecked")
     private void populateReaderConfig(DescriptorProperties descriptorProperties) {
         uid = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_UID);
         rgScope = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
@@ -118,6 +126,14 @@ public final class ConnectorConfigurations {
         refreshInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL);
         eventReadTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
         checkpointInitiateTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
+
+        final Optional<Class<AssignerWithTimeWindows>> assignerClass = descriptorProperties.getOptionalClass(
+                CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, AssignerWithTimeWindows.class);
+        if (assignerClass.isPresent()) {
+            assignerWithTimeWindows = Optional.of((AssignerWithTimeWindows<Row>) InstantiationUtil.instantiate(assignerClass.get()));
+        } else {
+            assignerWithTimeWindows = Optional.empty();
+        }
 
         if (!defaultScope.isPresent() && !rgScope.isPresent()) {
             throw new ValidationException("Must supply either " + CONNECTOR_READER_READER_GROUP_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);

@@ -13,8 +13,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.ConnectorConfigurations;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -27,7 +25,6 @@ import org.apache.flink.table.factories.DeserializationSchemaFactory;
 import org.apache.flink.table.factories.SerializationSchemaFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.BatchTableSource;
-import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
 import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.types.Row;
 
@@ -39,38 +36,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import static io.pravega.connectors.flink.Pravega.TableSinkWriterBuilder;
-import static io.pravega.connectors.flink.Pravega.TableSourceReaderBuilder;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TYPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TOKEN;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_VALIDATE_HOSTNAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_TRUST_STORE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_END_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_UID;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_NAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_METRICS;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
-
+import static io.pravega.connectors.flink.Pravega.*;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
@@ -134,6 +100,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL);
         properties.add(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
         properties.add(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
+        properties.add(CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER);
 
         properties.add(CONNECTOR_WRITER);
         properties.add(CONNECTOR_WRITER_SCOPE);
@@ -199,32 +166,10 @@ public abstract class FlinkPravegaTableFactoryBase {
         return formatFactory.createDeserializationSchema(properties);
     }
 
-
-    protected TimeCharacteristicMode getTimeCharacteristicMode(DescriptorProperties descriptorProperties) {
-        List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors =
-                SchemaValidator.deriveRowtimeAttributes(descriptorProperties);
-        if (rowtimeAttributeDescriptors.isEmpty()) {
-            return TimeCharacteristicMode.PROCESSING_TIME;
-        }
-        return TimeCharacteristicMode.EVENT_TIME;
-    }
-
-    // TODO: get config from properties map
-    protected TimestampExtractor<Row> getTimestampExtractor(DescriptorProperties descriptorProperties) {
-        List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors =
-                SchemaValidator.deriveRowtimeAttributes(descriptorProperties);
-        if (rowtimeAttributeDescriptors.isEmpty()) {
-            return null;
-        }
-        return (Row row) -> 1L;
-    }
-
     protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
         final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
         final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema(properties);
-        final TimeCharacteristicMode timeCharacteristicMode = getTimeCharacteristicMode(descriptorProperties);
-        final TimestampExtractor<Row> timestampExtractor = getTimestampExtractor(descriptorProperties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
         connectorConfigurations.parseConfigurations(descriptorProperties, ConnectorConfigurations.ConfigurationType.READER);
@@ -232,8 +177,10 @@ public abstract class FlinkPravegaTableFactoryBase {
         // create source from the reader builder by using the supplied properties
         TableSourceReaderBuilder tableSourceReaderBuilder = new Pravega().tableSourceReaderBuilder();
         tableSourceReaderBuilder.withDeserializationSchema(deserializationSchema);
-        tableSourceReaderBuilder.withTimeCharacteristicMode(timeCharacteristicMode);
-        tableSourceReaderBuilder.withTimestampExtractor(timestampExtractor);
+
+        if (connectorConfigurations.getAssignerWithTimeWindows().isPresent()) {
+            tableSourceReaderBuilder.withTimestampAndWatermark(connectorConfigurations.getAssignerWithTimeWindows().get());
+        }
 
         if (connectorConfigurations.getUid().isPresent()) {
             tableSourceReaderBuilder.uid(connectorConfigurations.getUid().get());

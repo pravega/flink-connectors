@@ -14,8 +14,7 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.table.api.ValidationException;
@@ -70,6 +69,9 @@ public class Pravega extends ConnectorDescriptor {
     public static final String CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL = "connector.reader.reader-group.refresh-interval";
     public static final String CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL = "connector.reader.reader-group.event-read-timeout-interval";
     public static final String CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL = "connector.reader.reader-group.checkpoint-initiate-timeout-interval";
+
+    // Reader Configurations - USER
+    public static final String CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER = "connector.reader.user.timestamp-and-watermark-assigner";
 
     // Writer Configurations
     public static final String CONNECTOR_WRITER = "connector.writer";
@@ -213,6 +215,11 @@ public class Pravega extends ConnectorDescriptor {
         properties.putLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL, readerGroupInfo.getReaderGroupConfig().getGroupRefreshTimeMillis());
         properties.putLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL, tableSourceReaderBuilder.eventReadTimeout.toMilliseconds());
         properties.putLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL, tableSourceReaderBuilder.checkpointInitiateTimeout.toMilliseconds());
+
+        // user information
+        if (tableSourceReaderBuilder.getAssignerWithTimeWindows() != null) {
+            properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, tableSourceReaderBuilder.getAssignerWithTimeWindows().getClass());
+        }
     }
 
     public TableSourceReaderBuilder tableSourceReaderBuilder() {
@@ -234,8 +241,7 @@ public class Pravega extends ConnectorDescriptor {
             extends AbstractStreamingReaderBuilder<Row, TableSourceReaderBuilder> {
 
         private DeserializationSchema<Row> deserializationSchema;
-        private TimeCharacteristicMode timeCharacteristicMode;
-        private TimestampExtractor<Row> timestampExtractor;
+        private AssignerWithTimeWindows<Row> assignerWithTimeWindows;
 
         @Override
         protected DeserializationSchema<Row> getDeserializationSchema() {
@@ -243,13 +249,8 @@ public class Pravega extends ConnectorDescriptor {
         }
 
         @Override
-        protected TimeCharacteristicMode getTimeCharacteristicMode() {
-            return this.timeCharacteristicMode;
-        }
-
-        @Override
-        protected TimestampExtractor<Row> getTimestampExtractor() {
-            return this.timestampExtractor;
+        protected AssignerWithTimeWindows<Row> getAssignerWithTimeWindows() {
+            return this.assignerWithTimeWindows;
         }
 
         @Override
@@ -268,24 +269,13 @@ public class Pravega extends ConnectorDescriptor {
         }
 
         /**
-         * Configures the time characteristic mode processing time or event time .
+         * Configures the timestamp and watermark assigner.
          *
-         * @param timeCharacteristicMode The time characteristic mode of {@code PROCESSING_TIME}, {@code EVENT_TIME}.
+         * @param assignerWithTimeWindows the timestamp and watermark assigner.
          * @return TableSourceReaderBuilder instance.
          */
-        protected TableSourceReaderBuilder withTimeCharacteristicMode(TimeCharacteristicMode timeCharacteristicMode) {
-            this.timeCharacteristicMode = timeCharacteristicMode;
-            return this;
-        }
-
-        /**
-         * Configures the timestamp extractor.
-         *
-         * @param timestampExtractor the timestamp extractor.
-         * @return TableSourceReaderBuilder instance.
-         */
-        protected TableSourceReaderBuilder withTimestampExtractor(TimestampExtractor<Row> timestampExtractor) {
-            this.timestampExtractor = timestampExtractor;
+        protected TableSourceReaderBuilder withTimestampAndWatermark(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
+            this.assignerWithTimeWindows = assignerWithTimeWindows;
             return this;
         }
 

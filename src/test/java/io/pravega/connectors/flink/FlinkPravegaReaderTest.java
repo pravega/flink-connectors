@@ -24,8 +24,7 @@ import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -186,7 +185,7 @@ public class FlinkPravegaReaderTest {
         boolean enableMetrics = true;
         return new TestableFlinkPravegaReader<>(
                 "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, DESERIALIZATION_SCHEMA,
-                TimeCharacteristicMode.PROCESSING_TIME, null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
+                null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
     /**
@@ -338,12 +337,11 @@ public class FlinkPravegaReaderTest {
         protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                              ReaderGroupConfig readerGroupConfig, String readerGroupScope,
                                              String readerGroupName, DeserializationSchema<T> deserializationSchema,
-                                             TimeCharacteristicMode timeCharacteristicMode,
-                                             TimestampExtractor<T> timestampExtractor,
+                                             AssignerWithTimeWindows<T> assignerWithTimeWindows,
                                              Time eventReadTimeout, Time checkpointInitiateTimeout,
                                              boolean enableMetrics) {
             super(hookUid, clientConfig, readerGroupConfig, readerGroupScope, readerGroupName, deserializationSchema,
-                    timeCharacteristicMode, timestampExtractor, eventReadTimeout, checkpointInitiateTimeout, enableMetrics);
+                    assignerWithTimeWindows, eventReadTimeout, checkpointInitiateTimeout, enableMetrics);
         }
 
         @Override
@@ -375,12 +373,7 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        protected TimeCharacteristicMode getTimeCharacteristicMode() {
-            return TimeCharacteristicMode.PROCESSING_TIME;
-        }
-
-        @Override
-        protected TimestampExtractor<Integer> getTimestampExtractor() {
+        protected AssignerWithTimeWindows<Integer> getAssignerWithTimeWindows() {
             return null;
         }
     }

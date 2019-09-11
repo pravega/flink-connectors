@@ -12,8 +12,7 @@ package io.pravega.connectors.flink;
 import com.google.common.base.Preconditions;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 
@@ -130,9 +129,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
     protected abstract DeserializationSchema<T> getDeserializationSchema();
 
-    protected abstract TimeCharacteristicMode getTimeCharacteristicMode();
-
-    protected abstract TimestampExtractor<T> getTimestampExtractor();
+    protected abstract AssignerWithTimeWindows<T> getAssignerWithTimeWindows();
 
     /**
      * Builds a {@link FlinkPravegaReader} based on the configuration.
@@ -154,8 +151,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
                 readerGroupInfo.getReaderGroupScope(),
                 readerGroupInfo.getReaderGroupName(),
                 getDeserializationSchema(),
-                getTimeCharacteristicMode(),
-                getTimestampExtractor(),
+                getAssignerWithTimeWindows(),
                 this.eventReadTimeout,
                 this.checkpointInitiateTimeout,
                 isMetricsEnabled());

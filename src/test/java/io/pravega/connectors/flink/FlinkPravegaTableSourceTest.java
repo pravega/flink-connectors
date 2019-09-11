@@ -11,8 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
-import io.pravega.connectors.flink.watermark.TimeCharacteristicMode;
-import io.pravega.connectors.flink.watermark.TimestampExtractor;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -203,12 +202,7 @@ public class FlinkPravegaTableSourceTest {
             }
 
             @Override
-            protected TimeCharacteristicMode getTimeCharacteristicMode() {
-                return null;
-            }
-
-            @Override
-            protected TimestampExtractor<Row> getTimestampExtractor() {
+            protected AssignerWithTimeWindows<Row> getAssignerWithTimeWindows() {
                 return null;
             }
         }

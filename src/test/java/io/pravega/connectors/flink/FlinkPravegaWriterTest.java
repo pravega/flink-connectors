@@ -660,6 +660,7 @@ public class FlinkPravegaWriterTest {
     private <T> EventStreamClientFactory mockClientFactory(EventStreamWriter<T> eventWriter) {
         EventStreamClientFactory clientFactory = mock(EventStreamClientFactory.class);
         when(clientFactory.<T>createEventWriter(anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
+        when(clientFactory.<T>createEventWriter(anyString(), anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
         return clientFactory;
     }
 

@@ -7,41 +7,43 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.pravega.connectors.flink.watermark;
+package io.pravega.connectors.flink;
 
+import io.pravega.client.stream.EventStreamReader;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.Preconditions;
 
-public class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
+class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
 
-    private PravegaWatermarkAssigner<?> pravegaWatermarkAssigner;
+    private EventStreamReader<?> pravegaReader;
+    private AssignerWithTimeWindows<?> assignerWithTimeWindows;
     private final SourceContext<?> ctx;
     private final ProcessingTimeService timerService;
     private final long interval;
     private long lastWatermarkTimestamp;
 
-    public PeriodicWatermarkEmitter(
-            PravegaWatermarkAssigner<?> pravegaWatermarkAssigner,
-            SourceContext<?> ctx,
-            ProcessingTimeService timerService,
-            long autoWatermarkInterval) {
-        this.pravegaWatermarkAssigner = Preconditions.checkNotNull(pravegaWatermarkAssigner);
+    protected PeriodicWatermarkEmitter(
+            EventStreamReader<?> pravegaReader, AssignerWithTimeWindows<?> assignerWithTimeWindows,
+            SourceContext<?> ctx, ProcessingTimeService timerService, long autoWatermarkInterval) {
+        this.pravegaReader = Preconditions.checkNotNull(pravegaReader);
+        this.assignerWithTimeWindows = Preconditions.checkNotNull(assignerWithTimeWindows);
         this.ctx = Preconditions.checkNotNull(ctx);
         this.timerService = Preconditions.checkNotNull(timerService);
         this.interval = autoWatermarkInterval;
         this.lastWatermarkTimestamp = Long.MIN_VALUE;
     }
 
-    public void start() {
+    protected void start() {
         timerService.registerTimer(timerService.getCurrentProcessingTime() + interval, this);
     }
 
     @Override
     public void onProcessingTime(long timestamp) throws Exception {
-        Watermark watermark = pravegaWatermarkAssigner.getCurrentWatermark();
+        Watermark watermark = assignerWithTimeWindows.getWatermark(pravegaReader.getCurrentTimeWindow());
 
         if (watermark.getTimestamp() > lastWatermarkTimestamp) {
             lastWatermarkTimestamp = watermark.getTimestamp();
