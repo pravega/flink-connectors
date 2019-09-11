@@ -26,6 +26,7 @@ import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.metrics.Gauge;
@@ -35,8 +36,13 @@ import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.datastream.SingleOutputStreamOperator;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
+import org.apache.flink.streaming.api.watermark.Watermark;
+import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
+import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
 import org.apache.flink.util.FlinkException;
+import org.apache.flink.util.SerializedValue;
 
+import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -99,7 +105,7 @@ public class FlinkPravegaReader<T>
     final DeserializationSchema<T> deserializationSchema;
 
     // The supplied event timestamp and watermark assigner.
-    final AssignerWithTimeWindows<T> assignerWithTimeWindows;
+    final SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
     // the timeout for reading events from Pravega 
     final Time eventReadTimeout;
@@ -150,7 +156,7 @@ public class FlinkPravegaReader<T>
     protected FlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                  ReaderGroupConfig readerGroupConfig, String readerGroupScope, String readerGroupName,
                                  DeserializationSchema<T> deserializationSchema,
-                                 AssignerWithTimeWindows<T> assignerWithTimeWindows,
+                                 SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows,
                                  Time eventReadTimeout, Time checkpointInitiateTimeout,
                                  boolean enableMetrics) {
 
@@ -180,6 +186,46 @@ public class FlinkPravegaReader<T>
         return assignerWithTimeWindows != null;
     }
 
+    private class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
+
+        private EventStreamReader<?> pravegaReader;
+        private ClassLoader userCodeClassLoader;
+        private final SourceContext<?> ctx;
+        private final ProcessingTimeService timerService;
+        private final long interval;
+        private long lastWatermarkTimestamp;
+
+        protected PeriodicWatermarkEmitter(
+                EventStreamReader<?> pravegaReader, SourceContext<?> ctx, ClassLoader userCodeClassLoader,
+                ProcessingTimeService timerService, long autoWatermarkInterval) {
+            this.pravegaReader = Preconditions.checkNotNull(pravegaReader);
+            this.ctx = Preconditions.checkNotNull(ctx);
+            this.userCodeClassLoader = Preconditions.checkNotNull(userCodeClassLoader);
+            this.timerService = Preconditions.checkNotNull(timerService);
+            this.interval = autoWatermarkInterval;
+            this.lastWatermarkTimestamp = Long.MIN_VALUE;
+        }
+
+        protected void start() {
+            timerService.registerTimer(timerService.getCurrentProcessingTime() + interval, this);
+        }
+
+        @Override
+        public void onProcessingTime(long timestamp) throws Exception {
+            Watermark watermark = assignerWithTimeWindows.deserializeValue(userCodeClassLoader)
+                    .getWatermark(pravegaReader.getCurrentTimeWindow());
+
+            if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
+                lastWatermarkTimestamp = watermark.getTimestamp();
+                log.debug("Emit watermark with timestamp: %d", watermark.getTimestamp());
+                ctx.emitWatermark(watermark);
+            }
+
+            // schedule the next watermark
+            timerService.registerTimer(timerService.getCurrentProcessingTime() + interval, this);
+        }
+    }
+
     // ------------------------------------------------------------------------
     //  source function methods
     // ------------------------------------------------------------------------
@@ -197,12 +243,14 @@ public class FlinkPravegaReader<T>
             log.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.clientConfig.getControllerURI());
 
             long previousTimestamp = Long.MIN_VALUE;
+            AssignerWithTimeWindows<T> assigner = null;
             // If it is event time, register a watermark emitter
             if (isEventTimeMode()) {
+                assigner = assignerWithTimeWindows.deserializeValue(getRuntimeContext().getUserCodeClassLoader());
                 PeriodicWatermarkEmitter periodicEmitter = new PeriodicWatermarkEmitter(
                         pravegaReader,
-                        assignerWithTimeWindows,
                         ctx,
+                        getRuntimeContext().getUserCodeClassLoader(),
                         ((StreamingRuntimeContext) getRuntimeContext()).getProcessingTimeService(),
                         getRuntimeContext().getExecutionConfig().getAutoWatermarkInterval());
 
@@ -226,7 +274,7 @@ public class FlinkPravegaReader<T>
 
                     synchronized (ctx.getCheckpointLock()) {
                         if (isEventTimeMode()) {
-                            long currentTimestamp = assignerWithTimeWindows.extractTimestamp(event, previousTimestamp);
+                            long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
                             ctx.collectWithTimestamp(event, currentTimestamp);
                             previousTimestamp = currentTimestamp;
                         } else {
@@ -511,7 +559,7 @@ public class FlinkPravegaReader<T>
     public static class Builder<T> extends AbstractStreamingReaderBuilder<T, Builder<T>> {
 
         private DeserializationSchema<T> deserializationSchema;
-        private AssignerWithTimeWindows<T> assignerWithTimeWindows;
+        private SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
         protected Builder<T> builder() {
             return this;
@@ -535,7 +583,12 @@ public class FlinkPravegaReader<T>
          * @return Builder instance.
          */
         protected Builder<T> withTimestampAndWatermark(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
-            this.assignerWithTimeWindows = assignerWithTimeWindows;
+            try {
+                ClosureCleaner.clean(assignerWithTimeWindows, true);
+                this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("The given assigner is not serializable", e);
+            }
             return this;
         }
 
@@ -546,7 +599,7 @@ public class FlinkPravegaReader<T>
         }
 
         @Override
-        protected AssignerWithTimeWindows<T> getAssignerWithTimeWindows() {
+        protected SerializedValue<AssignerWithTimeWindows<T>> getAssignerWithTimeWindows() {
             return assignerWithTimeWindows;
         }
 

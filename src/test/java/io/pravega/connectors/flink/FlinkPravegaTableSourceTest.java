@@ -37,6 +37,7 @@ import org.apache.flink.table.sources.TableSourceUtil;
 import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.SerializedValue;
 import org.junit.Test;
 
 import java.net.URI;
@@ -202,7 +203,7 @@ public class FlinkPravegaTableSourceTest {
             }
 
             @Override
-            protected AssignerWithTimeWindows<Row> getAssignerWithTimeWindows() {
+            protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
                 return null;
             }
         }

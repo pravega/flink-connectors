@@ -34,6 +34,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.TestHarnessUtil;
+import org.apache.flink.util.SerializedValue;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -337,7 +338,7 @@ public class FlinkPravegaReaderTest {
         protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                              ReaderGroupConfig readerGroupConfig, String readerGroupScope,
                                              String readerGroupName, DeserializationSchema<T> deserializationSchema,
-                                             AssignerWithTimeWindows<T> assignerWithTimeWindows,
+                                             SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows,
                                              Time eventReadTimeout, Time checkpointInitiateTimeout,
                                              boolean enableMetrics) {
             super(hookUid, clientConfig, readerGroupConfig, readerGroupScope, readerGroupName, deserializationSchema,
@@ -373,7 +374,7 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        protected AssignerWithTimeWindows<Integer> getAssignerWithTimeWindows() {
+        protected SerializedValue<AssignerWithTimeWindows<Integer>> getAssignerWithTimeWindows() {
             return null;
         }
     }

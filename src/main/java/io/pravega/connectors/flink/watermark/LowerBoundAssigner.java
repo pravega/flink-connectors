@@ -13,12 +13,21 @@ import io.pravega.client.stream.TimeWindow;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
 public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T> {
+
+    private static final long serialVersionUID = 2069173720413829850L;
+
+    public LowerBoundAssigner() {
+    }
+
     @Override
     public abstract long extractTimestamp(T element, long previousElementTimestamp);
 
     // built-in watermark implementation which emits the lower bound - 1
     @Override
     public Watermark getWatermark(TimeWindow timeWindow) {
+        if (timeWindow == null) {
+            return null;
+        }
         return new Watermark(timeWindow.getLowerTimeBound() - 1L);
     }
 }

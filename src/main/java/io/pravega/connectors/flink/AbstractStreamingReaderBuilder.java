@@ -15,6 +15,7 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.util.SerializedValue;
 
 import java.util.Optional;
 
@@ -129,7 +130,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
     protected abstract DeserializationSchema<T> getDeserializationSchema();
 
-    protected abstract AssignerWithTimeWindows<T> getAssignerWithTimeWindows();
+    protected abstract SerializedValue<AssignerWithTimeWindows<T>> getAssignerWithTimeWindows();
 
     /**
      * Builds a {@link FlinkPravegaReader} based on the configuration.

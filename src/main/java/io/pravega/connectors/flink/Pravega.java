@@ -17,12 +17,15 @@ import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.SerializedValue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -241,7 +244,7 @@ public class Pravega extends ConnectorDescriptor {
             extends AbstractStreamingReaderBuilder<Row, TableSourceReaderBuilder> {
 
         private DeserializationSchema<Row> deserializationSchema;
-        private AssignerWithTimeWindows<Row> assignerWithTimeWindows;
+        private SerializedValue<AssignerWithTimeWindows<Row>> assignerWithTimeWindows;
 
         @Override
         protected DeserializationSchema<Row> getDeserializationSchema() {
@@ -249,7 +252,7 @@ public class Pravega extends ConnectorDescriptor {
         }
 
         @Override
-        protected AssignerWithTimeWindows<Row> getAssignerWithTimeWindows() {
+        protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
             return this.assignerWithTimeWindows;
         }
 
@@ -275,7 +278,12 @@ public class Pravega extends ConnectorDescriptor {
          * @return TableSourceReaderBuilder instance.
          */
         protected TableSourceReaderBuilder withTimestampAndWatermark(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
-            this.assignerWithTimeWindows = assignerWithTimeWindows;
+            try {
+                ClosureCleaner.clean(assignerWithTimeWindows, true);
+                this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("The given assigner is not serializable", e);
+            }
             return this;
         }
 

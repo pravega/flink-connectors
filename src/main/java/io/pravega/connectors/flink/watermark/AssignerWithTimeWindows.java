@@ -13,9 +13,11 @@ import io.pravega.client.stream.TimeWindow;
 import org.apache.flink.streaming.api.functions.TimestampAssigner;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
+import javax.annotation.Nullable;
 
 public interface AssignerWithTimeWindows<T> extends TimestampAssigner<T> {
 
     // app must implement the timestamp extraction
+    @Nullable
     Watermark getWatermark(TimeWindow window);
 }

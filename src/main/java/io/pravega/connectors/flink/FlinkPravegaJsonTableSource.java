@@ -15,6 +15,7 @@ import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.SerializedValue;
 
 import java.util.function.Supplier;
 
@@ -86,7 +87,7 @@ public class FlinkPravegaJsonTableSource extends FlinkPravegaTableSource {
         }
 
         @Override
-        protected AssignerWithTimeWindows<Row> getAssignerWithTimeWindows() {
+        protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
             return null;
         }
 

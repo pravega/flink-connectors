@@ -32,12 +32,14 @@ public class ThrottledIntegerWriter extends CheckedThread implements AutoCloseab
 
     private final Object blocker = new Object();
 
+    private boolean watermarkEnabled;
+
     private volatile boolean throttled;
 
     private volatile boolean running;
 
     public ThrottledIntegerWriter(EventStreamWriter<Integer> eventWriter,
-                                  int numValues, int blockAtNum, int sleepPerElement) {
+                                  int numValues, int blockAtNum, int sleepPerElement, boolean watermarkEnabled) {
 
         super("ThrottledIntegerWriter");
 
@@ -48,6 +50,7 @@ public class ThrottledIntegerWriter extends CheckedThread implements AutoCloseab
 
         this.running = true;
         this.throttled = true;
+        this.watermarkEnabled = watermarkEnabled;
     }
 
     @Override
@@ -71,6 +74,9 @@ public class ThrottledIntegerWriter extends CheckedThread implements AutoCloseab
             }
 
             eventWriter.writeEvent(String.valueOf(i), i).get();
+            if (watermarkEnabled && i % 10 == 0) {
+                eventWriter.noteTime(i);
+            }
         }
     }
 

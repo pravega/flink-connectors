@@ -85,14 +85,16 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
                         eventWriter1,
                         numElements1,
                         numElements1 + 1, // no need to block writer for a batch test
-                        0
+                        0,
+                        false
                 );
 
                 final ThrottledIntegerWriter producer2 = new ThrottledIntegerWriter(
                         eventWriter2,
                         numElements2,
                         numElements2 + 1, // no need to block writer for a batch test
-                        0
+                        0,
+                        false
                 )
         ) {
             // write batch input
@@ -143,7 +145,8 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
                         eventWriter,
                         numElements,
                         numElements + 1, // no need to block writer for a batch test
-                        0
+                        0,
+                        false
                 )
         ) {
             // write batch input
