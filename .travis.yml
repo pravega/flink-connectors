@@ -35,7 +35,8 @@ cache:
 stages:
   - name: build
   - name: snapshot
-    if: branch = master AND NOT (type = pull_request)
+    # master or release branch
+    if: (branch = master OR branch =~ /^r[0-9]\.[0-9][\S]*/) AND NOT (type = pull_request)
 
 jobs:
   include:
