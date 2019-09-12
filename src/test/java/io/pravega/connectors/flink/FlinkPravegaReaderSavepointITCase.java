@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
-import io.pravega.connectors.flink.utils.FlinkMiniClusterWithSavepointCommand;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
@@ -26,6 +25,8 @@ import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.client.JobCancellationException;
 import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
+import org.apache.flink.runtime.minicluster.MiniCluster;
+import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.runtime.state.filesystem.FsStateBackend;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.TestLogger;
@@ -49,7 +50,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
-    
+
     private static final int PARALLELISM = 4;
 
     // ----------------------------------------------------------------------------
@@ -59,9 +60,11 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     // Setup utility.
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
-    // the flink mini cluster
-    private static final FlinkMiniClusterWithSavepointCommand FLINK = 
-            FlinkMiniClusterWithSavepointCommand.create(PARALLELISM);
+    private static final MiniCluster MINI_CLUSTER = new MiniCluster(
+            new MiniClusterConfiguration.Builder()
+                    .setNumTaskManagers(1)
+                    .setNumSlotsPerTaskManager(PARALLELISM)
+                    .build());
 
     //Ensure each test completes within 120 seconds.
     @Rule
@@ -73,12 +76,12 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     @BeforeClass
     public static void setup() throws Exception {
         SETUP_UTILS.startAllServices();
-        FLINK.start();
+        MINI_CLUSTER.start();
     }
 
     @AfterClass
     public static void tearDown() throws Exception {
-        FLINK.stop();
+        MINI_CLUSTER.closeAsync();
         SETUP_UTILS.stopAllServices();
     }
 
@@ -96,7 +99,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
 
-        // we create two independent Flink jobs (that come from the same program) 
+        // we create two independent Flink jobs (that come from the same program)
         final JobGraph program1 = getFlinkJob(sourceParallelism, streamName, numElements);
 
         try (
@@ -119,7 +122,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             final CheckedThread flinkRunner = new CheckedThread() {
                 @Override
                 public void go() throws Exception {
-                    FLINK.submitJobAndWait(program1, false);
+                    MINI_CLUSTER.submitJob(program1);
                 }
             };
 
@@ -135,16 +138,13 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             // since with the short timeouts we configure in these tests, Pravega Checkpoints
             // sometimes don't complete in time, we retry a bit here
             for (int attempt = 1; savepointPath == null && attempt <= 5; attempt++) {
-                try {
-                    savepointPath = FLINK.triggerSavepoint(program1.getJobID(), tmpFolder.newFolder().toURI());
-                } catch (FlinkMiniClusterWithSavepointCommand.SavepointFailedException ignored) {
-                }
+                savepointPath = MINI_CLUSTER.triggerSavepoint(program1.getJobID(), tmpFolder.newFolder().getAbsolutePath(), false).get();
             }
 
             assertNotNull("Failed to trigger a savepoint", savepointPath);
 
             // now cancel the job and relaunch a new one
-            FLINK.cancelJob(program1.getJobID());
+            MINI_CLUSTER.cancelJob(program1.getJobID());
 
             try {
                 // this throws an exception that the job was cancelled
@@ -160,7 +160,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
             // if these calls complete without exception, then the test passes
             try {
-                FLINK.submitJobAndWait(program2, false);
+                MINI_CLUSTER.executeJobBlocking(program2);
             } catch (Exception e) {
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
                     throw e;
@@ -212,7 +212,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
                 // check for duplicates
                 .addSink(new IntSequenceExactlyOnceValidator(numElements))
                 .setParallelism(1);
-        
+
         return env.getStreamGraph().getJobGraph();
     }
 }

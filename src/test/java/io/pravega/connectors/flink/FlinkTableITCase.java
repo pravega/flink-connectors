@@ -15,6 +15,7 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.runtime.client.JobExecutionException;
@@ -128,6 +129,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         // define a table of sample data from a collection of POJOs.  Schema:
@@ -192,6 +194,7 @@ public class FlinkTableITCase {
         // create a Flink Table environment
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         // define a table of sample data from a collection of POJOs.  Schema:
@@ -239,6 +242,7 @@ public class FlinkTableITCase {
         this.setupUtils.createTestStream(stream.getStreamName(), 1);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
@@ -305,6 +309,7 @@ public class FlinkTableITCase {
 
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
@@ -357,6 +362,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
@@ -391,6 +397,7 @@ public class FlinkTableITCase {
         // create a Flink Table environment
         ExecutionEnvironment env = ExecutionEnvironment.createLocalEnvironment();
         env.setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
@@ -423,6 +430,7 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
         StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
