@@ -192,7 +192,7 @@ public class FlinkPravegaTableITCase {
         log.info("results: {}", results);
 
         boolean compare = compare(results, getExpectedResultsAppend());
-//        assertTrue("Output does not match expected result", compare);
+        //assertTrue("Output does not match expected result", compare);
     }
 
     @Test
