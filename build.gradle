@@ -40,6 +40,13 @@ apply plugin: 'org.ajoberstar.grgit'
 apply from: 'gradle/mkdocs.gradle'
 apply from: 'gradle/jacoco.gradle'
 
+gradle.projectsEvaluated {
+    tasks.withType(JavaCompile) {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+}
+
 tasks.withType(com.github.spotbugs.SpotBugsTask) {
     reports {
         xml.enabled = false
@@ -105,6 +112,7 @@ dependencies {
     testCompile group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
     compileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
     testCompile group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
+
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
 

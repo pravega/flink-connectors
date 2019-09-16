@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
-import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Schema;
@@ -38,8 +38,8 @@ import static org.junit.Assert.fail;
 public class FlinkPravegaTableFactoryTest {
 
     final static Schema SCHEMA = new Schema()
-                                            .field("name", Types.STRING() )
-                                            .field("age", Types.INT() );
+                                            .field("name", Types.STRING )
+                                            .field("age", Types.INT );
     final static Json JSON = new Json().failOnMissingField(false) .deriveSchema();
     final static String SCOPE = "foo";
     final static String STREAM = "bar";

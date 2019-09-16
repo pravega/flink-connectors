@@ -17,13 +17,13 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.runtime.client.JobExecutionException;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.Avro;
@@ -264,7 +264,7 @@ public class FlinkTableITCase {
                             .failOnMissingField(false)
                             .deriveSchema()
                 )
-                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
                 .inAppendMode();
         desc.registerTableSourceAndSink("test");
 
@@ -332,7 +332,7 @@ public class FlinkTableITCase {
                                 .failOnMissingField(false)
                                 .deriveSchema()
                 )
-                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
+                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT));
         desc.registerTableSourceAndSink("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
@@ -378,7 +378,7 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
                 .inAppendMode();
         desc.registerTableSink("test");
 
@@ -413,7 +413,7 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
+                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT));
         desc.registerTableSink("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
@@ -457,7 +457,7 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(avro)
-                .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
                 .inAppendMode();
         desc.registerTableSink("test");
 

@@ -16,6 +16,7 @@ import io.pravega.connectors.flink.utils.SuccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -29,7 +30,6 @@ import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
@@ -97,9 +97,9 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         TableSchema tableSchema = TableSchema.builder()
-                .field("user", Types.STRING())
-                .field("uri", Types.STRING())
-                .field("accessTime", Types.SQL_TIMESTAMP())
+                .field("user", Types.STRING)
+                .field("uri", Types.STRING)
+                .field("accessTime", Types.SQL_TIMESTAMP)
                 .build();
         TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
 
@@ -205,9 +205,9 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         TableSchema tableSchema = TableSchema.builder()
-                .field("user", Types.STRING())
-                .field("uri", Types.STRING())
-                .field("accessTime", Types.SQL_TIMESTAMP())
+                .field("user", Types.STRING)
+                .field("uri", Types.STRING)
+                .field("accessTime", Types.SQL_TIMESTAMP)
                 .build();
         TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
 
@@ -243,9 +243,9 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         Schema schema = new Schema()
-                .field("user", Types.STRING())
-                .field("uri", Types.STRING())
-                .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
+                .field("user", Types.STRING)
+                .field("uri", Types.STRING)
+                .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
                                 .watermarksPeriodicBounded(30000L));
 
@@ -293,9 +293,9 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         Schema schema = new Schema()
-                .field("user", Types.STRING())
-                .field("uri", Types.STRING())
-                .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
+                .field("user", Types.STRING)
+                .field("uri", Types.STRING)
+                .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
                                 .watermarksPeriodicBounded(30000L));
 
