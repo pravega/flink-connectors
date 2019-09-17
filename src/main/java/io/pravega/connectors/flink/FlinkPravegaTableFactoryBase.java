@@ -72,19 +72,19 @@ import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CO
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
 import static org.apache.flink.table.descriptors.FormatDescriptorValidator.FORMAT;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_TIMESTAMPS_CLASS;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_TIMESTAMPS_FROM;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_TIMESTAMPS_SERIALIZED;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_TIMESTAMPS_TYPE;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_WATERMARKS_CLASS;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_WATERMARKS_DELAY;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_WATERMARKS_SERIALIZED;
-import static org.apache.flink.table.descriptors.RowtimeValidator.ROWTIME_WATERMARKS_TYPE;
-import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA;
-import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_FROM;
-import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_NAME;
-import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_PROCTIME;
-import static org.apache.flink.table.descriptors.SchemaValidator.SCHEMA_TYPE;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_CLASS;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_FROM;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_SERIALIZED;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_TYPE;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_CLASS;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_DELAY;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_SERIALIZED;
+import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_TYPE;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
 
 public abstract class FlinkPravegaTableFactoryBase {
 
@@ -140,20 +140,20 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         // schema
-        properties.add(SCHEMA() + ".#." + SCHEMA_TYPE());
-        properties.add(SCHEMA() + ".#." + SCHEMA_NAME());
-        properties.add(SCHEMA() + ".#." + SCHEMA_FROM());
+        properties.add(SCHEMA + ".#." + SCHEMA_TYPE);
+        properties.add(SCHEMA + ".#." + SCHEMA_NAME);
+        properties.add(SCHEMA + ".#." + SCHEMA_FROM);
 
         // time attributes
-        properties.add(SCHEMA() + ".#." + SCHEMA_PROCTIME());
-        properties.add(SCHEMA() + ".#." + ROWTIME_TIMESTAMPS_TYPE());
-        properties.add(SCHEMA() + ".#." + ROWTIME_TIMESTAMPS_FROM());
-        properties.add(SCHEMA() + ".#." + ROWTIME_TIMESTAMPS_CLASS());
-        properties.add(SCHEMA() + ".#." + ROWTIME_TIMESTAMPS_SERIALIZED());
-        properties.add(SCHEMA() + ".#." + ROWTIME_WATERMARKS_TYPE());
-        properties.add(SCHEMA() + ".#." + ROWTIME_WATERMARKS_CLASS());
-        properties.add(SCHEMA() + ".#." + ROWTIME_WATERMARKS_SERIALIZED());
-        properties.add(SCHEMA() + ".#." + ROWTIME_WATERMARKS_DELAY());
+        properties.add(SCHEMA + ".#." + SCHEMA_PROCTIME);
+        properties.add(SCHEMA + ".#." + ROWTIME_TIMESTAMPS_TYPE);
+        properties.add(SCHEMA + ".#." + ROWTIME_TIMESTAMPS_FROM);
+        properties.add(SCHEMA + ".#." + ROWTIME_TIMESTAMPS_CLASS);
+        properties.add(SCHEMA + ".#." + ROWTIME_TIMESTAMPS_SERIALIZED);
+        properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_TYPE);
+        properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_CLASS);
+        properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_SERIALIZED);
+        properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_DELAY);
 
         // format wildcard
         properties.add(FORMAT + ".*");
@@ -198,7 +198,7 @@ public abstract class FlinkPravegaTableFactoryBase {
 
     protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
-        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
+        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA);
         final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema(properties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
@@ -257,7 +257,7 @@ public abstract class FlinkPravegaTableFactoryBase {
 
     protected FlinkPravegaTableSink createFlinkPravegaTableSink(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
-        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
+        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA);
         SerializationSchema<Row> serializationSchema = getSerializationSchema(properties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();

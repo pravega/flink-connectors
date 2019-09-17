@@ -21,7 +21,6 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.common.functions.StoppableFunction;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -50,7 +49,7 @@ import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaRe
 @Slf4j
 public class FlinkPravegaReader<T>
         extends RichParallelSourceFunction<T>
-        implements ResultTypeQueryable<T>, StoppableFunction, ExternallyInducedSource<T, Checkpoint> {
+        implements ResultTypeQueryable<T>, ExternallyInducedSource<T, Checkpoint> {
 
     // ----- metrics field constants -----
 
@@ -96,10 +95,10 @@ public class FlinkPravegaReader<T>
     // The supplied event deserializer.
     final DeserializationSchema<T> deserializationSchema;
 
-    // the timeout for reading events from Pravega 
+    // the timeout for reading events from Pravega
     final Time eventReadTimeout;
 
-    // the timeout for call that initiates the Pravega checkpoint 
+    // the timeout for call that initiates the Pravega checkpoint
     final Time checkpointInitiateTimeout;
 
     // flag to enable/disable metrics
@@ -107,8 +106,8 @@ public class FlinkPravegaReader<T>
 
     // ----- runtime fields -----
 
-    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()' 
-    // may be called asynchronously 
+    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()'
+    // may be called asynchronously
     volatile boolean running = true;
 
     // checkpoint trigger callback, invoked when a checkpoint event is received.
@@ -213,11 +212,6 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void cancel() {
-        this.running = false;
-    }
-
-    @Override
-    public void stop() {
         this.running = false;
     }
 

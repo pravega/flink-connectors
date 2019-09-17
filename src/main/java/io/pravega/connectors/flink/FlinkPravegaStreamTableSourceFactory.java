@@ -29,7 +29,7 @@ public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableFacto
     @Override
     public Map<String, String> requiredContext() {
         Map<String, String> context = getRequiredContext();
-        context.put(UPDATE_MODE(), UPDATE_MODE_VALUE_APPEND());
+        context.put(UPDATE_MODE, UPDATE_MODE_VALUE_APPEND);
         return context;
     }
 

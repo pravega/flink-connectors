@@ -19,20 +19,18 @@ import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableSchema;
 
+import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
+import org.apache.flink.table.descriptors.FormatDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.TableDescriptor;
 import org.apache.flink.table.descriptors.SchematicDescriptor;
-import org.apache.flink.table.descriptors.FormatDescriptor;
-import org.apache.flink.table.descriptors.ConnectorDescriptor;
-import org.apache.flink.table.descriptors.StreamableDescriptor;
-import org.apache.flink.table.descriptors.StreamTableDescriptorValidator;
+import org.apache.flink.table.descriptors.TableDescriptor;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.table.sources.TableSourceUtil;
+import org.apache.flink.table.sources.TableSourceValidation;
 import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
@@ -118,10 +116,10 @@ public class FlinkPravegaTableSourceTest {
         final String scopeName = "test";
 
         final TableSchema tableSchema = TableSchema.builder()
-                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
-                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                .field(cityName, Types.STRING)
+                .field(total, Types.BIG_DEC)
+                .field(eventTime, Types.SQL_TIMESTAMP)
+                .field(procTime, Types.SQL_TIMESTAMP)
                 .build();
 
         Stream stream = Stream.of(scopeName, streamName);
@@ -141,7 +139,7 @@ public class FlinkPravegaTableSourceTest {
                 .withReaderGroupScope(stream.getScope())
                 .build();
 
-        TableSourceUtil.validateTableSource(flinkPravegaJsonTableSource);
+        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource);
 
         // construct table source using descriptors and table source factory
         Pravega pravega = new Pravega();
@@ -154,26 +152,26 @@ public class FlinkPravegaTableSourceTest {
                 .withFormat(new Json().failOnMissingField(false) .deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .field(cityName, Types.STRING)
+                                .field(total, Types.BIG_DEC)
+                                .field(eventTime, Types.SQL_TIMESTAMP)
                                     .rowtime(new Rowtime()
                                                 .timestampsFromField(eventTime)
                                                 .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                             )
-                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime())
+                                .field(procTime, Types.SQL_TIMESTAMP).proctime())
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
-        TableSourceUtil.validateTableSource(actualSource);
+        TableSourceValidation.validateTableSource(actualSource);
     }
 
     /** Converts the JSON schema into into the return type. */
     private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
-        return new RowTypeInfo(jsonSchema.getTypes(), jsonSchema.getColumnNames());
+        return new RowTypeInfo(jsonSchema.getFieldTypes(), jsonSchema.getFieldNames());
     }
 
     private static class TestableFlinkPravegaTableSource extends FlinkPravegaTableSource {
@@ -205,20 +203,17 @@ public class FlinkPravegaTableSourceTest {
     /**
      * Test Table descriptor wrapper
      */
-    static class TestTableDescriptor extends TableDescriptor implements SchematicDescriptor<TestTableDescriptor>, StreamableDescriptor<TestTableDescriptor> {
+    static class TestTableDescriptor extends TableDescriptor implements SchematicDescriptor<TestTableDescriptor> {
 
-        private FormatDescriptor formatDescriptor;
         private Schema schemaDescriptor;
-        private ConnectorDescriptor connectorDescriptor;
-        private String updateMode;
 
         public TestTableDescriptor(ConnectorDescriptor connectorDescriptor) {
-            this.connectorDescriptor = connectorDescriptor;
+            super(connectorDescriptor);
         }
 
         @Override
         public TestTableDescriptor withFormat(FormatDescriptor format) {
-            this.formatDescriptor = format;
+            super.withFormat(format);
             return this;
         }
 
@@ -230,36 +225,27 @@ public class FlinkPravegaTableSourceTest {
 
         @Override
         public TestTableDescriptor inAppendMode() {
-            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND();
+            super.inAppendMode();
             return this;
         }
 
         @Override
         public TestTableDescriptor inRetractMode() {
-            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_RETRACT();
+            super.inRetractMode();
             return this;
         }
 
         @Override
         public TestTableDescriptor inUpsertMode() {
-            this.updateMode = StreamTableDescriptorValidator.UPDATE_MODE_VALUE_UPSERT();
+            super.inUpsertMode();
             return this;
         }
 
         @Override
-        public Map<String, String> toProperties() {
+        public Map<String, String> additionalProperties() {
             final DescriptorProperties properties = new DescriptorProperties();
-            if (formatDescriptor != null) {
-                properties.putProperties(formatDescriptor.toProperties());
-            }
-            if (connectorDescriptor != null) {
-                properties.putProperties(connectorDescriptor.toProperties());
-            }
             if (schemaDescriptor != null) {
                 properties.putProperties(schemaDescriptor.toProperties());
-            }
-            if (updateMode != null) {
-                properties.putString(StreamTableDescriptorValidator.UPDATE_MODE(), updateMode);
             }
             return properties.asMap();
         }

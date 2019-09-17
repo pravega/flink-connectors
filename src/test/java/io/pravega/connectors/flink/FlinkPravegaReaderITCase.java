@@ -132,7 +132,6 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
             env
                     .addSource(pravegaSource)
-
                     // this mapper throws an exception at 2/3rd of the data stream,
                     // which is strictly after the checkpoint happened (the latest at 1/2 of the stream)
 
