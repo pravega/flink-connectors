@@ -24,7 +24,11 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
+import org.apache.flink.util.Collector;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -104,7 +108,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
             env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
             env.setParallelism(4);
-            env.getConfig().setAutoWatermarkInterval(1);
+            env.getConfig().setAutoWatermarkInterval(1000);
 
             // the Pravega reader
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
@@ -122,6 +126,15 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
             env
                     .addSource(pravegaSource)
+                    .timeWindowAll(Time.seconds(1))
+                    .apply(new AllWindowFunction<Integer, Integer, TimeWindow>() {
+                        @Override
+                        public void apply(TimeWindow window, Iterable<Integer> arr, Collector<Integer> collector) throws Exception {
+                            for (Integer i : arr) {
+                                collector.collect(i);
+                            }
+                        }
+                    })
                     .addSink(new IntSequenceExactlyOnceValidator(NUM_STREAM_ELEMENTS))
                     .setParallelism(1);
 

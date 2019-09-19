@@ -25,7 +25,7 @@ public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T
     // built-in watermark implementation which emits the lower bound - 1
     @Override
     public Watermark getWatermark(TimeWindow timeWindow) {
-        if (timeWindow == null) {
+        if (timeWindow == null || timeWindow.isNearHeadOfStream()) {
             return null;
         }
         return new Watermark(timeWindow.getLowerTimeBound() - 1L);

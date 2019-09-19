@@ -74,9 +74,12 @@ public class ThrottledIntegerWriter extends CheckedThread implements AutoCloseab
             }
 
             eventWriter.writeEvent(String.valueOf(i), i).get();
-            if (watermarkEnabled && i % 10 == 0) {
+            if (watermarkEnabled && i % 100 == 0) {
                 eventWriter.noteTime(i);
             }
+        }
+        if (watermarkEnabled) {
+            eventWriter.noteTime(numValues);
         }
     }
 

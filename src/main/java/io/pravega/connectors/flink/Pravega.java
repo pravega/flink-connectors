@@ -18,6 +18,7 @@ import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.java.ClosureCleaner;
+import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
@@ -221,7 +222,15 @@ public class Pravega extends ConnectorDescriptor {
 
         // user information
         if (tableSourceReaderBuilder.getAssignerWithTimeWindows() != null) {
-            properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, tableSourceReaderBuilder.getAssignerWithTimeWindows().getClass());
+            try {
+                @SuppressWarnings("unchecked")
+                AssignerWithTimeWindows<Row> assigner = (AssignerWithTimeWindows<Row>) tableSourceReaderBuilder
+                        .getAssignerWithTimeWindows().deserializeValue(getClass().getClassLoader());
+
+                properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, assigner.getClass());
+            } catch (Exception e) {
+                throw new TableException(e.getMessage());
+            }
         }
     }
 
@@ -277,6 +286,8 @@ public class Pravega extends ConnectorDescriptor {
          * @param assignerWithTimeWindows the timestamp and watermark assigner.
          * @return TableSourceReaderBuilder instance.
          */
+        // TODO: Due to the serialization validation for `connectorProperties`, only `public` `static-inner/outer` class implements
+        // `AssignerWithTimeWindow` is supported as a parameter of `withTimestampAndWatermark` in Table API stream table source.
         protected TableSourceReaderBuilder withTimestampAndWatermark(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, true);

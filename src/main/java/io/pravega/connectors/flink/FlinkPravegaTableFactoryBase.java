@@ -139,8 +139,8 @@ public abstract class FlinkPravegaTableFactoryBase {
         final DescriptorProperties descriptorProperties = new DescriptorProperties(true);
         descriptorProperties.putProperties(properties);
 
-        boolean supportsSourceTimestamps = false;
-        boolean supportsSourceWatermarks = false;
+        boolean supportsSourceTimestamps = true;
+        boolean supportsSourceWatermarks = true;
         new SchemaValidator(isStreamEnvironment(), supportsSourceTimestamps, supportsSourceWatermarks).validate(descriptorProperties);
 
         new PravegaValidator().validate(descriptorProperties);

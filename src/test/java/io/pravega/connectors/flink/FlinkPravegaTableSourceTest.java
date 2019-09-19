@@ -12,6 +12,7 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
+import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -173,6 +174,51 @@ public class FlinkPravegaTableSourceTest {
         TableSourceUtil.validateTableSource(actualSource);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTableSourceDescriptorWithWatermark() {
+        final String cityName = "fruitName";
+        final String total = "count";
+        final String eventTime = "eventTime";
+        final String procTime = "procTime";
+        final String controllerUri = "tcp://localhost:9090";
+        final long delay = 3000L;
+        final String streamName = "test";
+        final String scopeName = "test";
+
+        Stream stream = Stream.of(scopeName, streamName);
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(controllerUri))
+                .withDefaultScope(scopeName);
+
+        // construct table source using descriptors and table source factory
+        Pravega pravega = new Pravega();
+        pravega.tableSourceReaderBuilder()
+                .withTimestampAndWatermark(new MyAssigner())
+                .withReaderGroupScope(stream.getScope())
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
+
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withSchema(
+                        new Schema()
+                                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .rowtime(new Rowtime()
+                                        .timestampsFromSource()
+                                        .watermarksFromSource()
+                                ))
+                .inAppendMode();
+
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
+                .createStreamTableSource(propertiesMap);
+        assertNotNull(actualSource);
+        TableSourceUtil.validateTableSource(actualSource);
+    }
+
     /** Converts the JSON schema into into the return type. */
     private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
         return new RowTypeInfo(jsonSchema.getTypes(), jsonSchema.getColumnNames());
@@ -270,5 +316,15 @@ public class FlinkPravegaTableSourceTest {
             }
             return properties.asMap();
         }
+    }
+
+    public static class MyAssigner extends LowerBoundAssigner<Row> {
+        public MyAssigner() {}
+
+        @Override
+        public long extractTimestamp(Row element, long previousElementTimestamp) {
+            return (long) element.getField(2);
+        }
+
     }
 }

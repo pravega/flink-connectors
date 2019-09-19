@@ -148,7 +148,7 @@ public class FlinkPravegaReader<T>
      * @param readerGroupScope          The reader group scope name.
      * @param readerGroupName           The reader group name.
      * @param deserializationSchema     The implementation to deserialize events from Pravega streams.
-     * @param assignerWithTimeWindows        The implementation to extract timestamp from deserialized events (only in event-time mode).
+     * @param assignerWithTimeWindows   The serialized value of the implementation to extract timestamp from deserialized events (only in event-time mode).
      * @param eventReadTimeout          The event read timeout.
      * @param checkpointInitiateTimeout The checkpoint initiation timeout.
      * @param enableMetrics             Flag to indicate whether metrics needs to be enabled or not.
@@ -180,6 +180,10 @@ public class FlinkPravegaReader<T>
         //       See https://github.com/pravega/flink-connectors/issues/130.
         log.info("Creating reader group: {}/{} for the Flink job", this.readerGroupScope, this.readerGroupName);
         createReaderGroup();
+        if (isEventTimeMode()) {
+            Preconditions.checkArgument(readerGroup.getStreamNames().size() == 1,
+                    "Only 1 Pravega stream is allowed in the event-time mode");
+        }
     }
 
     private boolean isEventTimeMode() {
@@ -212,12 +216,13 @@ public class FlinkPravegaReader<T>
 
         @Override
         public void onProcessingTime(long timestamp) throws Exception {
+            Stream stream = Stream.of(readerGroup.getStreamNames().iterator().next());
             Watermark watermark = assignerWithTimeWindows.deserializeValue(userCodeClassLoader)
-                    .getWatermark(pravegaReader.getCurrentTimeWindow());
+                    .getWatermark(pravegaReader.getCurrentTimeWindow(stream));
 
             if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
                 lastWatermarkTimestamp = watermark.getTimestamp();
-                log.debug("Emit watermark with timestamp: %d", watermark.getTimestamp());
+                log.debug("Emit watermark with timestamp: {}", watermark.getTimestamp());
                 ctx.emitWatermark(watermark);
             }
 
