@@ -14,8 +14,8 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.runtime.util.DirectExecutorService;
 import org.apache.flink.api.common.io.OutputFormat;
+import org.apache.flink.runtime.util.DirectExecutorService;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -26,6 +26,7 @@ import java.util.concurrent.ExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.doReturn;
@@ -191,7 +192,7 @@ public class FlinkPravegaOutputFormatTest {
                 .build();
 
         FlinkPravegaOutputFormat<String> spyFlinkPravegaOutputFormat = spy(flinkPravegaOutputFormat);
-        doReturn(clientFactory).when(spyFlinkPravegaOutputFormat).createClientFactory(stream.getScope(), clientConfig);
+        doReturn(clientFactory).when(spyFlinkPravegaOutputFormat).createClientFactory(anyString(), any());
         return spyFlinkPravegaOutputFormat;
     }
 
