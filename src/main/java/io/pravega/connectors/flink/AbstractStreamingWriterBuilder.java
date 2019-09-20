@@ -27,10 +27,12 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
     private static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000; // 30 seconds
 
     protected PravegaWriterMode writerMode;
+    protected boolean enableWatermark;
     protected Time txnLeaseRenewalPeriod;
 
     protected AbstractStreamingWriterBuilder() {
         writerMode = PravegaWriterMode.ATLEAST_ONCE;
+        enableWatermark = false;
         txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     }
 
@@ -41,6 +43,16 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      */
     public B withWriterMode(PravegaWriterMode writerMode) {
         this.writerMode = writerMode;
+        return builder();
+    }
+
+    /**
+     * Enable watermark
+     *
+     * @param enableWatermark boolean
+     */
+    public B enableWatermark(boolean enableWatermark) {
+        this.enableWatermark = enableWatermark;
         return builder();
     }
 
@@ -76,6 +88,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 eventRouter,
                 writerMode,
                 txnLeaseRenewalPeriod.toMilliseconds(),
+                enableWatermark,
                 isMetricsEnabled());
     }
 }

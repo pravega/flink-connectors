@@ -92,6 +92,7 @@ public final class ConnectorConfigurations {
     // writer info
     private Stream writerStream;
     private Optional<PravegaWriterMode> writerMode;
+    private Optional<Boolean> watermark;
     private Optional<Long> txnLeaseRenewalInterval;
     private String routingKey;
 

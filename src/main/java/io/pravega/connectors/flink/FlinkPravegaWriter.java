@@ -20,6 +20,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.common.Exceptions;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.configuration.Configuration;
@@ -96,6 +97,9 @@ public class FlinkPravegaWriter<T>
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private PravegaWriterMode writerMode;
 
+    // flag to enable/disable watermark
+    private boolean enableWatermark;
+
     // Client factory for PravegaWriter instances
     private transient EventStreamClientFactory clientFactory = null;
 
@@ -108,6 +112,7 @@ public class FlinkPravegaWriter<T>
      * @param eventRouter           The implementation to extract the partition key from the event.
      * @param writerMode            The Pravega writer mode.
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param enableWatermark       Flag to indicate whether watermark needs to be enabled or not.
      * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     protected FlinkPravegaWriter(
@@ -117,6 +122,7 @@ public class FlinkPravegaWriter<T>
             final PravegaEventRouter<T> eventRouter,
             final PravegaWriterMode writerMode,
             final long txnLeaseRenewalPeriod,
+            final boolean enableWatermark,
             final boolean enableMetrics) {
 
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
@@ -126,6 +132,7 @@ public class FlinkPravegaWriter<T>
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
+        this.enableWatermark = enableWatermark;
         this.enableMetrics = enableMetrics;
     }
 
@@ -143,6 +150,13 @@ public class FlinkPravegaWriter<T>
         return this.writerMode;
     }
 
+    /**
+     * Gets this enable watermark flag.
+     */
+    public boolean getEnableWatermark() {
+        return this.enableWatermark;
+    }
+
     // ------------------------------------------------------------------------
 
     @Override
@@ -158,7 +172,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void invoke(T event, Context context) throws Exception {
-        writer.write(event);
+        writer.write(event, context, enableWatermark);
     }
 
     @Override
@@ -216,7 +230,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
-        return writer.snapshotState(checkpointId, checkpointTime);
+        return writer.snapshotState(checkpointId, checkpointTime, enableWatermark);
     }
 
     /**
@@ -330,10 +344,18 @@ public class FlinkPravegaWriter<T>
 
         private final Transaction<T> transaction;
         private final long checkpointId;
+        private final Long watermark;
 
         TransactionAndCheckpoint(Transaction<T> transaction, long checkpointId) {
             this.transaction = transaction;
             this.checkpointId = checkpointId;
+            this.watermark = null;
+        }
+
+        TransactionAndCheckpoint(Transaction<T> transaction, long checkpointId, Long watermark) {
+            this.transaction = transaction;
+            this.checkpointId = checkpointId;
+            this.watermark = watermark;
         }
 
         Transaction<T> transaction() {
@@ -344,9 +366,13 @@ public class FlinkPravegaWriter<T>
             return checkpointId;
         }
 
+        Long watermark() {
+            return watermark;
+        }
+
         @Override
         public String toString() {
-            return "(checkpoint: " + checkpointId + ", transaction: " + transaction.getTxnId() + ')';
+            return "(checkpoint: " + checkpointId + ", transaction: " + transaction.getTxnId() + ", watermark: " + watermark() + ')';
         }
     }
 
@@ -362,11 +388,15 @@ public class FlinkPravegaWriter<T>
         @Getter
         private TransactionalEventStreamWriter<T> pravegaTxnWriter;
 
+        @Getter @Setter
+        private transient long watermark;
+
         AbstractInternalWriter(EventStreamClientFactory clientFactory, boolean txnWriter) {
             Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
             EventWriterConfig writerConfig = EventWriterConfig.builder()
                     .transactionTimeoutTime(txnLeaseRenewalPeriod)
                     .build();
+            watermark = Long.MIN_VALUE;
             if (txnWriter) {
                 pravegaTxnWriter = clientFactory.createTransactionalEventWriter(name(), stream.getStreamName(), eventSerializer, writerConfig);
             } else {
@@ -374,9 +404,13 @@ public class FlinkPravegaWriter<T>
             }
         }
 
+        boolean shouldEmitWatermark(Context context) {
+            return watermark < context.currentWatermark() && context.timestamp() >= context.currentWatermark();
+        }
+
         abstract void open() throws Exception;
 
-        abstract void write(T event) throws Exception;
+        abstract void write(T event, Context context, boolean enableWatermark) throws Exception;
 
         void close() throws Exception {
             if (pravegaWriter != null) {
@@ -387,7 +421,7 @@ public class FlinkPravegaWriter<T>
             }
         }
 
-        abstract List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception;
+        abstract List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime, boolean enableWatermark) throws Exception;
 
         abstract void restoreState(List<PendingTransaction> pendingTransactionList) throws Exception;
 
@@ -427,8 +461,11 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void write(T event) throws Exception {
+        public void write(T event, Context context, boolean enableWatermark) throws Exception {
             this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
+            if (enableWatermark) {
+                this.setWatermark(context.currentWatermark());
+            }
         }
 
         @Override
@@ -456,7 +493,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime, boolean enableWatermark) throws Exception {
             // this is like the pre-commit of a 2-phase-commit transaction
             // we are ready to commit and remember the transaction
 
@@ -469,7 +506,11 @@ public class FlinkPravegaWriter<T>
             txn.flush();
 
             // remember the transaction to be committed when the checkpoint is confirmed
-            this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
+            if (enableWatermark) {
+                this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId, this.getWatermark()));
+            } else {
+                this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
+            }
 
             // start the next transaction for what comes after this checkpoint
             this.currentTxn = this.getPravegaTxnWriter().beginTxn();
@@ -479,7 +520,7 @@ public class FlinkPravegaWriter<T>
 
             // store all pending transactions in the checkpoint state
             return txnsPendingCommit.stream()
-                    .map(v -> new PendingTransaction(v.transaction().getTxnId(), stream.getScope(), stream.getStreamName()))
+                    .map(v -> new PendingTransaction(v.transaction().getTxnId(), stream.getScope(), stream.getStreamName(), v.watermark()))
                     .collect(Collectors.toList());
         }
 
@@ -531,7 +572,12 @@ public class FlinkPravegaWriter<T>
 
                 // TODO: currently, if this fails, there is actually data loss
                 // see https://github.com/pravega/flink-connectors/issues/5
-                txn.transaction().commit();
+                if (txn.watermark() != null) {
+                    txn.transaction().commit(txn.watermark());
+                } else {
+                    txn.transaction().commit();
+                }
+
 
                 log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
 
@@ -603,7 +649,11 @@ public class FlinkPravegaWriter<T>
                             log.info("{} - committing completed checkpoint transaction {} after task restore",
                                     name(), txnId);
 
-                            txn.commit();
+                            if (pendingTransaction.getWatermark() != null) {
+                                txn.commit(pendingTransaction.getWatermark());
+                            } else {
+                                txn.commit();
+                            }
 
                             log.debug("{} - committed checkpoint transaction {}", name(), txnId);
 
@@ -657,12 +707,16 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public void write(T event) throws Exception {
+        public void write(T event, Context context, boolean enableWatermark) throws Exception {
 
             checkWriteError();
 
             this.pendingWritesCount.incrementAndGet();
             final CompletableFuture<Void> future = this.getPravegaWriter().writeEvent(eventRouter.getRoutingKey(event), event);
+            if (enableWatermark && shouldEmitWatermark(context)) {
+                this.getPravegaWriter().noteTime(context.currentWatermark());
+                setWatermark(context.currentWatermark());
+            }
             future.whenCompleteAsync(
                     (result, e) -> {
                         if (e != null) {
@@ -709,7 +763,7 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
-        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime) throws Exception {
+        public List<PendingTransaction> snapshotState(long checkpointId, long checkpointTime, boolean enableWatermark) throws Exception {
             log.debug("Snapshot triggered, wait for all pending writes to complete");
             flushAndVerify();
             return new ArrayList<>();
@@ -756,14 +810,16 @@ public class FlinkPravegaWriter<T>
         private final UUID uuid;
         private final String scope;
         private final String stream;
+        private final Long watermark;
 
-        public PendingTransaction(UUID uuid, String scope, String stream) {
+        public PendingTransaction(UUID uuid, String scope, String stream, Long watermark) {
             Preconditions.checkNotNull(uuid, "UUID");
             Preconditions.checkNotNull(scope, "scope");
             Preconditions.checkNotNull(stream, "stream");
             this.uuid = uuid;
             this.scope = scope;
             this.stream = stream;
+            this.watermark = watermark;
         }
 
         public UUID getUuid() {
@@ -776,6 +832,10 @@ public class FlinkPravegaWriter<T>
 
         public String getStream() {
             return stream;
+        }
+
+        public Long getWatermark() {
+            return watermark;
         }
     }
 
