@@ -30,32 +30,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TOKEN;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_AUTH_TYPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_TRUST_STORE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_SECURITY_VALIDATE_HOSTNAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_METRICS;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_NAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_UID;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_END_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
+import static io.pravega.connectors.flink.Pravega.*;
 
 /**
  * Pravega connector configurations used to parse and map the {@link DescriptorProperties}.
@@ -92,8 +67,8 @@ public final class ConnectorConfigurations {
     // writer info
     private Stream writerStream;
     private Optional<PravegaWriterMode> writerMode;
-    private Optional<Boolean> watermark;
     private Optional<Long> txnLeaseRenewalInterval;
+    private Boolean watermark;
     private String routingKey;
 
     private PravegaConfig pravegaConfig;
@@ -198,6 +173,7 @@ public final class ConnectorConfigurations {
         if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
             throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
         }
+        watermark = descriptorProperties.getBoolean(CONNECTOR_WRITER_ENABLE_WATERMARK);
         routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);

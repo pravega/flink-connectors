@@ -107,6 +107,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_WRITER_STREAM);
         properties.add(CONNECTOR_WRITER_MODE);
         properties.add(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL);
+        properties.add(CONNECTOR_WRITER_ENABLE_WATERMARK);
         properties.add(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         // schema
@@ -166,6 +167,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         return formatFactory.createDeserializationSchema(properties);
     }
 
+    @SuppressWarnings("unchecked")
     protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
         final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
@@ -229,6 +231,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         return flinkPravegaTableSource;
     }
 
+    @SuppressWarnings("unchecked")
     protected FlinkPravegaTableSink createFlinkPravegaTableSink(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
         final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA());
@@ -248,6 +251,7 @@ public abstract class FlinkPravegaTableFactoryBase {
             tableSinkWriterBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
         }
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
+        tableSinkWriterBuilder.enableWatermark(connectorConfigurations.getWatermark());
         tableSinkWriterBuilder.withRoutingKeyField(connectorConfigurations.getRoutingKey());
         tableSinkWriterBuilder.withSerializationSchema(serializationSchema);
         tableSinkWriterBuilder.forStream(connectorConfigurations.getWriterStream());

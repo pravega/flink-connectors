@@ -544,7 +544,8 @@ public class FlinkPravegaWriterTest {
                         testHarness.setup();
                         Transaction<Integer> trans = context.prepareTransaction();
                         when(trans.checkStatus()).thenReturn(status);
-                        context.txnSinkFunction.restoreState(Collections.singletonList(new FlinkPravegaWriter.PendingTransaction(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME)));
+                        context.txnSinkFunction.restoreState(Collections.singletonList(
+                                new FlinkPravegaWriter.PendingTransaction(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME, null)));
                         verify(trans).checkStatus();
                         return trans;
                     }
@@ -594,19 +595,24 @@ public class FlinkPravegaWriterTest {
 
                     switch (i) {
                         case 0:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_1));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_1, null));
                             break;
                         case 1:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_2));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_2, null));
                             break;
                         case 2:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_3));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_3, null));
                             break;
                         case 3:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_4));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_4, null));
                             break;
                         case 4:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_5));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_5, null));
                             break;
                         default:
                             break;

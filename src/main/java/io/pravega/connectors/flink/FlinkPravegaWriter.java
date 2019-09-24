@@ -112,7 +112,7 @@ public class FlinkPravegaWriter<T>
      * @param eventRouter           The implementation to extract the partition key from the event.
      * @param writerMode            The Pravega writer mode.
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
-     * @param enableWatermark       Flag to indicate whether watermark needs to be enabled or not.
+     * @param enableWatermark       Flag to indicate whether Pravega watermark needs to be enabled or not.
      * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     protected FlinkPravegaWriter(
@@ -388,7 +388,8 @@ public class FlinkPravegaWriter<T>
         @Getter
         private TransactionalEventStreamWriter<T> pravegaTxnWriter;
 
-        @Getter @Setter
+        @Getter
+        @Setter
         private transient long watermark;
 
         AbstractInternalWriter(EventStreamClientFactory clientFactory, boolean txnWriter) {
@@ -578,9 +579,7 @@ public class FlinkPravegaWriter<T>
                     txn.transaction().commit();
                 }
 
-
                 log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
-
             }
         }
 

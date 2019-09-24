@@ -47,7 +47,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
     }
 
     /**
-     * Enable watermark
+     * Enable watermark.
      *
      * @param enableWatermark boolean
      */
