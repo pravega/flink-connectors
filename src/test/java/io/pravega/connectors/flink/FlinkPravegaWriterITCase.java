@@ -189,10 +189,10 @@ public class FlinkPravegaWriterITCase {
 
         StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment()
                 .setParallelism(1)
-                .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
+                .enableCheckpointing(1000, CheckpointingMode.AT_LEAST_ONCE);
         execEnv.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
         execEnv.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        execEnv.getConfig().setAutoWatermarkInterval(1000);
+        execEnv.getConfig().setAutoWatermarkInterval(50);
 
         DataStream<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE))
@@ -312,7 +312,7 @@ public class FlinkPravegaWriterITCase {
      */
     @Test
     public void testExactlyOnceWriterWithWatermark() throws Exception {
-        int numElements = 10000;
+        int numElements = 2000;
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -325,10 +325,10 @@ public class FlinkPravegaWriterITCase {
             // make sure that this does not introduce any duplicates
             final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
                     .setParallelism(1)
-                    .enableCheckpointing(100);
+                    .enableCheckpointing(100, CheckpointingMode.EXACTLY_ONCE);
             env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
             env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-            env.getConfig().setAutoWatermarkInterval(100);
+            env.getConfig().setAutoWatermarkInterval(1);
 
             FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
                     .forStream(streamName)
@@ -341,13 +341,18 @@ public class FlinkPravegaWriterITCase {
                     .build();
 
             env
-                    .addSource(new ThrottledIntegerGeneratingSource(numElements))
-                    .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Integer>() {
-                        @Override
-                        public long extractAscendingTimestamp(Integer i) {
-                            return i;
-                        }
-                    })
+                    .addSource(new ThrottledIntegerGeneratingSource(numElements).withWatermarks(20))
+//                    .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Integer>() {
+//                        @Override
+//                        public long extractAscendingTimestamp(Integer i) {
+//                            if (i%100 == 0) {
+//                                log.info("Extracted Timestamp {}", i);
+//                            }
+//
+//
+//                            return i;
+//                        }
+//                    })
                     .map(new FailingMapper<>(numElements / 2))
                     .addSink(pravegaSink).setParallelism(2);
 

@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializableObject;
 
@@ -46,6 +47,7 @@ public class ThrottledIntegerGeneratingSource
     /** Flag to cancel the source. Must be volatile, because modified asynchronously */
     private volatile boolean running = true;
 
+    private int eventsPerWatermark = 0;
 
     public ThrottledIntegerGeneratingSource(final int numEventsTotal) {
         this(numEventsTotal, numEventsTotal / 2);
@@ -59,6 +61,14 @@ public class ThrottledIntegerGeneratingSource
         this.latestPosForCheckpoint = latestPosForCheckpoint;
     }
 
+    /**
+     * Tells the source to emit a watermark every {@link #eventsPerWatermark} events
+     */
+    public ThrottledIntegerGeneratingSource withWatermarks(int eventsPerWatermark) {
+        this.eventsPerWatermark = eventsPerWatermark;
+        return this;
+    }
+
     // ------------------------------------------------------------------------
     //  source
     // ------------------------------------------------------------------------
@@ -70,6 +80,11 @@ public class ThrottledIntegerGeneratingSource
         final int stepSize = getRuntimeContext().getNumberOfParallelSubtasks();
         int current = this.currentPosition >= 0 ? this.currentPosition : getRuntimeContext().getIndexOfThisSubtask();
 
+        if (eventsPerWatermark > 0) {
+            ctx.emitWatermark(new Watermark(current));
+        }
+
+        log.info("Running");
         while (this.running && current < this.numEventsTotal) {
 
             // throttle if no checkpoint happened so far
@@ -88,9 +103,12 @@ public class ThrottledIntegerGeneratingSource
             // emit the next element
             current += stepSize;
             synchronized (ctx.getCheckpointLock()) {
-                log.info("Generating event: " + current);
                 ctx.collect(current);
                 this.currentPosition = current;
+
+                if (eventsPerWatermark > 0 && current % eventsPerWatermark == 0) {
+                    ctx.emitWatermark(new Watermark(current));
+                }
             }
         }
 
@@ -129,15 +147,12 @@ public class ThrottledIntegerGeneratingSource
     @Override
     public List<Integer> snapshotState(long checkpointId, long checkpointTimestamp) throws Exception {
         this.lastCheckpointTriggered = checkpointId;
-        log.info("snapshot from: " + this.currentPosition);
         return Collections.singletonList(this.currentPosition);
     }
 
     @Override
     public void restoreState(List<Integer> state) throws Exception {
         this.currentPosition = state.get(0);
-
-        log.info("restore from: " + this.currentPosition);
 
         // at least one checkpoint must have happened so fat
         this.lastCheckpointTriggered = 1L;
