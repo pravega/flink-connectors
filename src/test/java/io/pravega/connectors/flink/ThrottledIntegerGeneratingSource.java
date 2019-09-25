@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
@@ -21,6 +22,7 @@ import java.util.List;
 /**
  * A Flink source that generates integers, but slows down until the first checkpoint has been completed.
  */
+@Slf4j
 public class ThrottledIntegerGeneratingSource
         extends RichParallelSourceFunction<Integer>
         implements ListCheckpointed<Integer>, CheckpointListener {
@@ -86,6 +88,7 @@ public class ThrottledIntegerGeneratingSource
             // emit the next element
             current += stepSize;
             synchronized (ctx.getCheckpointLock()) {
+                log.info("Generating event: " + current);
                 ctx.collect(current);
                 this.currentPosition = current;
             }
@@ -126,13 +129,15 @@ public class ThrottledIntegerGeneratingSource
     @Override
     public List<Integer> snapshotState(long checkpointId, long checkpointTimestamp) throws Exception {
         this.lastCheckpointTriggered = checkpointId;
-
+        log.info("snapshot from: " + this.currentPosition);
         return Collections.singletonList(this.currentPosition);
     }
 
     @Override
     public void restoreState(List<Integer> state) throws Exception {
         this.currentPosition = state.get(0);
+
+        log.info("restore from: " + this.currentPosition);
 
         // at least one checkpoint must have happened so fat
         this.lastCheckpointTriggered = 1L;

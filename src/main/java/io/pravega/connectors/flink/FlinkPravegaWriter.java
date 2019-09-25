@@ -397,12 +397,17 @@ public class FlinkPravegaWriter<T>
             EventWriterConfig writerConfig = EventWriterConfig.builder()
                     .transactionTimeoutTime(txnLeaseRenewalPeriod)
                     .build();
-            watermark = Long.MIN_VALUE;
+            watermark = -999;
             if (txnWriter) {
                 pravegaTxnWriter = clientFactory.createTransactionalEventWriter(name(), stream.getStreamName(), eventSerializer, writerConfig);
             } else {
                 pravegaWriter = clientFactory.createEventWriter(name(), stream.getStreamName(), eventSerializer, writerConfig);
             }
+        }
+
+        AbstractInternalWriter(EventStreamClientFactory clientFactory, boolean txnWriter, long watermark) {
+            this(clientFactory, txnWriter);
+            setWatermark(watermark);
         }
 
         boolean shouldEmitWatermark(Context context) {
@@ -465,6 +470,7 @@ public class FlinkPravegaWriter<T>
         public void write(T event, Context context, boolean enableWatermark) throws Exception {
             this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
             if (enableWatermark) {
+                log.info("write watermark: {}", context.currentWatermark());
                 this.setWatermark(context.currentWatermark());
             }
         }
@@ -508,6 +514,7 @@ public class FlinkPravegaWriter<T>
 
             // remember the transaction to be committed when the checkpoint is confirmed
             if (enableWatermark) {
+                log.info("add watermark: {}", this.getWatermark());
                 this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId, this.getWatermark()));
             } else {
                 this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
@@ -574,6 +581,7 @@ public class FlinkPravegaWriter<T>
                 // TODO: currently, if this fails, there is actually data loss
                 // see https://github.com/pravega/flink-connectors/issues/5
                 if (txn.watermark() != null) {
+                    log.info("Watermark commit : {}", txn.watermark());
                     txn.transaction().commit(txn.watermark());
                 } else {
                     txn.transaction().commit();

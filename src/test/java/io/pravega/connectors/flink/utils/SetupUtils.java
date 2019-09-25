@@ -226,6 +226,17 @@ public final class SetupUtils {
     }
 
     /**
+     * Get the stream.
+     *
+     * @param streamName     Name of the test stream.
+     *
+     * @return a Stream
+     */
+    public Stream getStream(final String streamName) {
+        return Stream.of(this.scope, streamName);
+    }
+
+    /**
      * Create a stream writer for writing Integer events.
      *
      * @param streamName    Name of the test stream.
