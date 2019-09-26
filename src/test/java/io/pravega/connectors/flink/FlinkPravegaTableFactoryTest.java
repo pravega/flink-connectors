@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
-import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Schema;
@@ -21,7 +21,7 @@ import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.table.sources.TableSourceUtil;
+import org.apache.flink.table.sources.TableSourceValidation;
 import org.junit.Test;
 
 import java.net.URI;
@@ -38,8 +38,8 @@ import static org.junit.Assert.fail;
 public class FlinkPravegaTableFactoryTest {
 
     final static Schema SCHEMA = new Schema()
-                                            .field("name", Types.STRING() )
-                                            .field("age", Types.INT() );
+                                            .field("name", Types.STRING )
+                                            .field("age", Types.INT );
     final static Json JSON = new Json().failOnMissingField(false) .deriveSchema();
     final static String SCOPE = "foo";
     final static String STREAM = "bar";
@@ -118,7 +118,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
-        TableSourceUtil.validateTableSource(source);
+        TableSourceValidation.validateTableSource(source);
         fail("update mode configuration validation failed");
     }
 
@@ -231,7 +231,7 @@ public class FlinkPravegaTableFactoryTest {
         assertNotNull(sink);
     }
 
-    @Test (expected = NoMatchingTableFactoryException.class)
+    @Test (expected = ValidationException.class)
     public void testMissingFormatDefinition() {
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);

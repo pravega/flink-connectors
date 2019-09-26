@@ -137,14 +137,14 @@ public class FlinkPravegaTableSinkTest {
                 .withFormat(new Json().failOnMissingField(false).deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .field(cityName, Types.STRING)
+                                .field(total, Types.BIG_DEC)
+                                .field(eventTime, Types.SQL_TIMESTAMP)
                                 .rowtime(new Rowtime()
                                         .timestampsFromField(eventTime)
                                         .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                 )
-                                .field(procTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP()).proctime()
+                                .field(procTime, Types.SQL_TIMESTAMP).proctime()
                 )
                 .inAppendMode();
 

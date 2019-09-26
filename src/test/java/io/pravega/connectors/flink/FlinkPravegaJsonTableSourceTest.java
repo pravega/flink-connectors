@@ -37,7 +37,7 @@ public class FlinkPravegaJsonTableSourceTest {
                 .forStream("scope/stream")
                 .withSchema(SAMPLE_SCHEMA)
                 .build();
-        TypeInformation<Row> expected = new RowTypeInfo(SAMPLE_SCHEMA.getTypes(), SAMPLE_SCHEMA.getColumnNames());
+        TypeInformation<Row> expected = new RowTypeInfo(SAMPLE_SCHEMA.getFieldTypes(), SAMPLE_SCHEMA.getFieldNames());
         assertEquals(expected, source.getReturnType());
     }
 

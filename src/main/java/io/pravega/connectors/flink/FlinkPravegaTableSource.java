@@ -13,13 +13,13 @@ package io.pravega.connectors.flink;
 import io.pravega.client.ClientConfig;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.table.sources.DefinedProctimeAttribute;
@@ -132,7 +132,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
             Optional<TypeInformation<?>> tpe = schema.getFieldType(proctimeAttribute);
             if (!tpe.isPresent()) {
                 throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
+            } else if (tpe.get() != Types.SQL_TIMESTAMP) {
                 throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type SQL_TIMESTAMP.");
             }
         }
@@ -151,7 +151,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
             Optional<TypeInformation<?>> tpe = schema.getFieldType(rowtimeAttribute);
             if (!tpe.isPresent()) {
                 throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get() != Types.SQL_TIMESTAMP()) {
+            } else if (tpe.get() != Types.SQL_TIMESTAMP) {
                 throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type SQL_TIMESTAMP.");
             }
         }
@@ -188,7 +188,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
 
         /**
          * Configures a field of the table to be a processing time attribute.
-         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP()}.
+         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP}.
          *
          * @param proctimeAttribute The name of the processing time attribute in the table schema.
          * @return The builder.
@@ -203,7 +203,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
 
         /**
          * Configures a field of the table to be a rowtime attribute.
-         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP()}.
+         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP}.
          *
          * @param rowtimeAttribute The name of the rowtime attribute in the table schema.
          * @param timestampExtractor The {@link TimestampExtractor} to extract the rowtime attribute from the physical type.

@@ -26,8 +26,8 @@ buildscript {
     }
 }
 plugins {
-    id "com.github.spotbugs" 
- }
+    id "com.github.spotbugs"
+}
 apply plugin: 'eclipse'
 apply from: 'gradle/idea.gradle'
 apply from: 'gradle/java.gradle'
@@ -48,18 +48,18 @@ gradle.projectsEvaluated {
 }
 
 tasks.withType(com.github.spotbugs.SpotBugsTask) {
-     reports {
+    reports {
         xml.enabled = false
         html.enabled = true
-  }
- }
+    }
+}
 
 group = "io.pravega"
 version = getProjectVersion()
 
 repositories {
     mavenLocal()
-    mavenCentral() 
+    mavenCentral()
     if (findProperty("repositoryUrl")) {
         maven {
             url findProperty("repositoryUrl")
@@ -118,7 +118,7 @@ dependencies {
 
         // lombok should be compileOnly
         exclude group: 'org.projectlombok', module: 'lombok'
- 
+
         // pravega-shared pulls in curator which isn't needed on the client
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
@@ -126,14 +126,17 @@ dependencies {
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_'+flinkScalaVersion, version: flinkVersion // provided by application
-    compileOnly group: 'org.apache.flink', name: 'flink-table_'+flinkScalaVersion, version: flinkVersion // provided by application
+
+    compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
+
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
 
     testCompile group: 'junit', name: 'junit', version: junitVersion
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
-    testCompile group: 'org.apache.flink', name: 'flink-tests_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion

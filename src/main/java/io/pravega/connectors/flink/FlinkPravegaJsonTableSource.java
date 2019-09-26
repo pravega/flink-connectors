@@ -47,7 +47,7 @@ public class FlinkPravegaJsonTableSource extends FlinkPravegaTableSource {
 
     /** Converts the JSON schema into into the return type. */
     private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
-        return new RowTypeInfo(jsonSchema.getTypes(), jsonSchema.getColumnNames());
+        return new RowTypeInfo(jsonSchema.getFieldTypes(), jsonSchema.getFieldNames());
     }
 
     /**
