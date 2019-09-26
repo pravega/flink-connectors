@@ -660,12 +660,13 @@ public class FlinkPravegaWriterTest {
     private <T> EventStreamClientFactory mockClientFactory(EventStreamWriter<T> eventWriter) {
         EventStreamClientFactory clientFactory = mock(EventStreamClientFactory.class);
         when(clientFactory.<T>createEventWriter(anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
+        when(clientFactory.<T>createEventWriter(anyString(), anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
         return clientFactory;
     }
 
     private <T> EventStreamClientFactory mockTxnClientFactory(TransactionalEventStreamWriter<T> eventWriter) {
         EventStreamClientFactory clientFactory = mock(EventStreamClientFactory.class);
-        when(clientFactory.<T>createTransactionalEventWriter(anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
+        when(clientFactory.<T>createTransactionalEventWriter(anyString(), anyString(), anyObject(), anyObject())).thenReturn(eventWriter);
         return clientFactory;
     }
 
@@ -683,7 +684,7 @@ public class FlinkPravegaWriterTest {
 
         TransactionalEventStreamWriter<T> txnEventStreamWriter1 = mockTxnEventStreamWriter();
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
-        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_1), anyObject(), anyObject())).thenReturn(txnEventStreamWriter1);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(anyString(), eq(MOCK_STREAM_NAME_1), anyObject(), anyObject())).thenReturn(txnEventStreamWriter1);
         Transaction<Integer> trans1 = mockTransaction();
         UUID txnId1 = UUID.randomUUID();
         Mockito.doReturn(txnId1).when(trans1).getTxnId();
@@ -693,7 +694,7 @@ public class FlinkPravegaWriterTest {
 
         TransactionalEventStreamWriter<T> txnEventStreamWriter2 = mockTxnEventStreamWriter();
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
-        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_2), anyObject(), anyObject())).thenReturn(txnEventStreamWriter2);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(anyString(), eq(MOCK_STREAM_NAME_2), anyObject(), anyObject())).thenReturn(txnEventStreamWriter2);
         Transaction<Integer> trans2 = mockTransaction();
         UUID txnId2 = UUID.randomUUID();
         Mockito.doReturn(txnId2).when(trans2).getTxnId();
@@ -703,7 +704,7 @@ public class FlinkPravegaWriterTest {
 
         TransactionalEventStreamWriter<T> txnEventStreamWriter3 = mockTxnEventStreamWriter();
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_1, MOCK_CLIENT_CONFIG);
-        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_3), anyObject(), anyObject())).thenReturn(txnEventStreamWriter3);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(anyString(), eq(MOCK_STREAM_NAME_3), anyObject(), anyObject())).thenReturn(txnEventStreamWriter3);
         Transaction<Integer> trans3 = mockTransaction();
         UUID txnId3 = UUID.randomUUID();
         Mockito.doReturn(txnId3).when(trans3).getTxnId();
@@ -713,7 +714,7 @@ public class FlinkPravegaWriterTest {
 
         TransactionalEventStreamWriter<T> txnEventStreamWriter4 = mockTxnEventStreamWriter();
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_2, MOCK_CLIENT_CONFIG);
-        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_4), anyObject(), anyObject())).thenReturn(txnEventStreamWriter4);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(anyString(), eq(MOCK_STREAM_NAME_4), anyObject(), anyObject())).thenReturn(txnEventStreamWriter4);
         Transaction<Integer> trans4 = mockTransaction();
         UUID txnId4 = UUID.randomUUID();
         Mockito.doReturn(txnId4).when(trans4).getTxnId();
@@ -723,7 +724,7 @@ public class FlinkPravegaWriterTest {
 
         TransactionalEventStreamWriter<T> txnEventStreamWriter5 = mockTxnEventStreamWriter();
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME_2, MOCK_CLIENT_CONFIG);
-        Mockito.when(clientFactory.<T>createTransactionalEventWriter(eq(MOCK_STREAM_NAME_5), anyObject(), anyObject())).thenReturn(txnEventStreamWriter5);
+        Mockito.when(clientFactory.<T>createTransactionalEventWriter(anyString(), eq(MOCK_STREAM_NAME_5), anyObject(), anyObject())).thenReturn(txnEventStreamWriter5);
         Transaction<Integer> trans5 = mockTransaction();
         UUID txnId5 = UUID.randomUUID();
         Mockito.doReturn(txnId5).when(trans5).getTxnId();
