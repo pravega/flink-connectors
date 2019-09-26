@@ -28,7 +28,9 @@ public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T
         if (timeWindow == null || timeWindow.isNearHeadOfStream()) {
             return null;
         }
-        return new Watermark(timeWindow.getLowerTimeBound() - 1L);
+        return timeWindow.getLowerTimeBound() == Long.MIN_VALUE ?
+                new Watermark(Long.MIN_VALUE) :
+                new Watermark(timeWindow.getLowerTimeBound() - 1L);
     }
 }
 

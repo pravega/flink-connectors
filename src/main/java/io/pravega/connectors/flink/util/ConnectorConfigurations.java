@@ -48,7 +48,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_E
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
@@ -128,7 +128,7 @@ public final class ConnectorConfigurations {
         checkpointInitiateTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
 
         final Optional<Class<AssignerWithTimeWindows>> assignerClass = descriptorProperties.getOptionalClass(
-                CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, AssignerWithTimeWindows.class);
+                CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER, AssignerWithTimeWindows.class);
         if (assignerClass.isPresent()) {
             assignerWithTimeWindows = Optional.of((AssignerWithTimeWindows<Row>) InstantiationUtil.instantiate(assignerClass.get()));
         } else {

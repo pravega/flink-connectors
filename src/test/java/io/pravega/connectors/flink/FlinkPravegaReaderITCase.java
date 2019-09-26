@@ -29,10 +29,7 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
 import org.apache.flink.util.Collector;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
+import org.junit.*;
 import org.junit.rules.Timeout;
 
 import java.util.concurrent.TimeUnit;
@@ -116,7 +113,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
-                    .withTimestampAndWatermark(new LowerBoundAssigner<Integer>() {
+                    .withTimestampAssigner(new LowerBoundAssigner<Integer>() {
                         @Override
                         public long extractTimestamp(Integer element, long previousElementTimestamp) {
                             return element;
@@ -145,7 +142,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                 env.execute();
             } catch (Exception e) {
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    throw e;
+                    Assert.fail("Unexpected error occurred in the test.");
                 }
             }
 
