@@ -62,7 +62,11 @@ public class ThrottledIntegerGeneratingSource
     }
 
     /**
-     * Tells the source to emit a watermark every {@link #eventsPerWatermark} events
+     * Tells the source to emit a watermark every {@link #eventsPerWatermark} events.
+     *
+     * @param eventsPerWatermark the number of events between two watermarks
+     *
+     * @return the configured {@link ThrottledIntegerGeneratingSource}
      */
     public ThrottledIntegerGeneratingSource withWatermarks(int eventsPerWatermark) {
         this.eventsPerWatermark = eventsPerWatermark;

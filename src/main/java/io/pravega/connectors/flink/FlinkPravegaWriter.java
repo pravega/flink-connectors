@@ -31,7 +31,6 @@ import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 
@@ -406,13 +405,9 @@ public class FlinkPravegaWriter<T>
             }
         }
 
-        AbstractInternalWriter(EventStreamClientFactory clientFactory, boolean txnWriter, long watermark) {
-            this(clientFactory, txnWriter);
-            setWatermark(watermark);
-        }
-
         boolean shouldEmitWatermark(Context context) {
-            return watermark < context.currentWatermark() && context.timestamp() >= context.currentWatermark();
+            return context.currentWatermark() > Long.MIN_VALUE && context.currentWatermark() < Long.MAX_VALUE &&
+                    watermark < context.currentWatermark() && context.timestamp() >= context.currentWatermark();
         }
 
         abstract void open() throws Exception;
@@ -467,14 +462,10 @@ public class FlinkPravegaWriter<T>
             log.debug("{} - started first transaction '{}'", name(), this.currentTxn.getTxnId());
         }
 
-        private Context context;
-
         @Override
         public void write(T event, Context context, boolean enableWatermark) throws Exception {
             this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
-            this.context = context;
             if (enableWatermark) {
-//                log.info("event write watermark: {}", context.currentWatermark());
                 this.setWatermark(context.currentWatermark());
             }
         }
@@ -518,8 +509,6 @@ public class FlinkPravegaWriter<T>
 
             // remember the transaction to be committed when the checkpoint is confirmed
             if (enableWatermark) {
-//                log.info("TX end watermark: {}", this.getWatermark());
-//                log.info("WATERMARK FROM CONTEXT: {}, (from event write: {})", context.currentWatermark(), this.getWatermark());
                 this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId, this.getWatermark()));
             } else {
                 this.txnsPendingCommit.addLast(new TransactionAndCheckpoint<>(txn, checkpointId));
@@ -578,7 +567,7 @@ public class FlinkPravegaWriter<T>
             while ((txn = txnsPendingCommit.peekFirst()) != null && txn.checkpointId() <= checkpointId) {
                 txnsPendingCommit.removeFirst();
 
-                log.info("{} - checkpoint {} complete, (watermark {}) committing completed checkpoint transaction {}",
+                log.info("{} - checkpoint {} complete at watermark {}, committing completed checkpoint transaction {}",
                         name(), checkpointId, txn.watermark, txn.transaction().getTxnId());
 
                 // the big assumption is that this now actually works and that the transaction has not timed out, yet
@@ -586,13 +575,12 @@ public class FlinkPravegaWriter<T>
                 // TODO: currently, if this fails, there is actually data loss
                 // see https://github.com/pravega/flink-connectors/issues/5
                 if (txn.watermark() != null) {
-//                    log.info("Watermark commit : {}", txn.watermark());
                     txn.transaction().commit(txn.watermark());
+                    log.debug("{} - committed checkpoint transaction {} at watermark {}", name(), txn.transaction().getTxnId(), txn.watermark());
                 } else {
                     txn.transaction().commit();
+                    log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
                 }
-
-                log.debug("{} - committed checkpoint transaction {}", name(), txn.transaction().getTxnId());
             }
         }
 
@@ -658,7 +646,7 @@ public class FlinkPravegaWriter<T>
                         if (status == Transaction.Status.OPEN) {
                             // that is the case when a crash happened between when the master committed
                             // the checkpoint, and the sink could be notified
-                            log.info("{} - committing completed checkpoint transaction {} (Watermark {}) after task restore",
+                            log.debug("{} - committing completed checkpoint transaction {} at Watermark {} after task restore",
                                     name(), txnId, pendingTransaction.getWatermark());
 
                             if (pendingTransaction.getWatermark() != null) {
