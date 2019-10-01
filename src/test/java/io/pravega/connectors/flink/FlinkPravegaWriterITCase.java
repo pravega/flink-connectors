@@ -214,7 +214,7 @@ public class FlinkPravegaWriterITCase {
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
                 .enableWatermark(true)
                 .build();
-        dataStream.addSink(pravegaSink).setParallelism(1);
+        dataStream.addSink(pravegaSink).setParallelism(2);
 
         execEnv.execute();
 
