@@ -570,8 +570,9 @@ public class FlinkPravegaWriter<T>
             while ((txn = txnsPendingCommit.peekFirst()) != null && txn.checkpointId() <= checkpointId) {
                 txnsPendingCommit.removeFirst();
 
-                log.info("{} - checkpoint {} complete at watermark {}, committing completed checkpoint transaction {}",
-                        writerId(), checkpointId, txn.watermark, txn.transaction().getTxnId());
+                String watermarkMsg = txn.watermark == null ? "" : " at watermark "+txn.watermark;
+                log.info("{} - checkpoint {} complete{}, committing completed checkpoint transaction {}",
+                    writerId(), checkpointId, watermarkMsg, txn.transaction().getTxnId());
 
                 // the big assumption is that this now actually works and that the transaction has not timed out, yet
 
