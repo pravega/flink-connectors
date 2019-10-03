@@ -107,10 +107,10 @@ public class FlinkPravegaReader<T>
     // The supplied event timestamp and watermark assigner.
     final SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
-    // the timeout for reading events from Pravega 
+    // the timeout for reading events from Pravega
     final Time eventReadTimeout;
 
-    // the timeout for call that initiates the Pravega checkpoint 
+    // the timeout for call that initiates the Pravega checkpoint
     final Time checkpointInitiateTimeout;
 
     // flag to enable/disable metrics
@@ -118,8 +118,8 @@ public class FlinkPravegaReader<T>
 
     // ----- runtime fields -----
 
-    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()' 
-    // may be called asynchronously 
+    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()'
+    // may be called asynchronously
     volatile boolean running = true;
 
     // checkpoint trigger callback, invoked when a checkpoint event is received.
@@ -600,7 +600,7 @@ public class FlinkPravegaReader<T>
          * @param assignerWithTimeWindows The timestamp and watermark assigner.
          * @return Builder instance.
          */
-        protected Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
+        public Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, true);
                 this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
