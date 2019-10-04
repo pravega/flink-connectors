@@ -145,8 +145,12 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
             try {
                 env.execute();
             } catch (Exception e) {
+                if (ExceptionUtils.getRootCause(e) instanceof AssertionError) {
+                    throw (AssertionError)ExceptionUtils.getRootCause(e);
+                }
+
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    Assert.fail("Unexpected error occurred in the test.");
+                    Assert.fail("Unexpected error occurred in the test. " + ExceptionUtils.getRootCauseMessage(e));
                 }
             }
 
