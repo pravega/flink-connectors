@@ -146,7 +146,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                 env.execute();
             } catch (Exception e) {
                 if (ExceptionUtils.getRootCause(e) instanceof AssertionError) {
-                    throw (AssertionError)ExceptionUtils.getRootCause(e);
+                    throw (AssertionError) ExceptionUtils.getRootCause(e);
                 }
 
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
