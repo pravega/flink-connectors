@@ -81,9 +81,10 @@ public class FlinkPravegaWriterTest {
         EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
         PravegaEventRouter<Integer> eventRouter = new FixedEventRouter<>();
         PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, writerMode);
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, true, writerMode);
         Assert.assertSame(eventRouter, sinkFunction.getEventRouter());
         Assert.assertEquals(writerMode, sinkFunction.getPravegaWriterMode());
+        Assert.assertTrue(sinkFunction.getEnableWatermark());
     }
 
     // endregion
@@ -96,7 +97,7 @@ public class FlinkPravegaWriterTest {
     @Test
     public void testOpenClose() throws Exception {
         EventStreamClientFactory clientFactory = mockClientFactory(null);
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>(), PravegaWriterMode.ATLEAST_ONCE);
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>(), false, PravegaWriterMode.ATLEAST_ONCE);
         FlinkPravegaWriter.AbstractInternalWriter internalWriter = mock(FlinkPravegaWriter.AbstractInternalWriter.class);
         Mockito.doReturn(internalWriter).when(sinkFunction).createInternalWriter();
 
@@ -134,13 +135,13 @@ public class FlinkPravegaWriterTest {
         final FlinkPravegaWriter<Integer> sinkFunction;
         final FlinkPravegaWriter<Integer> txnSinkFunction;
 
-        AbstractInternalWriterTestContext(PravegaWriterMode writerMode) {
+        AbstractInternalWriterTestContext(boolean enableWatermark, PravegaWriterMode writerMode) {
             pravegaWriter = mockEventStreamWriter();
             pravegaTxnWriter = mockTxnEventStreamWriter();
             eventRouter = new FixedEventRouter<>();
 
-            sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, writerMode);
-            txnSinkFunction = spySinkFunction(mockTxnClientFactory(pravegaTxnWriter), eventRouter, writerMode);
+            sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, enableWatermark, writerMode);
+            txnSinkFunction = spySinkFunction(mockTxnClientFactory(pravegaTxnWriter), eventRouter, enableWatermark, writerMode);
 
             // inject an instrumented, direct executor
             executorService = spy(new DirectExecutorService());
@@ -182,8 +183,8 @@ public class FlinkPravegaWriterTest {
      * A test context suitable for testing the {@link FlinkPravegaWriter.NonTransactionalWriter}.
      */
     class NonTransactionalWriterTestContext extends AbstractInternalWriterTestContext {
-        NonTransactionalWriterTestContext(PravegaWriterMode writerMode) {
-            super(writerMode);
+        NonTransactionalWriterTestContext(boolean enableWatermark, PravegaWriterMode writerMode) {
+            super(enableWatermark, writerMode);
         }
 
         CompletableFuture<Void> prepareWrite() {
@@ -199,7 +200,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterProcessElementWrite() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                 testHarness.open();
                 CompletableFuture<Void> e1Future = context.prepareWrite();
@@ -216,7 +217,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterProcessElementAccounting() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                 testHarness.open();
                 FlinkPravegaWriter.NonTransactionalWriter internalWriter = (FlinkPravegaWriter.NonTransactionalWriter) context.sinkFunction.writer;
@@ -252,7 +253,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterProcessElementErrorHandling() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                 testHarness.open();
                 FlinkPravegaWriter.NonTransactionalWriter internalWriter = (FlinkPravegaWriter.NonTransactionalWriter) context.sinkFunction.writer;
@@ -282,7 +283,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterFlush() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                 testHarness.open();
                 FlinkPravegaWriter.NonTransactionalWriter internalWriter = (FlinkPravegaWriter.NonTransactionalWriter) context.sinkFunction.writer;
@@ -319,7 +320,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterClose() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try {
                 try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                     testHarness.open();
@@ -344,7 +345,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testNonTransactionalWriterSnapshot() throws Exception {
-        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(PravegaWriterMode.ATLEAST_ONCE)) {
+        try (NonTransactionalWriterTestContext context = new NonTransactionalWriterTestContext(false, PravegaWriterMode.ATLEAST_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.sinkFunction)) {
                 testHarness.open();
                 FlinkPravegaWriter.NonTransactionalWriter internalWriter = (FlinkPravegaWriter.NonTransactionalWriter) context.sinkFunction.writer;
@@ -379,8 +380,8 @@ public class FlinkPravegaWriterTest {
      * A test context suitable for testing the {@link FlinkPravegaWriter.TransactionalWriter}.
      */
     class TransactionalWriterTestContext extends AbstractInternalWriterTestContext {
-        TransactionalWriterTestContext(PravegaWriterMode writerMode) {
-            super(writerMode);
+        TransactionalWriterTestContext(boolean enableWatermark, PravegaWriterMode writerMode) {
+            super(enableWatermark, writerMode);
         }
 
         Transaction<Integer> prepareTransaction() {
@@ -398,7 +399,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterOpen() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
                 // open the sink, expecting an initial transaction
                 Transaction<Integer> trans = context.prepareTransaction();
@@ -416,7 +417,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterClose() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             Transaction<Integer> trans = context.prepareTransaction();
             try {
                 try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
@@ -443,7 +444,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterProcessElementWrite() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             Transaction<Integer> trans = context.prepareTransaction();
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
                 testHarness.open();
@@ -459,7 +460,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterSnapshotState() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
                 Transaction<Integer> trans1 = context.prepareTransaction();
                 testHarness.open();
@@ -485,7 +486,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterNotifyCheckpointComplete() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
                 Transaction<Integer> trans1 = context.prepareTransaction();
                 testHarness.open();
@@ -528,7 +529,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterRestoreState() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
 
             // verify the behavior with an empty transaction list
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
@@ -543,7 +544,8 @@ public class FlinkPravegaWriterTest {
                         testHarness.setup();
                         Transaction<Integer> trans = context.prepareTransaction();
                         when(trans.checkStatus()).thenReturn(status);
-                        context.txnSinkFunction.restoreState(Collections.singletonList(new FlinkPravegaWriter.PendingTransaction(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME)));
+                        context.txnSinkFunction.restoreState(Collections.singletonList(
+                                new FlinkPravegaWriter.PendingTransaction(trans.getTxnId(), MOCK_SCOPE_NAME, MOCK_STREAM_NAME, null)));
                         verify(trans).checkStatus();
                         return trans;
                     }
@@ -566,7 +568,7 @@ public class FlinkPravegaWriterTest {
      */
     @Test
     public void testTransactionalWriterRestoreStateForMultipleStreams() throws Exception {
-        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(PravegaWriterMode.EXACTLY_ONCE)) {
+        try (TransactionalWriterTestContext context = new TransactionalWriterTestContext(false, PravegaWriterMode.EXACTLY_ONCE)) {
             List<Transaction<Integer>> pendingTransactions = prepareMockInstancesForRestore(context.txnSinkFunction);
 
             // verify the behavior by passing multiple transaction instances.
@@ -593,19 +595,24 @@ public class FlinkPravegaWriterTest {
 
                     switch (i) {
                         case 0:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_1));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_1, null));
                             break;
                         case 1:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_2));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_2, null));
                             break;
                         case 2:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_3));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_1, MOCK_STREAM_NAME_3, null));
                             break;
                         case 3:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_4));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_4, null));
                             break;
                         case 4:
-                            pendingTransactionList.add(new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_5));
+                            pendingTransactionList.add(
+                                    new FlinkPravegaWriter.PendingTransaction(integerTransaction.getTxnId(), MOCK_SCOPE_NAME_2, MOCK_STREAM_NAME_5, null));
                             break;
                         default:
                             break;
@@ -670,9 +677,9 @@ public class FlinkPravegaWriterTest {
         return clientFactory;
     }
 
-    private FlinkPravegaWriter<Integer> spySinkFunction(EventStreamClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter, PravegaWriterMode writerMode) {
+    private FlinkPravegaWriter<Integer> spySinkFunction(EventStreamClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter, boolean enableWatermark, PravegaWriterMode writerMode) {
         FlinkPravegaWriter<Integer> writer = spy(new FlinkPravegaWriter<>(
-                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, true));
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, enableWatermark, true));
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
         return writer;
     }
