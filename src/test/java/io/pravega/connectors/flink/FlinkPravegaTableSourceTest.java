@@ -11,6 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
+import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -34,6 +36,7 @@ import org.apache.flink.table.sources.TableSourceValidation;
 import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
+import org.apache.flink.util.SerializedValue;
 import org.junit.Test;
 
 import java.net.URI;
@@ -169,6 +172,51 @@ public class FlinkPravegaTableSourceTest {
         TableSourceValidation.validateTableSource(actualSource);
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testTableSourceDescriptorWithWatermark() {
+        final String cityName = "fruitName";
+        final String total = "count";
+        final String eventTime = "eventTime";
+        final String procTime = "procTime";
+        final String controllerUri = "tcp://localhost:9090";
+        final long delay = 3000L;
+        final String streamName = "test";
+        final String scopeName = "test";
+
+        Stream stream = Stream.of(scopeName, streamName);
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(controllerUri))
+                .withDefaultScope(scopeName);
+
+        // construct table source using descriptors and table source factory
+        Pravega pravega = new Pravega();
+        pravega.tableSourceReaderBuilder()
+                .withTimestampAssigner(new MyAssigner())
+                .withReaderGroupScope(stream.getScope())
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
+
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withSchema(
+                        new Schema()
+                                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .rowtime(new Rowtime()
+                                        .timestampsFromSource()
+                                        .watermarksFromSource()
+                                ))
+                .inAppendMode();
+
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
+                .createStreamTableSource(propertiesMap);
+        assertNotNull(actualSource);
+        TableSourceValidation.validateTableSource(actualSource);
+    }
+
     /** Converts the JSON schema into into the return type. */
     private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
         return new RowTypeInfo(jsonSchema.getFieldTypes(), jsonSchema.getFieldNames());
@@ -196,6 +244,11 @@ public class FlinkPravegaTableSourceTest {
             protected DeserializationSchema<Row> getDeserializationSchema() {
                 TableSchema tableSchema = getTableSchema();
                 return new JsonRowDeserializationSchema(jsonSchemaToReturnType(tableSchema));
+            }
+
+            @Override
+            protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
+                return null;
             }
         }
     }
@@ -249,5 +302,15 @@ public class FlinkPravegaTableSourceTest {
             }
             return properties.asMap();
         }
+    }
+
+    public static class MyAssigner extends LowerBoundAssigner<Row> {
+        public MyAssigner() {}
+
+        @Override
+        public long extractTimestamp(Row element, long previousElementTimestamp) {
+            return (long) element.getField(2);
+        }
+
     }
 }

@@ -12,8 +12,10 @@ package io.pravega.connectors.flink;
 import com.google.common.base.Preconditions;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.util.SerializedValue;
 
 import java.util.Optional;
 
@@ -115,7 +117,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     /**
      * Configures the maximum outstanding checkpoint requests to Pravega (default=3).
      * Upon requesting more checkpoints than the specified maximum,
-     * (say a checkpoint request timesout on the ReaderCheckpointHook but Pravega is still working on it),
+     * (say a checkpoint request times out on the ReaderCheckpointHook but Pravega is still working on it),
      * this configurations allows Pravega to limit any further checkpoint request being made to the ReaderGroup.
      * This configuration is particularly relevant when multiple checkpoint requests need to be honored (e.g., frequent savepoint requests being triggered concurrently).
      *
@@ -127,6 +129,8 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     }
 
     protected abstract DeserializationSchema<T> getDeserializationSchema();
+
+    protected abstract SerializedValue<AssignerWithTimeWindows<T>> getAssignerWithTimeWindows();
 
     /**
      * Builds a {@link FlinkPravegaReader} based on the configuration.
@@ -148,6 +152,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
                 readerGroupInfo.getReaderGroupScope(),
                 readerGroupInfo.getReaderGroupName(),
                 getDeserializationSchema(),
+                getAssignerWithTimeWindows(),
                 this.eventReadTimeout,
                 this.checkpointInitiateTimeout,
                 isMetricsEnabled());

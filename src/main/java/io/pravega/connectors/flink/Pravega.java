@@ -14,14 +14,20 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
+import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
+import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.java.ClosureCleaner;
+import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
+import org.apache.flink.util.SerializedValue;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,6 +74,9 @@ public class Pravega extends ConnectorDescriptor {
     public static final String CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL = "connector.reader.reader-group.refresh-interval";
     public static final String CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL = "connector.reader.reader-group.event-read-timeout-interval";
     public static final String CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL = "connector.reader.reader-group.checkpoint-initiate-timeout-interval";
+
+    // Reader Configurations - USER
+    public static final String CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER = "connector.reader.user.timestamp-assigner";
 
     // Writer Configurations
     public static final String CONNECTOR_WRITER = "connector.writer";
@@ -211,6 +220,19 @@ public class Pravega extends ConnectorDescriptor {
         properties.putLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL, readerGroupInfo.getReaderGroupConfig().getGroupRefreshTimeMillis());
         properties.putLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL, tableSourceReaderBuilder.eventReadTimeout.toMilliseconds());
         properties.putLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL, tableSourceReaderBuilder.checkpointInitiateTimeout.toMilliseconds());
+
+        // user information
+        if (tableSourceReaderBuilder.getAssignerWithTimeWindows() != null) {
+            try {
+                @SuppressWarnings("unchecked")
+                AssignerWithTimeWindows<Row> assigner = (AssignerWithTimeWindows<Row>) tableSourceReaderBuilder
+                        .getAssignerWithTimeWindows().deserializeValue(getClass().getClassLoader());
+
+                properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER, assigner.getClass());
+            } catch (Exception e) {
+                throw new TableException(e.getMessage());
+            }
+        }
     }
 
     public TableSourceReaderBuilder tableSourceReaderBuilder() {
@@ -232,10 +254,16 @@ public class Pravega extends ConnectorDescriptor {
             extends AbstractStreamingReaderBuilder<Row, TableSourceReaderBuilder> {
 
         private DeserializationSchema<Row> deserializationSchema;
+        private SerializedValue<AssignerWithTimeWindows<Row>> assignerWithTimeWindows;
 
         @Override
         protected DeserializationSchema<Row> getDeserializationSchema() {
             return this.deserializationSchema;
+        }
+
+        @Override
+        protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
+            return this.assignerWithTimeWindows;
         }
 
         @Override
@@ -250,6 +278,24 @@ public class Pravega extends ConnectorDescriptor {
          */
         protected TableSourceReaderBuilder withDeserializationSchema(DeserializationSchema<Row> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            return this;
+        }
+
+        /**
+         * Configures the timestamp and watermark assigner.
+         *
+         * @param assignerWithTimeWindows the timestamp and watermark assigner.
+         * @return TableSourceReaderBuilder instance.
+         */
+        // TODO: Due to the serialization validation for `connectorProperties`, only `public` `static-inner/outer` class implements
+        // `AssignerWithTimeWindow` is supported as a parameter of `withTimestampAssigner` in Table API stream table source.
+        protected TableSourceReaderBuilder withTimestampAssigner(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
+            try {
+                ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
+                this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("The given assigner is not serializable", e);
+            }
             return this;
         }
 
