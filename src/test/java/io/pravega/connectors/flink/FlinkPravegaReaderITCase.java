@@ -17,13 +17,20 @@ import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.windowing.time.Time;
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
+import org.apache.flink.util.Collector;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -43,7 +50,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
 
-    //Ensure each test completes within 120 seconds.
+    //Ensure each test completes within 180 seconds.
     @Rule
     public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
 
@@ -78,6 +85,79 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
         runTest(4, 4, NUM_STREAM_ELEMENTS);
     }
 
+    @Test
+    public void testWatermark() throws Exception {
+        // set up the stream
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
+        SETUP_UTILS.createTestStream(streamName, 4);
+        try (
+                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+
+                // create the producer that writes to the stream
+                final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
+                        eventWriter,
+                        NUM_STREAM_ELEMENTS,
+                        NUM_STREAM_ELEMENTS + 1,  // no need to block
+                        0,                 // the sleep time per element
+                        true
+                )
+        ) {
+            producer.start();
+            producer.sync();
+
+            final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+
+            env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+            env.setParallelism(4);
+            env.getConfig().setAutoWatermarkInterval(1000);
+
+            // the Pravega reader
+            final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
+                    .forStream(streamName)
+                    .enableMetrics(false)
+                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withDeserializationSchema(new IntegerDeserializationSchema())
+                    .withTimestampAssigner(new LowerBoundAssigner<Integer>() {
+                        @Override
+                        public long extractTimestamp(Integer element, long previousElementTimestamp) {
+                            return element;
+                        }
+                    })
+                    .build();
+
+            env
+                    .addSource(pravegaSource)
+                    .timeWindowAll(Time.seconds(1))
+                    .apply(new AllWindowFunction<Integer, Integer, TimeWindow>() {
+                        @Override
+                        public void apply(TimeWindow window, Iterable<Integer> arr, Collector<Integer> collector) throws Exception {
+                            for (Integer i : arr) {
+                                collector.collect(i);
+                            }
+                        }
+                    })
+                    .addSink(new IntSequenceExactlyOnceValidator(NUM_STREAM_ELEMENTS))
+                    .setParallelism(1);
+
+            final long executeStart = System.nanoTime();
+
+            // if these calls complete without exception, then the test passes
+            try {
+                env.execute();
+            } catch (Exception e) {
+                if (ExceptionUtils.getRootCause(e) instanceof AssertionError) {
+                    throw (AssertionError) ExceptionUtils.getRootCause(e);
+                }
+
+                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                    Assert.fail("Unexpected error occurred in the test. " + ExceptionUtils.getRootCauseMessage(e));
+                }
+            }
+
+            final long executeEnd = System.nanoTime();
+            System.out.println(String.format("Test execution took %d ms", (executeEnd - executeStart) / 1_000_000));
+        }
+    }
 
     private static void runTest(
             final int sourceParallelism,
@@ -96,7 +176,8 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                         eventWriter,
                         numElements,
                         numElements / 2,  // the latest when a checkpoint must have happened
-                        1                 // the initial sleep time per element
+                        1,                 // the initial sleep time per element
+                        false
                 )
 
         ) {

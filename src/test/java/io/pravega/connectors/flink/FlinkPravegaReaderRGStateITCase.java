@@ -99,7 +99,8 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
                      eventWriter,
                      NUM_STREAM_ELEMENTS,
                      NUM_STREAM_ELEMENTS / 2,
-                     1
+                     1,
+                     false
              )
         ) {
             producer.start();
