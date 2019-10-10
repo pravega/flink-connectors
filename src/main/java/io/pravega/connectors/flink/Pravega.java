@@ -75,7 +75,7 @@ public class Pravega extends ConnectorDescriptor {
     public static final String CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL = "connector.reader.reader-group.checkpoint-initiate-timeout-interval";
 
     // Reader Configurations - USER
-    public static final String CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER = "connector.reader.user.timestamp-and-watermark-assigner";
+    public static final String CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER = "connector.reader.user.timestamp-assigner";
 
     // Writer Configurations
     public static final String CONNECTOR_WRITER = "connector.writer";
@@ -229,7 +229,7 @@ public class Pravega extends ConnectorDescriptor {
                 AssignerWithTimeWindows<Row> assigner = (AssignerWithTimeWindows<Row>) tableSourceReaderBuilder
                         .getAssignerWithTimeWindows().deserializeValue(getClass().getClassLoader());
 
-                properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_AND_WATERMARK_ASSIGNER, assigner.getClass());
+                properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER, assigner.getClass());
             } catch (Exception e) {
                 throw new TableException(e.getMessage());
             }
@@ -289,8 +289,8 @@ public class Pravega extends ConnectorDescriptor {
          * @return TableSourceReaderBuilder instance.
          */
         // TODO: Due to the serialization validation for `connectorProperties`, only `public` `static-inner/outer` class implements
-        // `AssignerWithTimeWindow` is supported as a parameter of `withTimestampAndWatermark` in Table API stream table source.
-        protected TableSourceReaderBuilder withTimestampAndWatermark(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
+        // `AssignerWithTimeWindow` is supported as a parameter of `withTimestampAssigner` in Table API stream table source.
+        protected TableSourceReaderBuilder withTimestampAssigner(AssignerWithTimeWindows<Row> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, true);
                 this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);

@@ -107,10 +107,10 @@ public class FlinkPravegaReader<T>
     // The supplied event timestamp and watermark assigner.
     final SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
-    // the timeout for reading events from Pravega 
+    // the timeout for reading events from Pravega
     final Time eventReadTimeout;
 
-    // the timeout for call that initiates the Pravega checkpoint 
+    // the timeout for call that initiates the Pravega checkpoint
     final Time checkpointInitiateTimeout;
 
     // flag to enable/disable metrics
@@ -118,8 +118,8 @@ public class FlinkPravegaReader<T>
 
     // ----- runtime fields -----
 
-    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()' 
-    // may be called asynchronously 
+    // Flag to terminate the source. volatile, because 'stop()' and 'cancel()'
+    // may be called asynchronously
     volatile boolean running = true;
 
     // checkpoint trigger callback, invoked when a checkpoint event is received.
@@ -190,35 +190,36 @@ public class FlinkPravegaReader<T>
         return assignerWithTimeWindows != null;
     }
 
+    private long autoWatermarkInterval() {
+        return getRuntimeContext().getExecutionConfig().getAutoWatermarkInterval();
+    }
+
     private class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
 
         private EventStreamReader<?> pravegaReader;
-        private ClassLoader userCodeClassLoader;
         private final SourceContext<?> ctx;
         private final ProcessingTimeService timerService;
-        private final long interval;
         private long lastWatermarkTimestamp;
+        private AssignerWithTimeWindows<?> userAssigner;
 
         protected PeriodicWatermarkEmitter(
                 EventStreamReader<?> pravegaReader, SourceContext<?> ctx, ClassLoader userCodeClassLoader,
-                ProcessingTimeService timerService, long autoWatermarkInterval) {
+                ProcessingTimeService timerService) throws Exception {
             this.pravegaReader = Preconditions.checkNotNull(pravegaReader);
             this.ctx = Preconditions.checkNotNull(ctx);
-            this.userCodeClassLoader = Preconditions.checkNotNull(userCodeClassLoader);
             this.timerService = Preconditions.checkNotNull(timerService);
-            this.interval = autoWatermarkInterval;
             this.lastWatermarkTimestamp = Long.MIN_VALUE;
+            this.userAssigner = assignerWithTimeWindows.deserializeValue(userCodeClassLoader);
         }
 
         protected void start() {
-            timerService.registerTimer(timerService.getCurrentProcessingTime() + interval, this);
+            timerService.registerTimer(timerService.getCurrentProcessingTime() + autoWatermarkInterval(), this);
         }
 
         @Override
-        public void onProcessingTime(long timestamp) throws Exception {
+        public void onProcessingTime(long timestamp) {
             Stream stream = Stream.of(readerGroup.getStreamNames().iterator().next());
-            Watermark watermark = assignerWithTimeWindows.deserializeValue(userCodeClassLoader)
-                    .getWatermark(pravegaReader.getCurrentTimeWindow(stream));
+            Watermark watermark = userAssigner.getWatermark(pravegaReader.getCurrentTimeWindow(stream));
 
             if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
                 lastWatermarkTimestamp = watermark.getTimestamp();
@@ -227,7 +228,7 @@ public class FlinkPravegaReader<T>
             }
 
             // schedule the next watermark
-            timerService.registerTimer(timerService.getCurrentProcessingTime() + interval, this);
+            timerService.registerTimer(timerService.getCurrentProcessingTime() + autoWatermarkInterval(), this);
         }
     }
 
@@ -256,9 +257,10 @@ public class FlinkPravegaReader<T>
                         pravegaReader,
                         ctx,
                         getRuntimeContext().getUserCodeClassLoader(),
-                        ((StreamingRuntimeContext) getRuntimeContext()).getProcessingTimeService(),
-                        getRuntimeContext().getExecutionConfig().getAutoWatermarkInterval());
+                        ((StreamingRuntimeContext) getRuntimeContext()).getProcessingTimeService());
 
+                log.info("Periodic Watermark Emitter for Reader ID: {} has started with an interval of {}", readerId,
+                        autoWatermarkInterval());
                 periodicEmitter.start();
             }
 
@@ -293,6 +295,10 @@ public class FlinkPravegaReader<T>
                     triggerCheckpoint(eventRead.getCheckpointName());
                 }
             }
+
+            if (isEventTimeMode()) {
+                ctx.emitWatermark(Watermark.MAX_WATERMARK);
+            }
         }
     }
 
@@ -316,6 +322,11 @@ public class FlinkPravegaReader<T>
         createReaderGroup();
         if (enableMetrics) {
             registerMetrics();
+        }
+        if (isEventTimeMode()) {
+            Preconditions.checkArgument(autoWatermarkInterval() > 0,
+                    "Periodic watermark interval should be positive, " +
+                            "please use env.getConfig().setAutoWatermarkInterval() to set a positive number. Recommended value: 10000");
         }
     }
 
@@ -587,7 +598,8 @@ public class FlinkPravegaReader<T>
          * @param assignerWithTimeWindows The timestamp and watermark assigner.
          * @return Builder instance.
          */
-        protected Builder<T> withTimestampAndWatermark(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
+
+        public Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, true);
                 this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);

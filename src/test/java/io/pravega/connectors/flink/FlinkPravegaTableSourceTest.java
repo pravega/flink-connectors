@@ -194,7 +194,7 @@ public class FlinkPravegaTableSourceTest {
         // construct table source using descriptors and table source factory
         Pravega pravega = new Pravega();
         pravega.tableSourceReaderBuilder()
-                .withTimestampAndWatermark(new MyAssigner())
+                .withTimestampAssigner(new MyAssigner())
                 .withReaderGroupScope(stream.getScope())
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
