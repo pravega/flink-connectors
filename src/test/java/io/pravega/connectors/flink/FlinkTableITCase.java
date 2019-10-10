@@ -19,8 +19,11 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.runtime.client.JobExecutionException;
+import org.apache.flink.streaming.api.TimeCharacteristic;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
+import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
 import org.apache.flink.table.api.TableSchema;
@@ -81,6 +84,24 @@ public class FlinkTableITCase {
         public SampleRecord(String category, int value) {
             this.category = category;
             this.value = value;
+        }
+    }
+
+    /**
+     * A sample POJO to be written as a Row (category,value,timestamp).
+     */
+    @Data
+    public static class SampleRecordWithTimestamp implements Serializable {
+        public String category;
+        public int value;
+        public long timestamp;
+
+        public SampleRecordWithTimestamp() {}
+
+        public SampleRecordWithTimestamp(SampleRecord record) {
+            this.category = record.category;
+            this.value = record.value;
+            this.timestamp = record.value;
         }
     }
 
@@ -376,6 +397,51 @@ public class FlinkTableITCase {
         StreamTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
+                .inAppendMode();
+        desc.registerTableSink("test");
+
+        final Map<String, String> propertiesMap = desc.toProperties();
+        final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
+                .createStreamTableSink(propertiesMap);
+
+        table.writeToSink(sink);
+        env.execute();
+    }
+
+    @Test
+    public void testStreamTableSinkUsingDescriptorWithWatermark() throws Exception {
+        // create a Pravega stream for test purposes
+        Stream stream = Stream.of(setupUtils.getScope(), "testStreamTableSinkUsingDescriptorWithWatermark");
+        this.setupUtils.createTestStream(stream.getStreamName(), 1);
+
+        // create a Flink Table environment
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
+        env.getConfig().setClosureCleanerLevel(ExecutionConfig.ClosureCleanerLevel.TOP_LEVEL);
+        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+        DataStream<SampleRecordWithTimestamp> dataStream = env.fromCollection(SAMPLES)
+                .map(SampleRecordWithTimestamp::new)
+                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<SampleRecordWithTimestamp>() {
+                    @Override
+                    public long extractAscendingTimestamp(SampleRecordWithTimestamp sampleRecordWithTimestamp) {
+                        return sampleRecordWithTimestamp.getTimestamp();
+                    }
+                });
+
+        Table table = tableEnv.fromDataStream(dataStream, "category, value, UserActionTime.rowtime");
+
+        Pravega pravega = new Pravega();
+        pravega.tableSinkWriterBuilder()
+                .withRoutingKeyField("category")
+                .enableWatermark(true)
+                .forStream(stream)
+                .withPravegaConfig(setupUtils.getPravegaConfig());
+
+        StreamTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(new Schema().field("category", Types.STRING())
+                        .field("value", Types.INT())
+                        .field("timestamp", Types.LONG()))
                 .inAppendMode();
         desc.registerTableSink("test");
 

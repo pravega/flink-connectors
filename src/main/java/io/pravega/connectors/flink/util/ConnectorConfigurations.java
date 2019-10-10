@@ -49,6 +49,7 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_S
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER;
+import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ENABLE_WATERMARK;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
@@ -93,6 +94,7 @@ public final class ConnectorConfigurations {
     private Stream writerStream;
     private Optional<PravegaWriterMode> writerMode;
     private Optional<Long> txnLeaseRenewalInterval;
+    private Boolean watermark;
     private String routingKey;
 
     private PravegaConfig pravegaConfig;
@@ -197,6 +199,7 @@ public final class ConnectorConfigurations {
         if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
             throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
         }
+        watermark = descriptorProperties.getBoolean(CONNECTOR_WRITER_ENABLE_WATERMARK);
         routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);

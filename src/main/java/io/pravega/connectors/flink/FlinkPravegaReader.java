@@ -184,7 +184,6 @@ public class FlinkPravegaReader<T>
         if (isEventTimeMode()) {
             Preconditions.checkArgument(readerGroup.getStreamNames().size() == 1,
                     "Only 1 Pravega stream is allowed in the event-time mode");
-
         }
     }
 
@@ -263,7 +262,6 @@ public class FlinkPravegaReader<T>
 
                 log.info("Periodic Watermark Emitter for Reader ID: {} has started with an interval of {}", readerId,
                         autoWatermarkInterval());
-
                 periodicEmitter.start();
             }
 
@@ -601,6 +599,7 @@ public class FlinkPravegaReader<T>
          * @param assignerWithTimeWindows The timestamp and watermark assigner.
          * @return Builder instance.
          */
+
         public Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
