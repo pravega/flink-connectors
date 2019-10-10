@@ -107,7 +107,8 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
                         eventWriter,
                         numElements,
                         numElements / 2,  // the latest when the thread must be un-throttled
-                        1                 // the initial sleep time per element
+                        1,                 // the initial sleep time per element
+                        false
                 )
 
         ) {
