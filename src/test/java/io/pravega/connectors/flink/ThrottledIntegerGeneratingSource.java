@@ -9,9 +9,11 @@
  */
 package io.pravega.connectors.flink;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializableObject;
 
@@ -21,6 +23,7 @@ import java.util.List;
 /**
  * A Flink source that generates integers, but slows down until the first checkpoint has been completed.
  */
+@Slf4j
 public class ThrottledIntegerGeneratingSource
         extends RichParallelSourceFunction<Integer>
         implements ListCheckpointed<Integer>, CheckpointListener {
@@ -44,6 +47,7 @@ public class ThrottledIntegerGeneratingSource
     /** Flag to cancel the source. Must be volatile, because modified asynchronously */
     private volatile boolean running = true;
 
+    private int eventsPerWatermark = 0;
 
     public ThrottledIntegerGeneratingSource(final int numEventsTotal) {
         this(numEventsTotal, numEventsTotal / 2);
@@ -57,6 +61,18 @@ public class ThrottledIntegerGeneratingSource
         this.latestPosForCheckpoint = latestPosForCheckpoint;
     }
 
+    /**
+     * Tells the source to emit a watermark every {@link #eventsPerWatermark} events.
+     *
+     * @param eventsPerWatermark the number of events between two watermarks
+     *
+     * @return the configured {@link ThrottledIntegerGeneratingSource}
+     */
+    public ThrottledIntegerGeneratingSource withWatermarks(int eventsPerWatermark) {
+        this.eventsPerWatermark = eventsPerWatermark;
+        return this;
+    }
+
     // ------------------------------------------------------------------------
     //  source
     // ------------------------------------------------------------------------
@@ -68,6 +84,11 @@ public class ThrottledIntegerGeneratingSource
         final int stepSize = getRuntimeContext().getNumberOfParallelSubtasks();
         int current = this.currentPosition >= 0 ? this.currentPosition : getRuntimeContext().getIndexOfThisSubtask();
 
+        if (eventsPerWatermark > 0) {
+            ctx.emitWatermark(new Watermark(current));
+        }
+
+        log.info("Running");
         while (this.running && current < this.numEventsTotal) {
 
             // throttle if no checkpoint happened so far
@@ -88,6 +109,10 @@ public class ThrottledIntegerGeneratingSource
             synchronized (ctx.getCheckpointLock()) {
                 ctx.collect(current);
                 this.currentPosition = current;
+
+                if (eventsPerWatermark > 0 && current % eventsPerWatermark == 0) {
+                    ctx.emitWatermark(new Watermark(current));
+                }
             }
         }
 
@@ -126,7 +151,6 @@ public class ThrottledIntegerGeneratingSource
     @Override
     public List<Integer> snapshotState(long checkpointId, long checkpointTimestamp) throws Exception {
         this.lastCheckpointTriggered = checkpointId;
-
         return Collections.singletonList(this.currentPosition);
     }
 

@@ -129,6 +129,7 @@ public class FlinkPravegaTableSinkTest {
         pravega.tableSinkWriterBuilder()
                 .withRoutingKeyField(cityName)
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .enableWatermark(true)
                 .forStream(stream)
                 .enableMetrics(true)
                 .withPravegaConfig(pravegaConfig);

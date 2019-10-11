@@ -19,23 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_END_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_START_STREAMCUT;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_TYPE_VALUE_PRAVEGA;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_STREAM_INFO;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_READER_READER_GROUP_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_SCOPE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_STREAM;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE;
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE;
+import static io.pravega.connectors.flink.Pravega.*;
 
 /**
  * Pravega descriptor validation implementation for validating the Pravega reader and writer configurations.

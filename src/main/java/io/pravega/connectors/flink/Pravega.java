@@ -86,6 +86,7 @@ public class Pravega extends ConnectorDescriptor {
     public static final String CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE = "exactly_once";
     public static final String CONNECTOR_WRITER_MODE_VALUE_ATLEAST_ONCE = "atleast_once";
     public static final String CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL = "connector.writer.txn-lease-renewal-interval";
+    public static final String CONNECTOR_WRITER_ENABLE_WATERMARK = "connector.writer.enable-watermark";
     public static final String CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME = "connector.writer.routingkey-field-name";
 
     private TableSourceReaderBuilder tableSourceReaderBuilder = null;
@@ -176,6 +177,7 @@ public class Pravega extends ConnectorDescriptor {
             properties.putString(CONNECTOR_WRITER_MODE, CONNECTOR_WRITER_MODE_VALUE_EXACTLY_ONCE);
         }
 
+        properties.putBoolean(CONNECTOR_WRITER_ENABLE_WATERMARK, tableSinkWriterBuilder.enableWatermark);
         properties.putLong(CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL, tableSinkWriterBuilder.txnLeaseRenewalPeriod.toMilliseconds());
 
         if (tableSinkWriterBuilder.routingKeyFieldName != null) {

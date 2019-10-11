@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink.utils;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 
@@ -23,6 +24,7 @@ import java.util.List;
  * where a failure is never triggered (for example because of a too high value for
  * the number of elements to pass before failing).
  */
+@Slf4j
 public class FailingMapper<T> implements MapFunction<T, T>, ListCheckpointed<Integer> {
 
     /**
@@ -45,6 +47,7 @@ public class FailingMapper<T> implements MapFunction<T, T>, ListCheckpointed<Int
     @Override
     public T map(T element) throws Exception {
         if (!restored && ++elementCount > failAtElement) {
+            log.info("Introducing Failure");
             throw new IntentionalException("artificial test failure");
         }
 
