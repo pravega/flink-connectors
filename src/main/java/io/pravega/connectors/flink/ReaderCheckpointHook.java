@@ -149,7 +149,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     protected ScheduledExecutorService createScheduledExecutorService() {
         return Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
-    
+
     protected ScheduledExecutorService getScheduledExecutorService() {
         return this.scheduledExecutorService;
     }
