@@ -124,7 +124,9 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
         synchronized (scheduledExecutorLock) {
             if (scheduledExecutorService != null ) {
+                log.info("Closing Scheduled Executor for hook {}", hookUid);
                 scheduledExecutorService.shutdownNow();
+                scheduledExecutorService = null;
             }
         }
     }
@@ -141,6 +143,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     private void ensureScheduledExecutorExists() {
         synchronized (scheduledExecutorLock) {
             if (scheduledExecutorService == null) {
+                log.info("Creating Scheduled Executor for hook {}", hookUid);
                 scheduledExecutorService = createScheduledExecutorService();
             }
         }
