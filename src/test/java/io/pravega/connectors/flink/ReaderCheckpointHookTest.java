@@ -22,6 +22,7 @@ import java.util.concurrent.ScheduledExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Matchers.any;
@@ -61,7 +62,6 @@ public class ReaderCheckpointHookTest {
         checkpointPromise.complete(expectedCheckpoint);
         assertTrue(checkpointFuture.isDone());
         assertSame(expectedCheckpoint, checkpointFuture.get());
-        verify(hook.scheduledExecutorService).shutdownNow();
     }
 
     @Test
@@ -79,7 +79,6 @@ public class ReaderCheckpointHookTest {
         // invoke the timeout callback
         hook.invokeScheduledCallables();
         assertTrue(checkpointFuture.isCancelled());
-        verify(hook.scheduledExecutorService).shutdownNow();
     }
 
     @Test
@@ -98,6 +97,7 @@ public class ReaderCheckpointHookTest {
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1), readerGroupConfig);
         hook.close();
         verify(readerGroup).close();
+        assertNull(hook.getScheduledExecutorService());
     }
 
     @Test
@@ -113,23 +113,22 @@ public class ReaderCheckpointHookTest {
     }
 
     static class TestableReaderCheckpointHook extends ReaderCheckpointHook {
-
-        final ScheduledExecutorService scheduledExecutorService;
         private Callable<Void> scheduledCallable;
 
         @SuppressWarnings("unchecked")
         TestableReaderCheckpointHook(String hookUid, ReaderGroup readerGroup, Time triggerTimeout, ReaderGroupConfig readerGroupConfig) {
             super(hookUid, readerGroup, triggerTimeout, readerGroupConfig);
-            scheduledExecutorService = mock(ScheduledExecutorService.class);
-            when(scheduledExecutorService.schedule(any(Callable.class), anyLong(), any())).thenAnswer(a -> {
-                scheduledCallable = a.getArgumentAt(0, Callable.class);
-                return null;
-            });
         }
 
         @Override
         protected ScheduledExecutorService createScheduledExecutorService() {
-            return scheduledExecutorService;
+            ScheduledExecutorService newScheduledExecutor = mock(ScheduledExecutorService.class);
+            when(newScheduledExecutor.schedule(any(Callable.class), anyLong(), any())).thenAnswer(a -> {
+                scheduledCallable = a.getArgumentAt(0, Callable.class);
+                return null;
+            });
+
+            return newScheduledExecutor;
         }
 
         public void invokeScheduledCallables() throws Exception {
