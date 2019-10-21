@@ -11,14 +11,13 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
-
 import io.pravega.client.stream.ReaderGroupConfig;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
 
+import javax.annotation.concurrent.GuardedBy;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -37,6 +36,9 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
     /** The prefix of checkpoint names */
     private static final String PRAVEGA_CHECKPOINT_NAME_PREFIX = "PVG-CHK-";
+
+    /** Default thread pool size of the checkpoint scheduler */
+    private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
 
     // ------------------------------------------------------------------------
 
@@ -57,6 +59,11 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     // The Pravega reader group config.
     private final ReaderGroupConfig readerGroupConfig;
 
+    private final Object scheduledExecutorLock = new Object();
+
+    // A long-lived thread pool for scheduling all checkpoint tasks
+    @GuardedBy("scheduledExecutorLock")
+    private ScheduledExecutorService scheduledExecutorService;
 
     ReaderCheckpointHook(String hookUid, ReaderGroup readerGroup, Time triggerTimeout, ReaderGroupConfig readerGroupConfig) {
 
@@ -78,24 +85,15 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     public CompletableFuture<Checkpoint> triggerCheckpoint(
             long checkpointId, long checkpointTimestamp, Executor executor) throws Exception {
 
+        ensureScheduledExecutorExists();
+
         final String checkpointName = createCheckpointName(checkpointId);
-
-        // The method only offers an 'Executor', but we need a 'ScheduledExecutorService'
-        // Because the hook currently offers no "shutdown()" method, there is no good place to
-        // shut down a long lived ScheduledExecutorService, so we create one per request
-        // (we should change that by adding a shutdown() method to these hooks)
-        // ths shutdown 
-
-        final ScheduledExecutorService scheduledExecutorService = createScheduledExecutorService();
 
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
 
         // Add a timeout to the future, to prevent long blocking calls
         scheduledExecutorService.schedule(() -> checkpointResult.cancel(false), triggerTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
-
-        // we make sure the executor is shut down after the future completes
-        checkpointResult.handle((success, failure) -> scheduledExecutorService.shutdownNow());
 
         return checkpointResult;
     }
@@ -123,6 +121,12 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // close the reader group properly
         log.info("closing the reader group");
         this.readerGroup.close();
+
+        synchronized (scheduledExecutorLock) {
+            if (scheduledExecutorService != null ) {
+                scheduledExecutorService.shutdownNow();
+            }
+        }
     }
 
     @Override
@@ -134,8 +138,20 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     //  utils
     // ------------------------------------------------------------------------
 
+    private void ensureScheduledExecutorExists() {
+        synchronized (scheduledExecutorLock) {
+            if (scheduledExecutorService == null) {
+                scheduledExecutorService = createScheduledExecutorService();
+            }
+        }
+    }
+
     protected ScheduledExecutorService createScheduledExecutorService() {
-        return Executors.newSingleThreadScheduledExecutor();
+        return Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
+    }
+    
+    protected ScheduledExecutorService getScheduledExecutorService() {
+        return this.scheduledExecutorService;
     }
 
     static long parseCheckpointId(String checkpointName) {
