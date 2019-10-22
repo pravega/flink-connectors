@@ -17,6 +17,7 @@ The Flink connector library for Pravega provides a table source and table sink f
   - [Parameters](#parameters)
   - [Custom Formats](#custom-formats)
   - [Time Attribute Support](#time-attribute-support)
+  - [Pravega watermark (Evolving)](#pravega-watermark))
 - [Table Sink](#table-sink)
   - [Parameters](#parameters-1)
   - [Custom Formats](#custom-formats-1)
@@ -149,6 +150,7 @@ Note that the table source supports both the Flink **streaming** and **batch env
 |`withReaderGroupName`|The Reader Group name for display purposes.  _Applies only to streaming API._|
 |`withReaderGroupRefreshTime`|The interval for synchronizing the Reader Group state across parallel source instances.  _Applies only to streaming API._|
 |`withCheckpointInitiateTimeout`|The timeout for executing a checkpoint of the Reader Group state.  _Applies only to streaming API._|
+|`withTimestampAssigner`| (Evolving) The `AssignerWithTimeWindows` implementation to implementation which describes the event timestamp and Pravega watermark strategy in event time semantics.  _Applies only to streaming API._|
 
 > The below configurations are applicable only for the deprecated `FlinkPravegaJsonTableSource` implementation.
 
@@ -168,6 +170,41 @@ To work with stream events in a format other than JSON, extend `FlinkPravegaTabl
 @deprecated and the steps outlined in this section is applicable only for `FlinkPravegaJsonTableSource` based implementation. Please use `Pravega` descriptor instead.
 
 With the use of `withProctimeAttribute` or `withRowTimeAttribute` builder method, one could supply the time attribute information of the event. The configured field must be present in the table schema and of type `Types.SQL_TIMESTAMP()`.
+
+### Pravega watermark (Evolving)
+Pravega watermark for Table API Reader depends on the underlying DataStream settings. The following example shows how to read data with watermark by a table source.
+```java
+// A user-defined implementation of `AssignerWithTimeWindows`, the event type should be `Row`
+public static class MyAssigner extends LowerBoundAssigner<Row> {
+    public MyAssigner() {}
+
+    @Override
+    public long extractTimestamp(Row element, long previousElementTimestamp) {
+        // The third attribute of the element is the event timestamp
+        return (long) element.getField(2);
+    }
+}
+
+Pravega pravega = new Pravega();
+pravega.tableSourceReaderBuilder()
+        // Assign the watermark in the source
+        .withTimestampAssigner(new MyAssigner())
+        .withReaderGroupScope(stream.getScope())
+        .forStream(stream)
+        .withPravegaConfig(pravegaConfig);
+
+final ConnectTableDescriptor tableDesc = new TestTableDescriptor(pravega)
+        .withFormat(...)
+        .withSchema(
+                new Schema()
+                        .field(...)
+                        // Use the timestamp and Pravega watermark defined in the source
+                        .rowtime(new Rowtime()
+                                .timestampsFromSource()
+                                .watermarksFromSource()
+                        ))
+        .inAppendMode();
+```
 
 ## Table Sink
 A Pravega Stream may be used as an append-only table within a Flink table program.  The Flink Table API is oriented around Flink's `TableSchema` classes which describe the table fields.  A concrete subclass of `FlinkPravegaTableSink` is then used to write table rows to a Pravega Stream in a particular format.
@@ -260,6 +297,7 @@ Note that the table sink supports both the Flink streaming and batch environment
 |`withWriterMode`|The writer mode to provide _Best-effort_, _At-least-once_, or _Exactly-once_ guarantees.|
 |`withTxnTimeout`|The timeout for the Pravega Tansaction that supports the _exactly-once_ writer mode.|
 |`withRoutingKeyField`|The table field to use as the Routing Key for written events.|
+|`enableWatermark`|true or false to enable/disable the event-time watermark emitting into Pravega stream.|
 
 > The below configurations are applicable only for the deprecated `FlinkPravegaJsonTableSink` implementation.
 
