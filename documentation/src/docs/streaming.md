@@ -26,6 +26,7 @@ for use with the Flink Streaming API. See the below sections for details.
   - [Parallelism](#parallelism-1)
   - [Event Routing](#event-routing)
   - [Event Time Ordering](#event-time-ordering)
+  - [Watermark](#watermark)
   - [Writer Modes](#writer-modes)
 - [Metrics](#metrics)
 - [Data Serialization](#serialization)
@@ -68,6 +69,7 @@ A builder API is provided to construct an instance of `FlinkPravegaReader`. See 
 |`withReaderGroupRefreshTime`|The interval for synchronizing the Reader Group state across parallel source instances.|
 |`withCheckpointInitiateTimeout`|The timeout for executing a checkpoint of the Reader Group state.|
 |`withDeserializationSchema`|The deserialization schema which describes how to turn byte messages into events.|
+|`withTimestampAssigner`|The `AssignerWithTimeWindows` implementation which describes the event timestamp and Pravega watermark strategy in event time semantics.|
 |`enableMetrics`|true or false to enable/disable reporting Pravega metrics. Metrics is enabled by default.|
 
 ### Input Stream(s)
@@ -102,10 +104,16 @@ The checkpoint mechanism works as a two-step process:
 ### Timestamp Extraction / Watermark Emission
 
 Flink requires the events’ timestamps (each element in the stream needs to have its event timestamp assigned). This is achieved by accessing/extracting the timestamp from some field in the element. These are used to tell the system about progress in event time.
-Pravega is not aware (or does not track) of event time and does _not_ store event timestamps or watermarks.
-Nonetheless it is possible to use event time semantics via an application-specific timestamp assigner and watermark generator as described in [Flink documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/event_timestamps_watermarks.html#timestamp-assigners--watermark-generators).  
 
-Specify an `AssignerWithPeriodicWatermarks` or `AssignerWithPunctuatedWatermarks` on the `DataStream` as normal.
+Since Pravega 0.6, Pravega has proposed a new [watermarking API](https://github.com/pravega/pravega/wiki/PDP-33:-Watermarking) to  enable the writer to provide time information.
+On the reader side, a new concept [`TimeWindow`](https://github.com/pravega/pravega/wiki/PDP-33:-Watermarking#event-reader-api-changes) is proposed to represent a time window for the events which are currently being read by a reader.
+
+It is possible to use event time semantics with either pravega watermark (after 0.6) or normal watermark. 
+
+To use Pravega watermark, an interface called `AssignerWithTimeWindows` should be implemented in the application via an application-specific timestamp assigner and a watermark generator with `TimeWindow`. Different applications can choose to be more or less conservative with the given `TimeWindow`.
+`LowerBoundAssigner` is provided as a default implementation of the most conservative watermark.
+
+To use normal watermark, you can follow [Flink documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/event_timestamps_watermarks.html#timestamp-assigners--watermark-generators). Simply, specify an `AssignerWithPeriodicWatermarks` or `AssignerWithPunctuatedWatermarks` on the `DataStream` as normal.
 
 Each parallel instance of the source processes one or more stream segments in parallel. Each watermark generator instance will receive events multiplexed from numerous segments. Be aware that segments are processed in parallel, and that no effort is made to order the events across segments in terms of their event time.  Also, a given segment may be reassigned to another parallel instance at any time, preserving exactly-once behavior but causing further spread in observed event times.
 
@@ -160,6 +168,7 @@ A builder API is provided to construct an instance of `FlinkPravegaWriter`. See 
 |`withTxnLeaseRenewalPeriod`|The Transaction lease renewal period that supports the _Exactly-once_ writer mode.|
 |`withSerializationSchema`|The serialization schema which describes how to turn events into byte messages.|
 |`withEventRouter`|The router function which determines the Routing Key for a given event.|
+|`enableWatermark`|true or false to enable/disable emitting Flink watermark in event-time semantics to Pravega streams.|
 |`enableMetrics`|true or false to enable/disable reporting Pravega metrics. Metrics is enabled by default.|
 
 ### Parallelism
@@ -187,6 +196,12 @@ For programs that use Flink's event time semantics, the connector library suppor
 
 Use the method `FlinkPravegaUtils::writeToPravegaInEventTimeOrder` to write a given `DataStream` to a Pravega Stream such that events are automatically ordered by event time (on a per-key basis). Refer [here](https://github.com/pravega/flink-connectors/blob/7971206038b51b3cf0e317e194c552c4646e5c20/src/test/java/io/pravega/connectors/flink/FlinkPravegaWriterITCase.java#L93) for sample code.
 
+### Watermark
+Flink applications in event time semantics are carrying watermarks within each operator.
+
+Both Pravega transactional and non-transactional writers provide [watermark API](https://github.com/pravega/pravega/wiki/PDP-33:-Watermarking#event-writer-api-changes) to indicate the event-time watermark for a stream.
+With `enableWatermark(true)`, each watermark in Flink will be emitted into a Pravega stream.
+
 ### Writer Modes
 Writer modes relate to guarantees about the persistence of events emitted by the sink to a Pravega Stream.  The writer supports three writer modes:
 
@@ -198,6 +213,7 @@ are possible, due to retries or in case of failure and subsequent recovery.
 By default, the _At-least-once_ option is enabled and use `.withWriterMode(...)` option to override the value.
 
 See the [Pravega documentation](http://pravega.io/docs/latest/pravega-concepts/#transactions) for details on transactional behavior.
+
 
 # Metrics
 Metrics are reported by default unless it is explicitly disabled using `enableMetrics(false)` option.
