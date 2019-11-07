@@ -295,10 +295,6 @@ public class FlinkPravegaReader<T>
                     triggerCheckpoint(eventRead.getCheckpointName());
                 }
             }
-
-            if (isEventTimeMode()) {
-                ctx.emitWatermark(Watermark.MAX_WATERMARK);
-            }
         }
     }
 
