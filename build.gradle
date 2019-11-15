@@ -140,6 +140,7 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies

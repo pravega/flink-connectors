@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -18,6 +17,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.formats.json.JsonRowDeserializationSchema;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.table.api.TableSchema;
 
@@ -33,7 +33,6 @@ import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.TableSourceValidation;
-import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.SerializedValue;
@@ -129,20 +128,6 @@ public class FlinkPravegaTableSourceTest {
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
                 .withControllerURI(URI.create(controllerUri))
                 .withDefaultScope(scopeName);
-
-        FlinkPravegaJsonTableSource flinkPravegaJsonTableSource = FlinkPravegaJsonTableSource.builder()
-                .forStream(stream)
-                .withPravegaConfig(pravegaConfig)
-                .failOnMissingField(true)
-                .withProctimeAttribute(procTime)
-                .withRowtimeAttribute(eventTime,
-                        new ExistingField(eventTime),
-                        new BoundedOutOfOrderTimestamps(delay))
-                .withSchema(tableSchema)
-                .withReaderGroupScope(stream.getScope())
-                .build();
-
-        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource);
 
         // construct table source using descriptors and table source factory
         Pravega pravega = new Pravega();
@@ -243,7 +228,7 @@ public class FlinkPravegaTableSourceTest {
             @Override
             protected DeserializationSchema<Row> getDeserializationSchema() {
                 TableSchema tableSchema = getTableSchema();
-                return new JsonRowDeserializationSchema(jsonSchemaToReturnType(tableSchema));
+                return new JsonRowDeserializationSchema.Builder(jsonSchemaToReturnType(tableSchema)).build();
             }
 
             @Override

@@ -10,11 +10,11 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.formats.json.JsonRowSerializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
@@ -42,7 +42,7 @@ public class FlinkPravegaTableSinkTest {
 
     private static final RowTypeInfo TUPLE1 = new RowTypeInfo(Types.STRING);
     private static final RowTypeInfo TUPLE2 = new RowTypeInfo(Types.STRING, Types.INT);
-    private static final SerializationSchema<Row> SERIALIZER1 = new JsonRowSerializationSchema(TUPLE1.getFieldNames());
+    private static final SerializationSchema<Row> SERIALIZER1 = new JsonRowSerializationSchema.Builder(TUPLE1).build();
     private static final Stream STREAM1 = Stream.of("scope-1/stream-1");
 
     @Test
