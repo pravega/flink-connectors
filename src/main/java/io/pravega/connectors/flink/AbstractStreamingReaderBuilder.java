@@ -31,7 +31,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
 
     private static final Time DEFAULT_EVENT_READ_TIMEOUT = Time.seconds(1);
     private static final Time DEFAULT_CHECKPOINT_INITIATE_TIMEOUT = Time.seconds(5);
-    private static final int  DEFAULT_MAX_OUTSTANDING_CHECKPOINT_REQUEST = 3;
+    private static final int  DEFAULT_MAX_OUTSTANDING_CHECKPOINT_REQUEST = 10;
 
     protected String uid;
     protected String readerGroupScope;
