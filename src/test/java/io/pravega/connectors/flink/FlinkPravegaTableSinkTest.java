@@ -34,7 +34,6 @@ import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
@@ -86,25 +85,6 @@ public class FlinkPravegaTableSinkTest {
         DataSet<Row> dataSet = mock(DataSet.class);
         tableSink.emitDataSet(dataSet);
         verify(dataSet).output(outputFormat);
-    }
-
-    @Test
-    public void testBuilder() {
-        FlinkPravegaTableSink.TableSinkConfiguration config =
-                new FlinkPravegaTableSink.TableSinkConfiguration(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
-        TestableFlinkPravegaTableSink.Builder builder = new TestableFlinkPravegaTableSink.Builder()
-                .forStream(STREAM1)
-                .withRoutingKeyField(TUPLE1.getFieldNames()[0]);
-        FlinkPravegaWriter<Row> writer = builder.createSinkFunction(config);
-        assertNotNull(writer);
-        assertSame(SERIALIZER1, writer.serializationSchema);
-        assertEquals(STREAM1, writer.stream);
-        assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) writer.eventRouter).getKeyIndex());
-        FlinkPravegaOutputFormat<Row> outputFormat = builder.createOutputFormat(config);
-        assertNotNull(outputFormat);
-        assertEquals(SERIALIZER1, outputFormat.getSerializationSchema());
-        assertEquals(STREAM1, Stream.of(outputFormat.getScope(), outputFormat.getStream()));
-        assertEquals(0, ((FlinkPravegaTableSink.RowBasedRouter) outputFormat.getEventRouter()).getKeyIndex());
     }
 
     @Test
@@ -166,18 +146,6 @@ public class FlinkPravegaTableSinkTest {
         @Override
         protected FlinkPravegaTableSink createCopy() {
             return new TestableFlinkPravegaTableSink(writerFactory, outputFormatFactory);
-        }
-
-        static class Builder extends AbstractTableSinkBuilder<Builder> {
-            @Override
-            protected Builder builder() {
-                return this;
-            }
-
-            @Override
-            protected SerializationSchema<Row> getSerializationSchema(String[] fieldNames) {
-                return SERIALIZER1;
-            }
         }
 
     }

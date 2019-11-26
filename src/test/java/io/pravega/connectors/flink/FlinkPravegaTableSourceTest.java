@@ -10,16 +10,8 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
-import org.apache.flink.api.java.ExecutionEnvironment;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
-import org.apache.flink.formats.json.JsonRowDeserializationSchema;
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.table.api.TableSchema;
 
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
@@ -35,75 +27,17 @@ import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.TableSourceValidation;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.SerializedValue;
 import org.junit.Test;
 
 import java.net.URI;
 import java.util.Map;
-import java.util.function.Supplier;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 
 /**
  * Unit tests for {@link FlinkPravegaTableSource} and its builder.
  */
 public class FlinkPravegaTableSourceTest {
-
-    private static final Stream SAMPLE_STREAM = Stream.of("scope", "stream");
-
-    private static final TableSchema SAMPLE_SCHEMA = TableSchema.builder()
-            .field("category", Types.STRING)
-            .field("value", Types.INT)
-            .build();
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testStreamTableSource() {
-        FlinkPravegaReader<Row> reader = mock(FlinkPravegaReader.class);
-        FlinkPravegaInputFormat<Row> inputFormat = mock(FlinkPravegaInputFormat.class);
-
-        TestableFlinkPravegaTableSource tableSource = new TestableFlinkPravegaTableSource(
-                () -> reader,
-                () -> inputFormat,
-                SAMPLE_SCHEMA,
-                jsonSchemaToReturnType(SAMPLE_SCHEMA)
-        );
-        StreamExecutionEnvironment streamEnv = mock(StreamExecutionEnvironment.class);
-        tableSource.getDataStream(streamEnv);
-        verify(reader).initialize();
-        verify(streamEnv).addSource(reader);
-    }
-
-    @Test
-    @SuppressWarnings("unchecked")
-    public void testBatchTableSource() {
-        FlinkPravegaReader<Row> reader = mock(FlinkPravegaReader.class);
-        FlinkPravegaInputFormat<Row> inputFormat = mock(FlinkPravegaInputFormat.class);
-        TypeInformation<Row> returnType = jsonSchemaToReturnType(SAMPLE_SCHEMA);
-
-        TestableFlinkPravegaTableSource tableSource = new TestableFlinkPravegaTableSource(
-                () -> reader,
-                () -> inputFormat,
-                SAMPLE_SCHEMA,
-                returnType
-        );
-        ExecutionEnvironment batchEnv = mock(ExecutionEnvironment.class);
-        tableSource.getDataSet(batchEnv);
-        verify(batchEnv).createInput(inputFormat, returnType);
-    }
-
-    @Test
-    public void testBuildInputFormat() {
-        TestableFlinkPravegaTableSource.TestableBuilder builder = new TestableFlinkPravegaTableSource.TestableBuilder()
-                .forStream(SAMPLE_STREAM)
-                .withSchema(SAMPLE_SCHEMA);
-        assertEquals(SAMPLE_SCHEMA, builder.getTableSchema());
-        FlinkPravegaInputFormat<Row> inputFormat = builder.buildInputFormat();
-        assertNotNull(inputFormat);
-    }
 
     @Test
     @SuppressWarnings("unchecked")
@@ -116,13 +50,6 @@ public class FlinkPravegaTableSourceTest {
         final long delay = 3000L;
         final String streamName = "test";
         final String scopeName = "test";
-
-        final TableSchema tableSchema = TableSchema.builder()
-                .field(cityName, Types.STRING)
-                .field(total, Types.BIG_DEC)
-                .field(eventTime, Types.SQL_TIMESTAMP)
-                .field(procTime, Types.SQL_TIMESTAMP)
-                .build();
 
         Stream stream = Stream.of(scopeName, streamName);
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
@@ -163,9 +90,7 @@ public class FlinkPravegaTableSourceTest {
         final String cityName = "fruitName";
         final String total = "count";
         final String eventTime = "eventTime";
-        final String procTime = "procTime";
         final String controllerUri = "tcp://localhost:9090";
-        final long delay = 3000L;
         final String streamName = "test";
         final String scopeName = "test";
 
@@ -186,9 +111,9 @@ public class FlinkPravegaTableSourceTest {
                 .withFormat(new Json().failOnMissingField(false) .deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .field(cityName, Types.STRING)
+                                .field(total, Types.BIG_DEC)
+                                .field(eventTime, Types.SQL_TIMESTAMP)
                                 .rowtime(new Rowtime()
                                         .timestampsFromSource()
                                         .watermarksFromSource()
@@ -200,42 +125,6 @@ public class FlinkPravegaTableSourceTest {
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
         TableSourceValidation.validateTableSource(actualSource);
-    }
-
-    /** Converts the JSON schema into into the return type. */
-    private static RowTypeInfo jsonSchemaToReturnType(TableSchema jsonSchema) {
-        return new RowTypeInfo(jsonSchema.getFieldTypes(), jsonSchema.getFieldNames());
-    }
-
-    private static class TestableFlinkPravegaTableSource extends FlinkPravegaTableSource {
-
-        protected TestableFlinkPravegaTableSource(Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory, Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory, TableSchema schema, TypeInformation<Row> returnType) {
-            super(sourceFunctionFactory, inputFormatFactory, schema, returnType);
-        }
-
-        @Override
-        public String explainSource() {
-            return "TestableFlinkPravegaTableSource";
-        }
-
-        static class TestableBuilder extends FlinkPravegaTableSource.BuilderBase<TestableFlinkPravegaTableSource, TestableBuilder> {
-
-            @Override
-            protected TestableBuilder builder() {
-                return this;
-            }
-
-            @Override
-            protected DeserializationSchema<Row> getDeserializationSchema() {
-                TableSchema tableSchema = getTableSchema();
-                return new JsonRowDeserializationSchema.Builder(jsonSchemaToReturnType(tableSchema)).build();
-            }
-
-            @Override
-            protected SerializedValue<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
-                return null;
-            }
-        }
     }
 
     /**
