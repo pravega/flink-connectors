@@ -77,6 +77,10 @@ repositories {
         maven {
             url "https://oss.jfrog.org/jfrog-dependencies"
         }
+        // temp direpository for Pravega 0.6.1 RC
+        maven {
+            url "https://oss.sonatype.org/content/repositories/iopravega-1058/"
+        }
     }
 }
 
