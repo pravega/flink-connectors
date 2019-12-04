@@ -198,6 +198,7 @@ public class FlinkPravegaReader<T>
     private class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
 
         private EventStreamReader<?> pravegaReader;
+        private Stream stream;
         private final SourceContext<?> ctx;
         private final ProcessingTimeService timerService;
         private long lastWatermarkTimestamp;
@@ -207,6 +208,7 @@ public class FlinkPravegaReader<T>
                 EventStreamReader<?> pravegaReader, SourceContext<?> ctx, ClassLoader userCodeClassLoader,
                 ProcessingTimeService timerService) throws Exception {
             this.pravegaReader = Preconditions.checkNotNull(pravegaReader);
+            this.stream = Stream.of(readerGroup.getStreamNames().iterator().next());
             this.ctx = Preconditions.checkNotNull(ctx);
             this.timerService = Preconditions.checkNotNull(timerService);
             this.lastWatermarkTimestamp = Long.MIN_VALUE;
@@ -219,7 +221,6 @@ public class FlinkPravegaReader<T>
 
         @Override
         public void onProcessingTime(long timestamp) {
-            Stream stream = Stream.of(readerGroup.getStreamNames().iterator().next());
             Watermark watermark = userAssigner.getWatermark(pravegaReader.getCurrentTimeWindow(stream));
 
             if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
