@@ -58,12 +58,16 @@ public class FlinkPravegaOutputFormatTest {
     public void testBuilderForSuccess() {
         when(pravegaConfig.getClientConfig()).thenReturn(clientConfig);
         when(pravegaConfig.resolve(anyString())).thenReturn(stream);
-        FlinkPravegaOutputFormat.<String>builder()
+        FlinkPravegaOutputFormat outputFormat = FlinkPravegaOutputFormat.<String>builder()
                 .withEventRouter(eventRouter)
                 .withSerializationSchema(serializationSchema)
                 .withPravegaConfig(pravegaConfig)
                 .forStream(stream)
                 .build();
+        assertEquals(stream.getScope(), outputFormat.getScope());
+        assertEquals(stream.getStreamName(), outputFormat.getStream());
+        assertEquals(serializationSchema, outputFormat.getSerializationSchema());
+        assertEquals(eventRouter, outputFormat.getEventRouter());
     }
 
     /**
