@@ -42,6 +42,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 import java.util.function.Function;
 
+import static io.pravega.connectors.flink.AbstractStreamingWriterBuilder.DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Matchers.eq;
@@ -679,7 +680,8 @@ public class FlinkPravegaWriterTest {
 
     private FlinkPravegaWriter<Integer> spySinkFunction(EventStreamClientFactory clientFactory, PravegaEventRouter<Integer> eventRouter, boolean enableWatermark, PravegaWriterMode writerMode) {
         FlinkPravegaWriter<Integer> writer = spy(new FlinkPravegaWriter<>(
-                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(), eventRouter, writerMode, 30, enableWatermark, true));
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), new IntegerSerializationSchema(),
+                eventRouter, writerMode, DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, enableWatermark, true));
         Mockito.doReturn(clientFactory).when(writer).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
         return writer;
     }
