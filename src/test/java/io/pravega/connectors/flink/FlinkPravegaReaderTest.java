@@ -21,9 +21,12 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TimeWindow;
+import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
@@ -159,6 +162,37 @@ public class FlinkPravegaReaderTest {
     }
 
     /**
+     * Tests the behavior of {@code run()} when deserialized with metadata.
+     */
+    @Test
+    public void testRunWithMetadataDeserialization() throws Exception {
+        TestableFlinkPravegaReader<Integer> reader = createReaderWithMetadataDeserialization();
+
+        try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
+                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+            testHarness.open();
+
+            // prepare a sequence of events
+            TestEventGenerator<Integer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(1, 1))
+                    .thenReturn(evts.event(TestDeserializationSchema.END_OF_STREAM, 2));
+
+            // run the source
+            testHarness.run();
+
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
+
+            Queue<Object> actual = testHarness.getOutput();
+            Queue<Object> expected = new ConcurrentLinkedQueue<>();
+            expected.add(record(evts.getEventPointer(1).toBytes().remaining()));
+
+            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
+        }
+    }
+
+    /**
      * Tests the behavior of {@code run()} with watermark.
      */
     @Test
@@ -281,6 +315,19 @@ public class FlinkPravegaReaderTest {
         } catch (IOException e) {
             throw new IllegalArgumentException("The given assigner is not serializable", e);
         }
+    }
+
+    /**
+     * Creates a {@link TestableFlinkPravegaReader} with event time and watermarking.
+     */
+    private static TestableFlinkPravegaReader<Integer> createReaderWithMetadataDeserialization() {
+        ClientConfig clientConfig = ClientConfig.builder().build();
+        ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
+        boolean enableMetrics = true;
+
+        return new TestableFlinkPravegaReader<>(
+                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, new TestDeserializationSchemaWithMetadata(),
+                    null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
     /**
@@ -407,8 +454,27 @@ public class FlinkPravegaReaderTest {
      * Generates a sequence of {@link EventRead} instances, including events, checkpoints, and idleness.
      */
     private static class TestEventGenerator<T> {
+
+        private String buildEventPointerString(long offset) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(SAMPLE_SEGMENT.getScopedName());
+            sb.append(':');
+            sb.append(offset);
+            sb.append('-');
+            sb.append(1);
+            return sb.toString();
+        }
+
+        public EventPointer getEventPointer(long offset) {
+            return EventPointerImpl.fromString(buildEventPointerString(offset));
+        }
+
         public EventRead<T> event(T evt) {
             return new EventReadImpl<>(evt, mock(Position.class), mock(EventPointer.class), null);
+        }
+
+        public EventRead<T> event(T evt, long offset) {
+            return new EventReadImpl<>(evt, mock(Position.class), getEventPointer(offset), null);
         }
 
         public EventRead<T> idle() {
@@ -427,6 +493,30 @@ public class FlinkPravegaReaderTest {
      */
     private static class TestDeserializationSchema extends IntegerDeserializationSchema {
         public static final int END_OF_STREAM = -1;
+        @Override
+        public boolean isEndOfStream(Integer nextElement) {
+            return nextElement.equals(END_OF_STREAM);
+        }
+    }
+
+    /**
+     * A deserialization schema with metadata for test purposes.
+     */
+    private static class TestDeserializationSchemaWithMetadata extends PravegaDeserializationSchema<Integer> {
+        public static final int END_OF_STREAM = -1;
+
+        public TestDeserializationSchemaWithMetadata() {
+            super(Integer.class, new IntegerSerializer());
+        }
+
+        @Override
+        public Integer deserializeWithMetadata(EventRead<Integer> eventRead) {
+            if (isEndOfStream(eventRead.getEvent())) {
+                return eventRead.getEvent();
+            }
+            return eventRead.getEventPointer().toBytes().remaining();
+        }
+
         @Override
         public boolean isEndOfStream(Integer nextElement) {
             return nextElement.equals(END_OF_STREAM);

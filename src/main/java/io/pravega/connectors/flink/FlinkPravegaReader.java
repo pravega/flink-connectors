@@ -20,6 +20,7 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -268,7 +269,10 @@ public class FlinkPravegaReader<T>
             // main work loop, which this task is running
             while (this.running) {
                 final EventRead<T> eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
-                final T event = eventRead.getEvent();
+
+                final T event = this.deserializationSchema instanceof PravegaDeserializationSchema ?
+                        ((PravegaDeserializationSchema<T>) deserializationSchema).deserializeWithMetadata(eventRead) :
+                        eventRead.getEvent();
 
                 // emit the event, if one was carried
                 if (event != null) {
