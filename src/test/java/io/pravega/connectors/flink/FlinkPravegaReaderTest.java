@@ -9,6 +9,9 @@
  */
 package io.pravega.connectors.flink;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.segment.impl.Segment;
@@ -26,7 +29,7 @@ import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
-import io.pravega.connectors.flink.utils.IntegerSerializer;
+import io.pravega.connectors.flink.utils.JSONSerializer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
@@ -48,6 +51,7 @@ import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -64,6 +68,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
@@ -166,17 +171,17 @@ public class FlinkPravegaReaderTest {
      */
     @Test
     public void testRunWithMetadataDeserialization() throws Exception {
-        TestableFlinkPravegaReader<Integer> reader = createReaderWithMetadataDeserialization();
+        TestableFlinkPravegaReader<JsonNode> reader = createReaderWithMetadataDeserialization();
 
-        try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
+        try (StreamSourceOperatorTestHarness<JsonNode, TestableFlinkPravegaReader<JsonNode>> testHarness =
                      createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
             testHarness.open();
 
             // prepare a sequence of events
-            TestEventGenerator<Integer> evts = new TestEventGenerator<>();
+            TestEventGenerator<JsonNode> evts = new TestEventGenerator<>();
             when(reader.eventStreamReader.readNextEvent(anyLong()))
-                    .thenReturn(evts.event(1, 1))
-                    .thenReturn(evts.event(TestDeserializationSchema.END_OF_STREAM, 2));
+                    .thenReturn(evts.event(TestJsonDeserializationSchema.wrapInt(1), 1))
+                    .thenReturn(evts.event(TestJsonDeserializationSchema.END_OF_STREAM, 2));
 
             // run the source
             testHarness.run();
@@ -185,10 +190,16 @@ public class FlinkPravegaReaderTest {
             verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
 
             Queue<Object> actual = testHarness.getOutput();
-            Queue<Object> expected = new ConcurrentLinkedQueue<>();
-            expected.add(record(evts.getEventPointer(1).toBytes().remaining()));
+            assertEquals(actual.size(), 1);
+            JsonNode output = ((StreamRecord<JsonNode>) actual.peek()).getValue();
 
-            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
+            assertTrue(output.has("value"));
+            assertTrue(output.has("eventpointer"));
+
+            EventPointer outputEventPointer = EventPointer.fromBytes(
+                    ByteBuffer.wrap(output.get("eventpointer").binaryValue()));
+            assertEquals(output.get("value").asInt(), 1);
+            assertEquals(outputEventPointer, evts.getEventPointer(1));
         }
     }
 
@@ -320,13 +331,13 @@ public class FlinkPravegaReaderTest {
     /**
      * Creates a {@link TestableFlinkPravegaReader} with event time and watermarking.
      */
-    private static TestableFlinkPravegaReader<Integer> createReaderWithMetadataDeserialization() {
+    private static TestableFlinkPravegaReader<JsonNode> createReaderWithMetadataDeserialization() {
         ClientConfig clientConfig = ClientConfig.builder().build();
         ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
         boolean enableMetrics = true;
 
         return new TestableFlinkPravegaReader<>(
-                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, new TestDeserializationSchemaWithMetadata(),
+                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, new TestJsonDeserializationSchema(true),
                     null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
@@ -500,25 +511,33 @@ public class FlinkPravegaReaderTest {
     }
 
     /**
-     * A deserialization schema with metadata for test purposes.
+     * A test JSON format deserialization schema with metadata.
      */
-    private static class TestDeserializationSchemaWithMetadata extends PravegaDeserializationSchema<Integer> {
-        public static final int END_OF_STREAM = -1;
+    private static class TestJsonDeserializationSchema extends PravegaDeserializationSchema<JsonNode> {
+        public static final JsonNode END_OF_STREAM = wrapInt(-1);
+        private boolean includeMetadata;
 
-        public TestDeserializationSchemaWithMetadata() {
-            super(Integer.class, new IntegerSerializer());
+        public TestJsonDeserializationSchema(boolean includeMetadata) {
+            super(JsonNode.class, new JSONSerializer());
+            this.includeMetadata = includeMetadata;
+        }
+
+        public static JsonNode wrapInt(int value) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.createObjectNode().put("value", value);
         }
 
         @Override
-        public Integer deserializeWithMetadata(EventRead<Integer> eventRead) {
-            if (isEndOfStream(eventRead.getEvent())) {
-                return eventRead.getEvent();
+        public JsonNode deserializeWithMetadata(EventRead<JsonNode> eventRead) {
+            JsonNode node = eventRead.getEvent();
+            if (includeMetadata && !isEndOfStream(node)) {
+                return ((ObjectNode) node).put("eventpointer", eventRead.getEventPointer().toBytes().array());
             }
-            return eventRead.getEventPointer().toBytes().remaining();
+            return node;
         }
 
         @Override
-        public boolean isEndOfStream(Integer nextElement) {
+        public boolean isEndOfStream(JsonNode nextElement) {
             return nextElement.equals(END_OF_STREAM);
         }
     }

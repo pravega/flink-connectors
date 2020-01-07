@@ -47,6 +47,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
@@ -266,13 +267,15 @@ public class FlinkPravegaReader<T>
                 periodicEmitter.start();
             }
 
+            Function<EventRead<T>, T> deserFunc = this.deserializationSchema instanceof PravegaDeserializationSchema ?
+                    ((PravegaDeserializationSchema<T>) deserializationSchema)::deserializeWithMetadata :
+                    (eventRead) -> eventRead.getEvent();
+
             // main work loop, which this task is running
             while (this.running) {
                 final EventRead<T> eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
 
-                final T event = this.deserializationSchema instanceof PravegaDeserializationSchema ?
-                        ((PravegaDeserializationSchema<T>) deserializationSchema).deserializeWithMetadata(eventRead) :
-                        eventRead.getEvent();
+                final T event = deserFunc.apply(eventRead);
 
                 // emit the event, if one was carried
                 if (event != null) {
