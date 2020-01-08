@@ -188,14 +188,15 @@ public class FlinkPravegaReaderTest {
 
             // verify that the event stream was read until the end of stream
             verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
-
             Queue<Object> actual = testHarness.getOutput();
             assertEquals(actual.size(), 1);
-            JsonNode output = ((StreamRecord<JsonNode>) actual.peek()).getValue();
 
+            // verify that the Json event doesn't miss any field
+            JsonNode output = ((StreamRecord<JsonNode>) actual.peek()).getValue();
             assertTrue(output.has("value"));
             assertTrue(output.has("eventpointer"));
 
+            // verify that the Json event contains the right value and EventPointer information
             EventPointer outputEventPointer = EventPointer.fromBytes(
                     ByteBuffer.wrap(output.get("eventpointer").binaryValue()));
             assertEquals(output.get("value").asInt(), 1);
