@@ -1,11 +1,11 @@
 /**
  * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
- * <p>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.pravega.connectors.flink;
 
@@ -109,8 +109,9 @@ public class ReaderCheckpointHookTest {
     @Test
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
-
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
+        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
+                readerGroupConfig);
 
         Checkpoint checkpoint = mock(Checkpoint.class);
         CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
@@ -118,9 +119,6 @@ public class ReaderCheckpointHookTest {
         when(checkpointImpl.getPositions()).thenReturn(ImmutableMap.<Stream, StreamCut>builder()
                 .put(Stream.of(SCOPE, "s1"), getStreamCut("s1"))
                 .put(Stream.of(SCOPE, "s2"), getStreamCut("s2")).build());
-
-        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
-                readerGroupConfig);
 
         hook.restoreCheckpoint(1L, checkpoint);
 
