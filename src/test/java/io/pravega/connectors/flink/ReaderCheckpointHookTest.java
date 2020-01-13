@@ -17,7 +17,6 @@ import io.pravega.client.stream.impl.StreamCutImpl;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.concurrent.Executors;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 import java.util.Arrays;
 import java.util.concurrent.Callable;
@@ -107,18 +106,17 @@ public class ReaderCheckpointHookTest {
     @Test
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
-
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
+        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
+                readerGroupConfig);
 
-        Checkpoint checkpoint = Mockito.mock(Checkpoint.class);
-        CheckpointImpl checkpointImpl = Mockito.mock(CheckpointImpl.class);
+        Checkpoint checkpoint = mock(Checkpoint.class);
+        CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
         when(checkpoint.asImpl()).thenReturn(checkpointImpl);
         when(checkpointImpl.getPositions()).thenReturn(ImmutableMap.<Stream, StreamCut>builder()
                 .put(Stream.of(SCOPE, "s1"), getStreamCut("s1"))
                 .put(Stream.of(SCOPE, "s2"), getStreamCut("s2")).build());
 
-        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
-                readerGroupConfig);
 
         hook.restoreCheckpoint(1L, checkpoint);
 
