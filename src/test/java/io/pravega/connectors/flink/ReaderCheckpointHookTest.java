@@ -12,10 +12,17 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.StreamCut;
+import io.pravega.client.stream.impl.CheckpointImpl;
+import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.client.stream.Stream;
+import avro.shaded.com.google.common.collect.ImmutableMap;
+import io.pravega.client.segment.impl.Segment;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.concurrent.Executors;
 import org.junit.Test;
 
+import java.util.Arrays;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -33,7 +40,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 public class ReaderCheckpointHookTest {
-
+    private static final String SCOPE = "scope";
     private static final String HOOK_UID = "test";
 
     @Test
@@ -101,15 +108,30 @@ public class ReaderCheckpointHookTest {
     }
 
     @Test
-    @SuppressWarnings("deprecation")
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1), readerGroupConfig);
 
         Checkpoint checkpoint = mock(Checkpoint.class);
+        CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
+        when(checkpoint.asImpl()).thenReturn(checkpointImpl);
+        when(checkpointImpl.getPositions()).thenReturn(ImmutableMap.<Stream, StreamCut>builder()
+                .put(Stream.of(SCOPE, "s1"), getStreamCut("s1"))
+                .put(Stream.of(SCOPE, "s2"), getStreamCut("s2")).build());
+
+
         hook.restoreCheckpoint(1L, checkpoint);
-        verify(readerGroup).resetReadersToCheckpoint(checkpoint);
+
+        readerGroupConfig = ReaderGroupConfig.builder()
+
+                .disableAutomaticCheckpoints()
+
+                .startFromCheckpoint(checkpoint)
+
+                .build();
+
+        verify(readerGroup).resetReaderGroup(readerGroupConfig);
     }
 
     static class TestableReaderCheckpointHook extends ReaderCheckpointHook {
@@ -136,5 +158,23 @@ public class ReaderCheckpointHookTest {
                 scheduledCallable.call();
             }
         }
+    }
+
+
+    private StreamCut getStreamCut(String streamName) {
+        return getStreamCut(streamName, 10L);
+    }
+
+    private StreamCut getStreamCut(String streamName, int... segments) {
+        ImmutableMap.Builder<Segment, Long> builder = ImmutableMap.<Segment, Long>builder();
+        Arrays.stream(segments).forEach(seg -> builder.put(new Segment(SCOPE, streamName, seg), 10L));
+
+        return new StreamCutImpl(Stream.of(SCOPE, streamName), builder.build());
+    }
+
+    private StreamCut getStreamCut(String streamName, long offset) {
+        ImmutableMap<Segment, Long> positions = ImmutableMap.<Segment, Long>builder().put(new Segment(SCOPE,
+                streamName, 0), offset).build();
+        return new StreamCutImpl(Stream.of(SCOPE, streamName), positions);
     }
 }
