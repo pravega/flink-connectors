@@ -107,8 +107,7 @@ public class ReaderCheckpointHookTest {
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
-        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
-                readerGroupConfig);
+        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1), readerGroupConfig);
 
         Checkpoint checkpoint = mock(Checkpoint.class);
         CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
