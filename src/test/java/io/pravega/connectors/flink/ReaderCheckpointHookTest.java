@@ -9,11 +9,15 @@
  */
 package io.pravega.connectors.flink;
 
-import avro.shaded.com.google.common.collect.ImmutableMap;
-import io.pravega.client.segment.impl.Segment;
-import io.pravega.client.stream.*;
+import io.pravega.client.stream.Checkpoint;
+import io.pravega.client.stream.ReaderGroup;
+import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.impl.CheckpointImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.client.stream.Stream;
+import avro.shaded.com.google.common.collect.ImmutableMap;
+import io.pravega.client.segment.impl.Segment;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.runtime.concurrent.Executors;
 import org.junit.Test;
