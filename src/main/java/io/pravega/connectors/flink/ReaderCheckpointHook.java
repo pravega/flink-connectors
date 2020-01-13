@@ -1,19 +1,15 @@
 /**
  * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
- * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
  * http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Checkpoint;
-import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
-import io.pravega.client.stream.impl.CheckpointImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -36,38 +32,26 @@ import static com.google.common.base.Preconditions.checkNotNull;
 @Slf4j
 class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
-    /**
-     * The prefix of checkpoint names
-     */
+    /** The prefix of checkpoint names */
     private static final String PRAVEGA_CHECKPOINT_NAME_PREFIX = "PVG-CHK-";
 
-    /**
-     * Default thread pool size of the checkpoint scheduler
-     */
+    /** Default thread pool size of the checkpoint scheduler */
     private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
 
     // ------------------------------------------------------------------------
 
-    /**
-     * The logical name of the operator. This is different from the (randomly generated)
+    /** The logical name of the operator. This is different from the (randomly generated)
      * reader group name, because it is used to identify the state in a checkpoint/savepoint
-     * when resuming the checkpoint/savepoint with another job.
-     */
+     * when resuming the checkpoint/savepoint with another job. */
     private final String hookUid;
 
-    /**
-     * The serializer for Pravega checkpoints, to store them in Flink checkpoints
-     */
+    /** The serializer for Pravega checkpoints, to store them in Flink checkpoints */
     private final CheckpointSerializer checkpointSerializer;
 
-    /**
-     * The reader group used to trigger and restore pravega checkpoints
-     */
+    /** The reader group used to trigger and restore pravega checkpoints */
     private final ReaderGroup readerGroup;
 
-    /**
-     * The timeout on the future returned by the 'initiateCheckpoint()' call
-     */
+    /** The timeout on the future returned by the 'initiateCheckpoint()' call */
     private final Time triggerTimeout;
 
     // The Pravega reader group config.
@@ -117,8 +101,11 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // checkpoint can be null when restoring from a savepoint that
         // did not include any state for that particular reader name
         if (checkpoint != null) {
-            this.readerGroup.resetReaderGroup(ReaderGroupConfig.builder().disableAutomaticCheckpoints().
-                    startFromCheckpoint(checkpoint).build());
+            this.readerGroup.resetReaderGroup(ReaderGroupConfig.
+                    builder().
+                    disableAutomaticCheckpoints().
+                    startFromCheckpoint(checkpoint).
+                    build());
         }
     }
 
