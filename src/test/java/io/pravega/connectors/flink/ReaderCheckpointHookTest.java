@@ -110,11 +110,10 @@ public class ReaderCheckpointHookTest {
     @Test
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
-
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
-
+        
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1), readerGroupConfig);
-
+        
         Checkpoint checkpoint = mock(Checkpoint.class);
         CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
 
@@ -158,18 +157,12 @@ public class ReaderCheckpointHookTest {
     }
 
     private StreamCut getStreamCut(String streamName) {
-
         return getStreamCut(streamName, 10L);
-
     }
 
     private StreamCut getStreamCut(String streamName, long offset) {
-
         ImmutableMap<Segment, Long> positions = ImmutableMap.<Segment, Long>builder().put(new Segment(SCOPE,
-
                 streamName, 0), offset).build();
-
         return new StreamCutImpl(Stream.of(SCOPE, streamName), positions);
-
     }
 }
