@@ -110,7 +110,6 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
                     .disableAutomaticCheckpoints()
                     .startFromCheckpoint(checkpoint)
                     .build());
-
         }
     }
 
