@@ -103,11 +103,13 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         // checkpoint can be null when restoring from a savepoint that
         // did not include any state for that particular reader name
         if (checkpoint != null) {
-            this.readerGroup.resetReaderGroup(ReaderGroupConfig.
-                    builder().
-                    disableAutomaticCheckpoints().
-                    startFromCheckpoint(checkpoint).
-                    build());
+             this.readerGroup.resetReaderGroup(ReaderGroupConfig
+                    .builder()
+                    .maxOutstandingCheckpointRequest(this.readerGroupConfig.getMaxOutstandingCheckpointRequest())
+                    .groupRefreshTimeMillis(this.readerGroupConfig.getGroupRefreshTimeMillis())
+                    .disableAutomaticCheckpoints()
+                    .startFromCheckpoint(checkpoint)
+                    .build());
 
         }
     }
