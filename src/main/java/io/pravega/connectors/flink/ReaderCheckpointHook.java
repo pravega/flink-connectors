@@ -98,13 +98,17 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         return checkpointResult;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     public void restoreCheckpoint(long checkpointId, Checkpoint checkpoint) throws Exception {
         // checkpoint can be null when restoring from a savepoint that
         // did not include any state for that particular reader name
         if (checkpoint != null) {
-            this.readerGroup.resetReadersToCheckpoint(checkpoint);
+            this.readerGroup.resetReaderGroup(ReaderGroupConfig.
+                    builder().
+                    disableAutomaticCheckpoints().
+                    startFromCheckpoint(checkpoint).
+                    build());
+
         }
     }
 
