@@ -30,7 +30,6 @@ import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit Test for the {@link FlinkPravegaInputFormat}
@@ -58,8 +57,8 @@ public class FlinkPravegaInputFormatTest {
      */
     @Test
     public void testBuilderForSuccess() {
-        when(pravegaConfig.getClientConfig()).thenReturn(clientConfig);
-        when(pravegaConfig.resolve(anyString())).thenReturn(stream);
+        doReturn(clientConfig).when(pravegaConfig).getClientConfig();
+        doReturn(stream).when(pravegaConfig).resolve(anyString());
         FlinkPravegaInputFormat.<String>builder()
                 .withDeserializationSchema(deserializationSchema)
                 .withPravegaConfig(pravegaConfig)
@@ -72,8 +71,8 @@ public class FlinkPravegaInputFormatTest {
      */
     @Test (expected = IllegalStateException.class)
     public void testBuilderForMissingDeSerializationSchema() {
-        when(pravegaConfig.getClientConfig()).thenReturn(clientConfig);
-        when(pravegaConfig.resolve(anyString())).thenReturn(stream);
+        doReturn(clientConfig).when(pravegaConfig).getClientConfig();
+        doReturn(stream).when(pravegaConfig).resolve(anyString());
         FlinkPravegaInputFormat.<String>builder()
                 .withPravegaConfig(pravegaConfig)
                 .forStream(stream)
@@ -85,8 +84,8 @@ public class FlinkPravegaInputFormatTest {
      */
     @Test (expected = IllegalStateException.class)
     public void testBuilderForMissingStream() {
-        when(pravegaConfig.getClientConfig()).thenReturn(clientConfig);
-        when(pravegaConfig.resolve(anyString())).thenReturn(stream);
+        doReturn(clientConfig).when(pravegaConfig).getClientConfig();
+        doReturn(stream).when(pravegaConfig).resolve(anyString());
         FlinkPravegaInputFormat.<String>builder()
                 .withDeserializationSchema(deserializationSchema)
                 .withPravegaConfig(pravegaConfig)
@@ -133,8 +132,8 @@ public class FlinkPravegaInputFormatTest {
     }
 
     private FlinkPravegaInputFormat<String> spyFlinkPravegaInputFormat() {
-        when(pravegaConfig.getClientConfig()).thenReturn(clientConfig);
-        when(pravegaConfig.resolve(anyString())).thenReturn(stream);
+        doReturn(clientConfig).when(pravegaConfig).getClientConfig();
+        doReturn(stream).when(pravegaConfig).resolve(anyString());
         FlinkPravegaInputFormat<String> flinkPravegaInputFormat = FlinkPravegaInputFormat.<String>builder()
                                                             .withDeserializationSchema(deserializationSchema)
                                                             .withPravegaConfig(pravegaConfig)
