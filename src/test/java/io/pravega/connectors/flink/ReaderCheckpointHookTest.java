@@ -110,8 +110,7 @@ public class ReaderCheckpointHookTest {
     @Test
     public void testRestore() throws Exception {
         ReaderGroup readerGroup = mock(ReaderGroup.class);
-        ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
-        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1), readerGroupConfig);
+
         Checkpoint checkpoint = mock(Checkpoint.class);
         CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
 
@@ -120,11 +119,16 @@ public class ReaderCheckpointHookTest {
                 .put(Stream.of(SCOPE, "s1"), getStreamCut("s1"))
                 .put(Stream.of(SCOPE, "s2"), getStreamCut("s2")).build());
 
-        hook.restoreCheckpoint(1L, checkpoint);
-        readerGroupConfig = ReaderGroupConfig.builder()
+        ReaderGroupConfig readerGroupConfig = ReaderGroupConfig.builder()
                 .disableAutomaticCheckpoints()
                 .startFromCheckpoint(checkpoint)
                 .build();
+
+        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, readerGroup, Time.minutes(1),
+                readerGroupConfig);
+
+        hook.restoreCheckpoint(1L, checkpoint);
+
         verify(readerGroup).resetReaderGroup(readerGroupConfig);
     }
 
