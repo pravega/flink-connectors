@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -7,10 +7,8 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
-package io.pravega.connectors.flink.utils;
+package io.pravega.connectors.flink.serialization;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.pravega.client.stream.Serializer;
 
@@ -19,33 +17,38 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class JSONSerializer implements Serializer<JsonNode>, Serializable {
+public class JsonSerializer<T> implements Serializer<T>, Serializable {
 
     /** Object mapper for parsing the JSON. */
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private Class<T> valueType;
+
+    public JsonSerializer(Class<T> valueType) {
+        this.valueType = valueType;
+    }
 
     @Override
-    public ByteBuffer serialize(JsonNode value) {
+    public ByteBuffer serialize(T value) {
         byte[] bytes = new byte[0];
         try {
             bytes = objectMapper.writeValueAsBytes(value);
-        } catch (JsonProcessingException e) {
+        } catch (IOException e) {
             e.printStackTrace();
         }
         return ByteBuffer.wrap(bytes);
     }
 
     @Override
-    public JsonNode deserialize(ByteBuffer serializedValue) {
+    public T deserialize(ByteBuffer serializedValue) {
         ByteArrayInputStream bin = new ByteArrayInputStream(serializedValue.array(),
                 serializedValue.position(),
                 serializedValue.remaining());
-        JsonNode objectNode = null;
+        T event = null;
         try {
-            objectNode = objectMapper.readTree(bin);
+            event = objectMapper.readValue(bin, valueType);
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return objectNode;
+        return event;
     }
 }
