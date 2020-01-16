@@ -16,26 +16,26 @@ import java.io.Serializable;
 public class IntegerWithEventPointer implements Serializable {
     public static final int END_OF_STREAM = -1;
 
-    private Integer value;
-    private EventPointer eventPointer;
+    private int value;
+    private byte[] eventPointerBytes;
 
     public IntegerWithEventPointer() {}
 
-    public IntegerWithEventPointer(Integer value) {
+    public IntegerWithEventPointer(int value) {
         this.value = value;
-        this.eventPointer = null;
+        this.eventPointerBytes = null;
     }
 
-    public Integer getValue() {
+    public int getValue() {
         return value;
     }
 
-    public EventPointer getEventPointer() {
-        return eventPointer;
+    public byte[] getEventPointerBytes() {
+        return eventPointerBytes;
     }
 
     public void setEventPointer(EventPointer eventPointer) {
-        this.eventPointer = eventPointer;
+        this.eventPointerBytes = eventPointer.toBytes().array();
     }
 
     public boolean isEndOfStream() {

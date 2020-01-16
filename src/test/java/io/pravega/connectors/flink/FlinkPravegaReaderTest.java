@@ -49,6 +49,7 @@ import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -188,10 +189,12 @@ public class FlinkPravegaReaderTest {
             assertEquals(actual.size(), 1);
 
             // verify that the event contains the right value and EventPointer information
+            @SuppressWarnings("unchecked")
             IntegerWithEventPointer output = ((StreamRecord<IntegerWithEventPointer>) actual.peek()).getValue();
-            assertEquals(output.getValue().intValue(), 1);
+            assertEquals(output.getValue(), 1);
 
-            EventPointer outputEventPointer = EventPointer.fromBytes(output.getEventPointer().toBytes());
+            EventPointer outputEventPointer = EventPointer.fromBytes(ByteBuffer.wrap(
+                    output.getEventPointerBytes()));
             assertEquals(outputEventPointer, evts.getEventPointer(1));
         }
     }
