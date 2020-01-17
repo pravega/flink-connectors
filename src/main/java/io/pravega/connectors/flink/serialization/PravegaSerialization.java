@@ -10,12 +10,18 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.impl.JavaSerializer;
+
 import java.io.Serializable;
 
 /**
  * Helper methods to create DeserializationSchema and SerializationSchemas using the pravega JavaSerializer
  * for generic types.
+ *
+ * @deprecated PravegaSerialization is too non-specific about the serialization format that is used.
+ * The selection of the type of serializer and deserializer should be left to users.
+ *
  */
+@Deprecated
 public class PravegaSerialization {
     public static final <T extends Serializable> PravegaDeserializationSchema<T> deserializationFor(Class<T> type) {
         return new PravegaDeserializationSchema<>(type, new JavaSerializer<>());
