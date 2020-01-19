@@ -31,7 +31,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * exposes the produced type (TypeInformation) to allow Flink to configure its internal
  * serialization and persistence stack.
  *
- * <p>An additional method {@link #deserializeWithMetadata(EventRead)} is provided for
+ * <p>An additional method {@link #extractEvent(EventRead)} is provided for
  * applying the metadata in the deserialization. This method can be overriden in the extended class. </p>
  */
 public class PravegaDeserializationSchema<T> 
@@ -138,7 +138,7 @@ public class PravegaDeserializationSchema<T>
      *
      * @return the deserialized event with metadata
      */
-    public T deserializeWithMetadata(EventRead<T> eventRead) {
+    public T extractEvent(EventRead<T> eventRead) {
         return eventRead.getEvent();
     }
 

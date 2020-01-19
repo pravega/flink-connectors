@@ -66,6 +66,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
@@ -167,8 +168,8 @@ public class FlinkPravegaReaderTest {
      * Tests the behavior of {@code run()} when deserialized with metadata.
      */
     @Test
-    public void testRunWithMetadataDeserialization() throws Exception {
-        TestableFlinkPravegaReader<IntegerWithEventPointer> reader = createReaderWithMetadataDeserialization();
+    public void testRunWithMetadata() throws Exception {
+        TestableFlinkPravegaReader<IntegerWithEventPointer> reader = createReaderWithMetadata(true);
 
         try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
                      createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
@@ -196,6 +197,33 @@ public class FlinkPravegaReaderTest {
             EventPointer outputEventPointer = EventPointer.fromBytes(ByteBuffer.wrap(
                     output.getEventPointerBytes()));
             assertEquals(outputEventPointer, evts.getEventPointer(1));
+        }
+
+        // Test default implementation of extractEvent
+        reader = createReaderWithMetadata(false);
+        try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
+                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+            testHarness.open();
+
+            // prepare a sequence of events
+            TestEventGenerator<IntegerWithEventPointer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(1), 1))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(IntegerWithEventPointer.END_OF_STREAM), 2));
+
+            // run the source
+            testHarness.run();
+
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
+            Queue<Object> actual = testHarness.getOutput();
+            assertEquals(actual.size(), 1);
+
+            // verify that the event contains the right value and no EventPointer information
+            @SuppressWarnings("unchecked")
+            IntegerWithEventPointer output = ((StreamRecord<IntegerWithEventPointer>) actual.peek()).getValue();
+            assertEquals(output.getValue(), 1);
+            assertNull(output.getEventPointerBytes());
         }
     }
 
@@ -325,16 +353,16 @@ public class FlinkPravegaReaderTest {
     }
 
     /**
-     * Creates a {@link TestableFlinkPravegaReader} with event time and watermarking.
+     * Creates a {@link TestableFlinkPravegaReader} with metadata deserialization.
      */
-    private static TestableFlinkPravegaReader<IntegerWithEventPointer> createReaderWithMetadataDeserialization() {
+    private static TestableFlinkPravegaReader<IntegerWithEventPointer> createReaderWithMetadata(boolean includeMetadata) {
         ClientConfig clientConfig = ClientConfig.builder().build();
         ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
         boolean enableMetrics = true;
 
         return new TestableFlinkPravegaReader<>(
-                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, new TestMetadataDeserializationSchema(true),
-                    null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
+                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME,
+                    new TestMetadataDeserializationSchema(includeMetadata),null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
     /**
@@ -518,11 +546,13 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        public IntegerWithEventPointer deserializeWithMetadata(EventRead<IntegerWithEventPointer> eventRead) {
-            IntegerWithEventPointer event = eventRead.getEvent();
-            if (includeMetadata) {
-                event.setEventPointer(eventRead.getEventPointer());
+        public IntegerWithEventPointer extractEvent(EventRead<IntegerWithEventPointer> eventRead) {
+            if (!includeMetadata) {
+                return super.extractEvent(eventRead);
             }
+
+            IntegerWithEventPointer event = eventRead.getEvent();
+            event.setEventPointer(eventRead.getEventPointer());
             return event;
         }
 

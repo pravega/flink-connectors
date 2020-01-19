@@ -267,8 +267,8 @@ public class FlinkPravegaReader<T>
                 periodicEmitter.start();
             }
 
-            Function<EventRead<T>, T> deserFunc = this.deserializationSchema instanceof PravegaDeserializationSchema ?
-                    ((PravegaDeserializationSchema<T>) deserializationSchema)::deserializeWithMetadata :
+            final Function<EventRead<T>, T> deserFunc = this.deserializationSchema instanceof PravegaDeserializationSchema ?
+                    ((PravegaDeserializationSchema<T>) deserializationSchema)::extractEvent :
                     (eventRead) -> eventRead.getEvent();
 
             // main work loop, which this task is running
