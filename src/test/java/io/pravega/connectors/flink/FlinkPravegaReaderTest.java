@@ -362,7 +362,7 @@ public class FlinkPravegaReaderTest {
 
         return new TestableFlinkPravegaReader<>(
                     "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME,
-                    new TestMetadataDeserializationSchema(includeMetadata),null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
+                    new TestMetadataDeserializationSchema(includeMetadata), null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
     }
 
     /**
