@@ -20,6 +20,7 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
+import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -268,7 +269,13 @@ public class FlinkPravegaReader<T>
 
             // main work loop, which this task is running
             while (this.running) {
-                final EventRead<T> eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                EventRead<T> eventRead;
+                try {
+                    eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                } catch (TruncatedDataException e) {
+                    // Data is truncated, Force the reader going forward to the next available event
+                    continue;
+                }
                 final T event = eventRead.getEvent();
 
                 // emit the event, if one was carried
