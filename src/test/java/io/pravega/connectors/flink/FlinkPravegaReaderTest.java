@@ -21,6 +21,7 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TimeWindow;
+import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
@@ -154,6 +155,38 @@ public class FlinkPravegaReaderTest {
             validateMetricGroup(scopeString, ONLINE_READERS_METRICS_GAUGE, readerGroupMetricGroup);
             validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
 
+        }
+    }
+
+    /**
+     * Tests the behavior of {@code run()} with TruncatedDataException.
+     */
+    @Test
+    public void testTruncated() throws Exception {
+        TestableFlinkPravegaReader<Integer> reader = createReader();
+
+        try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
+                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+            testHarness.open();
+
+            // prepare a sequence of events
+            TestEventGenerator<Integer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(1))
+                    .thenThrow(new TruncatedDataException())
+                    .thenReturn(evts.event(2))
+                    .thenReturn(evts.event(TestDeserializationSchema.END_OF_STREAM));
+
+            // run the source
+            testHarness.run();
+
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(4)).readNextEvent(anyLong());
+            Queue<Object> actual = testHarness.getOutput();
+            Queue<Object> expected = new ConcurrentLinkedQueue<>();
+            expected.add(record(1));
+            expected.add(record(2));
+            TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
         }
     }
 
