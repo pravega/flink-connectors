@@ -23,7 +23,7 @@
     </root>
 
     <!-- suppress unnecessary logging statements to keep the log file size minimum -->
-    <logger name="io.pravega.connectors" level="INFO"/>
+    <logger name="org.apache.flink.streaming.connectors.pravega" level="INFO"/>
     <logger name="io.pravega" level="OFF"/>
     <logger name="io.netty" level="OFF"/>
     <logger name="io.grpc" level="OFF"/>

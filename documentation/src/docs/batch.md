@@ -26,7 +26,7 @@ The Flink Connector library for Pravega makes it possible to use a Pravega Strea
 
 ## FlinkPravegaInputFormat
 A Pravega Stream may be used as a data source within a Flink batch program using an instance of
-`io.pravega.connectors.flink.FlinkPravegaInputFormat`. The input format reads events of a stream as a [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html) (the basic abstraction of the Flink Batch API). This input format opens the stream for batch reading, which processes stream segments in **parallel** and does not follow routing key order.
+`FlinkPravegaInputFormat`. The input format reads events of a stream as a [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html) (the basic abstraction of the Flink Batch API). This input format opens the stream for batch reading, which processes stream segments in **parallel** and does not follow routing key order.
 
 Use the [`ExecutionEnvironment::createInput`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/ExecutionEnvironment.html#createInput-org.apache.flink.api.common.io.InputFormat-) method to open a Pravega Stream as a `DataSet`.
 
@@ -85,7 +85,7 @@ If stream cuts are not provided then the default start position requested is ass
 `FlinkPravegaInputFormat` supports parallelization. Use the `setParallelism` method of `DataSet` to configure the number of parallel instances to execute.  The parallel instances consume the stream in a coordinated manner, each consuming one or more stream segments.
 
 ## FlinkPravegaOutputFormat
-A Pravega Stream may be used as a data sink within a Flink batch program using an instance of `io.pravega.connectors.flink.FlinkPravegaOutputFormat`. The `FlinkPravegaOutputFormat` can be supplied as a sink to the [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html#output-org.apache.flink.api.common.io.OutputFormat-) (the basic abstraction of the Flink Batch API).
+A Pravega Stream may be used as a data sink within a Flink batch program using an instance of `FlinkPravegaOutputFormat`. The `FlinkPravegaOutputFormat` can be supplied as a sink to the [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html#output-org.apache.flink.api.common.io.OutputFormat-) (the basic abstraction of the Flink Batch API).
 
 ### Example
 
@@ -143,7 +143,7 @@ A stream may be specified in one of three ways:
 ### Event Routing
 Every event written to a Pravega Stream has an associated Routing Key.  The Routing Key is the basis for event ordering. See the [Pravega Concepts](http://pravega.io/docs/latest/pravega-concepts/#events) for details.
 
-To establish the routing key for each event, provide an implementation of `io.pravega.connectors.flink.PravegaEventRouter` when constructing the writer.
+To establish the routing key for each event, provide an implementation of `PravegaEventRouter` when constructing the writer.
 
 ## Serialization
 Please, see the [serialization](serialization.md) page for more information on how to use the _serializer_ and _deserializer_.

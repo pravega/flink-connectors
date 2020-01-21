@@ -8,7 +8,7 @@
 #     http://www.apache.org/licenses/LICENSE-2.0
 #
 #
-io.pravega.connectors.flink.FlinkPravegaStreamTableSourceFactory
-io.pravega.connectors.flink.FlinkPravegaStreamTableSinkFactory
-io.pravega.connectors.flink.FlinkPravegaBatchTableSourceFactory
-io.pravega.connectors.flink.FlinkPravegaBatchTableSinkFactory
+org.apache.flink.streaming.connectors.pravega.FlinkPravegaStreamTableSourceFactory
+org.apache.flink.streaming.connectors.pravega.FlinkPravegaStreamTableSinkFactory
+org.apache.flink.streaming.connectors.pravega.FlinkPravegaBatchTableSourceFactory
+org.apache.flink.streaming.connectors.pravega.FlinkPravegaBatchTableSinkFactory
