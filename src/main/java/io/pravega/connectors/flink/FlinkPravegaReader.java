@@ -20,6 +20,7 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
+import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -197,6 +198,7 @@ public class FlinkPravegaReader<T>
     private class PeriodicWatermarkEmitter implements ProcessingTimeCallback {
 
         private EventStreamReader<?> pravegaReader;
+        private Stream stream;
         private final SourceContext<?> ctx;
         private final ProcessingTimeService timerService;
         private long lastWatermarkTimestamp;
@@ -206,6 +208,7 @@ public class FlinkPravegaReader<T>
                 EventStreamReader<?> pravegaReader, SourceContext<?> ctx, ClassLoader userCodeClassLoader,
                 ProcessingTimeService timerService) throws Exception {
             this.pravegaReader = Preconditions.checkNotNull(pravegaReader);
+            this.stream = Stream.of(readerGroup.getStreamNames().iterator().next());
             this.ctx = Preconditions.checkNotNull(ctx);
             this.timerService = Preconditions.checkNotNull(timerService);
             this.lastWatermarkTimestamp = Long.MIN_VALUE;
@@ -218,7 +221,6 @@ public class FlinkPravegaReader<T>
 
         @Override
         public void onProcessingTime(long timestamp) {
-            Stream stream = Stream.of(readerGroup.getStreamNames().iterator().next());
             Watermark watermark = userAssigner.getWatermark(pravegaReader.getCurrentTimeWindow(stream));
 
             if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
@@ -266,7 +268,13 @@ public class FlinkPravegaReader<T>
 
             // main work loop, which this task is running
             while (this.running) {
-                final EventRead<T> eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                EventRead<T> eventRead;
+                try {
+                    eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                } catch (TruncatedDataException e) {
+                    // Data is truncated, Force the reader going forward to the next available event
+                    continue;
+                }
                 final T event = eventRead.getEvent();
 
                 // emit the event, if one was carried

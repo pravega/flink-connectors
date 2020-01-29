@@ -218,8 +218,6 @@ public final class SetupUtils {
         streamManager.createScope(this.scope);
         streamManager.createStream(this.scope, streamName,
                 StreamConfiguration.builder()
-                        .scope(this.scope)
-                        .streamName(streamName)
                         .scalingPolicy(ScalingPolicy.fixed(numSegments))
                         .build());
         log.info("Created stream: " + streamName);
