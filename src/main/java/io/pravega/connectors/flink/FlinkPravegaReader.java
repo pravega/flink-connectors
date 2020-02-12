@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
+import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -50,6 +51,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.getReaderName;
 
 /**
  * Flink source implementation for reading from pravega storage.
@@ -240,11 +242,13 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void run(SourceContext<T> ctx) throws Exception {
+        final RuntimeContext runtimeContext = getRuntimeContext();
 
-        final String readerId = getRuntimeContext().getTaskNameWithSubtasks();
+        final String readerId = getReaderName(runtimeContext.getTaskName(), runtimeContext.getIndexOfThisSubtask() + 1,
+                runtimeContext.getNumberOfParallelSubtasks());
 
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
-                getRuntimeContext().getTaskNameWithSubtasks(), readerId, this.clientConfig.getControllerURI());
+                runtimeContext.getTaskNameWithSubtasks(), readerId, this.clientConfig.getControllerURI());
 
         try (EventStreamReader<T> pravegaReader = createEventStreamReader(readerId)) {
 
@@ -254,12 +258,12 @@ public class FlinkPravegaReader<T>
             AssignerWithTimeWindows<T> assigner = null;
             // If it is event time, register a watermark emitter
             if (isEventTimeMode()) {
-                assigner = assignerWithTimeWindows.deserializeValue(getRuntimeContext().getUserCodeClassLoader());
+                assigner = assignerWithTimeWindows.deserializeValue(runtimeContext.getUserCodeClassLoader());
                 PeriodicWatermarkEmitter periodicEmitter = new PeriodicWatermarkEmitter(
                         pravegaReader,
                         ctx,
-                        getRuntimeContext().getUserCodeClassLoader(),
-                        ((StreamingRuntimeContext) getRuntimeContext()).getProcessingTimeService());
+                        runtimeContext.getUserCodeClassLoader(),
+                        ((StreamingRuntimeContext) runtimeContext).getProcessingTimeService());
 
                 log.info("Periodic Watermark Emitter for Reader ID: {} has started with an interval of {}", readerId,
                         autoWatermarkInterval());

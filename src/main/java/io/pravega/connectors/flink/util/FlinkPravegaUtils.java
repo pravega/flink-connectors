@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,13 @@ import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import lombok.SneakyThrows;
 
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 
 import java.nio.ByteBuffer;
-import java.util.Set;
-import java.util.stream.Collectors;
+
 public class FlinkPravegaUtils {
 
     private FlinkPravegaUtils() {
@@ -55,20 +55,17 @@ public class FlinkPravegaUtils {
     }
 
     /**
-     * Utility method that derives default reader name from stream and scope name.
+     * Utility method that derives the reader name from taskName, index and parallelism.
      *
-     * @param scope The destination streams' scope name.
-     * @param streamNames Set of stream to read, used to generate the reader name.
+     * @param taskName the original task name
+     * @param index the index of the subtask
+     * @param total the total parallelism of the subtask
      * @return the generated default reader name.
      */
-    public static String getDefaultReaderName(final String scope, final Set<String> streamNames) {
-        final String delimiter = "-";
-        final String reader = streamNames.stream().collect(Collectors.joining(delimiter)) + delimiter + scope;
-        int hash = 0;
-        for (int i = 0; i < reader.length(); i++) {
-            hash = reader.charAt(i) + (31 * hash);
-        }
-        return Integer.toString(hash);
+    public static String getReaderName(final String taskName, final int index, final int total) {
+        String readerName = "flink-task-" + taskName + "-" + index + "-" + total;
+        readerName = StringUtils.removePattern(readerName, "[^\\p{Alnum}\\.\\-]");
+        return readerName;
     }
 
     /**
