@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.impl.JavaSerializer;
-
 import java.io.Serializable;
 
 /**
