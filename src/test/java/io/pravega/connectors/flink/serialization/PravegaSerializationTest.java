@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.impl.JavaSerializer;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.junit.Test;
 
@@ -24,8 +25,8 @@ public class PravegaSerializationTest {
 
     @Test
     public void testSerialization() throws IOException {
-        PravegaSerializationSchema<String> serializer = PravegaSerialization.serializationFor(String.class);
-        PravegaDeserializationSchema<String> deserializer = PravegaSerialization.deserializationFor(String.class);
+        PravegaSerializationSchema<String> serializer = new PravegaSerializationSchema<>(new JavaSerializer<>());
+        PravegaDeserializationSchema<String> deserializer = new PravegaDeserializationSchema<>(String.class, new JavaSerializer<>());
 
         String input = "Testing input";
         byte[] serialized = serializer.serialize(input);
