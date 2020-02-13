@@ -17,8 +17,6 @@ import java.io.Serializable;
  * for generic types.
  *
  * @deprecated Please use the constructor with {@link JavaSerializer} instead.
- * The selection of the type of serializer and deserializer should be left to users.
- *
  */
 @Deprecated
 public class PravegaSerialization {
