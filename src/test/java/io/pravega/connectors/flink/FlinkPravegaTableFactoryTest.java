@@ -11,8 +11,9 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
-import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Schema;
@@ -38,9 +39,9 @@ import static org.junit.Assert.fail;
 public class FlinkPravegaTableFactoryTest {
 
     final static Schema SCHEMA = new Schema()
-                                            .field("name", Types.STRING )
-                                            .field("age", Types.INT );
-    final static Json JSON = new Json().failOnMissingField(false) .deriveSchema();
+                                            .field("name", DataTypes.STRING())
+                                            .field("age", DataTypes.INT());
+    final static Json JSON = new Json().failOnMissingField(false).deriveSchema();
     final static String SCOPE = "foo";
     final static String STREAM = "bar";
     final static String CONTROLLER_URI = "tcp://localhost:9090";
@@ -118,7 +119,10 @@ public class FlinkPravegaTableFactoryTest {
 
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
-        TableSourceValidation.validateTableSource(source);
+        TableSourceValidation.validateTableSource(source, TableSchema.builder()
+                .field("name", DataTypes.STRING() )
+                .field("age", DataTypes.INT())
+                .build());
         fail("update mode configuration validation failed");
     }
 

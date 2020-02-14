@@ -27,7 +27,6 @@ import org.apache.flink.table.descriptors.FormatDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.SchematicDescriptor;
 import org.apache.flink.table.descriptors.TableDescriptor;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
@@ -142,7 +141,7 @@ public class FlinkPravegaTableSourceTest {
                 .withReaderGroupScope(stream.getScope())
                 .build();
 
-        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource);
+        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource, tableSchema);
 
         // construct table source using descriptors and table source factory
         Pravega pravega = new Pravega();
@@ -169,7 +168,7 @@ public class FlinkPravegaTableSourceTest {
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
-        TableSourceValidation.validateTableSource(actualSource);
+        TableSourceValidation.validateTableSource(actualSource, tableSchema);
     }
 
     @Test
@@ -197,6 +196,12 @@ public class FlinkPravegaTableSourceTest {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
+        final TableSchema tableSchema = TableSchema.builder()
+                .field(cityName, org.apache.flink.table.api.Types.STRING())
+                .field(total, org.apache.flink.table.api.Types.DECIMAL())
+                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                .build();
+
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
                 .withFormat(new Json().failOnMissingField(false) .deriveSchema())
                 .withSchema(
@@ -214,7 +219,7 @@ public class FlinkPravegaTableSourceTest {
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
-        TableSourceValidation.validateTableSource(actualSource);
+        TableSourceValidation.validateTableSource(actualSource, tableSchema);
     }
 
     /** Converts the JSON schema into into the return type. */
@@ -256,7 +261,7 @@ public class FlinkPravegaTableSourceTest {
     /**
      * Test Table descriptor wrapper
      */
-    static class TestTableDescriptor extends TableDescriptor implements SchematicDescriptor<TestTableDescriptor> {
+    static class TestTableDescriptor extends TableDescriptor {
 
         private Schema schemaDescriptor;
 
@@ -270,7 +275,6 @@ public class FlinkPravegaTableSourceTest {
             return this;
         }
 
-        @Override
         public TestTableDescriptor withSchema(Schema schema) {
             this.schemaDescriptor = schema;
             return this;

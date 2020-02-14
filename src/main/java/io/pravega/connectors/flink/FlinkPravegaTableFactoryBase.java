@@ -49,11 +49,7 @@ import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_CLAS
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_DELAY;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_SERIALIZED;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_TYPE;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
+import static org.apache.flink.table.descriptors.Schema.*;
 
 public abstract class FlinkPravegaTableFactoryBase {
 
@@ -111,7 +107,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         // schema
-        properties.add(SCHEMA + ".#." + SCHEMA_TYPE);
+        properties.add(SCHEMA + ".#." + SCHEMA_DATA_TYPE);
         properties.add(SCHEMA + ".#." + SCHEMA_NAME);
         properties.add(SCHEMA + ".#." + SCHEMA_FROM);
 

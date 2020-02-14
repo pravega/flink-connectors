@@ -28,6 +28,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
@@ -207,7 +208,7 @@ public class FlinkPravegaTableITCase {
         TableSchema tableSchema = TableSchema.builder()
                 .field("user", Types.STRING)
                 .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP)
+                .field("accessTime", DataTypes.TIMESTAMP())
                 .build();
         TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
 

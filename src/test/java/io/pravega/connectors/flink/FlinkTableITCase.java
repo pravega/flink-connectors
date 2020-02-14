@@ -25,6 +25,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
@@ -164,8 +165,8 @@ public class FlinkTableITCase {
                 .build()
                 .configure(SAMPLE_SCHEMA.getFieldNames(), SAMPLE_SCHEMA.getFieldTypes());
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
 
         // register the Pravega stream as a table called 'samples'
         FlinkPravegaTableSource source = FlinkPravegaJsonTableSource.builder()
@@ -231,8 +232,8 @@ public class FlinkTableITCase {
                 .build()
                 .configure(SAMPLE_SCHEMA.getFieldNames(), SAMPLE_SCHEMA.getFieldTypes());
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
 
         // register the Pravega stream as a table called 'samples'
@@ -297,8 +298,8 @@ public class FlinkTableITCase {
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
 
         tableEnv.registerTableSource("samples", source);
 
@@ -363,9 +364,8 @@ public class FlinkTableITCase {
                 .createBatchTableSource(propertiesMap);
 
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
-
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
 
         tableEnv.registerTableSource("samples", source);
@@ -401,14 +401,14 @@ public class FlinkTableITCase {
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
                 .inAppendMode();
-        desc.registerTableSink("test");
+        desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
     }
 
@@ -444,7 +444,7 @@ public class FlinkTableITCase {
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(new Schema().field("category", Types.STRING)
                         .field("value", Types.INT)
-                        .field("timestamp", Types.SQL_TIMESTAMP))
+                        .field("timestamp", DataTypes.TIMESTAMP()))
                 .inAppendMode();
         desc.registerTableSink("test");
 
@@ -452,8 +452,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
     }
 
@@ -486,8 +486,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
     }
 
@@ -531,8 +531,8 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("Pravega Sink", sink);
-        table.insertInto("Pravega Sink");
+        tableEnv.registerTableSink("PravegaSink", sink);
+        table.insertInto("PravegaSink");
         env.execute();
     }
 
