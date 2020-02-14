@@ -244,7 +244,7 @@ public class FlinkPravegaReaderTest {
             // emit watermark (2 - 1 = 1)
             expected.add(watermark(1));
             // automatic watermark at the end of stream
-            expected.add(watermark(Long.MAX_VALUE));
+            //expected.add(watermark(Long.MAX_VALUE));
 
             TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
         }
