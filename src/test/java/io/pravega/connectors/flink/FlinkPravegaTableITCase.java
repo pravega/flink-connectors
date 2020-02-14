@@ -208,7 +208,7 @@ public class FlinkPravegaTableITCase {
         TableSchema tableSchema = TableSchema.builder()
                 .field("user", Types.STRING)
                 .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP)
+                .field("accessTime", DataTypes.TIMESTAMP())
                 .build();
         TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
 
