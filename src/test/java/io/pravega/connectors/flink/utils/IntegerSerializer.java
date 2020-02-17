@@ -11,9 +11,10 @@ package io.pravega.connectors.flink.utils;
 
 import io.pravega.client.stream.Serializer;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public final class IntegerSerializer implements Serializer<Integer> {
+public final class IntegerSerializer implements Serializer<Integer>, Serializable {
     @Override
     public ByteBuffer serialize(Integer value) {
         ByteBuffer result = ByteBuffer.allocate(4).putInt(value);

@@ -21,10 +21,14 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TimeWindow;
+import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.serialization.JsonSerializer;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
@@ -46,6 +50,7 @@ import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -62,6 +67,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
@@ -194,6 +200,70 @@ public class FlinkPravegaReaderTest {
     }
 
     /**
+     * Tests the behavior of {@code run()} when deserialized with metadata.
+     */
+    @Test
+    public void testRunWithMetadata() throws Exception {
+        TestableFlinkPravegaReader<IntegerWithEventPointer> reader = createReaderWithMetadata(true);
+
+        try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
+                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+            testHarness.open();
+
+            // prepare a sequence of events
+            TestEventGenerator<IntegerWithEventPointer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(1), 1))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(IntegerWithEventPointer.END_OF_STREAM), 2));
+
+            // run the source
+            testHarness.run();
+
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
+            Queue<Object> actual = testHarness.getOutput();
+            assertEquals(actual.size(), 1);
+
+            // verify that the event contains the right value and EventPointer information
+            @SuppressWarnings("unchecked")
+            IntegerWithEventPointer output = ((StreamRecord<IntegerWithEventPointer>) actual.peek()).getValue();
+            assertEquals(output.getValue(), 1);
+
+            EventPointer outputEventPointer = EventPointer.fromBytes(ByteBuffer.wrap(
+                    output.getEventPointerBytes()));
+            assertEquals(outputEventPointer, evts.getEventPointer(1));
+        }
+
+        // Test default implementation of extractEvent
+        reader = createReaderWithMetadata(false);
+        try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
+                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+            testHarness.open();
+
+            // prepare a sequence of events
+            TestEventGenerator<IntegerWithEventPointer> evts = new TestEventGenerator<>();
+            when(reader.eventStreamReader.readNextEvent(anyLong()))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(1), 1))
+                    .thenReturn(evts.event(new IntegerWithEventPointer(IntegerWithEventPointer.END_OF_STREAM), 2));
+
+            // run the source
+            testHarness.run();
+
+            // verify that the event stream was read until the end of stream
+            verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
+            Queue<Object> actual = testHarness.getOutput();
+            assertEquals(actual.size(), 1);
+
+            // verify that the event contains the right value and no EventPointer information
+            @SuppressWarnings("unchecked")
+            IntegerWithEventPointer output = ((StreamRecord<IntegerWithEventPointer>) actual.peek()).getValue();
+            assertEquals(output.getValue(), 1);
+            assertNull(output.getEventPointerBytes());
+        }
+    }
+
+
+    /**
      * Tests the behavior of {@code run()} with watermark.
      */
     @Test
@@ -319,6 +389,19 @@ public class FlinkPravegaReaderTest {
     }
 
     /**
+     * Creates a {@link TestableFlinkPravegaReader} with metadata deserialization.
+     */
+    private static TestableFlinkPravegaReader<IntegerWithEventPointer> createReaderWithMetadata(boolean includeMetadata) {
+        ClientConfig clientConfig = ClientConfig.builder().build();
+        ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
+        boolean enableMetrics = true;
+
+        return new TestableFlinkPravegaReader<>(
+                    "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME,
+                    new TestMetadataDeserializationSchema(includeMetadata), null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
+    }
+
+    /**
      * Creates a test harness for a {@link SourceFunction}.
      */
     private <T, F extends SourceFunction<T>> StreamSourceOperatorTestHarness<T, F> createTestHarness(
@@ -436,8 +519,27 @@ public class FlinkPravegaReaderTest {
      * Generates a sequence of {@link EventRead} instances, including events, checkpoints, and idleness.
      */
     private static class TestEventGenerator<T> {
+
+        private String buildEventPointerString(long offset) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(SAMPLE_SEGMENT.getScopedName());
+            sb.append(':');
+            sb.append(offset);
+            sb.append('-');
+            sb.append(1);
+            return sb.toString();
+        }
+
+        public EventPointer getEventPointer(long offset) {
+            return EventPointerImpl.fromString(buildEventPointerString(offset));
+        }
+
         public EventRead<T> event(T evt) {
             return new EventReadImpl<>(evt, mock(Position.class), mock(EventPointer.class), null);
+        }
+
+        public EventRead<T> event(T evt, long offset) {
+            return new EventReadImpl<>(evt, mock(Position.class), getEventPointer(offset), null);
         }
 
         public EventRead<T> idle() {
@@ -459,6 +561,34 @@ public class FlinkPravegaReaderTest {
         @Override
         public boolean isEndOfStream(Integer nextElement) {
             return nextElement.equals(END_OF_STREAM);
+        }
+    }
+
+    /**
+     * A test JSON format deserialization schema with metadata.
+     */
+    private static class TestMetadataDeserializationSchema extends PravegaDeserializationSchema<IntegerWithEventPointer> {
+        private boolean includeMetadata;
+
+        public TestMetadataDeserializationSchema(boolean includeMetadata) {
+            super(IntegerWithEventPointer.class, new JsonSerializer<>(IntegerWithEventPointer.class));
+            this.includeMetadata = includeMetadata;
+        }
+
+        @Override
+        public IntegerWithEventPointer extractEvent(EventRead<IntegerWithEventPointer> eventRead) {
+            if (!includeMetadata) {
+                return super.extractEvent(eventRead);
+            }
+
+            IntegerWithEventPointer event = eventRead.getEvent();
+            event.setEventPointer(eventRead.getEventPointer());
+            return event;
+        }
+
+        @Override
+        public boolean isEndOfStream(IntegerWithEventPointer nextElement) {
+            return nextElement.isEndOfStream();
         }
     }
 
