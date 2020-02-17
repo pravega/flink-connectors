@@ -20,6 +20,7 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
@@ -49,6 +50,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
@@ -271,8 +273,13 @@ public class FlinkPravegaReader<T>
                 periodicEmitter.start();
             }
 
+            final Function<EventRead<T>, T> deserFunc = this.deserializationSchema instanceof PravegaDeserializationSchema ?
+                    ((PravegaDeserializationSchema<T>) deserializationSchema)::extractEvent :
+                    (eventRead) -> eventRead.getEvent();
+
             // main work loop, which this task is running
             while (this.running) {
+
                 EventRead<T> eventRead;
                 try {
                     eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
@@ -280,7 +287,7 @@ public class FlinkPravegaReader<T>
                     // Data is truncated, Force the reader going forward to the next available event
                     continue;
                 }
-                final T event = eventRead.getEvent();
+                final T event = deserFunc.apply(eventRead);
 
                 // emit the event, if one was carried
                 if (event != null) {
