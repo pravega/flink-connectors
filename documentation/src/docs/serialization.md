@@ -42,3 +42,36 @@ DataStream<MyEvent> stream = env.addSource(reader);
 ```  
 
 Note that the Pravega serializer must implement `java.io.Serializable` to be usable in a Flink program.
+
+## Deserialize with metadata
+Pravega reader client wraps the event with the metadata in an `EventRead` data structure. Some Flink jobs might 
+care about the stream position of the event data which is in `EventRead`, e.g. for indexing purposes. 
+
+`PravegaDeserializationSchema` offers a method to extract event with the metadata
+```java
+public T extractEvent(EventRead<T> eventRead) {
+    return eventRead.getEvent();
+}
+```
+
+The default implementation can be overwritten to involve in metadata structure like `EventPointer` into the event
+by a custom extended `PravegaDeserializationSchema`. For example:
+```java
+private static class MyJsonDeserializationSchema extends PravegaDeserializationSchema<JsonNode> {
+    private boolean includeMetadata;
+
+    public MyJsonDeserializationSchema(boolean includeMetadata) {
+        super(JsonNode.class, new JSONSerializer());
+        this.includeMetadata = includeMetadata;
+    }
+
+    @Override
+    public JsonNode extractEvent(EventRead<JsonNode> eventRead) {
+        JsonNode node = eventRead.getEvent();
+        if (includeMetadata) {
+            return ((ObjectNode) node).put("eventpointer", eventRead.getEventPointer().toBytes().array());
+        }
+        return node;
+    }
+}
+```
