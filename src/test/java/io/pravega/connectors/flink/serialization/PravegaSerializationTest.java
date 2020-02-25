@@ -15,7 +15,9 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.junit.Test;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.Random;
 
 import static org.junit.Assert.assertEquals;
@@ -135,6 +137,53 @@ public class PravegaSerializationTest {
         @Override
         public Long deserialize(ByteBuffer byteBuffer) {
             return byteBuffer.getLong();
+        }
+    }
+
+    @Test
+    public void testJsonSerializer() throws IOException {
+        final JsonSerializer<TestEvent> jsonSerializer = new JsonSerializer<>(TestEvent.class);
+        TestEvent testEvent = new TestEvent("key1", 1);
+        ByteBuffer serializedBytes = jsonSerializer.serialize(testEvent);
+        assertEquals(testEvent, jsonSerializer.deserialize(serializedBytes));
+    }
+
+    // ------------------------------------------------------------------------
+
+    private static class TestEvent implements Serializable {
+        private String key;
+        private int value;
+        public TestEvent() {}
+
+        public TestEvent(String key, int value) {
+            this.key = key;
+            this.value = value;
+        }
+
+        public String getKey() {
+            return key;
+        }
+
+        public int getValue() {
+            return value;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(key, value);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            TestEvent testEvent = (TestEvent) o;
+            return key.equals(testEvent.key) &&
+                    value == testEvent.value;
         }
     }
 }
