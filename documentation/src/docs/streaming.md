@@ -18,7 +18,7 @@ for use with the Flink Streaming API. See the below sections for details.
   - [Input Stream(s)](#input-streams)
   - [Parallelism](#parallelism)
   - [Checkpointing](#checkpointing)
-  - [Timestamp Extraction / Watermark Emission](#timestamp-extraction-%2F-watermark-emission)
+  - [Timestamp Extraction / Watermark Emission](#timestamp-extraction)
   - [Stream Cuts](#streamcuts)
   - [Historical Stream Processing](#historical-stream-processing)
 - [FlinkPravegaWriter](#flinkpravegawriter)
