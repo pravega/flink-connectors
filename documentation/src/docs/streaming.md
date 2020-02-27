@@ -16,14 +16,14 @@ for use with the Flink Streaming API. See the below sections for details.
 - [FlinkPravegaReader](#flinkpravegareader)
   - [Parameters](#parameters)
   - [Input Stream(s)](#input-streams)
-  - [Parallelism](#parallelism)
+  - [Reader Parallelism](#reader-parallelism)
   - [Checkpointing](#checkpointing)
   - [Timestamp Extraction (Watermark Emission)](#timestamp-extraction-watermark-emission)
   - [Stream Cuts](#streamcuts)
   - [Historical Stream Processing](#historical-stream-processing)
 - [FlinkPravegaWriter](#flinkpravegawriter)
   - [Parameters](#parameters-1)
-  - [Parallelism](#parallelism-1)
+  - [Writer Parallelism](#writer-parallelism)
   - [Event Routing](#event-routing)
   - [Event Time Ordering](#event-time-ordering)
   - [Watermark](#watermark)
@@ -84,7 +84,7 @@ A stream may be specified in one of three ways:
  2. As a string containing an unqualified name, in the form `stream`. Such streams are resolved to the default scope.
  3. As an instance of `io.pravega.client.stream.Stream`, e.g. `Stream.of("my-scope", "my-stream")`.
 
-### Parallelism
+### Reader Parallelism
 
 The `FlinkPravegaReader` supports parallelization. Use the `setParallelism` method to of `Datastream` to configure the number of parallel instances to execute.  The parallel instances consume the stream in a coordinated manner, each consuming one or more stream segments.
 
@@ -171,7 +171,7 @@ A builder API is provided to construct an instance of `FlinkPravegaWriter`. See 
 |`enableWatermark`|true or false to enable/disable emitting Flink watermark in event-time semantics to Pravega streams.|
 |`enableMetrics`|true or false to enable/disable reporting Pravega metrics. Metrics is enabled by default.|
 
-### Parallelism
+### Writer Parallelism
 `FlinkPravegaWriter` supports parallelization. Use the `setParallelism` method to configure the number of parallel instances to execute.
 
 ### Event Routing
