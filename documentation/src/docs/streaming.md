@@ -18,7 +18,7 @@ for use with the Flink Streaming API. See the below sections for details.
   - [Input Stream(s)](#input-streams)
   - [Parallelism](#parallelism)
   - [Checkpointing](#checkpointing)
-  - [Timestamp Extraction | Watermark Emission](#timestamp-extraction-watermark-emission)
+  - [Timestamp Extraction \ Watermark Emission](#timestamp-extraction-watermark-emission)
   - [Stream Cuts](#streamcuts)
   - [Historical Stream Processing](#historical-stream-processing)
 - [FlinkPravegaWriter](#flinkpravegawriter)
@@ -101,7 +101,7 @@ The checkpoint mechanism works as a two-step process:
    - The [master hook](https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/runtime/checkpoint/MasterTriggerRestoreHook.html) handler from the job manager initiates the [`triggerCheckpoint`](https://ci.apache.org/projects/flink/flink-docs-stable/api/java/org/apache/flink/runtime/checkpoint/MasterTriggerRestoreHook.html#triggerCheckpoint-long-long-java.util.concurrent.Executor-) request to  the `ReaderCheckpointHook` that was registered with the Job Manager during `FlinkPravegaReader` source initialization. The `ReaderCheckpointHook` handler notifies Pravega to checkpoint the current reader state. This is a non-blocking call which returns a `future` once Pravega readers are done with the checkpointing.
    - A `CheckPoint` event will be sent by Pravega as part of the data stream flow and on receiving the event, the `FlinkPravegaReader` will initiate [`triggerCheckpoint`](https://github.com/apache/flink/blob/master/flink-streaming-java/src/main/java/org/apache/flink/streaming/api/checkpoint/ExternallyInducedSource.java#L73) request to effectively let Flink continue and complete the checkpoint process.
 
-### Timestamp Extraction | Watermark Emission
+### Timestamp Extraction \ Watermark Emission
 
 Flink requires the events’ timestamps (each element in the stream needs to have its event timestamp assigned). This is achieved by accessing/extracting the timestamp from some field in the element. These are used to tell the system about progress in event time.
 
