@@ -86,8 +86,10 @@ public class FlinkPravegaReaderTest {
 
     private static final String SAMPLE_SCOPE = "scope";
     private static final String SAMPLE_STREAM_NAME = "stream";
+    private static final String SAMPLE_STREAM_NAME_2 = "stream-2";
     private static final String SAMPLE_COMPLETE_STREAM_NAME = SAMPLE_SCOPE + '/' + SAMPLE_STREAM_NAME;
     private static final Stream SAMPLE_STREAM = Stream.of(SAMPLE_SCOPE, SAMPLE_STREAM_NAME);
+    private static final Stream SAMPLE_STREAM_2 = Stream.of(SAMPLE_SCOPE, SAMPLE_STREAM_NAME_2);
     private static final Segment SAMPLE_SEGMENT = new Segment(SAMPLE_SCOPE, SAMPLE_STREAM.getStreamName(), 1);
     private static final StreamCut SAMPLE_CUT = new StreamCutImpl(SAMPLE_STREAM, Collections.singletonMap(SAMPLE_SEGMENT, 42L));
     private static final StreamCut SAMPLE_CUT2 = new StreamCutImpl(SAMPLE_STREAM, Collections.singletonMap(SAMPLE_SEGMENT, 1024L));
@@ -496,23 +498,17 @@ public class FlinkPravegaReaderTest {
 
         TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED)
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2)
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
         TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT2, StreamCut.UNBOUNDED);
+                .forStream(SAMPLE_STREAM_2);
         String uid3 = builder3.generateUid();
-
-        TestableStreamingReaderBuilder builder4 = new TestableStreamingReaderBuilder()
-                .withReaderGroupScope(SAMPLE_SCOPE)
-                .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2);
-        String uid4 = builder4.generateUid();
 
         assertEquals(uid1, uid2);
         assertNotEquals(uid1, uid3);
-        assertNotEquals(uid1, uid4);
     }
 
     // endregion
