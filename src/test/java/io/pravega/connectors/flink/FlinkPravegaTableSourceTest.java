@@ -19,6 +19,7 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
@@ -120,8 +121,8 @@ public class FlinkPravegaTableSourceTest {
         final TableSchema tableSchema = TableSchema.builder()
                 .field(cityName, Types.STRING)
                 .field(total, Types.BIG_DEC)
-                .field(eventTime, Types.SQL_TIMESTAMP)
-                .field(procTime, Types.SQL_TIMESTAMP)
+                .field(eventTime, DataTypes.TIMESTAMP())
+                .field(procTime, DataTypes.TIMESTAMP())
                 .build();
 
         Stream stream = Stream.of(scopeName, streamName);
@@ -156,12 +157,12 @@ public class FlinkPravegaTableSourceTest {
                         new Schema()
                                 .field(cityName, Types.STRING)
                                 .field(total, Types.BIG_DEC)
-                                .field(eventTime, Types.SQL_TIMESTAMP)
+                                .field(eventTime, DataTypes.TIMESTAMP())
                                     .rowtime(new Rowtime()
                                                 .timestampsFromField(eventTime)
                                                 .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                             )
-                                .field(procTime, Types.SQL_TIMESTAMP).proctime())
+                                .field(procTime, DataTypes.TIMESTAMP()).proctime())
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
@@ -208,7 +209,7 @@ public class FlinkPravegaTableSourceTest {
                         new Schema()
                                 .field(cityName, org.apache.flink.table.api.Types.STRING())
                                 .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .field(eventTime, org.apache.flink.table.api.DataTypes.TIMESTAMP())
                                 .rowtime(new Rowtime()
                                         .timestampsFromSource()
                                         .watermarksFromSource()

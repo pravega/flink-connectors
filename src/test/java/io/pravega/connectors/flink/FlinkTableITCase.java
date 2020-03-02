@@ -26,6 +26,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
@@ -149,7 +150,12 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
 
         // define a table of sample data from a collection of POJOs.  Schema:
         // root
@@ -266,7 +272,12 @@ public class FlinkTableITCase {
         this.setupUtils.createTestStream(stream.getStreamName(), 1);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
 
         PravegaConfig pravegaConfig = setupUtils.getPravegaConfig();
 
@@ -286,7 +297,9 @@ public class FlinkTableITCase {
                             .failOnMissingField(false)
                             .deriveSchema()
                 )
-                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
+                .withSchema(new Schema().
+                        field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()))
                 .inAppendMode();
         desc.registerTableSourceAndSink("test");
 
@@ -387,7 +400,12 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
@@ -421,7 +439,12 @@ public class FlinkTableITCase {
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
         DataStream<SampleRecordWithTimestamp> dataStream = env.fromCollection(SAMPLES)
                 .map(SampleRecordWithTimestamp::new)
                 .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<SampleRecordWithTimestamp>() {
@@ -440,11 +463,17 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
+        TableSchema tableSchema = TableSchema.builder()
+                .field("category", DataTypes.STRING())
+                .field("value", DataTypes.INT())
+                .field("timestamp", DataTypes.TIMESTAMP(3))
+                .build();
+
+        Schema schema = new Schema().schema(tableSchema);
+
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().field("category", Types.STRING)
-                        .field("value", Types.INT)
-                        .field("timestamp", DataTypes.TIMESTAMP()))
+                .withSchema(schema)
                 .inAppendMode();
         desc.registerTableSink("test");
 
@@ -500,7 +529,12 @@ public class FlinkTableITCase {
 
         // create a Flink Table environment
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 

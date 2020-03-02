@@ -13,6 +13,7 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
+import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -29,6 +30,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
@@ -43,6 +45,7 @@ import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.tsextractors.ExistingField;
 import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
+import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.junit.AfterClass;
@@ -51,6 +54,9 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+
+
+
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
@@ -147,7 +153,12 @@ public class FlinkPravegaTableITCase {
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
         tableEnv.registerTableSource("MyTableRow", source);
 
         String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
@@ -208,9 +219,10 @@ public class FlinkPravegaTableITCase {
         TableSchema tableSchema = TableSchema.builder()
                 .field("user", Types.STRING)
                 .field("uri", Types.STRING)
-                .field("accessTime", DataTypes.TIMESTAMP())
+                .field("accessTime", Types.SQL_TIMESTAMP)
                 .build();
-        TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
+        TypeInformation<Row> typeInfo = new RowTypeInfo(TableSchemaUtils.getPhysicalSchema(tableSchema).getFieldTypes(),
+                tableSchema.getFieldNames());
 
         PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
 
@@ -239,14 +251,19 @@ public class FlinkPravegaTableITCase {
         execEnvRead.enableCheckpointing(100);
         execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
 
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
+        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
+                EnvironmentSettings.newInstance()
+                        // watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());;
         RESULTS.clear();
 
         // read data from the stream using Table reader
         Schema schema = new Schema()
-                .field("user", Types.STRING)
-                .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
                                 .watermarksPeriodicBounded(30000L));
 
@@ -294,9 +311,9 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         Schema schema = new Schema()
-                .field("user", Types.STRING)
-                .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
                                 .watermarksPeriodicBounded(30000L));
 
@@ -407,17 +424,17 @@ public class FlinkPravegaTableITCase {
         private int currentOffset = 0;
 
         private final String[][] data = {
-                {"Bob",   "/checkout",       "2018-08-02 08:20:00.0"},
-                {"Chris", "/product?id=1",   "2018-08-02 08:23:00.0"},
-                {"David", "/search",         "2018-08-02 08:25:00.0"},
-                {"Gary",  "/cart",           "2018-08-02 09:32:00.0"},
-                {"Mary",  "/checkout",       "2018-08-02 09:33:00.0"},
-                {"Gary",  "/home",           "2018-08-02 09:33:00.0"},
-                {"Nina",  "/cart",           "2018-08-02 09:39:00.0"},
-                {"Mary",  "/search",         "2018-08-02 09:34:00.0"},
-                {"Peter", "/checkout",       "2018-08-02 09:41:00.0"},
-                {"Tony",  "/search",         "2018-08-02 09:41:00.0"},
-                {"Tony",  "/cart",           "2018-08-02 10:41:00.0"}
+                {"Bob",   "/checkout",       "2018-08-02 08:20:00.000"},
+                {"Chris", "/product?id=1",   "2018-08-02 08:23:00.000"},
+                {"David", "/search",         "2018-08-02 08:25:00.000"},
+                {"Gary",  "/cart",           "2018-08-02 09:32:00.000"},
+                {"Mary",  "/checkout",       "2018-08-02 09:33:00.000"},
+                {"Gary",  "/home",           "2018-08-02 09:33:00.000"},
+                {"Nina",  "/cart",           "2018-08-02 09:39:00.000"},
+                {"Mary",  "/search",         "2018-08-02 09:34:00.000"},
+                {"Peter", "/checkout",       "2018-08-02 09:41:00.000"},
+                {"Tony",  "/search",         "2018-08-02 09:41:00.000"},
+                {"Tony",  "/cart",           "2018-08-02 10:41:00.000"}
         };
 
         public TableEventSource(final int totalEvents) {

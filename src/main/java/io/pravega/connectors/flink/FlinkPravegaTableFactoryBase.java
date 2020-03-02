@@ -107,6 +107,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         // schema
+        properties.add(SCHEMA + ".#." + SCHEMA_TYPE);
         properties.add(SCHEMA + ".#." + SCHEMA_DATA_TYPE);
         properties.add(SCHEMA + ".#." + SCHEMA_NAME);
         properties.add(SCHEMA + ".#." + SCHEMA_FROM);

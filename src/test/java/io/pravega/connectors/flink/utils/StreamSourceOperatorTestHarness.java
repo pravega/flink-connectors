@@ -11,16 +11,21 @@ package io.pravega.connectors.flink.utils;
 
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.runtime.io.network.api.writer.RecordWriter;
 import org.apache.flink.runtime.io.network.api.writer.RecordWriterDelegate;
+import org.apache.flink.runtime.plugable.SerializationDelegate;
 import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.operators.StreamOperator;
 import org.apache.flink.streaming.api.operators.StreamSource;
+import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.runtime.tasks.OperatorChain;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.streaming.util.AbstractStreamOperatorTestHarness;
 import org.apache.flink.util.FlinkException;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -38,9 +43,9 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
 
     private final ConcurrentLinkedQueue<Long> triggeredCheckpoints;
 
-    private final RecordWriterDelegate recordWriters;
+    private final RecordWriterDelegate<SerializationDelegate<StreamRecord<T>>> recordWriterDelegate;
 
-    private final OperatorChain<T, StreamOperator<T>> operatorChain;
+    private final OperatorChain<T, ?> operatorChain;
 
     public StreamSourceOperatorTestHarness(F sourceFunction, int maxParallelism, int parallelism, int subtaskIndex) throws Exception {
         this(new StreamSource<>(sourceFunction), maxParallelism, parallelism, subtaskIndex);
@@ -50,8 +55,8 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
         super(operator, maxParallelism, parallelism, subtaskIndex);
         this.sourceOperator = operator;
         this.triggeredCheckpoints = new ConcurrentLinkedQueue<>();
-        this.recordWriters = StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment());
-        this.operatorChain = new OperatorChain<>(this.mockTask, recordWriters);
+        this.recordWriterDelegate = StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment());
+        this.operatorChain = new OperatorChain<>(this.mockTask, recordWriterDelegate);
     }
 
     @Override
