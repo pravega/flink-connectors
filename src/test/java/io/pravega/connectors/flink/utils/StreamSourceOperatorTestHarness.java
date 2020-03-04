@@ -43,7 +43,7 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
 
     private final ConcurrentLinkedQueue<Long> triggeredCheckpoints;
 
-    private final RecordWriterDelegate<SerializationDelegate<StreamRecord<T>>> recordWriterDelegate;
+    private final RecordWriterDelegate recordWriterDelegate;
 
     private final OperatorChain<T, ?> operatorChain;
 

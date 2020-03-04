@@ -54,11 +54,7 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.io.Serializable;
-import java.util.List;
-import java.util.Arrays;
-import java.util.Map;
-import java.util.LinkedList;
-import java.util.HashSet;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -157,7 +153,7 @@ public class FlinkTableITCase {
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
                 EnvironmentSettings.newInstance()
                         // watermark is only supported in blink planner
-                        //.useBlinkPlanner()
+                        .useBlinkPlanner()
                         .inStreamingMode()
                         .build());
 
@@ -335,27 +331,35 @@ public class FlinkTableITCase {
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
 
+        //CatalogTableImpl catalogTable = new CatalogTableImpl(
+        //        tableSchema,
+        //        propertiesMap,
+        //        "comment"
+        //);
+
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
         String tablePathSink = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
 
-        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, false);
+        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sourceAndSink(source, sink, false);
 
-        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog())
+                .get()
+                .createTable(
                 ObjectPath.fromString(tablePathSink),
                 connectorCatalogSinkTable, false);
 
-        //tableEnv.registerTableSink("PravegaSink", sink);
+        tableEnv.registerTableSink("PravegaSink", sink);
         table.insertInto("PravegaSink");
 
-        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+        //ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+        //String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";
 
-        String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";
-
-        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-                ObjectPath.fromString(tablePathSource),
-                connectorCatalogSourceTable, false);
-
+        //tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+         //       ObjectPath.fromString(tablePathSource),
+         //       catalogTable, false);
+        tableEnv.registerTableSource("samples", source);
+        //Optional<Catalog> catalog = tableEnv.getCatalog(tableEnv.getCurrentCatalog());
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
 

@@ -363,7 +363,7 @@ public class FlinkPravegaWriterTest {
                     Assert.fail("expected an exception due to a prior write error");
                 } catch (Exception ex) {
                     Assert.assertNotNull(ex.getCause());
-                    Assert.assertTrue(ex.getCause() instanceof IOException);
+                    Assert.assertTrue(ex.getCause() instanceof org.apache.flink.runtime.checkpoint.CheckpointException);
                     Assert.assertTrue(ex.getCause().getCause() instanceof IntentionalRuntimeException);
                 }
 

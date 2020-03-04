@@ -64,6 +64,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -313,21 +314,13 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
 
         // read data from the stream using Table reader
-        //Schema schema = new Schema()
-          //      .field("user", DataTypes.STRING())
-            //    .field("uri", DataTypes.STRING())
-              //  .field("accessTime", DataTypes.TIMESTAMP(3))
-                //.rowtime(
-                  //      new Rowtime().timestampsFromField("accessTime")
-                    //            .watermarksPeriodicBounded(30000L));
-
-        TableSchema tableSchema = TableSchema.builder()
+        Schema schema = new Schema()
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING())
                 .field("accessTime", DataTypes.TIMESTAMP(3))
-                .watermark("accessTime", "accessTime - INTERVAL '30' SECOND",
-                        DataTypes.TIMESTAMP(3))
-                .build();
+                .rowtime(
+                        new Rowtime().timestampsFromField("accessTime")
+                                .watermarksPeriodicBounded(30000L));
 
         Pravega pravega = new Pravega();
         pravega.tableSourceReaderBuilder()
@@ -336,21 +329,19 @@ public class FlinkPravegaTableITCase {
                 .withPravegaConfig(pravegaConfig);
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().schema(tableSchema));
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(schema);
 
-        final Map<String, String> propertiesMap = desc.toProperties();
+        Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
 
         String tablePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
         ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.source(source, false);
-
         tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tablePath),
                 connectorCatalogTable, false);
 
-        //tableEnv.registerTableSource("MyTableRow", source);
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
                 "COUNT(uri) AS cnt " +
@@ -358,6 +349,7 @@ public class FlinkPravegaTableITCase {
                 "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
 
         Table result = tableEnv.sqlQuery(sqlQuery);
+
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
         List<Row> results = resultSet.collect();
@@ -443,17 +435,17 @@ public class FlinkPravegaTableITCase {
         private int currentOffset = 0;
 
         private final String[][] data = {
-                {"Bob",   "/checkout",       "2018-08-02 08:20:00.000"},
-                {"Chris", "/product?id=1",   "2018-08-02 08:23:00.000"},
-                {"David", "/search",         "2018-08-02 08:25:00.000"},
-                {"Gary",  "/cart",           "2018-08-02 09:32:00.000"},
-                {"Mary",  "/checkout",       "2018-08-02 09:33:00.000"},
-                {"Gary",  "/home",           "2018-08-02 09:33:00.000"},
-                {"Nina",  "/cart",           "2018-08-02 09:39:00.000"},
-                {"Mary",  "/search",         "2018-08-02 09:34:00.000"},
-                {"Peter", "/checkout",       "2018-08-02 09:41:00.000"},
-                {"Tony",  "/search",         "2018-08-02 09:41:00.000"},
-                {"Tony",  "/cart",           "2018-08-02 10:41:00.000"}
+                {"Bob",   "/checkout",       "2018-08-02 08:20:00.0"},
+                {"Chris", "/product?id=1",   "2018-08-02 08:23:00.0"},
+                {"David", "/search",         "2018-08-02 08:25:00.0"},
+                {"Gary",  "/cart",           "2018-08-02 09:32:00.0"},
+                {"Mary",  "/checkout",       "2018-08-02 09:33:00.0"},
+                {"Gary",  "/home",           "2018-08-02 09:33:00.0"},
+                {"Nina",  "/cart",           "2018-08-02 09:39:00.0"},
+                {"Mary",  "/search",         "2018-08-02 09:34:00.0"},
+                {"Peter", "/checkout",       "2018-08-02 09:41:00.0"},
+                {"Tony",  "/search",         "2018-08-02 09:41:00.0"},
+                {"Tony",  "/cart",           "2018-08-02 10:41:00.0"}
         };
 
         public TableEventSource(final int totalEvents) {
