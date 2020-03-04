@@ -35,6 +35,9 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.ConnectorCatalogTable;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
@@ -310,12 +313,21 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
 
         // read data from the stream using Table reader
-        Schema schema = new Schema()
+        //Schema schema = new Schema()
+          //      .field("user", DataTypes.STRING())
+            //    .field("uri", DataTypes.STRING())
+              //  .field("accessTime", DataTypes.TIMESTAMP(3))
+                //.rowtime(
+                  //      new Rowtime().timestampsFromField("accessTime")
+                    //            .watermarksPeriodicBounded(30000L));
+
+        TableSchema tableSchema = TableSchema.builder()
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING())
-                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
-                        new Rowtime().timestampsFromField("accessTime")
-                                .watermarksPeriodicBounded(30000L));
+                .field("accessTime", DataTypes.TIMESTAMP(3))
+                .watermark("accessTime", "accessTime - INTERVAL '30' SECOND",
+                        DataTypes.TIMESTAMP(3))
+                .build();
 
         Pravega pravega = new Pravega();
         pravega.tableSourceReaderBuilder()
@@ -325,13 +337,20 @@ public class FlinkPravegaTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(schema);
+                .withSchema(new Schema().schema(tableSchema));
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
 
-        tableEnv.registerTableSource("MyTableRow", source);
+        String tablePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+        ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.source(source, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePath),
+                connectorCatalogTable, false);
+
+        //tableEnv.registerTableSource("MyTableRow", source);
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
                 "COUNT(uri) AS cnt " +

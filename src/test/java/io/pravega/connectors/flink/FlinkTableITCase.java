@@ -31,6 +31,10 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.catalog.Catalog;
+import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.ConnectorCatalogTable;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.Avro;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
@@ -153,7 +157,7 @@ public class FlinkTableITCase {
         StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
                 EnvironmentSettings.newInstance()
                         // watermark is only supported in blink planner
-                        .useBlinkPlanner()
+                        //.useBlinkPlanner()
                         .inStreamingMode()
                         .build());
 
@@ -171,7 +175,14 @@ public class FlinkTableITCase {
                 .build()
                 .configure(SAMPLE_SCHEMA.getFieldNames(), SAMPLE_SCHEMA.getFieldTypes());
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSinkPath),
+                connectorCatalogSinkTable, false);
+
         table.insertInto("PravegaSink");
 
         // register the Pravega stream as a table called 'samples'
@@ -180,8 +191,16 @@ public class FlinkTableITCase {
                 .withPravegaConfig(this.setupUtils.getPravegaConfig())
                 .withSchema(SAMPLE_SCHEMA)
                 .build();
-        tableEnv.registerTableSource("samples", source);
 
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "samples";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
+
+        //tableEnv.registerTableSource("samples", source);
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
 
@@ -291,17 +310,24 @@ public class FlinkTableITCase {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
+        TableSchema tableSchema = TableSchema.builder()
+                .field("category", DataTypes.STRING())
+                .field("value", DataTypes.INT())
+                .build();
+
+        Schema schema = new Schema().schema(tableSchema);
+
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(
                     new Json()
                             .failOnMissingField(false)
                             .deriveSchema()
                 )
-                .withSchema(new Schema().
-                        field("category", DataTypes.STRING()).
-                        field("value", DataTypes.INT()))
+                .withSchema(schema)
                 .inAppendMode();
-        desc.registerTableSourceAndSink("test");
+
+        desc.createTemporaryTable("test");
+        //desc.registerTableSourceAndSink("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
@@ -311,10 +337,24 @@ public class FlinkTableITCase {
 
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        String tablePathSink = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePathSink),
+                connectorCatalogSinkTable, false);
+
+        //tableEnv.registerTableSink("PravegaSink", sink);
         table.insertInto("PravegaSink");
 
-        tableEnv.registerTableSource("samples", source);
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+
+        String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePathSource),
+                connectorCatalogSourceTable, false);
 
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
@@ -368,7 +408,7 @@ public class FlinkTableITCase {
                                 .deriveSchema()
                 )
                 .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT));
-        desc.registerTableSourceAndSink("test");
+        desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
@@ -377,7 +417,19 @@ public class FlinkTableITCase {
                 .createBatchTableSource(propertiesMap);
 
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
-        tableEnv.registerTableSink("PravegaSink", sink);
+
+        String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "PravegaSource";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, false);
+        ConnectorCatalogTable<?, ?> connectorCatalogTableSource = ConnectorCatalogTable.source(source, false);
+
+      //  tableEnv.registerCatalog(tableSinkPath, tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get());
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSinkPath),
+                connectorCatalogTableSink, false);
+
         table.insertInto("PravegaSink");
         env.execute();
 
@@ -425,7 +477,14 @@ public class FlinkTableITCase {
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        String tablePath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.sink(sink, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePath),
+                connectorCatalogTable, false);
+
         table.insertInto("PravegaSink");
         env.execute();
     }
@@ -475,14 +534,21 @@ public class FlinkTableITCase {
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema)
                 .inAppendMode();
-        desc.registerTableSink("test");
+        desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("PravegaSink", sink);
-        table.insertInto("PravegaSink");
+        String tablePath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.sink(sink, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePath),
+                connectorCatalogTable, false);
+
+        table.insertInto(tablePath);
         env.execute();
     }
 
@@ -559,13 +625,20 @@ public class FlinkTableITCase {
                 .withFormat(avro)
                 .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
                 .inAppendMode();
-        desc.registerTableSink("test");
+        desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
                 .createStreamTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        String tablePath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.sink(sink, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePath),
+                connectorCatalogTable, false);
+
         table.insertInto("PravegaSink");
         env.execute();
     }
