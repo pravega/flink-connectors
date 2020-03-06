@@ -31,8 +31,6 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.Catalog;
-import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ConnectorCatalogTable;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.Avro;
@@ -196,7 +194,6 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tableSourcePath),
                 connectorCatalogSourceTable, false);
 
-        //tableEnv.registerTableSource("samples", source);
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
 
@@ -207,7 +204,7 @@ public class FlinkTableITCase {
         try {
             env.execute();
             Assert.fail("expected an exception");
-        } catch (JobExecutionException e) {
+        } catch (Exception e) {
             // we expect the job to fail because the test sink throws a deliberate exception.
             Assert.assertTrue(ExceptionUtils.getRootCause(e) instanceof TestCompletionException);
         }
@@ -331,12 +328,6 @@ public class FlinkTableITCase {
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
 
-        //CatalogTableImpl catalogTable = new CatalogTableImpl(
-        //        tableSchema,
-        //        propertiesMap,
-        //        "comment"
-        //);
-
         Table table = tableEnv.fromDataStream(env.fromCollection(SAMPLES));
 
         String tablePathSink = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
@@ -349,17 +340,15 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePathSink),
                 connectorCatalogSinkTable, false);
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        //tableEnv.registerTableSink("PravegaSink", sink);
         table.insertInto("PravegaSink");
 
-        //ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
-        //String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+        String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";
 
-        //tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-         //       ObjectPath.fromString(tablePathSource),
-         //       catalogTable, false);
-        tableEnv.registerTableSource("samples", source);
-        //Optional<Catalog> catalog = tableEnv.getCatalog(tableEnv.getCurrentCatalog());
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePathSource),
+                connectorCatalogSourceTable, false);
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
 
@@ -370,7 +359,7 @@ public class FlinkTableITCase {
         try {
             env.execute();
             Assert.fail("expected an exception");
-        } catch (JobExecutionException e) {
+        } catch (Exception e) {
             // we expect the job to fail because the test sink throws a deliberate exception.
             Assert.assertTrue(ExceptionUtils.getRootCause(e) instanceof TestCompletionException);
         }
@@ -423,12 +412,8 @@ public class FlinkTableITCase {
         Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
 
         String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
-        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "PravegaSource";
 
         ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, false);
-        ConnectorCatalogTable<?, ?> connectorCatalogTableSource = ConnectorCatalogTable.source(source, false);
-
-      //  tableEnv.registerCatalog(tableSinkPath, tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get());
 
         tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSinkPath),
