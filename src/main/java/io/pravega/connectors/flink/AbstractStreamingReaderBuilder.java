@@ -190,15 +190,13 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * Generate a UID for the source, to distinguish the state associated with the checkpoint hook.  A good generated UID will:
      * 1. be stable across savepoints for the same inputs
      * 2. disambiguate one source from another (e.g. in a program that uses numerous instances of {@link FlinkPravegaReader})
-     * 3. allow for reconfiguration of the timeouts
+     * 3. allow for reconfiguration of the stream cuts and timeouts
      */
     String generateUid() {
         StringBuilder sb = new StringBuilder();
         sb.append(readerGroupScope).append('\n');
         resolveStreams().forEach(s -> sb
                 .append(s.getStream().getScopedName())
-                .append('/').append(s.getFrom().hashCode())
-                .append('/').append(s.getTo().hashCode())
                 .append('\n'));
         return Integer.toString(sb.toString().hashCode());
     }

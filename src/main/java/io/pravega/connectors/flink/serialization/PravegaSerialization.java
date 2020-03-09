@@ -15,7 +15,10 @@ import java.io.Serializable;
 /**
  * Helper methods to create DeserializationSchema and SerializationSchemas using the pravega JavaSerializer
  * for generic types.
+ *
+ * @deprecated Please use the constructor with {@link JavaSerializer} instead.
  */
+@Deprecated
 public class PravegaSerialization {
     public static final <T extends Serializable> PravegaDeserializationSchema<T> deserializationFor(Class<T> type) {
         return new PravegaDeserializationSchema<>(type, new JavaSerializer<>());
