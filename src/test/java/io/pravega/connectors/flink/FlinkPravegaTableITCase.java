@@ -29,15 +29,17 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.Table;
-import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.catalog.ConnectorCatalogTable;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
-import org.apache.flink.table.descriptors.Json;
-import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
+import org.apache.flink.table.descriptors.Rowtime;
+import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
@@ -241,6 +243,7 @@ public class FlinkPravegaTableITCase {
         execEnvWrite.execute("PopulateRowData");
 
         testTableSourceStreamingDescriptor(stream, pravegaConfig);
+        //TODO fix the Timestamp unmatch bug
         //testTableSourceBatchDescriptor(stream, pravegaConfig);
     }
 
@@ -327,13 +330,15 @@ public class FlinkPravegaTableITCase {
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema);
 
-        //desc.createTemporaryTable("MyTableRow");
-
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
 
-        tableEnv.registerTableSource("MyTableRow", source);
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
 
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +

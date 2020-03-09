@@ -17,7 +17,6 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -398,12 +397,10 @@ public class FlinkTableITCase {
                 .withPravegaConfig(pravegaConfig);
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(
-                        new Json()
-                                .failOnMissingField(false)
-                                .deriveSchema()
-                )
-                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT));
+                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withSchema(new Schema().
+                        field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()));
         desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
@@ -461,7 +458,9 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
+                .withSchema(new Schema().
+                        field("category", DataTypes.STRING())
+                        .field("value", DataTypes.INT()))
                 .inAppendMode();
         desc.createTemporaryTable("test");
 
@@ -566,7 +565,8 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT));
+                .withSchema(new Schema().field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()));
         desc.registerTableSink("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
@@ -615,7 +615,8 @@ public class FlinkTableITCase {
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(avro)
-                .withSchema(new Schema().field("category", Types.STRING).field("value", Types.INT))
+                .withSchema(new Schema().field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()))
                 .inAppendMode();
         desc.createTemporaryTable("test");
 

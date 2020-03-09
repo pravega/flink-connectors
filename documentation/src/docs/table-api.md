@@ -80,18 +80,36 @@ final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
 final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
         .createBatchTableSource(propertiesMap);
 
-tableEnv.registerTableSource("MyTableRow", source);
+//tableEnv.registerTableSource("MyTableRow", source);
 String sqlQuery = "SELECT ...";
 
 Table result = tableEnv.sqlQuery(sqlQuery);
 DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
+
+// (Option-3) Use ConnectTableDescriptor 
+ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(schema);
+
+final Map<String, String> propertiesMap = desc.toProperties();
+final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
+        .createBatchTableSource(propertiesMap);
+ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+        ObjectPath.fromString(tableSourcePath),
+        connectorCatalogSourceTable, false);
+String sqlQuery = "SELECT ...";
+Table result = tableEnv.sqlQuery(sqlQuery);
+DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
+
 ...
 ```
 
 
 ```java
-@deprecated
-
+@deprecated 
 // Create a Flink Table environment
 ExecutionEnvironment  env = ExecutionEnvironment.getExecutionEnvironment();
 
@@ -260,11 +278,32 @@ final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, 
 
 table.writeToSink(sink);
 env.execute();
+
+// (Option-3) Use ConnectorCatalogTable
+BatchTableDescriptor desc = tableEnv.connect(pravega)
+        .withFormat(new Json().failOnMissingField(true).deriveSchema())
+         .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
+final Map<String, String> propertiesMap = desc.toProperties();
+final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
+        .createBatchTableSink(propertiesMap);
+final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
+        .createBatchTableSource(propertiesMap);
+
+Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
+
+String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, false);
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+        ObjectPath.fromString(tableSinkPath),
+        connectorCatalogTableSink, false);
+table.insertInto("PravegaSink");
+env.execute();
 ```
 
 ```java
 @deprecated
-
 // Create a Flink Table environment
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
