@@ -10,12 +10,9 @@
 
 package io.pravega.connectors.flink;
 
-import akka.stream.impl.fusing.Batch;
-import com.typesafe.sslconfig.ssl.FakeChainedKeyStore;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
-import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -28,17 +25,15 @@ import org.apache.flink.formats.json.JsonRowSerializationSchema;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
-import org.apache.flink.streaming.api.datastream.DataStreamUtils;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
-import org.apache.flink.table.api.*;
+import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.EnvironmentSettings;
+import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.CatalogTableImpl;
-import org.apache.flink.table.catalog.ConnectorCatalogTable;
-import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
@@ -65,7 +60,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -146,7 +140,6 @@ public class FlinkPravegaTableITCase {
                                                 .build();
 
         testTableSourceStream(source);
-
         testTableSourceBatch(source);
 
     }
@@ -206,6 +199,7 @@ public class FlinkPravegaTableITCase {
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
         List<Row> results = resultSet.collect();
+        results.forEach(System.out::println);
         log.info("results: {}", results);
 
         boolean compare = compare(results, getExpectedResultsAppend());
@@ -261,7 +255,7 @@ public class FlinkPravegaTableITCase {
                         // watermark is only supported in blink planner
                         .useBlinkPlanner()
                         .inStreamingMode()
-                        .build());;
+                        .build());
         RESULTS.clear();
 
         // read data from the stream using Table reader
@@ -288,19 +282,12 @@ public class FlinkPravegaTableITCase {
                 .createStreamTableSource(propertiesMap);
 
         tableEnv.registerTableSource("MyTableRow", source);
-        String sqlQuery = "SELECT user, " +
-                "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
-                "COUNT(uri) AS cnt " +
-                "from MyTableRow GROUP BY " +
-                "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
-
-        //String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
+        String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
         Table result = tableEnv.sqlQuery(sqlQuery);
 
-        //List<Row> resultList = new ArrayList<>();
-        DataStream<Row> resultStream = tableEnv.toAppendStream(result, Row.class);
-
-        resultStream.print();
+        DataStream<Tuple2<Boolean, Row>> resultSet = tableEnv.toRetractStream(result, Row.class);
+        StringSink2 stringSink = new StringSink2(EVENT_COUNT_PER_SOURCE);
+        resultSet.addSink(stringSink);
 
         try {
             execEnvRead.execute("ReadRowData");
@@ -311,8 +298,8 @@ public class FlinkPravegaTableITCase {
         }
 
         log.info("results: {}", RESULTS);
-        //boolean compare = compare(resultList, getExpectedResultsAppend());
-        //assertTrue("Output does not match expected result", compare);
+        boolean compare = compare(RESULTS, getExpectedResultsRetracted());
+        assertTrue("Output does not match expected result", compare);
     }
 
     private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
@@ -325,77 +312,43 @@ public class FlinkPravegaTableITCase {
         Schema schema = new Schema()
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING())
-                .field("accessTime", DataTypes.TIMESTAMP(3))
-                .rowtime(
+                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
                         new Rowtime().timestampsFromField("accessTime")
                                 .watermarksPeriodicBounded(30000L));
 
         Pravega pravega = new Pravega();
+
         pravega.tableSourceReaderBuilder()
                 .withReaderGroupScope(stream.getScope())
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true))
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
                 .withSchema(schema);
 
-        Map<String, String> propertiesMap = desc.toProperties();
+        //desc.createTemporaryTable("MyTableRow");
+
+        final Map<String, String> propertiesMap = desc.toProperties();
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
 
-        //method 2: connectorCatalogTable
-        String tablePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
-        ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.source(source, false);
-        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-                ObjectPath.fromString(tablePath),
-                connectorCatalogTable, false);
+        tableEnv.registerTableSource("MyTableRow", source);
 
-        String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
+        String sqlQuery = "SELECT user, " +
+                "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
+                "COUNT(uri) AS cnt " +
+                "from MyTableRow GROUP BY " +
+                "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
 
         Table result = tableEnv.sqlQuery(sqlQuery);
-
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
-
         List<Row> results = resultSet.collect();
         log.info("results: {}", results);
 
         boolean compare = compare(results, getExpectedResultsAppend());
         assertTrue("Output does not match expected result", compare);
-
     }
-
-    static final class TestingSinkFunction implements SinkFunction<Row> {
-
-        private static final long serialVersionUID = 455430015321124493L;
-        private static List<Row> rows = new ArrayList<>();
-
-        private final int expectedSize;
-
-        private TestingSinkFunction(int expectedSize) {
-            this.expectedSize = expectedSize;
-            rows.clear();
-        }
-
-        @Override
-        public void invoke(Row value, Context context) throws Exception {
-            rows.add(value);
-            if (rows.size() >= expectedSize) {
-                // job finish
-                throw new JobFinishedException("All records are received, job is finished.");
-            }
-        }
-    }
-
-    private static final class JobFinishedException extends RuntimeException {
-
-        private static final long serialVersionUID = -4684689851069516182L;
-
-        private JobFinishedException(String message) {
-            super(message);
-        }
-    }
-
 
     static boolean compare(List<Row> results, List<Row> expectedResults) {
 

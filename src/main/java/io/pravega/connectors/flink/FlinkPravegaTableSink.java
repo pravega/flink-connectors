@@ -18,7 +18,6 @@ import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
-import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.BatchTableSink;
 import org.apache.flink.table.utils.TableConnectorUtils;
@@ -79,7 +78,6 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
-
         checkState(tableSinkConfiguration != null, "Table sink is not configured");
         FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
         return dataStream
