@@ -16,6 +16,7 @@ import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
@@ -138,14 +139,14 @@ public class FlinkPravegaTableSinkTest {
                 .withFormat(new Json().failOnMissingField(false).deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, Types.STRING)
-                                .field(total, Types.BIG_DEC)
-                                .field(eventTime, Types.SQL_TIMESTAMP)
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.BIGINT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                 .rowtime(new Rowtime()
                                         .timestampsFromField(eventTime)
                                         .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                 )
-                                .field(procTime, Types.SQL_TIMESTAMP).proctime()
+                                .field(procTime, DataTypes.TIMESTAMP(3)).proctime()
                 )
                 .inAppendMode();
 

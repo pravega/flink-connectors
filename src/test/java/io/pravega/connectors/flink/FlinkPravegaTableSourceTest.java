@@ -15,7 +15,6 @@ import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
@@ -56,8 +55,8 @@ public class FlinkPravegaTableSourceTest {
     private static final Stream SAMPLE_STREAM = Stream.of("scope", "stream");
 
     private static final TableSchema SAMPLE_SCHEMA = TableSchema.builder()
-            .field("category", Types.STRING)
-            .field("value", Types.INT)
+            .field("category", DataTypes.STRING())
+            .field("value", DataTypes.INT())
             .build();
 
     @Test
@@ -119,10 +118,10 @@ public class FlinkPravegaTableSourceTest {
         final String scopeName = "test";
 
         final TableSchema tableSchema = TableSchema.builder()
-                .field(cityName, Types.STRING)
-                .field(total, Types.BIG_DEC)
-                .field(eventTime, DataTypes.TIMESTAMP())
-                .field(procTime, DataTypes.TIMESTAMP())
+                .field(cityName, DataTypes.STRING())
+                .field(total, DataTypes.BIGINT())
+                .field(eventTime, DataTypes.TIMESTAMP(3))
+                .field(procTime, DataTypes.TIMESTAMP(3))
                 .build();
 
         Stream stream = Stream.of(scopeName, streamName);
@@ -155,14 +154,14 @@ public class FlinkPravegaTableSourceTest {
                 .withFormat(new Json().failOnMissingField(false) .deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, Types.STRING)
-                                .field(total, Types.BIG_DEC)
-                                .field(eventTime, DataTypes.TIMESTAMP())
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.BIGINT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                     .rowtime(new Rowtime()
                                                 .timestampsFromField(eventTime)
                                                 .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                             )
-                                .field(procTime, DataTypes.TIMESTAMP()).proctime())
+                                .field(procTime, DataTypes.TIMESTAMP(3)).proctime())
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
@@ -198,18 +197,18 @@ public class FlinkPravegaTableSourceTest {
                 .withPravegaConfig(pravegaConfig);
 
         final TableSchema tableSchema = TableSchema.builder()
-                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                .field(cityName, DataTypes.STRING())
+                .field(total, DataTypes.INT())
+                .field(eventTime, DataTypes.TIMESTAMP(3))
                 .build();
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withFormat(new Json().failOnMissingField(false).deriveSchema())
                 .withSchema(
                         new Schema()
-                                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.DataTypes.TIMESTAMP())
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.INT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                 .rowtime(new Rowtime()
                                         .timestampsFromSource()
                                         .watermarksFromSource()
