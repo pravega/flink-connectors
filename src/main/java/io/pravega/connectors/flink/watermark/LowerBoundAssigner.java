@@ -31,7 +31,7 @@ public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T
         }
         return timeWindow.getLowerTimeBound() == Long.MIN_VALUE ?
                 new Watermark(Long.MIN_VALUE) :
-                new Watermark(timeWindow.getLowerTimeBound() - 1L);
+                new Watermark(timeWindow.getLowerTimeBound());
     }
 }
 
