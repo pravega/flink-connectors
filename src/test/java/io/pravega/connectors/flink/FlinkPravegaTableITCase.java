@@ -201,7 +201,6 @@ public class FlinkPravegaTableITCase {
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
         List<Row> results = resultSet.collect();
-        results.forEach(System.out::println);
         log.info("results: {}", results);
 
         boolean compare = compare(results, getExpectedResultsAppend());
