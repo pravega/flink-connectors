@@ -27,7 +27,7 @@ public class FlinkPravegaJsonTableSourceTest {
 
     private static final TableSchema SAMPLE_SCHEMA = TableSchema.builder()
             .field("category", DataTypes.STRING())
-            .field("value", DataTypes.STRING())
+            .field("value", DataTypes.INT())
             .build();
 
     @Test
