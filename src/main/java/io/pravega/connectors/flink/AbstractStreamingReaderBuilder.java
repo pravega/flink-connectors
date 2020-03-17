@@ -13,6 +13,7 @@ import com.google.common.base.Preconditions;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.util.SerializedValue;
@@ -27,6 +28,7 @@ import java.util.Optional;
  * @param <T> the element type.
  * @param <B> the builder type.
  */
+@Internal
 public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingReaderBuilder> extends AbstractReaderBuilder<B> {
 
     private static final Time DEFAULT_EVENT_READ_TIMEOUT = Time.seconds(1);

@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.util.Preconditions;
@@ -21,6 +22,7 @@ import org.apache.flink.util.Preconditions;
  * @param <T> the element type.
  * @param <B> the builder type.
  */
+@Internal
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked based on the default max settings in Pravega

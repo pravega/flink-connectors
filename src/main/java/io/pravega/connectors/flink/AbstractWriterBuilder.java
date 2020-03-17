@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import lombok.Data;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
@@ -20,6 +21,7 @@ import java.io.Serializable;
  *
  * @param <B> the builder class.
  */
+@Internal
 public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> implements Serializable {
 
     private PravegaConfig pravegaConfig;

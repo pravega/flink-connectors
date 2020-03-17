@@ -13,6 +13,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.Data;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
  *
  * @param <B> the builder class.
  */
+@Internal
 public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> implements Serializable {
 
     private static final long serialVersionUID = 1L;
