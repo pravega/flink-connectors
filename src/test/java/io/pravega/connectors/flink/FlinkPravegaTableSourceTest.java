@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;

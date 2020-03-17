@@ -27,19 +27,19 @@ import java.util.Optional;
  * @param <T> the element type.
  * @param <B> the builder type.
  */
-abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingReaderBuilder> extends AbstractReaderBuilder<B> {
+public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingReaderBuilder> extends AbstractReaderBuilder<B> {
 
     private static final Time DEFAULT_EVENT_READ_TIMEOUT = Time.seconds(1);
     private static final Time DEFAULT_CHECKPOINT_INITIATE_TIMEOUT = Time.seconds(5);
     private static final int  DEFAULT_MAX_OUTSTANDING_CHECKPOINT_REQUEST = 3;
 
-    protected String uid;
-    protected String readerGroupScope;
-    protected String readerGroupName;
-    protected Time readerGroupRefreshTime;
-    protected Time checkpointInitiateTimeout;
-    protected Time eventReadTimeout;
-    protected int maxOutstandingCheckpointRequest;
+    public String uid;
+    public String readerGroupScope;
+    public String readerGroupName;
+    public Time readerGroupRefreshTime;
+    public Time checkpointInitiateTimeout;
+    public Time eventReadTimeout;
+    public int maxOutstandingCheckpointRequest;
 
     protected AbstractStreamingReaderBuilder() {
         this.checkpointInitiateTimeout = DEFAULT_CHECKPOINT_INITIATE_TIMEOUT;
@@ -143,7 +143,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * @throws IllegalStateException if the configuration is invalid.
      * @return an uninitiailized reader as a source function.
      */
-    FlinkPravegaReader<T> buildSourceFunction() {
+    protected FlinkPravegaReader<T> buildSourceFunction() {
         ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
         return new FlinkPravegaReader<>(
                 Optional.ofNullable(this.uid).orElseGet(this::generateUid),
@@ -159,11 +159,11 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
     }
 
     /**
-     * Build reader group configuration
+     * Build reader group configuration.
      *
      * @return {@link ReaderGroupInfo}
      */
-    ReaderGroupInfo buildReaderGroupInfo() {
+    public ReaderGroupInfo buildReaderGroupInfo() {
         // rgConfig
         ReaderGroupConfig.ReaderGroupConfigBuilder rgConfigBuilder = ReaderGroupConfig
                 .builder()
@@ -192,7 +192,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * 2. disambiguate one source from another (e.g. in a program that uses numerous instances of {@link FlinkPravegaReader})
      * 3. allow for reconfiguration of the stream cuts and timeouts
      */
-    String generateUid() {
+    public String generateUid() {
         StringBuilder sb = new StringBuilder();
         sb.append(readerGroupScope).append('\n');
         resolveStreams().forEach(s -> sb
@@ -201,7 +201,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
         return Integer.toString(sb.toString().hashCode());
     }
 
-    static class ReaderGroupInfo {
+    public static class ReaderGroupInfo {
         private final ReaderGroupConfig readerGroupConfig;
         private final String readerGroupScope;
         private final String readerGroupName;

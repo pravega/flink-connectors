@@ -123,7 +123,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     /**
      * Gets the Pravega configuration.
      */
-    protected PravegaConfig getPravegaConfig() {
+    public PravegaConfig getPravegaConfig() {
         Preconditions.checkState(pravegaConfig != null, "A Pravega configuration must be supplied.");
         return pravegaConfig;
     }
@@ -153,7 +153,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     /**
      * getter to fetch the metrics flag.
      */
-    protected boolean isMetricsEnabled() {
+    public boolean isMetricsEnabled() {
         return enableMetrics;
     }
 

@@ -80,7 +80,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
      * @param serializationSchema   The implementation to serialize events that will be written to pravega stream.
      * @param eventRouter           The event router to be used while writing the events.
      */
-    protected FlinkPravegaOutputFormat(
+    public FlinkPravegaOutputFormat(
             final ClientConfig clientConfig,
             final Stream stream,
             final SerializationSchema<T> serializationSchema,

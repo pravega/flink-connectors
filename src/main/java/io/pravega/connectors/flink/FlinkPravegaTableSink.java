@@ -114,7 +114,7 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      * The table sink configuration which is provided by the table environment via {@code TableSink::configure}.
      */
     @Getter
-    protected static class TableSinkConfiguration {
+    public static class TableSinkConfiguration {
         // the set of projected fields and their types
         private String[] fieldNames;
         private TypeInformation[] fieldTypes;
@@ -128,7 +128,7 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
     /**
      * An event router that extracts the routing key from a {@link Row} by field name.
      */
-    static class RowBasedRouter implements PravegaEventRouter<Row> {
+    public static class RowBasedRouter implements PravegaEventRouter<Row> {
 
         private final int keyIndex;
 

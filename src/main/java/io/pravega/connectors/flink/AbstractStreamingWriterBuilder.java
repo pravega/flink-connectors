@@ -26,9 +26,9 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
     // the numbers below are picked based on the default max settings in Pravega
     protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000; // 30 seconds
 
-    protected PravegaWriterMode writerMode;
-    protected boolean enableWatermark;
-    protected Time txnLeaseRenewalPeriod;
+    public PravegaWriterMode writerMode;
+    public boolean enableWatermark;
+    public Time txnLeaseRenewalPeriod;
 
     protected AbstractStreamingWriterBuilder() {
         writerMode = PravegaWriterMode.ATLEAST_ONCE;
@@ -78,7 +78,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      * @param serializationSchema the deserialization schema to use.
      * @param eventRouter the event router to use.
      */
-    FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+    protected FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         Preconditions.checkNotNull(eventRouter, "eventRouter");
         return new FlinkPravegaWriter<>(

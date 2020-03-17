@@ -16,7 +16,7 @@ import org.apache.flink.types.Row;
 import java.util.List;
 import java.util.Map;
 
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_VERSION_VALUE;
 
 /**
  * A batch table sink factory implementation of {@link BatchTableSinkFactory} to access Pravega streams.
