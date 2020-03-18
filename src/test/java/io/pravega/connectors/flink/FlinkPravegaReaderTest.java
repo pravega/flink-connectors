@@ -310,11 +310,11 @@ public class FlinkPravegaReaderTest {
             Queue<Object> actual = testHarness.getOutput();
             Queue<Object> expected = new ConcurrentLinkedQueue<>();
             expected.add(record(1, 1));
-            // emit watermark (1 - 1 = 0)
-            expected.add(watermark(0));
-            expected.add(record(2, 2));
-            // emit watermark (2 - 1 = 1)
+            // emit watermark 1
             expected.add(watermark(1));
+            expected.add(record(2, 2));
+            // emit watermark 2
+            expected.add(watermark(2));
             // automatic watermark at the end of stream
             expected.add(watermark(Long.MAX_VALUE));
 
