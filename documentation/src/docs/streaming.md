@@ -111,11 +111,10 @@ On the reader side, a new concept [`TimeWindow`](https://github.com/pravega/prav
 It is possible to use event time semantics with either pravega watermark (after 0.6) or normal watermark. 
 
 To use Pravega watermark, an interface called `AssignerWithTimeWindows` should be implemented in the application via an application-specific timestamp assigner and a watermark generator with `TimeWindow`. Different applications can choose to be more or less conservative with the given `TimeWindow`.
-`LowerBoundAssigner` is provided as a default implementation of the most conservative watermark. `LowerBoundAssigner` periodically emits the watermark which equals the lower bound of TimeWindow.  You   can set the period of emission like below.
+`LowerBoundAssigner` is provided as a default implementation of the most conservative watermark. `LowerBoundAssigner` periodically emits the watermark which equals the lower bound of TimeWindow.  You can set the period of watermark emission like below.
 
 ```java
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-
 env.getConfig().setAutoWatermarkInterval(AUTO_WATERMARK_INTERVAL_MS);
 ```
 
