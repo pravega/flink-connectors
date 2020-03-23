@@ -22,7 +22,7 @@ public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T
     @Override
     public abstract long extractTimestamp(T element, long previousElementTimestamp);
 
-    // built-in watermark implementation which emits the lower bound - 1
+    // built-in watermark implementation which emits the lower bound
     @Override
     public Watermark getWatermark(TimeWindow timeWindow) {
         // There is no LowerBound watermark if we're near the head of the stream
@@ -31,7 +31,7 @@ public abstract class LowerBoundAssigner<T> implements AssignerWithTimeWindows<T
         }
         return timeWindow.getLowerTimeBound() == Long.MIN_VALUE ?
                 new Watermark(Long.MIN_VALUE) :
-                new Watermark(timeWindow.getLowerTimeBound() - 1L);
+                new Watermark(timeWindow.getLowerTimeBound());
     }
 }
 
