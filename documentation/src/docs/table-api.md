@@ -259,28 +259,6 @@ final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, 
 
 table.writeToSink(sink);
 env.execute();
-
-// (Option-3) Use ConnectorCatalogTable
-BatchTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-         .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
-final Map<String, String> propertiesMap = desc.toProperties();
-final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
-        .createBatchTableSink(propertiesMap);
-final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
-        .createBatchTableSource(propertiesMap);
-
-Table table = tableEnv.fromDataSet(env.fromCollection(SAMPLES));
-
-String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
-
-ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, false);
-
-tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-        ObjectPath.fromString(tableSinkPath),
-        connectorCatalogTableSink, false);
-table.insertInto("PravegaSink");
-env.execute();
 ```
 
 ```java
