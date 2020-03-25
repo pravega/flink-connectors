@@ -29,18 +29,15 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.Table;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
-import org.apache.flink.table.catalog.ConnectorCatalogTable;
-import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
-import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Json;
-import org.apache.flink.table.factories.BatchTableSourceFactory;
+import org.apache.flink.table.descriptors.Rowtime;
+import org.apache.flink.table.descriptors.Schema;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
@@ -55,8 +52,6 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
-
-
 
 import static org.junit.Assert.assertTrue;
 
@@ -242,8 +237,8 @@ public class FlinkPravegaTableITCase {
         execEnvWrite.execute("PopulateRowData");
 
         testTableSourceStreamingDescriptor(stream, pravegaConfig);
-        //TODO fix the Timestamp unmatch bug
-        //testTableSourceBatchDescriptor(stream, pravegaConfig);
+        // TODO: Fix the Timestamp incompatible bug with Flink 1.10 migration. More on FLINK-16693 and issue-341
+        // testTableSourceBatchDescriptor(stream, pravegaConfig);
     }
 
     private void testTableSourceStreamingDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
@@ -330,14 +325,10 @@ public class FlinkPravegaTableITCase {
                 .withSchema(schema);
 
         final Map<String, String> propertiesMap = desc.toProperties();
-        final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
-                .createBatchTableSource(propertiesMap);
-        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
-        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+        final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
+                .createStreamTableSource(propertiesMap);
 
-        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-                ObjectPath.fromString(tableSourcePath),
-                connectorCatalogSourceTable, false);
+        tableEnv.registerTableSource("MyTableRow", source);
 
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
@@ -346,6 +337,7 @@ public class FlinkPravegaTableITCase {
                 "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
 
         Table result = tableEnv.sqlQuery(sqlQuery);
+
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
         List<Row> results = resultSet.collect();
         log.info("results: {}", results);

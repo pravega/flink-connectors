@@ -80,30 +80,11 @@ final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
 final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
         .createBatchTableSource(propertiesMap);
 
-//tableEnv.registerTableSource("MyTableRow", source);
+tableEnv.registerTableSource("MyTableRow", source);
 String sqlQuery = "SELECT ...";
 
 Table result = tableEnv.sqlQuery(sqlQuery);
 DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
-
-// (Option-3) Use ConnectTableDescriptor 
-ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
-                .withSchema(schema);
-
-final Map<String, String> propertiesMap = desc.toProperties();
-final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
-        .createBatchTableSource(propertiesMap);
-ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
-String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
-
-tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
-        ObjectPath.fromString(tableSourcePath),
-        connectorCatalogSourceTable, false);
-String sqlQuery = "SELECT ...";
-Table result = tableEnv.sqlQuery(sqlQuery);
-DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
-
 ...
 ```
 

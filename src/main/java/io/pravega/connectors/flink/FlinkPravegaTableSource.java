@@ -64,6 +64,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     /** Descriptor for a rowtime attribute. */
     private List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors;
 
+
     /**
      * Creates a Pravega {@link TableSource}.
      * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
@@ -101,6 +102,11 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     public DataSet<Row> getDataSet(ExecutionEnvironment env) {
         FlinkPravegaInputFormat<Row> inputFormat = inputFormatFactory.get();
         return env.createInput(inputFormat, returnType);
+    }
+
+    @Override
+    public boolean isBounded() {
+        return false;
     }
 
     @Override

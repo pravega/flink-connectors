@@ -151,7 +151,7 @@ public class FlinkPravegaTableSourceTest {
                 .withPravegaConfig(pravegaConfig);
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
                                 .field(cityName, DataTypes.STRING())
@@ -203,7 +203,7 @@ public class FlinkPravegaTableSourceTest {
                 .build();
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
                                 .field(cityName, DataTypes.STRING())

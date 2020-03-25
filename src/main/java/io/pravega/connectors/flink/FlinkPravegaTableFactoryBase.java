@@ -40,10 +40,6 @@ import static io.pravega.connectors.flink.Pravega.*;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
-import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK;
-import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_ROWTIME;
-import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_STRATEGY_EXPR;
-import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK_STRATEGY_DATA_TYPE;
 import static org.apache.flink.table.descriptors.FormatDescriptorValidator.FORMAT;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_CLASS;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_TIMESTAMPS_FROM;
@@ -131,10 +127,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_CLASS);
         properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_SERIALIZED);
         properties.add(SCHEMA + ".#." + ROWTIME_WATERMARKS_DELAY);
-        // watermark
-        properties.add(SCHEMA + "." + WATERMARK + ".#."  + WATERMARK_ROWTIME);
-        properties.add(SCHEMA + "." + WATERMARK + ".#."  + WATERMARK_STRATEGY_EXPR);
-        properties.add(SCHEMA + "." + WATERMARK + ".#."  + WATERMARK_STRATEGY_DATA_TYPE);
+
         // format wildcard
         properties.add(FORMAT + ".*");
 

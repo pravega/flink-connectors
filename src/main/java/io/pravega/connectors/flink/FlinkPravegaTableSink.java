@@ -71,19 +71,13 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      */
     @Override
     public void emitDataStream(DataStream<Row> dataStream) {
-        checkState(tableSinkConfiguration != null, "Table sink is not configured");
-        FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
-        dataStream.addSink(writer);
     }
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
         checkState(tableSinkConfiguration != null, "Table sink is not configured");
         FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
-        return dataStream
-                .addSink(writer)
-                .setParallelism(dataStream.getParallelism())
-                .name(TableConnectorUtils.generateRuntimeName(this.getClass(), getFieldNames()));
+        return dataStream.addSink(writer);
     }
 
     @Override

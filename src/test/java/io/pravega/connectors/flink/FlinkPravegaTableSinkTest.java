@@ -68,13 +68,13 @@ public class FlinkPravegaTableSinkTest {
 
     @Test
     @SuppressWarnings("unchecked")
-    public void testEmitDataStream() {
+    public void testConsumeDataStream() {
         FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
         FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
         FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
                 .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
         DataStream<Row> dataStream = mock(DataStream.class);
-        tableSink.emitDataStream(dataStream);
+        tableSink.consumeDataStream(dataStream);
         verify(dataStream).addSink(writer);
     }
 

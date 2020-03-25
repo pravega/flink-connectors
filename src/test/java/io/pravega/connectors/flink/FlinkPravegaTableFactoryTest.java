@@ -41,7 +41,7 @@ public class FlinkPravegaTableFactoryTest {
     final static Schema SCHEMA = new Schema()
                                             .field("name", DataTypes.STRING())
                                             .field("age", DataTypes.INT());
-    final static Json JSON = new Json().failOnMissingField(false).deriveSchema();
+    final static Json JSON = new Json().failOnMissingField(false);
     final static String SCOPE = "foo";
     final static String STREAM = "bar";
     final static String CONTROLLER_URI = "tcp://localhost:9090";
