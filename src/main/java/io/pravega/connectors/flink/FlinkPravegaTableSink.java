@@ -20,7 +20,6 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.BatchTableSink;
-import org.apache.flink.table.utils.TableConnectorUtils;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
