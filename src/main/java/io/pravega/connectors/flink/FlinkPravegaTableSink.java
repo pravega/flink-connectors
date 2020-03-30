@@ -69,8 +69,7 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      *       Do not use it in Table API programs.
      */
     @Override
-    public void emitDataStream(DataStream<Row> dataStream) {
-    }
+    public void emitDataStream(DataStream<Row> dataStream) {}
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
