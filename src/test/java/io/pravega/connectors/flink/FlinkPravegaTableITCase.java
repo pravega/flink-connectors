@@ -59,8 +59,10 @@ import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -177,7 +179,7 @@ public class FlinkPravegaTableITCase {
         log.info("results: {}", RESULTS);
 
         boolean compare = compare(RESULTS, getExpectedResultsRetracted());
-        //assertTrue("Output does not match expected result", compare);
+        assertTrue("Output does not match expected result", compare);
     }
 
     public void testTableSourceBatch(FlinkPravegaJsonTableSource source) throws Exception {
@@ -260,8 +262,7 @@ public class FlinkPravegaTableITCase {
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING())
                 .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
-                        new Rowtime().timestampsFromField("accessTime")
-                                .watermarksPeriodicBounded(30000L));
+                        new Rowtime().timestampsFromField("accessTime").watermarksPeriodicBounded(30000L));
 
         Pravega pravega = new Pravega();
         pravega.tableSourceReaderBuilder()
@@ -350,10 +351,11 @@ public class FlinkPravegaTableITCase {
             return false;
         }
 
-        for (int i = 0; i < results.size(); i++) {
-            Row result = results.get(i);
+        Set<Row> set = new HashSet<Row>(results);
+
+        for (int i = 0; i < expectedResults.size(); i++) {
             Row expected = expectedResults.get(i);
-            if (!result.equals(expected)) {
+            if (!set.contains(expected)) {
                 return false;
             }
         }
@@ -393,8 +395,8 @@ public class FlinkPravegaTableITCase {
                 { "Chris", "1" },
                 { "David", "1" },
                 { "Gary",  "2" },
-                { "Mary",  "2" },
                 { "Nina",  "1" },
+                { "Mary",  "2" },
                 { "Peter", "1" },
                 { "Tony",  "2" }
 
