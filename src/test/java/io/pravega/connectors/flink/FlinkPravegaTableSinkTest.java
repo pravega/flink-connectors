@@ -67,7 +67,7 @@ public class FlinkPravegaTableSinkTest {
         assertArrayEquals(TUPLE2.getFieldTypes(), tableSink2.getFieldTypes());
     }
 
-    @Test(expected=NotImplementedException.class)
+    @Test(expected = NotImplementedException.class)
     public void testEmitDataStream() {
         FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
         FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
