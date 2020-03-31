@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonRowSerializationSchema;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
@@ -64,6 +65,17 @@ public class FlinkPravegaTableSinkTest {
         assertEquals(TUPLE2, tableSink2.getOutputType());
         assertArrayEquals(TUPLE2.getFieldNames(), tableSink2.getFieldNames());
         assertArrayEquals(TUPLE2.getFieldTypes(), tableSink2.getFieldTypes());
+    }
+
+    @Test(expected=NotImplementedException.class)
+    public void testEmitDataStream() {
+        FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
+                .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
+        DataStream<Row> dataStream = mock(DataStream.class);
+        tableSink.emitDataStream(dataStream);
+        verify(dataStream).addSink(writer);
     }
 
     @Test

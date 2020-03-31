@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import lombok.Getter;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -69,7 +70,9 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      *       Do not use it in Table API programs.
      */
     @Override
-    public void emitDataStream(DataStream<Row> dataStream) {}
+    public void emitDataStream(DataStream<Row> dataStream) {
+        throw new NotImplementedException("This method is deprecated and should not be called.");
+    }
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
