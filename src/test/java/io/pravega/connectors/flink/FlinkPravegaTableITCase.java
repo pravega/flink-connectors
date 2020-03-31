@@ -311,6 +311,8 @@ public class FlinkPravegaTableITCase {
         execEnvRead.setParallelism(1);
 
         // read data from the stream using Table reader
+        // TODO: We still have issues on timestamps with Legacy Flink planner.
+        //       See https://github.com/pravega/flink-connectors/issues/341 and https://issues.apache.org/jira/browse/FLINK-16693.
         Schema schema = new Schema()
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING());
@@ -374,6 +376,8 @@ public class FlinkPravegaTableITCase {
                 { "Nina",  "2018-08-02 09:40:00.0", "1" },
                 { "Peter", "2018-08-02 09:45:00.0", "1" },
                 { "Tony",  "2018-08-02 09:45:00.0", "1" },
+                // The watermark is not passing the 10:45, so the window will not be fired and compute the count,
+                // thus we don't have this line for output.
                 //{ "Tony",  "2018-08-02 10:45:00.0", "1" },
 
         };
