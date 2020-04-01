@@ -34,6 +34,8 @@ import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.java.BatchTableEnvironment;
 import org.apache.flink.table.api.java.StreamTableEnvironment;
+import org.apache.flink.table.catalog.ConnectorCatalogTable;
+import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.descriptors.ConnectTableDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
@@ -279,7 +281,14 @@ public class FlinkPravegaTableITCase {
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
 
-        tableEnv.registerTableSource("MyTableRow", source);
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
+
         String sqlQuery = "SELECT user, " +
                 "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
                 "COUNT(uri) AS cnt " +
@@ -332,7 +341,13 @@ public class FlinkPravegaTableITCase {
         final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
                 .createBatchTableSource(propertiesMap);
 
-        tableEnv.registerTableSource("MyTableRow", source);
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, true);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
 
         String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
 

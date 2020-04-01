@@ -316,13 +316,11 @@ public class FlinkTableITCase {
                 .withFormat(
                     new Json()
                             .failOnMissingField(false)
-                            .deriveSchema()
                 )
                 .withSchema(schema)
                 .inAppendMode();
 
         desc.createTemporaryTable("test");
-        //desc.registerTableSourceAndSink("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
@@ -334,7 +332,7 @@ public class FlinkTableITCase {
 
         String tablePathSink = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
 
-        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sourceAndSink(source, sink, false);
+        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, false);
 
         tableEnv.getCatalog(tableEnv.getCurrentCatalog())
                 .get()
@@ -342,7 +340,6 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePathSink),
                 connectorCatalogSinkTable, false);
 
-        //tableEnv.registerTableSink("PravegaSink", sink);
         table.insertInto("PravegaSink");
 
         ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
@@ -397,7 +394,7 @@ public class FlinkTableITCase {
                 .withPravegaConfig(pravegaConfig);
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(new Schema().
                         field("category", DataTypes.STRING()).
                         field("value", DataTypes.INT()));
@@ -413,7 +410,7 @@ public class FlinkTableITCase {
 
         String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
 
-        ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, false);
+        ConnectorCatalogTable<?, ?> connectorCatalogTableSink = ConnectorCatalogTable.sink(sink, true);
 
         tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSinkPath),
@@ -422,7 +419,13 @@ public class FlinkTableITCase {
         table.insertInto("PravegaSink");
         env.execute();
 
-        tableEnv.registerTableSource("samples", source);
+        String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "samples";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogTableSource = ConnectorCatalogTable.source(source, true);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogTableSource, false);
 
         // select some sample data from the Pravega-backed table, as a view
         Table view = tableEnv.sqlQuery("SELECT * FROM samples WHERE category IN ('A','B')");
@@ -457,7 +460,7 @@ public class FlinkTableITCase {
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withFormat(new Json().failOnMissingField(true))
                 .withSchema(new Schema().
                         field("category", DataTypes.STRING())
                         .field("value", DataTypes.INT()))
@@ -522,7 +525,7 @@ public class FlinkTableITCase {
         Schema schema = new Schema().schema(tableSchema);
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withFormat(new Json().failOnMissingField(true))
                 .withSchema(schema)
                 .inAppendMode();
         desc.createTemporaryTable("test");
@@ -564,16 +567,22 @@ public class FlinkTableITCase {
                 .withPravegaConfig(setupUtils.getPravegaConfig());
 
         ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withFormat(new Json().failOnMissingField(true))
                 .withSchema(new Schema().field("category", DataTypes.STRING()).
                         field("value", DataTypes.INT()));
-        desc.registerTableSink("test");
+        desc.createTemporaryTable("test");
 
         final Map<String, String> propertiesMap = desc.toProperties();
         final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
                 .createBatchTableSink(propertiesMap);
 
-        tableEnv.registerTableSink("PravegaSink", sink);
+        String tableSinkPath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+        ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, true);
+
+        tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSinkPath),
+                connectorCatalogSinkTable, false);
         table.insertInto("PravegaSink");
         env.execute();
     }

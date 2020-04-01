@@ -148,7 +148,7 @@ public class FlinkPravegaTableSinkTest {
                 .withPravegaConfig(pravegaConfig);
 
         final FlinkPravegaTableSourceTest.TestTableDescriptor testDesc = new FlinkPravegaTableSourceTest.TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
                                 .field(cityName, DataTypes.STRING())

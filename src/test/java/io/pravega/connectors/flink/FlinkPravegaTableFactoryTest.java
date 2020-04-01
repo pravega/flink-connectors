@@ -86,7 +86,7 @@ public class FlinkPravegaTableFactoryTest {
                 .field("age", DataTypes.INT()).rowtime(new Rowtime()
                                                                 .timestampsFromField("age")
                                                                 .watermarksFromStrategy(
-                                                                        new BoundedOutOfOrderTimestamps(30000)));
+                                                                        new BoundedOutOfOrderTimestamps(30000L)));
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);
         pravega.tableSourceReaderBuilder()
