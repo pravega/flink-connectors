@@ -127,7 +127,9 @@ Each parallel instance of the source processes one or more stream segments in pa
 A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on
 StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
-Tail reading can be implemented with StreamCut, here is the example:
+Tail-read can be implemented with StreamCut, here is the example:
+
+For more detail on tail-read and other concepts please refer to [Concept](http://pravega.io/docs/latest/pravega-concepts/))
 
 ```java
 StreamManager streamManager = StreamManager.create(appConfiguration
