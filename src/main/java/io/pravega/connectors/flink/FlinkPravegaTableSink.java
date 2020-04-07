@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import lombok.Getter;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
@@ -17,6 +18,7 @@ import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.BatchTableSink;
 import org.apache.flink.types.Row;
@@ -69,9 +71,14 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      */
     @Override
     public void emitDataStream(DataStream<Row> dataStream) {
+        throw new NotImplementedException("This method is deprecated and should not be called.");
+    }
+
+    @Override
+    public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
         checkState(tableSinkConfiguration != null, "Table sink is not configured");
         FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
-        dataStream.addSink(writer);
+        return dataStream.addSink(writer);
     }
 
     @Override

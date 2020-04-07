@@ -128,6 +128,7 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion

@@ -11,10 +11,12 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
-import org.apache.flink.api.common.typeinfo.Types;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.Json;
+import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
 import org.apache.flink.table.factories.StreamTableSinkFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
@@ -22,6 +24,7 @@ import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.TableSourceValidation;
+import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.junit.Test;
 
 import java.net.URI;
@@ -38,9 +41,9 @@ import static org.junit.Assert.fail;
 public class FlinkPravegaTableFactoryTest {
 
     final static Schema SCHEMA = new Schema()
-                                            .field("name", Types.STRING )
-                                            .field("age", Types.INT );
-    final static Json JSON = new Json().failOnMissingField(false) .deriveSchema();
+                                            .field("name", DataTypes.STRING())
+                                            .field("age", DataTypes.INT());
+    final static Json JSON = new Json().failOnMissingField(false);
     final static String SCOPE = "foo";
     final static String STREAM = "bar";
     final static String CONTROLLER_URI = "tcp://localhost:9090";
@@ -48,6 +51,57 @@ public class FlinkPravegaTableFactoryTest {
     final static PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults()
             .withControllerURI(URI.create(CONTROLLER_URI))
             .withDefaultScope(SCOPE);
+
+    /**
+     * Processing time attribute should be of type TIMESTAMP.
+     */
+    @Test (expected = ValidationException.class)
+    public void testWrongProcTimeAttributeType() {
+        final Schema schema = new Schema()
+                .field("name", DataTypes.STRING())
+                .field("age", DataTypes.INT()).proctime();
+
+        Pravega pravega = new Pravega();
+        Stream stream = Stream.of(SCOPE, STREAM);
+        pravega.tableSourceReaderBuilder()
+                .forStream(stream)
+                .withPravegaConfig(PRAVEGA_CONFIG);
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(JSON)
+                .withSchema(schema)
+                .inAppendMode();
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
+        fail("Schema validation failed");
+    }
+
+    /**
+     * Rowtime attribute should be of type TIMESTAMP.
+     */
+    @Test (expected = ValidationException.class)
+    public void testWrongRowTimeAttributeType() {
+        final Schema schema = new Schema()
+                .field("name", DataTypes.STRING())
+                .field("age", DataTypes.INT()).rowtime(new Rowtime()
+                                                                .timestampsFromField("age")
+                                                                .watermarksFromStrategy(
+                                                                        new BoundedOutOfOrderTimestamps(30000L)));
+        Pravega pravega = new Pravega();
+        Stream stream = Stream.of(SCOPE, STREAM);
+        pravega.tableSourceReaderBuilder()
+                .forStream(stream)
+                .withPravegaConfig(PRAVEGA_CONFIG);
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(JSON)
+                .withSchema(schema)
+                .inAppendMode();
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
+        fail("Schema validation failed");
+    }
+
 
     /**
      * Scope should be supplied either through {@link PravegaConfig} or {@link Pravega.TableSourceReaderBuilder}.
@@ -118,7 +172,10 @@ public class FlinkPravegaTableFactoryTest {
 
         final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
-        TableSourceValidation.validateTableSource(source);
+        TableSourceValidation.validateTableSource(source, TableSchema.builder()
+                .field("name", DataTypes.STRING() )
+                .field("age", DataTypes.INT())
+                .build());
         fail("update mode configuration validation failed");
     }
 
