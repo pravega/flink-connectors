@@ -35,9 +35,9 @@ The following example uses the provided table source to read JSON-formatted even
 ```java
 // define table schema definition
 Schema schema = new Schema()
-        .field("user", Types.STRING())
-        .field("uri", Types.STRING())
-        .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
+        .field("user", Types.STRING)
+        .field("uri", Types.STRING)
+        .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
                 new Rowtime().timestampsFromField("accessTime")
                         .watermarksPeriodicBounded(30000L));
 
@@ -51,14 +51,14 @@ pravega.tableSourceReaderBuilder()
 
  // (Option-1) Streaming Source
 StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
-StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
 
-StreamTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(schema)
-        .inAppendMode();
+ ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(schema)
+                .inAppendMode();
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+final Map<String, String> propertiesMap = desc.toProperties();
 final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
         .createStreamTableSource(propertiesMap);
 
@@ -69,14 +69,13 @@ Table result = tableEnv.sqlQuery(sqlQuery);
     
 // (Option-2) Batch Source
 ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
-execEnvRead.setParallelism(1);
+BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);execEnvRead.setParallelism(1);
 
-BatchTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(schema);
+ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withSchema(schema);
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+final Map<String, String> propertiesMap = desc.toProperties();
 final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
         .createBatchTableSource(propertiesMap);
 
@@ -280,7 +279,7 @@ FlinkPravegaJsonTableSink sink = FlinkPravegaJsonTableSink.builder()
     .forStream("sensor_stream")
     .withPravegaConfig(config)
     .withRoutingKeyField("sensor_id")
-    .withWriterMode(EXACTLY_ONCE)
+    .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
     .build();
 table.writeToSink(sink);
 ```
