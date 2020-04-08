@@ -15,10 +15,10 @@ import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
@@ -27,7 +27,6 @@ import org.apache.flink.table.descriptors.FormatDescriptor;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
-import org.apache.flink.table.descriptors.SchematicDescriptor;
 import org.apache.flink.table.descriptors.TableDescriptor;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
@@ -56,8 +55,8 @@ public class FlinkPravegaTableSourceTest {
     private static final Stream SAMPLE_STREAM = Stream.of("scope", "stream");
 
     private static final TableSchema SAMPLE_SCHEMA = TableSchema.builder()
-            .field("category", Types.STRING)
-            .field("value", Types.INT)
+            .field("category", DataTypes.STRING())
+            .field("value", DataTypes.INT())
             .build();
 
     @Test
@@ -119,10 +118,10 @@ public class FlinkPravegaTableSourceTest {
         final String scopeName = "test";
 
         final TableSchema tableSchema = TableSchema.builder()
-                .field(cityName, Types.STRING)
-                .field(total, Types.BIG_DEC)
-                .field(eventTime, Types.SQL_TIMESTAMP)
-                .field(procTime, Types.SQL_TIMESTAMP)
+                .field(cityName, DataTypes.STRING())
+                .field(total, DataTypes.BIGINT())
+                .field(eventTime, DataTypes.TIMESTAMP(3))
+                .field(procTime, DataTypes.TIMESTAMP(3))
                 .build();
 
         Stream stream = Stream.of(scopeName, streamName);
@@ -142,7 +141,7 @@ public class FlinkPravegaTableSourceTest {
                 .withReaderGroupScope(stream.getScope())
                 .build();
 
-        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource);
+        TableSourceValidation.validateTableSource(flinkPravegaJsonTableSource, tableSchema);
 
         // construct table source using descriptors and table source factory
         Pravega pravega = new Pravega();
@@ -152,24 +151,24 @@ public class FlinkPravegaTableSourceTest {
                 .withPravegaConfig(pravegaConfig);
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
-                                .field(cityName, Types.STRING)
-                                .field(total, Types.BIG_DEC)
-                                .field(eventTime, Types.SQL_TIMESTAMP)
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.BIGINT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                     .rowtime(new Rowtime()
                                                 .timestampsFromField(eventTime)
                                                 .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                             )
-                                .field(procTime, Types.SQL_TIMESTAMP).proctime())
+                                .field(procTime, DataTypes.TIMESTAMP(3)).proctime())
                 .inAppendMode();
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
-        TableSourceValidation.validateTableSource(actualSource);
+        TableSourceValidation.validateTableSource(actualSource, tableSchema);
     }
 
     @Test
@@ -197,13 +196,19 @@ public class FlinkPravegaTableSourceTest {
                 .forStream(stream)
                 .withPravegaConfig(pravegaConfig);
 
+        final TableSchema tableSchema = TableSchema.builder()
+                .field(cityName, DataTypes.STRING())
+                .field(total, DataTypes.INT())
+                .field(eventTime, DataTypes.TIMESTAMP(3))
+                .build();
+
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false) .deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
-                                .field(cityName, org.apache.flink.table.api.Types.STRING())
-                                .field(total, org.apache.flink.table.api.Types.DECIMAL())
-                                .field(eventTime, org.apache.flink.table.api.Types.SQL_TIMESTAMP())
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.INT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                 .rowtime(new Rowtime()
                                         .timestampsFromSource()
                                         .watermarksFromSource()
@@ -214,7 +219,7 @@ public class FlinkPravegaTableSourceTest {
         final TableSource<?> actualSource = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
                 .createStreamTableSource(propertiesMap);
         assertNotNull(actualSource);
-        TableSourceValidation.validateTableSource(actualSource);
+        TableSourceValidation.validateTableSource(actualSource, tableSchema);
     }
 
     /** Converts the JSON schema into into the return type. */
@@ -256,7 +261,7 @@ public class FlinkPravegaTableSourceTest {
     /**
      * Test Table descriptor wrapper
      */
-    static class TestTableDescriptor extends TableDescriptor implements SchematicDescriptor<TestTableDescriptor> {
+    static class TestTableDescriptor extends TableDescriptor {
 
         private Schema schemaDescriptor;
 
@@ -270,7 +275,6 @@ public class FlinkPravegaTableSourceTest {
             return this;
         }
 
-        @Override
         public TestTableDescriptor withSchema(Schema schema) {
             this.schemaDescriptor = schema;
             return this;

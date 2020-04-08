@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.types.Row;
 import org.junit.Test;
@@ -26,8 +26,8 @@ import static org.junit.Assert.assertTrue;
 public class FlinkPravegaJsonTableSourceTest {
 
     private static final TableSchema SAMPLE_SCHEMA = TableSchema.builder()
-            .field("category", Types.STRING)
-            .field("value", Types.INT)
+            .field("category", DataTypes.STRING())
+            .field("value", DataTypes.INT())
             .build();
 
     @Test

@@ -89,8 +89,7 @@ DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
 
 ```java
-@deprecated
-
+@deprecated 
 // Create a Flink Table environment
 ExecutionEnvironment  env = ExecutionEnvironment.getExecutionEnvironment();
 
@@ -263,7 +262,6 @@ env.execute();
 
 ```java
 @deprecated
-
 // Create a Flink Table environment
 StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
