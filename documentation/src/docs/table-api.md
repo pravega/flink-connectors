@@ -35,11 +35,11 @@ The following example uses the provided table source to read JSON-formatted even
 ```java
 // define table schema definition
 Schema schema = new Schema()
-        .field("user", Types.STRING)
-        .field("uri", Types.STRING)
-        .field("accessTime", Types.SQL_TIMESTAMP).rowtime(
-                new Rowtime().timestampsFromField("accessTime")
-                        .watermarksPeriodicBounded(30000L));
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
+                        new Rowtime().timestampsFromField("accessTime")
+                                       .watermarksPeriodicBounded(30000L));
 
 // define pravega reader configurations using Pravega descriptor
 Pravega pravega = new Pravega();
@@ -53,8 +53,8 @@ pravega.tableSourceReaderBuilder()
 StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
 StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
 
- ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
                 .withSchema(schema)
                 .inAppendMode();
 
@@ -62,7 +62,17 @@ final Map<String, String> propertiesMap = desc.toProperties();
 final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
         .createStreamTableSource(propertiesMap);
 
-tableEnv.registerTableSource("MyTableRow", source);
+String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+
+ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
+
+//@Deprecated in 1.11
+//tableEnv.registerTableSource("MyTableRow", source);
+
 String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
 Table result = tableEnv.sqlQuery(sqlQuery);
 ...
@@ -72,14 +82,23 @@ ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment(
 BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);execEnvRead.setParallelism(1);
 
 ConnectTableDescriptor desc = tableEnv.connect(pravega)
-                .withFormat(new Json().failOnMissingField(true).deriveSchema())
+                .withFormat(new Json().failOnMissingField(true))
                 .withSchema(schema);
 
 final Map<String, String> propertiesMap = desc.toProperties();
 final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
         .createBatchTableSource(propertiesMap);
 
-tableEnv.registerTableSource("MyTableRow", source);
+String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
+
+ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, true);
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSourcePath),
+                connectorCatalogSourceTable, false);
+
+// @Deprecated in Flink 1.11
+//tableEnv.registerTableSource("MyTableRow", source);
 String sqlQuery = "SELECT ...";
 
 Table result = tableEnv.sqlQuery(sqlQuery);
@@ -223,17 +242,25 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-StreamTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
-        .inAppendMode();
-desc.registerTableSink("test");
+ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(schema)
+                .inAppendMode();
+desc.createTemporaryTable("test");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+final Map<String, String> propertiesMap = desc.toProperties();
 final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
-        .createStreamTableSink(propertiesMap);
+                .createStreamTableSink(propertiesMap);
 
-table.writeToSink(sink);
+String tablePath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+ConnectorCatalogTable<?, ?> connectorCatalogTable = ConnectorCatalogTable.sink(sink, false);
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tablePath),
+                connectorCatalogTable, false);
+
+table.insertInto(tablePath);
 env.execute();
 
 // (Option-2) Batch Sink
@@ -247,16 +274,24 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-BatchTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-         .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
-desc.registerTableSink("test");
+ConnectTableDescriptor desc = tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(new Schema().field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()));
+desc.createTemporaryTable("test");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
+final Map<String, String> propertiesMap = desc.toProperties();
 final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
-        .createBatchTableSink(propertiesMap);
+                .createBatchTableSink(propertiesMap);
 
-table.writeToSink(sink);
+String tablePath = tableEnv.getCurrentDatabase() + "." + "PravegaSink";
+
+ConnectorCatalogTable<?, ?> connectorCatalogSinkTable = ConnectorCatalogTable.sink(sink, true);
+
+tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
+                ObjectPath.fromString(tableSinkPath),
+                connectorCatalogSinkTable, false);
+table.insertInto(tablePath);
 env.execute();
 ```
 
