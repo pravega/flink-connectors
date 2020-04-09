@@ -54,6 +54,7 @@ import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 
 public abstract class FlinkPravegaTableFactoryBase {
 
@@ -112,6 +113,7 @@ public abstract class FlinkPravegaTableFactoryBase {
 
         // schema
         properties.add(SCHEMA + ".#." + SCHEMA_TYPE);
+        properties.add(SCHEMA + ".#." + SCHEMA_DATA_TYPE);
         properties.add(SCHEMA + ".#." + SCHEMA_NAME);
         properties.add(SCHEMA + ".#." + SCHEMA_FROM);
 

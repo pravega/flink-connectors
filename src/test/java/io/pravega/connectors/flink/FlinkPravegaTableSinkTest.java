@@ -10,12 +10,14 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.formats.json.JsonRowSerializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.descriptors.Json;
 import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
@@ -64,8 +66,7 @@ public class FlinkPravegaTableSinkTest {
         assertArrayEquals(TUPLE2.getFieldTypes(), tableSink2.getFieldTypes());
     }
 
-    @Test
-    @SuppressWarnings("unchecked")
+    @Test(expected = NotImplementedException.class)
     public void testEmitDataStream() {
         FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
         FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
@@ -73,6 +74,18 @@ public class FlinkPravegaTableSinkTest {
                 .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
         DataStream<Row> dataStream = mock(DataStream.class);
         tableSink.emitDataStream(dataStream);
+        verify(dataStream).addSink(writer);
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void testConsumeDataStream() {
+        FlinkPravegaWriter<Row> writer = mock(FlinkPravegaWriter.class);
+        FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
+        FlinkPravegaTableSink tableSink = new TestableFlinkPravegaTableSink(config -> writer, config -> outputFormat)
+                .configure(TUPLE1.getFieldNames(), TUPLE1.getFieldTypes());
+        DataStream<Row> dataStream = mock(DataStream.class);
+        tableSink.consumeDataStream(dataStream);
         verify(dataStream).addSink(writer);
     }
 
@@ -115,17 +128,17 @@ public class FlinkPravegaTableSinkTest {
                 .withPravegaConfig(pravegaConfig);
 
         final FlinkPravegaTableSourceTest.TestTableDescriptor testDesc = new FlinkPravegaTableSourceTest.TestTableDescriptor(pravega)
-                .withFormat(new Json().failOnMissingField(false).deriveSchema())
+                .withFormat(new Json().failOnMissingField(false))
                 .withSchema(
                         new Schema()
-                                .field(cityName, Types.STRING)
-                                .field(total, Types.BIG_DEC)
-                                .field(eventTime, Types.SQL_TIMESTAMP)
+                                .field(cityName, DataTypes.STRING())
+                                .field(total, DataTypes.BIGINT())
+                                .field(eventTime, DataTypes.TIMESTAMP(3))
                                 .rowtime(new Rowtime()
                                         .timestampsFromField(eventTime)
                                         .watermarksFromStrategy(new BoundedOutOfOrderTimestamps(delay))
                                 )
-                                .field(procTime, Types.SQL_TIMESTAMP).proctime()
+                                .field(procTime, DataTypes.TIMESTAMP(3)).proctime()
                 )
                 .inAppendMode();
 

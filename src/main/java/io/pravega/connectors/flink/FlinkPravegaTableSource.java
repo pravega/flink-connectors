@@ -11,7 +11,6 @@
 package io.pravega.connectors.flink;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
@@ -24,6 +23,8 @@ import org.apache.flink.table.sources.DefinedRowtimeAttributes;
 import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
 import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.types.Row;
 
 import java.util.List;
@@ -122,11 +123,11 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     protected void setProctimeAttribute(String proctimeAttribute) {
         if (proctimeAttribute != null) {
             // validate that field exists and is of correct type
-            Optional<TypeInformation<?>> tpe = schema.getFieldType(proctimeAttribute);
+            Optional<DataType> tpe = schema.getFieldDataType(proctimeAttribute);
             if (!tpe.isPresent()) {
                 throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get() != Types.SQL_TIMESTAMP) {
-                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type SQL_TIMESTAMP.");
+            } else if (tpe.get().getLogicalType().getTypeRoot() != LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE) {
+                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type TIMESTAMP.");
             }
         }
         this.proctimeAttribute = proctimeAttribute;
@@ -141,11 +142,11 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
         // validate that all declared fields exist and are of correct type
         for (RowtimeAttributeDescriptor desc : rowtimeAttributeDescriptors) {
             String rowtimeAttribute = desc.getAttributeName();
-            Optional<TypeInformation<?>> tpe = schema.getFieldType(rowtimeAttribute);
+            Optional<DataType> tpe = schema.getFieldDataType(rowtimeAttribute);
             if (!tpe.isPresent()) {
                 throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get() != Types.SQL_TIMESTAMP) {
-                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type SQL_TIMESTAMP.");
+            } else if (tpe.get().getLogicalType().getTypeRoot() != LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE) {
+                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type TIMESTAMP.");
             }
         }
         this.rowtimeAttributeDescriptors = rowtimeAttributeDescriptors;
