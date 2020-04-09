@@ -46,7 +46,8 @@ FlinkPravegaInputFormat<EventType> inputFormat = FlinkPravegaInputFormat.<EventT
     .withDeserializationSchema(deserializer)
     .build();
 
-ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment()
+                                               .setParallelism(2);
 
 DataSource<EventType> dataSet = env.createInput(inputFormat, TypeInformation.of(EventType.class))
 

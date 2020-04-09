@@ -70,7 +70,7 @@ tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSourcePath),
                 connectorCatalogSourceTable, false);
 
-//@Deprecated in 1.11
+//@Deprecated in Flink 1.10, plan to be removed in Flink 1.11
 //tableEnv.registerTableSource("MyTableRow", source);
 
 String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
@@ -79,7 +79,8 @@ Table result = tableEnv.sqlQuery(sqlQuery);
     
 // (Option-2) Batch Source
 ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);execEnvRead.setParallelism(1);
+BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
+execEnvRead.setParallelism(1);
 
 ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true))
@@ -244,7 +245,9 @@ pravega.tableSinkWriterBuilder()
 
 ConnectTableDescriptor desc = tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true))
-                .withSchema(schema)
+                .withSchema(new Schema().field("category", DataTypes.STRING())
+                                        .field("value", DataTypes.INT())
+                                        .field("timestamp", DataTypes.TIMESTAMP(3)))
                 .inAppendMode();
 desc.createTemporaryTable("test");
 

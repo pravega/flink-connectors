@@ -132,16 +132,8 @@ Tail-read can be implemented with StreamCut, here is the example:
 For more detail on tail-read and other concepts please refer to [Concept](http://pravega.io/docs/latest/pravega-concepts/))
 
 ```java
-StreamManager streamManager = StreamManager.create(appConfiguration
-                                           .getPravegaConfig()
-                                           .getClientConfig());
-StreamCut tailStreamCut = streamManager.getStreamInfo(appConfiguration
-                            .getInputStreamConfig()
-                            .getStream().getScope(),
-appConfiguration.getInputStreamConfig()
-                .getStream()
-                .getStreamName())
-                .getTailStreamCut();
+StreamManager streamManager = StreamManager.create(pravegaConfig.getClientConfig());
+StreamCut tailStreamCut = streamManager.getStreamInfo("scope", "stream").getTailStreamCut();
 
 FlinkPravegaReader<MyClass> pravegaSource = FlinkPravegaReader.<MyClass>builder()
     .forStream(streamName, tailStreamCut)
