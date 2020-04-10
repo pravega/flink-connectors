@@ -26,6 +26,7 @@ import org.apache.flink.table.factories.SerializationSchemaFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
 
 import java.util.ArrayList;
@@ -172,7 +173,7 @@ public abstract class FlinkPravegaTableFactoryBase {
     @SuppressWarnings("unchecked")
     protected FlinkPravegaTableSource createFlinkPravegaTableSource(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
-        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA);
+        final TableSchema schema = TableSchemaUtils.getPhysicalSchema(descriptorProperties.getTableSchema(SCHEMA));
         final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema(properties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
@@ -236,7 +237,8 @@ public abstract class FlinkPravegaTableFactoryBase {
     @SuppressWarnings("unchecked")
     protected FlinkPravegaTableSink createFlinkPravegaTableSink(Map<String, String> properties) {
         final DescriptorProperties descriptorProperties = getValidatedProperties(properties);
-        final TableSchema schema = descriptorProperties.getTableSchema(SCHEMA);
+        final TableSchema schema = TableSchemaUtils.getPhysicalSchema(descriptorProperties.getTableSchema(SCHEMA));
+
         SerializationSchema<Row> serializationSchema = getSerializationSchema(properties);
 
         ConnectorConfigurations connectorConfigurations = new ConnectorConfigurations();
@@ -260,8 +262,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
 
         return new FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
-                tableSinkWriterBuilder::createOutputFormat)
-                .configure(schema.getFieldNames(), schema.getFieldTypes());
+                tableSinkWriterBuilder::createOutputFormat, schema);
     }
 
     public static final class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {
@@ -291,14 +292,15 @@ public abstract class FlinkPravegaTableFactoryBase {
      */
     public static final class FlinkPravegaTableSinkImpl extends FlinkPravegaTableSink {
 
-        protected FlinkPravegaTableSinkImpl(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
-                                            Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
-            super(writerFactory, outputFormatFactory);
+        protected FlinkPravegaTableSinkImpl(Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory,
+                                            Function<TableSchema, FlinkPravegaOutputFormat<Row>> outputFormatFactory,
+                                            TableSchema schema) {
+            super(writerFactory, outputFormatFactory, schema);
         }
 
         @Override
         protected FlinkPravegaTableSink createCopy() {
-            return new FlinkPravegaTableSinkImpl(writerFactory, outputFormatFactory);
+            return new FlinkPravegaTableSinkImpl(writerFactory, outputFormatFactory, schema);
         }
     }
 
