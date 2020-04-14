@@ -90,16 +90,19 @@ final Map<String, String> propertiesMap = desc.toProperties();
 final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
         .createBatchTableSource(propertiesMap);
 
+
+// Method 1 of creating table: 
+// This method can be used since Flink1.9
 String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "MyTableRow";
-
 ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, true);
-
 tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSourcePath),
                 connectorCatalogSourceTable, false);
 
-// @Deprecated in Flink 1.11
+// Method 2 of creating table:
+// This method is deprecated but still can be used in Flink1.10 and will be removed in Flink1.11 
 //tableEnv.registerTableSource("MyTableRow", source);
+
 String sqlQuery = "SELECT ...";
 
 Table result = tableEnv.sqlQuery(sqlQuery);
@@ -435,7 +438,7 @@ tables:
       metrics: true
       connection-config:
         controller-uri: "tcp://localhost:9090"
-        default-scope: wVamQsOSaCxvYiHQVhRl
+        default-scope: test-scope
       reader:
         stream-info:
           - stream: streamX
@@ -447,16 +450,19 @@ tables:
     format:
       type: json
       fail-on-missing-field: true
-      derive-schema: true
     schema:
       - name: category
-        type: VARCHAR
+        data-type: STRING
       - name: value
-        type: INT
+        data-type: INT
+      - name: timestamp
+        data-type: TIMESTAMP(3)
 
 functions: [] 
 
 execution:
+  # either 'old' (default) or 'blink' , blink planner is recommended.
+  planner: blink
   # 'batch' or 'streaming' execution
   type: streaming
   # allow 'event-time' or only 'processing-time' in sources
@@ -483,3 +489,16 @@ deployment:
   gateway-port: 0
 
 ```
+
+### Timestamp format issue with in Flink SQL
+
+Flink is strict with the timestamp format it accepts, 
+like `YYYY-MM-DDTHH:MM:SSZ` . (For example: `2017-11-27T00:00:00Z`)
+
+If you want to serialize a POJO with timestamp field data and send it to Flink, please
+declare your timestamp data type as "String" and the timestamp
+format as `YYYY-MM-DDTHH:MM:SSZ`.
+
+Here is the valid data example with the above sample yaml.
+
+`{"category": "test-category", "value": 310884, "timestamp": "2017-11-27T00:00:00Z"}`
