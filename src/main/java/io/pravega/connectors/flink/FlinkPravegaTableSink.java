@@ -34,7 +34,7 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * An append-only table sink to emit a streaming table as a Pravega stream.
  */
-public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
+public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
 
     /** A factory for the stream writer. */
     protected final Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory;
@@ -66,7 +66,9 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
     /**
      * Creates a copy of the sink for configuration purposes.
      */
-    protected abstract FlinkPravegaTableSink createCopy();
+    protected FlinkPravegaTableSink createCopy() {
+        return new FlinkPravegaTableSink(writerFactory, outputFormatFactory, schema);
+    }
 
     /**
      * NOTE: This method is for internal use only for defining a TableSink.

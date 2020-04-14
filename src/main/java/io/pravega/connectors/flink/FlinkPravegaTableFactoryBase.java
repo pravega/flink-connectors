@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static io.pravega.connectors.flink.Pravega.*;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
@@ -257,25 +256,8 @@ public abstract class FlinkPravegaTableFactoryBase {
         tableSinkWriterBuilder.forStream(connectorConfigurations.getWriterStream());
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
 
-        return new FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
+        return new FlinkPravegaTableSink(tableSinkWriterBuilder::createSinkFunction,
                 tableSinkWriterBuilder::createOutputFormat, schema);
-    }
-
-    /**
-     * Pravega table sink implementation.
-     */
-    public static final class FlinkPravegaTableSinkImpl extends FlinkPravegaTableSink {
-
-        protected FlinkPravegaTableSinkImpl(Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory,
-                                            Function<TableSchema, FlinkPravegaOutputFormat<Row>> outputFormatFactory,
-                                            TableSchema schema) {
-            super(writerFactory, outputFormatFactory, schema);
-        }
-
-        @Override
-        protected FlinkPravegaTableSink createCopy() {
-            return new FlinkPravegaTableSinkImpl(writerFactory, outputFormatFactory, schema);
-        }
     }
 
 }
