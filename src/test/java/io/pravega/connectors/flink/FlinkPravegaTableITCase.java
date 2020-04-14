@@ -16,7 +16,6 @@ import io.pravega.connectors.flink.utils.SuccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -44,6 +43,7 @@ import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.table.types.utils.TypeConversions;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.junit.AfterClass;
@@ -103,11 +103,11 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         TableSchema tableSchema = TableSchema.builder()
-                .field("user", Types.STRING)
-                .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP)
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3))
                 .build();
-        TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
+        TypeInformation<Row> typeInfo = (RowTypeInfo) TypeConversions.fromDataTypeToLegacyInfo(tableSchema.toRowDataType());
 
         PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
 
@@ -350,7 +350,7 @@ public class FlinkPravegaTableITCase {
                 Row row = new Row(3);
                 row.setField(0, data[currentOffset][0]);
                 row.setField(1, data[currentOffset][1]);
-                row.setField(2, Timestamp.valueOf(data[currentOffset][2]));
+                row.setField(2, Timestamp.valueOf(data[currentOffset][2]).toLocalDateTime());
 
                 log.info("writing record: {}", row);
                 synchronized (ctx.getCheckpointLock()) {
