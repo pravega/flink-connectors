@@ -25,6 +25,9 @@ import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
+import org.apache.flink.table.types.utils.TypeConversions;
+import org.apache.flink.table.utils.TableConnectorUtils;
+import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
 
 import java.util.List;
@@ -38,7 +41,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * Supports both stream and batch environments.
  */
-public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row>,
+public class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row>,
         DefinedProctimeAttribute, DefinedRowtimeAttributes {
 
     private final Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory;
@@ -46,9 +49,6 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     private final Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory;
 
     private final TableSchema schema;
-
-    /** Type information describing the result type. */
-    private final TypeInformation<Row> returnType;
 
     /** Field name of the processing time attribute, null if no processing time field is defined. */
     private String proctimeAttribute;
@@ -61,17 +61,14 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
      * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
      * @param inputFormatFactory a factory for the {@link FlinkPravegaInputFormat} to implement {@link BatchTableSource}
      * @param schema the table schema
-     * @param returnType the return type based on the table schema
      */
     protected FlinkPravegaTableSource(
             Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory,
             Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory,
-            TableSchema schema,
-            TypeInformation<Row> returnType) {
+            TableSchema schema) {
         this.sourceFunctionFactory = checkNotNull(sourceFunctionFactory, "sourceFunctionFactory");
         this.inputFormatFactory = checkNotNull(inputFormatFactory, "inputFormatFactory");
-        this.schema = checkNotNull(schema, "schema");
-        this.returnType = checkNotNull(returnType, "returnType");
+        this.schema = TableSchemaUtils.checkNoGeneratedColumns(schema);
     }
 
     /**
@@ -82,7 +79,7 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     public DataStream<Row> getDataStream(StreamExecutionEnvironment env) {
         FlinkPravegaReader<Row> reader = sourceFunctionFactory.get();
         reader.initialize();
-        return env.addSource(reader);
+        return env.addSource(reader).name(explainSource());
     }
 
     /**
@@ -92,12 +89,17 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
     @Override
     public DataSet<Row> getDataSet(ExecutionEnvironment env) {
         FlinkPravegaInputFormat<Row> inputFormat = inputFormatFactory.get();
-        return env.createInput(inputFormat, returnType);
+        return env.createInput(inputFormat, getProducedTypeInformation()).name(explainSource());
     }
 
     @Override
-    public TypeInformation<Row> getReturnType() {
-        return returnType;
+    public DataType getProducedDataType() {
+        return schema.toRowDataType();
+    }
+
+    @SuppressWarnings("unchecked")
+    private TypeInformation<Row> getProducedTypeInformation() {
+        return (TypeInformation<Row>) TypeConversions.fromDataTypeToLegacyInfo(getProducedDataType());
     }
 
     @Override
@@ -150,5 +152,10 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
             }
         }
         this.rowtimeAttributeDescriptors = rowtimeAttributeDescriptors;
+    }
+
+    @Override
+    public String explainSource() {
+        return TableConnectorUtils.generateRuntimeName(this.getClass(), schema.getFieldNames());
     }
 }

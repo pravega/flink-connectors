@@ -53,6 +53,7 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      *
      * @param writerFactory                A factory for the stream writer.
      * @param outputFormatFactory          A factory for the output format.
+     * @param schema                       The table schema of the sink.
      */
     protected FlinkPravegaTableSink(Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory,
                                     Function<TableSchema, FlinkPravegaOutputFormat<Row>> outputFormatFactory,

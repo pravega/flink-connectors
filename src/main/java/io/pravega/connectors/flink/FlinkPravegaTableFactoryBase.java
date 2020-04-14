@@ -16,16 +16,12 @@ import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.descriptors.SchemaValidator;
 import org.apache.flink.table.factories.DeserializationSchemaFactory;
 import org.apache.flink.table.factories.SerializationSchemaFactory;
 import org.apache.flink.table.factories.TableFactoryService;
-import org.apache.flink.table.sources.BatchTableSource;
-import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
 
@@ -35,7 +31,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 
 import static io.pravega.connectors.flink.Pravega.*;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
@@ -221,10 +216,9 @@ public abstract class FlinkPravegaTableFactoryBase {
             }
         }
 
-        FlinkPravegaTableSource flinkPravegaTableSource = new FlinkPravegaTableSourceImpl(
+        FlinkPravegaTableSource flinkPravegaTableSource = new FlinkPravegaTableSource(
                                                                     tableSourceReaderBuilder::buildSourceFunction,
-                                                                    tableSourceReaderBuilder::buildInputFormat, schema,
-                                                                    new RowTypeInfo(schema.getFieldTypes(), schema.getFieldNames()));
+                                                                    tableSourceReaderBuilder::buildInputFormat, schema);
         flinkPravegaTableSource.setRowtimeAttributeDescriptors(SchemaValidator.deriveRowtimeAttributes(descriptorProperties));
         Optional<String> procTimeAttribute = SchemaValidator.deriveProctimeAttribute(descriptorProperties);
         if (procTimeAttribute.isPresent()) {
@@ -254,8 +248,10 @@ public abstract class FlinkPravegaTableFactoryBase {
         if (connectorConfigurations.getMetrics().isPresent()) {
             tableSinkWriterBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
         }
+        if (connectorConfigurations.getWatermark().isPresent()) {
+            tableSinkWriterBuilder.enableWatermark(connectorConfigurations.getWatermark().get());
+        }
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
-        tableSinkWriterBuilder.enableWatermark(connectorConfigurations.getWatermark());
         tableSinkWriterBuilder.withRoutingKeyField(connectorConfigurations.getRoutingKey());
         tableSinkWriterBuilder.withSerializationSchema(serializationSchema);
         tableSinkWriterBuilder.forStream(connectorConfigurations.getWriterStream());
@@ -263,28 +259,6 @@ public abstract class FlinkPravegaTableFactoryBase {
 
         return new FlinkPravegaTableSinkImpl(tableSinkWriterBuilder::createSinkFunction,
                 tableSinkWriterBuilder::createOutputFormat, schema);
-    }
-
-    public static final class FlinkPravegaTableSourceImpl extends FlinkPravegaTableSource {
-
-        /**
-         * Creates a Pravega Table Source Implementation Instance {@link FlinkPravegaTableSource}.
-         *
-         * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
-         * @param inputFormatFactory    a factory for the {@link FlinkPravegaInputFormat} to implement {@link BatchTableSource}
-         * @param schema                the table schema
-         * @param returnType            the return type based on the table schema
-         */
-        protected FlinkPravegaTableSourceImpl(Supplier<FlinkPravegaReader<Row>> sourceFunctionFactory,
-                                              Supplier<FlinkPravegaInputFormat<Row>> inputFormatFactory,
-                                              TableSchema schema, TypeInformation<Row> returnType) {
-            super(sourceFunctionFactory, inputFormatFactory, schema, returnType);
-        }
-
-        @Override
-        public String explainSource() {
-            return "FlinkPravegaTableSource";
-        }
     }
 
     /**
