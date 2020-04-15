@@ -523,8 +523,7 @@ CREATE TABLE sample (
 
 ### Timestamp format issue with Flink SQL
 
-Please refer to [Table formats documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html
-)
+Please refer to [Table formats documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html)
 
 Here is the valid data example with the above sample yaml.
 
