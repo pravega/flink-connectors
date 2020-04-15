@@ -461,7 +461,7 @@ tables:
 functions: [] 
 
 execution:
-  # either 'old' (default) or 'blink',blink planner is recommended.Please refer to (https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners
+  # either 'old' (default) or 'blink',blink planner is recommended.Please refer to https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners
   planner: blink
   # 'batch' or 'streaming' execution
   type: streaming
