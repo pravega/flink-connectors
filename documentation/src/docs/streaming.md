@@ -125,11 +125,11 @@ Each parallel instance of the source processes one or more stream segments in pa
 
 ### StreamCuts
 A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on
-StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+StreamCuts, please refer to documentation on [StreamCut](http://pravega.io/docs/latest/streamcuts/) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
-Tail-read can be implemented with StreamCut, here is the example:
+Many Readers will be reading Events from the tail of the Stream. Tail reads corresponding to recently written Events are immediately delivered to Readers. 
 
-For more detail on tail-read and other concepts please refer to [Concept](http://pravega.io/docs/latest/pravega-concepts/))
+Here is an example for a Flink application to perform tail-read.
 
 ```java
 StreamManager streamManager = StreamManager.create(pravegaConfig.getClientConfig());

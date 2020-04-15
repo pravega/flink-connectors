@@ -376,7 +376,7 @@ The YAML configuration file schema for providing Pravega table API specific conn
 ```yaml
 tables:
   - name: sample                            # name the new table
-    type: source                            # declare if the table should be "source", "sink", or "both". If "both" provide both reader and writer configurations
+    type: source-table                      # declare if the table should be "source-table", "sink-table", or "source-sink-table". If "source-sink-table" provide both reader and writer configurations
     update-mode: append                     # specify the update-mode *only* for streaming tables
 
     # declare the external system to connect to
@@ -392,7 +392,7 @@ tables:
           auth-token:                       # optional (base64 encoded string)
           validate-hostname:                # optional (true|false)
           trust-store:                      # optional (truststore filename)
-      reader:                               # required only if type: source
+      reader:                               # required only if type: source-table
         stream-info:
           - scope: test                     # optional (uses default-scope value or else throws error)
             stream: stream1                 # mandatory
@@ -409,7 +409,7 @@ tables:
           refresh-interval:                 # optional (long milliseconds)
           event-read-timeout-interval:      # optional (long milliseconds)
           checkpoint-initiate-timeout-interval:  # optional (long milliseconds)
-      writer:                               # required only if type: sink
+      writer:                               # required only if type: sink-table
         scope: foo                          # optional (uses default-scope value)
         stream: bar                         # mandatory
         mode:                               # optional (exactly_once | atleast_once)
@@ -429,7 +429,7 @@ Here is a sample environment file for reference which can be used as a source as
 ```yaml
 tables:
   - name: sample
-    type: both
+    type: source-sink-table
     update-mode: append
     # declare the external system to connect to
     connector:
@@ -461,7 +461,7 @@ tables:
 functions: [] 
 
 execution:
-  # either 'old' (default) or 'blink' , blink planner is recommended.
+  # either 'old' (default) or 'blink',blink planner is recommended.Please refer to (https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners
   planner: blink
   # 'batch' or 'streaming' execution
   type: streaming
@@ -490,14 +490,35 @@ deployment:
 
 ```
 
-### Timestamp format issue with in Flink SQL
+### Sample DDL
+```
+CREATE TABLE sample (
+  category STRING,
+  cnt INT,
+  tp TIMESTAMP(3)
+) WITH (
+  'type' = 'source-sink-table',
+  'update-mode' = 'append',
+  'connector.type' = 'pravega',
+  'connector.version' = '1',
+  'connector.metrics' = 'true',
+  'connector.connection-config.controller-uri' = 'tcp://localhost:9090',
+  'connector.connection-config.default-scope' = 'test',
+  'connector.reader.stream-info.stream' = 'streamX',
+  'connector.writer.stream' = 'streamX',
+  'connector.writer.mode' = 'atleast_once',
+  'connector.writer.txn-lease-renewal-interval' = '10000',
+  'routingkey-field-name' = 'category'
+  'format.type' = 'json',
+  'format.fail-on-missing-field' = 'false'
+)
 
-Flink is strict with the timestamp format it accepts, 
-like `YYYY-MM-DDTHH:MM:SSZ` . (For example: `2017-11-27T00:00:00Z`)
+```
 
-If you want to serialize a POJO with timestamp field data and send it to Flink, please
-declare your timestamp data type as "String" and the timestamp
-format as `YYYY-MM-DDTHH:MM:SSZ`.
+### Timestamp format issue with Flink SQL
+
+Please refer to [Table formats documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html
+)
 
 Here is the valid data example with the above sample yaml.
 
