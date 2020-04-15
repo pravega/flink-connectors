@@ -70,7 +70,7 @@ tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSourcePath),
                 connectorCatalogSourceTable, false);
 
-//@Deprecated in Flink 1.10, plan to be removed in Flink 1.11
+// This method is deprecated but still can be used in Flink1.10 and will be removed in Flink1.11 
 //tableEnv.registerTableSource("MyTableRow", source);
 
 String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
@@ -109,7 +109,6 @@ Table result = tableEnv.sqlQuery(sqlQuery);
 DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 ...
 ```
-
 
 ```java
 @deprecated 
@@ -426,6 +425,8 @@ tables:
 ### Sample Environment File
 Here is a sample environment file for reference which can be used as a source as well as sink to read from and write data into Pravega as table records
 
+But the stream `streamX` should be created in advance to have it working.
+
 ```yaml
 tables:
   - name: sample
@@ -491,6 +492,11 @@ deployment:
 ```
 
 ### Sample DDL
+
+Here is a sample DDL for reference which can be used as a source as well as sink to read from and write data into Pravega as table records.
+
+But the stream `streamX` should be created in advance to have it working.
+
 ```
 CREATE TABLE sample (
   category STRING,
