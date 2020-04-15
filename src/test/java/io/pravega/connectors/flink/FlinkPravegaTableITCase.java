@@ -105,7 +105,7 @@ public class FlinkPravegaTableITCase {
         TableSchema tableSchema = TableSchema.builder()
                 .field("user", DataTypes.STRING())
                 .field("uri", DataTypes.STRING())
-                .field("accessTime", DataTypes.TIMESTAMP(3))
+                .field("accessTime", DataTypes.TIMESTAMP(3).bridgedTo(Timestamp.class))
                 .build();
         TypeInformation<Row> typeInfo = (RowTypeInfo) TypeConversions.fromDataTypeToLegacyInfo(tableSchema.toRowDataType());
 
@@ -199,17 +199,17 @@ public class FlinkPravegaTableITCase {
     }
 
     private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
-
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
+        // Can only use Legacy Flink planner for BatchTableEnvironment
         BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
         execEnvRead.setParallelism(1);
 
-        // read data from the stream using Table reader
-        // TODO: We still have issues on timestamps with Legacy Flink planner.
-        //       See https://github.com/pravega/flink-connectors/issues/341 and https://issues.apache.org/jira/browse/FLINK-16693.
         Schema schema = new Schema()
                 .field("user", DataTypes.STRING())
-                .field("uri", DataTypes.STRING());
+                .field("uri", DataTypes.STRING())
+                // Note: LocalDateTime is not supported in legacy Flink planner, bridged to Timestamp with the data source.
+                // See https://issues.apache.org/jira/browse/FLINK-16693 for more information.
+                .field("accessTime", DataTypes.TIMESTAMP(3).bridgedTo(Timestamp.class));
 
         Pravega pravega = new Pravega();
 
@@ -350,7 +350,7 @@ public class FlinkPravegaTableITCase {
                 Row row = new Row(3);
                 row.setField(0, data[currentOffset][0]);
                 row.setField(1, data[currentOffset][1]);
-                row.setField(2, Timestamp.valueOf(data[currentOffset][2]).toLocalDateTime());
+                row.setField(2, Timestamp.valueOf(data[currentOffset][2]));
 
                 log.info("writing record: {}", row);
                 synchronized (ctx.getCheckpointLock()) {
