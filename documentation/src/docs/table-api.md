@@ -503,18 +503,17 @@ CREATE TABLE sample (
   cnt INT,
   tp TIMESTAMP(3)
 ) WITH (
-  'type' = 'source-sink-table',
   'update-mode' = 'append',
   'connector.type' = 'pravega',
   'connector.version' = '1',
   'connector.metrics' = 'true',
   'connector.connection-config.controller-uri' = 'tcp://localhost:9090',
   'connector.connection-config.default-scope' = 'test',
-  'connector.reader.stream-info.stream' = 'streamX',
+  'connector.reader.stream-info.0.stream' = 'streamX',
   'connector.writer.stream' = 'streamX',
   'connector.writer.mode' = 'atleast_once',
   'connector.writer.txn-lease-renewal-interval' = '10000',
-  'routingkey-field-name' = 'category'
+  'connector.writer.routingkey-field-name' = 'category'
   'format.type' = 'json',
   'format.fail-on-missing-field' = 'false'
 )
