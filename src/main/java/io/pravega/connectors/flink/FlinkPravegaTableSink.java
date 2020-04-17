@@ -10,13 +10,13 @@
 package io.pravega.connectors.flink;
 
 import lombok.Getter;
-import org.apache.flink.annotation.Internal;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
-import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.BatchTableSink;
 import org.apache.flink.types.Row;
@@ -69,9 +69,14 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      */
     @Override
     public void emitDataStream(DataStream<Row> dataStream) {
+        throw new NotImplementedException("This method is deprecated and should not be called.");
+    }
+
+    @Override
+    public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
         checkState(tableSinkConfiguration != null, "Table sink is not configured");
         FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
-        dataStream.addSink(writer);
+        return dataStream.addSink(writer);
     }
 
     @Override
@@ -151,67 +156,5 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
         int getKeyIndex() {
             return keyIndex;
         }
-    }
-
-    /**
-     * An abstract {@link FlinkPravegaTableSink} builder.
-     * @param <B> the builder type.
-     */
-    @Internal
-    public abstract static class AbstractTableSinkBuilder<B extends AbstractTableSinkBuilder> extends AbstractStreamingWriterBuilder<Row, B> {
-
-        private String routingKeyFieldName;
-
-        /**
-         * Sets the field name to use as a Pravega event routing key.
-         *
-         * Each row is written to a Pravega stream with a routing key based on the given field name.
-         * The specified field must of type {@code STRING}.
-         *
-         * @param fieldName the field name.
-         */
-        public B withRoutingKeyField(String fieldName) {
-            this.routingKeyFieldName = fieldName;
-            return builder();
-        }
-
-        // region Internal
-
-        /**
-         * Gets a serialization schema based on the given output field names.
-         * @param fieldNames the field names to emit.
-         */
-        protected abstract SerializationSchema<Row> getSerializationSchema(String[] fieldNames);
-
-        /**
-         * Creates the sink function based on the given table sink configuration and current builder state.
-         *
-         * @param configuration the table sink configuration, incl. projected fields
-         */
-        protected FlinkPravegaWriter<Row> createSinkFunction(TableSinkConfiguration configuration) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
-            SerializationSchema<Row> serializationSchema = getSerializationSchema(configuration.getFieldNames());
-            PravegaEventRouter<Row> eventRouter = new RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
-            return createSinkFunction(serializationSchema, eventRouter);
-        }
-
-        /**
-         * Creates FlinkPravegaOutputFormat based on the given table sink configuration and current builder state.
-         *
-         * @param configuration the table sink configuration, incl. projected fields
-         */
-        protected FlinkPravegaOutputFormat<Row> createOutputFormat(TableSinkConfiguration configuration) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
-            SerializationSchema<Row> serializationSchema = getSerializationSchema(configuration.getFieldNames());
-            PravegaEventRouter<Row> eventRouter = new RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
-            return new FlinkPravegaOutputFormat<>(
-                            getPravegaConfig().getClientConfig(),
-                            resolveStream(),
-                            serializationSchema,
-                            eventRouter
-                    );
-        }
-
-        // endregion
     }
 }
