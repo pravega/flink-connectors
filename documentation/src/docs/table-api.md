@@ -520,6 +520,17 @@ CREATE TABLE sample (
 
 ```
 
+The usage and definition of time attribute and DDL can be referred in:
+
+* Time Attribute
+
+https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/streaming/time_attributes.html
+
+* DDL Usage
+
+https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/sql/create.html#create-table
+
+
 ### Timestamp format issue with Flink SQL
 
 Please refer to [Table formats documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html)
