@@ -10,15 +10,11 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.client.ClientConfig;
-import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.sources.BatchTableSource;
@@ -27,14 +23,10 @@ import org.apache.flink.table.sources.DefinedRowtimeAttributes;
 import org.apache.flink.table.sources.RowtimeAttributeDescriptor;
 import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.table.sources.tsextractors.TimestampExtractor;
-import org.apache.flink.table.sources.wmstrategies.WatermarkStrategy;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.Preconditions;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -158,116 +150,5 @@ public abstract class FlinkPravegaTableSource implements StreamTableSource<Row>,
             }
         }
         this.rowtimeAttributeDescriptors = rowtimeAttributeDescriptors;
-    }
-
-    /**
-     * A base builder for {@link FlinkPravegaTableSource} to read Pravega streams using the Flink Table API.
-     *
-     * @param <T> the table source type.
-     * @param <B> the builder type.
-     */
-    public abstract static class BuilderBase<T extends FlinkPravegaTableSource, B extends AbstractStreamingReaderBuilder>
-            extends AbstractStreamingReaderBuilder<Row, B> {
-
-        private TableSchema schema;
-
-        private String proctimeAttribute;
-
-        private RowtimeAttributeDescriptor rowtimeAttributeDescriptor;
-
-        /**
-         * Sets the schema of the produced table.
-         *
-         * @param schema The schema of the produced table.
-         * @return The builder.
-         */
-        public B withSchema(TableSchema schema) {
-            Preconditions.checkNotNull(schema, "Schema must not be null.");
-            Preconditions.checkArgument(this.schema == null, "Schema has already been set.");
-            this.schema = schema;
-            return builder();
-        }
-
-        /**
-         * Configures a field of the table to be a processing time attribute.
-         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP}.
-         *
-         * @param proctimeAttribute The name of the processing time attribute in the table schema.
-         * @return The builder.
-         */
-        public B withProctimeAttribute(String proctimeAttribute) {
-            Preconditions.checkNotNull(proctimeAttribute, "Proctime attribute must not be null.");
-            Preconditions.checkArgument(!proctimeAttribute.isEmpty(), "Proctime attribute must not be empty.");
-            Preconditions.checkArgument(this.proctimeAttribute == null, "Proctime attribute has already been set.");
-            this.proctimeAttribute = proctimeAttribute;
-            return builder();
-        }
-
-        /**
-         * Configures a field of the table to be a rowtime attribute.
-         * The configured field must be present in the table schema and of type {@link Types#SQL_TIMESTAMP}.
-         *
-         * @param rowtimeAttribute The name of the rowtime attribute in the table schema.
-         * @param timestampExtractor The {@link TimestampExtractor} to extract the rowtime attribute from the physical type.
-         * @param watermarkStrategy The {@link WatermarkStrategy} to generate watermarks for the rowtime attribute.
-         * @return The builder.
-         */
-        public B withRowtimeAttribute(
-                String rowtimeAttribute,
-                TimestampExtractor timestampExtractor,
-                WatermarkStrategy watermarkStrategy) {
-            Preconditions.checkNotNull(rowtimeAttribute, "Rowtime attribute must not be null.");
-            Preconditions.checkArgument(!rowtimeAttribute.isEmpty(), "Rowtime attribute must not be empty.");
-            Preconditions.checkNotNull(timestampExtractor, "Timestamp extractor must not be null.");
-            Preconditions.checkNotNull(watermarkStrategy, "Watermark assigner must not be null.");
-            Preconditions.checkArgument(this.rowtimeAttributeDescriptor == null,
-                    "Currently, only one rowtime attribute is supported.");
-
-            this.rowtimeAttributeDescriptor = new RowtimeAttributeDescriptor(
-                    rowtimeAttribute,
-                    timestampExtractor,
-                    watermarkStrategy);
-            return builder();
-        }
-
-        /**
-         * Returns the configured table schema.
-         *
-         * @return the configured table schema.
-         */
-        protected TableSchema getTableSchema() {
-            Preconditions.checkState(this.schema != null, "Schema hasn't been set.");
-            return this.schema;
-        }
-
-        /**
-         * Applies a configuration to the table source.
-         *
-         * @param source the table source.
-         */
-        protected void configureTableSource(T source) {
-            // configure processing time attributes
-            source.setProctimeAttribute(proctimeAttribute);
-            // configure rowtime attributes
-            if (rowtimeAttributeDescriptor == null) {
-                source.setRowtimeAttributeDescriptors(Collections.emptyList());
-            } else {
-                source.setRowtimeAttributeDescriptors(Collections.singletonList(rowtimeAttributeDescriptor));
-            }
-        }
-
-        /**
-         * Gets a factory to build an {@link FlinkPravegaInputFormat} for using the Table API in a Flink batch environment.
-         *
-         * @return a supplier to eagerly validate the configuration and lazily construct the input format.
-         */
-        FlinkPravegaInputFormat<Row> buildInputFormat() {
-
-            final List<StreamWithBoundaries> streams = resolveStreams();
-            final ClientConfig clientConfig = getPravegaConfig().getClientConfig();
-            final DeserializationSchema<Row> deserializationSchema = getDeserializationSchema();
-
-            return new FlinkPravegaInputFormat<>(clientConfig, streams, deserializationSchema);
-        }
     }
 }

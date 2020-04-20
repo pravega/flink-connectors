@@ -8,19 +8,17 @@ You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 -->
 # Table Connector
-The Flink connector library for Pravega provides a table source and table sink for use with the Flink Table API.  The Table API provides a unified API for both the Flink streaming and batch environment.  See the below sections for details.
+The Flink connector library for Pravega provides a table source and table sink for use with the Flink Table API.  The Table API provides a unified API for both the Flink streaming and batch environment.
 
-> `FlinkPravegaJsonTableSource` and `FlinkPravegaJsonTableSink` implementation has been deprecated and replaced with [ConnectorDescriptor](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/descriptors/ConnectorDescriptor.java) / [TableFactory](https://github.com/apache/flink/blob/master/flink-libraries/flink-table-common/src/main/java/org/apache/flink/table/factories/TableFactory.java) based implementation introduced in Flink 1.6. With these changes, it is possible to use the Pravega Table API either **programmatically** (using Pravega Descriptor) or **declaratively** through YAML configuration files for the SQL client.
+It is possible to use the Pravega Table API either **programmatically** (using Pravega Descriptor) or **declaratively** through YAML configuration files for the SQL client.
 
+See the below sections for details.
 ## Table of Contents
 - [Table Source](#table-source)
   - [Parameters](#parameters)
-  - [Custom Formats](#custom-formats)
-  - [Time Attribute Support](#time-attribute-support)
   - [Pravega watermark (Evolving)](#pravega-watermark))
 - [Table Sink](#table-sink)
   - [Parameters](#parameters-1)
-  - [Custom Formats](#custom-formats-1)
 - [Using SQL Client](#using-sql-client)
   - [Environment File](#environment-file)
 
@@ -109,9 +107,7 @@ Table result = tableEnv.sqlQuery(sqlQuery);
 DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 ...
 ```
-
 ```
-
 ### Parameters
 A builder API is provided to construct an concrete subclass of `FlinkPravegaTableSource`. See the table below for a summary of builder properties. Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) page for more information.
 
@@ -127,25 +123,6 @@ Note that the table source supports both the Flink **streaming** and **batch env
 |`withReaderGroupRefreshTime`|The interval for synchronizing the Reader Group state across parallel source instances.  _Applies only to streaming API._|
 |`withCheckpointInitiateTimeout`|The timeout for executing a checkpoint of the Reader Group state.  _Applies only to streaming API._|
 |`withTimestampAssigner`| (Evolving) The `AssignerWithTimeWindows` implementation to implementation which describes the event timestamp and Pravega watermark strategy in event time semantics.  _Applies only to streaming API._|
-
-> The below configurations are applicable only for the deprecated `FlinkPravegaJsonTableSource` implementation.
-
-|Method                |Description|
-|----------------------|-----------------------------------------------------------------------|
-|`withSchema`|The table schema which describes which JSON fields to expect.|
-|`withProctimeAttribute`|The name of the processing time attribute in the supplied table schema.|
-|`withRowTimeAttribute`|supply the name of the rowtime attribute in the table schema, a TimeStampExtractor instance to extract the rowtime attribute value from the event and a `WaterMarkStratergy` to generate watermarks for the rowtime attribute.|
-|`failOnMissingField`|A flag indicating whether to fail if a JSON field is missing.|
-
-### Custom Formats
-@deprecated and the steps outlined in this section is applicable only for `FlinkPravegaJsonTableSource` based implementation. Please use `Pravega` descriptor instead.
-
-To work with stream events in a format other than JSON, extend `FlinkPravegaTableSource`. Please see the implementation of [`FlinkPravegaJsonTableSource`](https://github.com/pravega/flink-connectors/blob/master/src/main/java/io/pravega/connectors/flink/FlinkPravegaJsonTableSource.java) for more details.
-
-### Time Attribute Support
-@deprecated and the steps outlined in this section is applicable only for `FlinkPravegaJsonTableSource` based implementation. Please use `Pravega` descriptor instead.
-
-With the use of `withProctimeAttribute` or `withRowTimeAttribute` builder method, one could supply the time attribute information of the event. The configured field must be present in the table schema and of type `Types.SQL_TIMESTAMP()`.
 
 ### Pravega watermark (Evolving)
 Pravega watermark for Table API Reader depends on the underlying DataStream settings. The following example shows how to read data with watermark by a table source.
@@ -253,6 +230,7 @@ tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSinkPath),
                 connectorCatalogSinkTable, false);
 table.insertInto(tablePath);
+table.writeToSink(sink);
 env.execute();
 ```
 
@@ -269,17 +247,6 @@ Note that the table sink supports both the Flink streaming and batch environment
 |`withTxnTimeout`|The timeout for the Pravega Tansaction that supports the _exactly-once_ writer mode.|
 |`withRoutingKeyField`|The table field to use as the Routing Key for written events.|
 |`enableWatermark`|true or false to enable/disable the event-time watermark emitting into Pravega stream.|
-
-> The below configurations are applicable only for the deprecated `FlinkPravegaJsonTableSink` implementation.
-
-|Method                |Description|
-|----------------------|-----------------------------------------------------------------------|
-|`withSchema`|The table schema which describes which JSON fields to expect.|
-
-### Custom Formats
-@deprecated and the steps outlined in this section is applicable only for `FlinkPravegaJsonTableSink` based implementation. Please use `Pravega` descriptor instead.
-
-To work with stream events in a format other than JSON, extend `FlinkPravegaTableSink`. Please see the implementation of [FlinkPravegaJsonTableSink](https://github.com/pravega/flink-connectors/blob/master/src/main/java/io/pravega/connectors/flink/FlinkPravegaJsonTableSink.java) for more details.
 
 ## Using SQL Client
 [Flink Sql Client](https://ci.apache.org/projects/flink/flink-docs-master/dev/table/sqlClient.html) was introduced in Flink 1.6 which aims at providing an easy way of writing, debugging, and submitting table programs to a Flink cluster without a single line of Java or Scala code. The SQL Client CLI allows for retrieving and visualizing real-time results from the running distributed application on the command line. 

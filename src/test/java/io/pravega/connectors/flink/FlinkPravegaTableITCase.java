@@ -44,8 +44,6 @@ import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
-import org.apache.flink.table.sources.tsextractors.ExistingField;
-import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.junit.AfterClass;
@@ -93,119 +91,6 @@ public class FlinkPravegaTableITCase {
     @AfterClass
     public static void tearDown() throws Exception {
         SETUP_UTILS.stopAllServices();
-    }
-
-    @Test
-    public void testJsonTableSource() throws Exception {
-
-        StreamExecutionEnvironment execEnvWrite = StreamExecutionEnvironment.getExecutionEnvironment();
-        execEnvWrite.setParallelism(1);
-
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), "testJsonTableSource");
-        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
-
-        // read data from the stream using Table reader
-        TableSchema tableSchema = TableSchema.builder()
-                .field("user", Types.STRING)
-                .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP)
-                .build();
-        TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
-
-        PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
-
-        // Write some data to the stream
-        DataStreamSource<Row> dataStream = execEnvWrite
-                .addSource(new TableEventSource(EVENT_COUNT_PER_SOURCE));
-
-        FlinkPravegaWriter<Row> pravegaSink = FlinkPravegaWriter.<Row>builder()
-                .withPravegaConfig(pravegaConfig)
-                .forStream(stream)
-                .withSerializationSchema(new JsonRowSerializationSchema.Builder(typeInfo).build())
-                .withEventRouter((Row event) -> "fixedkey")
-                .build();
-
-        dataStream.addSink(pravegaSink);
-
-        Assert.assertNotNull(execEnvWrite.getExecutionPlan());
-
-        execEnvWrite.execute("PopulateRowData");
-
-        FlinkPravegaJsonTableSource source = FlinkPravegaJsonTableSource.builder()
-                                                .forStream(stream)
-                                                .withPravegaConfig(pravegaConfig)
-                                                .failOnMissingField(true)
-                                                .withRowtimeAttribute("accessTime",
-                                                        new ExistingField("accessTime"),
-                                                        new BoundedOutOfOrderTimestamps(30000L))
-                                                .withSchema(tableSchema)
-                                                .withReaderGroupScope(stream.getScope())
-                                                .build();
-
-        testTableSourceStream(source);
-        testTableSourceBatch(source);
-
-    }
-
-    private void testTableSourceStream(FlinkPravegaJsonTableSource source) throws Exception {
-
-        final StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
-        execEnvRead.setParallelism(1);
-        execEnvRead.enableCheckpointing(100);
-        execEnvRead.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
-
-        StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
-                EnvironmentSettings.newInstance()
-                        // watermark is only supported in blink planner
-                        .useBlinkPlanner()
-                        .inStreamingMode()
-                        .build());
-        tableEnv.registerTableSource("MyTableRow", source);
-
-        String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
-
-        Table result = tableEnv.sqlQuery(sqlQuery);
-
-        DataStream<Tuple2<Boolean, Row>> resultSet = tableEnv.toRetractStream(result, Row.class);
-        StringSink2 stringSink = new StringSink2(EVENT_COUNT_PER_SOURCE);
-        resultSet.addSink(stringSink);
-
-        try {
-            execEnvRead.execute("ReadRowData");
-        } catch (Exception e) {
-            if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                throw e;
-            }
-        }
-
-        log.info("results: {}", RESULTS);
-
-        boolean compare = compare(RESULTS, getExpectedResultsRetracted());
-        assertTrue("Output does not match expected result", compare);
-    }
-
-    public void testTableSourceBatch(FlinkPravegaJsonTableSource source) throws Exception {
-
-        ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-        BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
-        execEnvRead.setParallelism(1);
-
-        tableEnv.registerTableSource("MyTableRow", source);
-
-        String sqlQuery = "SELECT user, " +
-                "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
-                "COUNT(uri) AS cnt " +
-                "from MyTableRow GROUP BY " +
-                "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
-        Table result = tableEnv.sqlQuery(sqlQuery);
-
-        DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
-
-        List<Row> results = resultSet.collect();
-        log.info("results: {}", results);
-
-        boolean compare = compare(results, getExpectedResultsAppend());
-        //assertTrue("Output does not match expected result", compare);
     }
 
     @Test
