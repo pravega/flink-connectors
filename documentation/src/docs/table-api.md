@@ -110,50 +110,6 @@ DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 ...
 ```
 
-```java
-@deprecated 
-// Create a Flink Table environment
-ExecutionEnvironment  env = ExecutionEnvironment.getExecutionEnvironment();
-
-// Load the Pravega configuration
-PravegaConfig config = PravegaConfig.fromParams(params);
-String[] fieldNames = {"user", "uri", "accessTime"};
-
-// Read data from the stream using Table reader
-TableSchema tableSchema = TableSchema.builder()
-        .field("user", Types.STRING())
-        .field("uri", Types.STRING())
-        .field("accessTime", Types.SQL_TIMESTAMP())
-        .build();
-
-FlinkPravegaJsonTableSource source = FlinkPravegaJsonTableSource.builder()
-                                        .forStream(stream)
-                                        .withPravegaConfig(pravegaConfig)
-                                        .failOnMissingField(true)
-                                        .withRowtimeAttribute("accessTime",
-                                                new ExistingField("accessTime"),
-                                                new BoundedOutOfOrderTimestamps(30000L))
-                                        .withSchema(tableSchema)
-                                        .withReaderGroupScope(stream.getScope())
-                                        .build();
-
-// (Option-1) Read table as stream data
-StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
-tableEnv.registerTableSource("MyTableRow", source);
-String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
-Table result = tableEnv.sqlQuery(sqlQuery);
-...
-
-// (Option-2) Read table as batch data (use tumbling window as part of the query)
-BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
-tableEnv.registerTableSource("MyTableRow", source);
-String sqlQuery = "SELECT user, " +
-        "TUMBLE_END(accessTime, INTERVAL '5' MINUTE) AS accessTime, " +
-        "COUNT(uri) AS cnt " +
-        "from MyTableRow GROUP BY " +
-        "user, TUMBLE(accessTime, INTERVAL '5' MINUTE)";
-Table result = tableEnv.sqlQuery(sqlQuery);
-...
 ```
 
 ### Parameters
@@ -298,28 +254,6 @@ tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 connectorCatalogSinkTable, false);
 table.insertInto(tablePath);
 env.execute();
-```
-
-```java
-@deprecated
-// Create a Flink Table environment
-StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
-
-// Load the Pravega configuration
-PravegaConfig config = PravegaConfig.fromParams(ParameterTool.fromArgs(args));
-
-// Define a table (see Flink documentation)
-Table table = ...
-
-// Write the table to a Pravega Stream
-FlinkPravegaJsonTableSink sink = FlinkPravegaJsonTableSink.builder()
-    .forStream("sensor_stream")
-    .withPravegaConfig(config)
-    .withRoutingKeyField("sensor_id")
-    .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
-    .build();
-table.writeToSink(sink);
 ```
 
 ### Parameters
