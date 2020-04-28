@@ -21,6 +21,7 @@ import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSinkOperatorTestHarness;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.util.ExceptionUtils;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -34,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.Optional;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionException;
@@ -363,8 +365,12 @@ public class FlinkPravegaWriterTest {
                     Assert.fail("expected an exception due to a prior write error");
                 } catch (Exception ex) {
                     Assert.assertNotNull(ex.getCause());
-                    Assert.assertTrue(ex.getCause() instanceof IOException);
-                    Assert.assertTrue(ex.getCause().getCause() instanceof IntentionalRuntimeException);
+                    Optional<IOException> exCause = ExceptionUtils.findSerializedThrowable(ex, IOException.class,
+                            ClassLoader.getSystemClassLoader());
+                    Optional<IntentionalRuntimeException> exRootCause = ExceptionUtils.findSerializedThrowable(ex.getCause(),
+                            IntentionalRuntimeException.class, ClassLoader.getSystemClassLoader());
+                    Assert.assertTrue(exCause.isPresent());
+                    Assert.assertTrue(exRootCause.isPresent());
                 }
 
                 // clear the error for test simplicity
