@@ -27,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
 
-
 /**
  * The hook executed in Flink's Checkpoint Coordinator that triggers and restores
  * checkpoints in on a Pravega ReaderGroup.
