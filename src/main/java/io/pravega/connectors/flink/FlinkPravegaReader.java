@@ -9,7 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
