@@ -250,8 +250,10 @@ public abstract class FlinkPravegaTableFactoryBase {
         if (connectorConfigurations.getMetrics().isPresent()) {
             tableSinkWriterBuilder.enableMetrics(connectorConfigurations.getMetrics().get());
         }
+        if (connectorConfigurations.getWatermark().isPresent()) {
+            tableSinkWriterBuilder.enableWatermark(connectorConfigurations.getWatermark().get());
+        }
         tableSinkWriterBuilder.withPravegaConfig(connectorConfigurations.getPravegaConfig());
-        tableSinkWriterBuilder.enableWatermark(connectorConfigurations.getWatermark());
         tableSinkWriterBuilder.withRoutingKeyField(connectorConfigurations.getRoutingKey());
         tableSinkWriterBuilder.withSerializationSchema(serializationSchema);
         tableSinkWriterBuilder.forStream(connectorConfigurations.getWriterStream());
