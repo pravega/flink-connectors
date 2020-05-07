@@ -28,7 +28,7 @@ import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.StreamConfiguration;
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 import lombok.Cleanup;
 import lombok.Getter;
 import lombok.Setter;
