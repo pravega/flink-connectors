@@ -123,7 +123,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchT
     /**
      * An event router that extracts the routing key from a {@link Row} by field name.
      */
-    static class RowBasedRouter implements PravegaEventRouter<Row> {
+    public static class RowBasedRouter implements PravegaEventRouter<Row> {
 
         private final int keyIndex;
 

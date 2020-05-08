@@ -13,6 +13,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.Data;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
@@ -25,6 +26,7 @@ import java.util.stream.Collectors;
  *
  * @param <B> the builder class.
  */
+@Internal
 public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> implements Serializable {
 
     private static final long serialVersionUID = 1L;
@@ -123,7 +125,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     /**
      * Gets the Pravega configuration.
      */
-    protected PravegaConfig getPravegaConfig() {
+    public PravegaConfig getPravegaConfig() {
         Preconditions.checkState(pravegaConfig != null, "A Pravega configuration must be supplied.");
         return pravegaConfig;
     }
@@ -153,7 +155,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     /**
      * getter to fetch the metrics flag.
      */
-    protected boolean isMetricsEnabled() {
+    public boolean isMetricsEnabled() {
         return enableMetrics;
     }
 

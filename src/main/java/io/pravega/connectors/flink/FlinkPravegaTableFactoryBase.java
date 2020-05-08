@@ -11,6 +11,8 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.StreamCut;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
+import io.pravega.connectors.flink.table.descriptors.PravegaValidator;
 import io.pravega.connectors.flink.util.ConnectorConfigurations;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -31,7 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static io.pravega.connectors.flink.Pravega.*;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.*;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;

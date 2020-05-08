@@ -10,7 +10,7 @@
 
 package io.pravega.connectors.flink;
 
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.BatchClientFactory;
@@ -71,7 +71,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
      * @param streams               The list of streams to read events from.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      */
-    protected FlinkPravegaInputFormat(
+    public FlinkPravegaInputFormat(
             ClientConfig clientConfig,
             List<StreamWithBoundaries> streams,
             DeserializationSchema<T> deserializationSchema) {
