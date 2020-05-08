@@ -19,7 +19,7 @@ import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.SetupUtils;
 
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
