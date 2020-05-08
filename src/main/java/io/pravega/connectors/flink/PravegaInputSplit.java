@@ -10,7 +10,7 @@
 
 package io.pravega.connectors.flink;
 
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 import io.pravega.client.batch.SegmentRange;
 import org.apache.flink.core.io.InputSplit;
 
