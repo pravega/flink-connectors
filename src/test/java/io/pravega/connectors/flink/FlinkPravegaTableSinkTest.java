@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.Types;

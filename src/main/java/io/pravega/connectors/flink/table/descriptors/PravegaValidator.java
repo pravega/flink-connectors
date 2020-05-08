@@ -8,7 +8,7 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.pravega.connectors.flink;
+package io.pravega.connectors.flink.table.descriptors;
 
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.ConnectorDescriptorValidator;
@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static io.pravega.connectors.flink.Pravega.*;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.*;
 
 /**
  * Pravega descriptor validation implementation for validating the Pravega reader and writer configurations.

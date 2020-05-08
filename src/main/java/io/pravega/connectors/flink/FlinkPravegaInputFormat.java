@@ -71,7 +71,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
      * @param streams               The list of streams to read events from.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      */
-    protected FlinkPravegaInputFormat(
+    public FlinkPravegaInputFormat(
             ClientConfig clientConfig,
             List<StreamWithBoundaries> streams,
             DeserializationSchema<T> deserializationSchema) {
