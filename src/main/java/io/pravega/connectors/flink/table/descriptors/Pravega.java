@@ -47,7 +47,7 @@ import java.util.Optional;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
 
 /**
- * Pravega connector descriptor.
+ *  Pravega connector descriptor.
  */
 public class Pravega extends ConnectorDescriptor {
 
