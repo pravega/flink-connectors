@@ -10,12 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-<<<<<<< HEAD
-import io.pravega.connectors.flink.serialization.JsonRowDeserializationSchema;
 import io.pravega.connectors.flink.table.descriptors.Pravega;
-import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
-=======
->>>>>>> master
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;

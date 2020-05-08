@@ -11,12 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
-<<<<<<< HEAD
 import io.pravega.connectors.flink.table.descriptors.Pravega;
-import org.apache.flink.api.common.typeinfo.Types;
-=======
 import org.apache.flink.table.api.DataTypes;
->>>>>>> master
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
