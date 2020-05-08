@@ -94,7 +94,7 @@ public final class ConnectorConfigurations {
     private Stream writerStream;
     private Optional<PravegaWriterMode> writerMode;
     private Optional<Long> txnLeaseRenewalInterval;
-    private Boolean watermark;
+    private Optional<Boolean> watermark;
     private String routingKey;
 
     private PravegaConfig pravegaConfig;
@@ -199,7 +199,7 @@ public final class ConnectorConfigurations {
         if (!descriptorProperties.containsKey(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME)) {
             throw new ValidationException("Missing " + CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME + " configuration.");
         }
-        watermark = descriptorProperties.getBoolean(CONNECTOR_WRITER_ENABLE_WATERMARK);
+        watermark = descriptorProperties.getOptionalBoolean(CONNECTOR_WRITER_ENABLE_WATERMARK);
         routingKey = descriptorProperties.getString(CONNECTOR_WRITER_ROUTING_KEY_FILED_NAME);
 
         Optional<String> optionalMode = descriptorProperties.getOptionalString(CONNECTOR_WRITER_MODE);

@@ -9,7 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
-import com.google.common.base.Preconditions;
+import org.apache.flink.util.Preconditions;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
