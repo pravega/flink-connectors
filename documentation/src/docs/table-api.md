@@ -165,12 +165,11 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-ConnectTableDescriptor desc = tableEnv.connect(pravega)
+tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true))
                 .withSchema(new Schema().field("category", DataTypes.STRING()).
-                        field("value", DataTypes.INT()));
-
-desc.registerTableSink("PravegaSink");
+                        field("value", DataTypes.INT()))
+                .registerTableSink("PravegaSink");
 
 table.insertInto("PravegaSink");
 env.execute();
@@ -186,12 +185,11 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-ConnectTableDescriptor desc = tableEnv.connect(pravega)
+tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true))
                 .withSchema(new Schema().field("category", DataTypes.STRING()).
-                        field("value", DataTypes.INT()));
-
-desc.registerTableSink("PravegaSink");
+                        field("value", DataTypes.INT()))
+                .registerTableSink("PravegaSink");
 
 table.insertInto("PravegaSink");
 env.execute();
