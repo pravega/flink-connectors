@@ -16,7 +16,7 @@ import org.apache.flink.types.Row;
 import java.util.List;
 import java.util.Map;
 
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_VERSION_VALUE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 

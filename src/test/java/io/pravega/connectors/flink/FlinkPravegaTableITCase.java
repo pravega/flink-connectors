@@ -11,12 +11,12 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -44,6 +44,7 @@ import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sources.TableSource;
+import org.apache.flink.table.types.utils.TypeConversions;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 import org.junit.AfterClass;
@@ -103,11 +104,11 @@ public class FlinkPravegaTableITCase {
 
         // read data from the stream using Table reader
         TableSchema tableSchema = TableSchema.builder()
-                .field("user", Types.STRING)
-                .field("uri", Types.STRING)
-                .field("accessTime", Types.SQL_TIMESTAMP)
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3).bridgedTo(Timestamp.class))
                 .build();
-        TypeInformation<Row> typeInfo = new RowTypeInfo(tableSchema.getFieldTypes(), tableSchema.getFieldNames());
+        TypeInformation<Row> typeInfo = (RowTypeInfo) TypeConversions.fromDataTypeToLegacyInfo(tableSchema.toRowDataType());
 
         PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
 
@@ -199,17 +200,17 @@ public class FlinkPravegaTableITCase {
     }
 
     private void testTableSourceBatchDescriptor(Stream stream, PravegaConfig pravegaConfig) throws Exception {
-
         ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
+        // Can only use Legacy Flink planner for BatchTableEnvironment
         BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
         execEnvRead.setParallelism(1);
 
-        // read data from the stream using Table reader
-        // TODO: We still have issues on timestamps with Legacy Flink planner.
-        //       See https://github.com/pravega/flink-connectors/issues/341 and https://issues.apache.org/jira/browse/FLINK-16693.
         Schema schema = new Schema()
                 .field("user", DataTypes.STRING())
-                .field("uri", DataTypes.STRING());
+                .field("uri", DataTypes.STRING())
+                // Note: LocalDateTime is not supported in legacy Flink planner, bridged to Timestamp with the data source.
+                // See https://issues.apache.org/jira/browse/FLINK-16693 for more information.
+                .field("accessTime", DataTypes.TIMESTAMP(3).bridgedTo(Timestamp.class));
 
         Pravega pravega = new Pravega();
 
