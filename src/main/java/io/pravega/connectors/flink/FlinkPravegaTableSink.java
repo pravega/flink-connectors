@@ -9,16 +9,18 @@
  */
 package io.pravega.connectors.flink;
 
-import lombok.Getter;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.typeinfo.Types;
 import org.apache.flink.api.java.DataSet;
-import org.apache.flink.api.java.typeutils.RowTypeInfo;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
+import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.sinks.AppendStreamTableSink;
 import org.apache.flink.table.sinks.BatchTableSink;
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.utils.TypeConversions;
+import org.apache.flink.table.utils.TableConnectorUtils;
+import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
 import org.apache.flink.util.Preconditions;
 
@@ -32,16 +34,16 @@ import static org.apache.flink.util.Preconditions.checkState;
 /**
  * An append-only table sink to emit a streaming table as a Pravega stream.
  */
-public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
+public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
 
     /** A factory for the stream writer. */
-    protected final Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory;
+    protected final Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory;
 
     /** A factory for output format. */
-    protected final Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory;
+    protected final Function<TableSchema, FlinkPravegaOutputFormat<Row>> outputFormatFactory;
 
-    /** The effective table sink configuration */
-    private TableSinkConfiguration tableSinkConfiguration;
+    /** The schema of the table. */
+    protected TableSchema schema;
 
     /**
      * Creates a Pravega {@link AppendStreamTableSink}.
@@ -51,17 +53,22 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      *
      * @param writerFactory                A factory for the stream writer.
      * @param outputFormatFactory          A factory for the output format.
+     * @param schema                       The table schema of the sink.
      */
-    protected FlinkPravegaTableSink(Function<TableSinkConfiguration, FlinkPravegaWriter<Row>> writerFactory,
-                                    Function<TableSinkConfiguration, FlinkPravegaOutputFormat<Row>> outputFormatFactory) {
+    protected FlinkPravegaTableSink(Function<TableSchema, FlinkPravegaWriter<Row>> writerFactory,
+                                    Function<TableSchema, FlinkPravegaOutputFormat<Row>> outputFormatFactory,
+                                    TableSchema schema) {
         this.writerFactory = Preconditions.checkNotNull(writerFactory, "writerFactory");
         this.outputFormatFactory = Preconditions.checkNotNull(outputFormatFactory, "outputFormatFactory");
+        this.schema = TableSchemaUtils.checkNoGeneratedColumns(schema);
     }
 
     /**
      * Creates a copy of the sink for configuration purposes.
      */
-    protected abstract FlinkPravegaTableSink createCopy();
+    protected FlinkPravegaTableSink createCopy() {
+        return new FlinkPravegaTableSink(writerFactory, outputFormatFactory, schema);
+    }
 
     /**
      * NOTE: This method is for internal use only for defining a TableSink.
@@ -69,37 +76,32 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
      */
     @Override
     public void emitDataStream(DataStream<Row> dataStream) {
-        throw new NotImplementedException("This method is deprecated and should not be called.");
+        consumeDataStream(dataStream);
     }
 
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
-        checkState(tableSinkConfiguration != null, "Table sink is not configured");
-        FlinkPravegaWriter<Row> writer = writerFactory.apply(tableSinkConfiguration);
-        return dataStream.addSink(writer);
+        checkState(schema != null, "Table sink is not configured");
+        FlinkPravegaWriter<Row> writer = writerFactory.apply(schema);
+        return dataStream.addSink(writer)
+                .setParallelism(dataStream.getParallelism())
+                .name(TableConnectorUtils.generateRuntimeName(this.getClass(), getFieldNames()));
     }
 
     @Override
     public void emitDataSet(DataSet<Row> dataSet) {
-        checkState(tableSinkConfiguration != null, "Table sink is not configured");
-        FlinkPravegaOutputFormat<Row> outputFormat = outputFormatFactory.apply(tableSinkConfiguration);
+        checkState(schema != null, "Table sink is not configured");
+        FlinkPravegaOutputFormat<Row> outputFormat = outputFormatFactory.apply(schema);
         dataSet.output(outputFormat);
     }
 
     @Override
-    public TypeInformation<Row> getOutputType() {
-        return new RowTypeInfo(getFieldTypes());
+    public DataType getConsumedDataType() {
+        return schema.toRowDataType();
     }
 
-    public String[] getFieldNames() {
-        checkState(tableSinkConfiguration != null, "Table sink is not configured");
-        return tableSinkConfiguration.fieldNames;
-    }
-
-    @Override
-    public TypeInformation<?>[] getFieldTypes() {
-        checkState(tableSinkConfiguration != null, "Table sink is not configured");
-        return tableSinkConfiguration.fieldTypes;
+    public TableSchema getTableSchema() {
+        return schema;
     }
 
     @Override
@@ -111,39 +113,27 @@ public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row
                 "Number of provided field names and types does not match.");
 
         FlinkPravegaTableSink copy = createCopy();
-        copy.tableSinkConfiguration = new TableSinkConfiguration(fieldNames, fieldTypes);
+        DataType[] dataTypes = Arrays.stream(fieldTypes)
+                .map(TypeConversions::fromLegacyInfoToDataType)
+                .toArray(DataType[]::new);
+        copy.schema = TableSchema.builder().fields(fieldNames, dataTypes).build();
         return copy;
-    }
-
-    /**
-     * The table sink configuration which is provided by the table environment via {@code TableSink::configure}.
-     */
-    @Getter
-    protected static class TableSinkConfiguration {
-        // the set of projected fields and their types
-        private String[] fieldNames;
-        private TypeInformation[] fieldTypes;
-
-        public TableSinkConfiguration(String[] fieldNames, TypeInformation[] fieldTypes) {
-            this.fieldNames = Preconditions.checkNotNull(fieldNames, "fieldNames");
-            this.fieldTypes = Preconditions.checkNotNull(fieldTypes, "fieldTypes");
-        }
     }
 
     /**
      * An event router that extracts the routing key from a {@link Row} by field name.
      */
-    static class RowBasedRouter implements PravegaEventRouter<Row> {
+    public static class RowBasedRouter implements PravegaEventRouter<Row> {
 
         private final int keyIndex;
 
-        public RowBasedRouter(String keyFieldName, String[] fieldNames, TypeInformation<?>[] fieldTypes) {
+        public RowBasedRouter(String keyFieldName, String[] fieldNames, DataType[] fieldTypes) {
             checkArgument(fieldNames.length == fieldTypes.length,
                     "Number of provided field names and types does not match.");
             int keyIndex = Arrays.asList(fieldNames).indexOf(keyFieldName);
             checkArgument(keyIndex >= 0,
                     "Key field '" + keyFieldName + "' not found");
-            checkArgument(Types.STRING.equals(fieldTypes[keyIndex]),
+            checkArgument(DataTypes.STRING().equals(fieldTypes[keyIndex]),
                     "Key field must be of type 'STRING'");
             this.keyIndex = keyIndex;
         }

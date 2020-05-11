@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;
 import org.apache.flink.table.api.TableSchema;
@@ -31,7 +32,7 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_MODE;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WRITER_MODE;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.fail;
 
