@@ -58,11 +58,15 @@ StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
                         .useBlinkPlanner()
                         .inStreamingMode()
                         .build());
+
 tableEnv.connect(pravega)
                 .withFormat(new Json().failOnMissingField(true))
                 .withSchema(schema)
                 .inAppendMode()
+               // In Flink 1.10, createTemporaryTable can be used here as well unless time attributes are added into the schema.
+               // (ref. There are some known issues in Flink https://issues.apache.org/jira/browse/FLINK-16160)
                 .registerTableSource("MyTableRow");
+
 
 String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
 Table result = tableEnv.sqlQuery(sqlQuery);
@@ -363,7 +367,8 @@ But the stream `streamX` should be created in advance to have it working.
 CREATE TABLE sample (
   category STRING,
   cnt INT,
-  tp TIMESTAMP(3)
+  ts TIMESTAMP(3),
+  WATERMARK FOR ts as ts - INTERVAL '5' SECOND
 ) WITH (
   'update-mode' = 'append',
   'connector.type' = 'pravega',
@@ -382,7 +387,7 @@ CREATE TABLE sample (
 
 ```
 
-The usage and definition of time attribute and DDL can be referred in:
+The usage and definition of time attribute and DDL and usage of WATERMARK schema can be referred in:
 
 * Time Attribute
 
