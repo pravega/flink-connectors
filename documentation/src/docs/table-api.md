@@ -51,10 +51,9 @@ pravega.tableSourceReaderBuilder()
 StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
 // Old Planner
 StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
-// Blink Planner, this is recommended.
+// Blink Planner, this is recommended.(Difference between 2 planners can be referred in https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners)
 StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
                 EnvironmentSettings.newInstance()
-                        // watermark is only supported in blink planner
                         .useBlinkPlanner()
                         .inStreamingMode()
                         .build());
@@ -153,10 +152,9 @@ The following example uses the provided table sink to write JSON-formatted event
 StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
 // Old Planner
 StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
-// Blink Planner, this is recommended.
+// Blink Planner, this is recommended.(Difference between 2 planners can be referred in https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners)
 StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
                 EnvironmentSettings.newInstance()
-                        // watermark is only supported in blink planner
                         .useBlinkPlanner()
                         .inStreamingMode()
                         .build());
