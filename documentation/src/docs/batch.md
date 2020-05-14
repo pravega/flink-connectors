@@ -46,8 +46,9 @@ FlinkPravegaInputFormat<EventType> inputFormat = FlinkPravegaInputFormat.<EventT
     .withDeserializationSchema(deserializer)
     .build();
 
-DataSource<EventType> dataSet = env.createInput(inputFormat, TypeInformation.of(EventType.class)
-                                   .setParallelism(2);
+ExecutionEnvironment env = ExecutionEnvironment.getExecutionEnvironment();
+
+DataSource<EventType> dataSet = env.createInput(inputFormat, TypeInformation.of(EventType.class)).setParallelism(2);
 
 ```
 
@@ -77,7 +78,7 @@ Multiple streams can be passed as parameter option (using the builder API). The 
 
 ### StreamCuts
 
-A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) accepts a `StreamCut` as the start and/or end position of a given stream.  For further reading on StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The [`BatchClient`](https://github.com/pravega/pravega/blob/master/client/src/main/java/io/pravega/client/batch/BatchClient.java) accepts a `StreamCut` as the start and/or end position of a given stream.  For further reading on StreamCuts, please refer to documentation on [StreamCut](http://pravega.io/docs/latest/streamcuts/) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
 If stream cuts are not provided then the default start position requested is assumed to be the earliest available data in the stream and the default end position is assumed to be all available data in that stream as of when the job execution begins.
 
