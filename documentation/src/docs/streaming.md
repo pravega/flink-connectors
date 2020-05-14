@@ -125,7 +125,24 @@ Each parallel instance of the source processes one or more stream segments in pa
 
 ### StreamCuts
 A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on
-StreamCuts, please refer to documentation on [StreamCut](https://github.com/pravega/pravega/blob/master/documentation/src/docs/streamcuts.md) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+StreamCuts, please refer to documentation on [StreamCut](http://pravega.io/docs/latest/streamcuts/) and [sample code](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
+
+Many Readers will be reading Events from the tail of the Stream. Tail reads corresponding to recently written Events are immediately delivered to Readers. 
+
+Here is an example for a Flink application to perform tail-read.
+
+```java
+StreamManager streamManager = StreamManager.create(pravegaConfig.getClientConfig());
+StreamCut tailStreamCut = streamManager.getStreamInfo("scope", "stream").getTailStreamCut();
+
+FlinkPravegaReader<MyClass> pravegaSource = FlinkPravegaReader.<MyClass>builder()
+    .forStream(streamName, tailStreamCut)
+    .withPravegaConfig(config)
+    .withDeserializationSchema(deserializer)
+    .build();
+DataStream<MyClass> stream = env.addSource(pravegaSource);
+
+``` 
 
 #### Historical Stream Processing
 
@@ -155,7 +172,7 @@ FlinkPravegaWriter<MyClass> pravegaSink = FlinkPravegaWriter.<MyClass>builder()
    .withPravegaConfig(config)
    .withSerializationSchema(serializer)
    .withEventRouter(router)
-   .withWriterMode(EXACTLY_ONCE)
+   .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
    .build();
 
 DataStream<MyClass> stream = ...
@@ -169,7 +186,7 @@ A builder API is provided to construct an instance of `FlinkPravegaWriter`. See 
 |----------------------|-----------------------------------------------------------------------|
 |`withPravegaConfig`|The Pravega client configuration, which includes connection info, security info, and a default scope.|
 |`forStream`|The stream to be written to.|
-|`withWriterMode`|The writer mode to provide _Best-effort, _At-least-once_, or _Exactly-once_ guarantees.|
+|`withWriterMode`|The writer mode to provide _Best-effort_, _At-least-once_, or _Exactly-once_ guarantees.|
 |`withTxnLeaseRenewalPeriod`|The Transaction lease renewal period that supports the _Exactly-once_ writer mode.|
 |`withSerializationSchema`|The serialization schema which describes how to turn events into byte messages.|
 |`withEventRouter`|The router function which determines the Routing Key for a given event.|
@@ -185,7 +202,7 @@ Every event written to a Pravega Stream has an associated Routing Key.  The Rout
 When constructing the `FlinkPravegaWriter`, please provide an implementation of `io.pravega.connectors.flink.PravegaEventRouter` which will guarantee the event ordering. In Pravega, events are guaranteed to be ordered at the segment level.
 
 For example, to guarantee write order specific to sensor id, you could provide a router implementation like below.
-```
+```java
 private static class SensorEventRouter<SensorEvent> implements PravegaEventRouter<SensorEvent> {
         @Override
         public String getRoutingKey(SensorEvent event) {

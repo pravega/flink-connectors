@@ -33,11 +33,11 @@ The following example uses the provided table source to read JSON-formatted even
 ```java
 // define table schema definition
 Schema schema = new Schema()
-        .field("user", Types.STRING())
-        .field("uri", Types.STRING())
-        .field("accessTime", Types.SQL_TIMESTAMP()).rowtime(
-                new Rowtime().timestampsFromField("accessTime")
-                        .watermarksPeriodicBounded(30000L));
+                .field("user", DataTypes.STRING())
+                .field("uri", DataTypes.STRING())
+                .field("accessTime", DataTypes.TIMESTAMP(3)).rowtime(
+                        new Rowtime().timestampsFromField("accessTime")
+                                       .watermarksPeriodicBounded(30000L));
 
 // define pravega reader configurations using Pravega descriptor
 Pravega pravega = new Pravega();
@@ -47,45 +47,48 @@ pravega.tableSourceReaderBuilder()
         .withPravegaConfig(pravegaConfig);
 
 
- // (Option-1) Streaming Source
+// (Option-1) Streaming Source
 StreamExecutionEnvironment execEnvRead = StreamExecutionEnvironment.getExecutionEnvironment();
-StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+// Old Planner
+StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead);
+// Blink Planner, this is recommended.(Difference between 2 planners can be referred in https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners)
+StreamTableEnvironment tableEnv = StreamTableEnvironment.create(execEnvRead,
+                EnvironmentSettings.newInstance()
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
 
-StreamTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(schema)
-        .inAppendMode();
+tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(schema)
+                .inAppendMode()
+               // In Flink 1.10, createTemporaryTable can be used here as well unless time attributes are added into the schema.
+               // (ref. There are some known issues in Flink https://issues.apache.org/jira/browse/FLINK-16160)
+                .registerTableSource("MyTableRow");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
-final TableSource<?> source = TableFactoryService.find(StreamTableSourceFactory.class, propertiesMap)
-        .createStreamTableSource(propertiesMap);
 
-tableEnv.registerTableSource("MyTableRow", source);
 String sqlQuery = "SELECT user, count(uri) from MyTableRow GROUP BY user";
 Table result = tableEnv.sqlQuery(sqlQuery);
 ...
     
 // (Option-2) Batch Source
 ExecutionEnvironment execEnvRead = ExecutionEnvironment.getExecutionEnvironment();
-BatchTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(execEnvRead);
+BatchTableEnvironment tableEnv = BatchTableEnvironment.create(execEnvRead);
 execEnvRead.setParallelism(1);
 
-BatchTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(schema);
+tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(schema)
+                .inAppendMode()
+                .registerTableSource("MyTableRow");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
-final TableSource<?> source = TableFactoryService.find(BatchTableSourceFactory.class, propertiesMap)
-        .createBatchTableSource(propertiesMap);
-
-tableEnv.registerTableSource("MyTableRow", source);
 String sqlQuery = "SELECT ...";
 
 Table result = tableEnv.sqlQuery(sqlQuery);
 DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 ...
 ```
-
+```
 ### Parameters
 A builder API is provided to construct an concrete subclass of `FlinkPravegaTableSource`. See the table below for a summary of builder properties. Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) page for more information.
 
@@ -147,7 +150,15 @@ The following example uses the provided table sink to write JSON-formatted event
 ```java
 // (Option-1) Streaming Sink
 StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment().setParallelism(1);
-StreamTableEnvironment tableEnv = TableEnvironment.getTableEnvironment(env);
+// Old Planner
+StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env);
+// Blink Planner, this is recommended.(Difference between 2 planners can be referred in https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners)
+StreamTableEnvironment tableEnv = StreamTableEnvironment.create(env,
+                EnvironmentSettings.newInstance()
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build());
+
 Table table = tableEnv.fromDataStream(env.fromCollection(Arrays.asList(...));
 
 Pravega pravega = new Pravega();
@@ -156,17 +167,13 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-StreamTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-        .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()))
-        .inAppendMode();
-desc.registerTableSink("test");
+tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(new Schema().field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()))
+                .registerTableSink("PravegaSink");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
-final TableSink<?> sink = TableFactoryService.find(StreamTableSinkFactory.class, propertiesMap)
-        .createStreamTableSink(propertiesMap);
-
-table.writeToSink(sink);
+table.insertInto("PravegaSink");
 env.execute();
 
 // (Option-2) Batch Sink
@@ -180,16 +187,13 @@ pravega.tableSinkWriterBuilder()
         .forStream(stream)
         .withPravegaConfig(setupUtils.getPravegaConfig());
 
-BatchTableDescriptor desc = tableEnv.connect(pravega)
-        .withFormat(new Json().failOnMissingField(true).deriveSchema())
-         .withSchema(new Schema().field("category", Types.STRING()).field("value", Types.INT()));
-desc.registerTableSink("test");
+tableEnv.connect(pravega)
+                .withFormat(new Json().failOnMissingField(true))
+                .withSchema(new Schema().field("category", DataTypes.STRING()).
+                        field("value", DataTypes.INT()))
+                .registerTableSink("PravegaSink");
 
-final Map<String, String> propertiesMap = DescriptorProperties.toJavaMap(desc);
-final TableSink<?> sink = TableFactoryService.find(BatchTableSinkFactory.class, propertiesMap)
-        .createBatchTableSink(propertiesMap);
-
-table.writeToSink(sink);
+table.insertInto("PravegaSink");
 env.execute();
 ```
 
@@ -235,7 +239,7 @@ The YAML configuration file schema for providing Pravega table API specific conn
 ```yaml
 tables:
   - name: sample                            # name the new table
-    type: source                            # declare if the table should be "source", "sink", or "both". If "both" provide both reader and writer configurations
+    type: source-table                      # declare if the table should be "source-table", "sink-table", or "source-sink-table". If "source-sink-table" provide both reader and writer configurations
     update-mode: append                     # specify the update-mode *only* for streaming tables
 
     # declare the external system to connect to
@@ -251,7 +255,7 @@ tables:
           auth-token:                       # optional (base64 encoded string)
           validate-hostname:                # optional (true|false)
           trust-store:                      # optional (truststore filename)
-      reader:                               # required only if type: source
+      reader:                               # required only if type: source-table
         stream-info:
           - scope: test                     # optional (uses default-scope value or else throws error)
             stream: stream1                 # mandatory
@@ -268,7 +272,7 @@ tables:
           refresh-interval:                 # optional (long milliseconds)
           event-read-timeout-interval:      # optional (long milliseconds)
           checkpoint-initiate-timeout-interval:  # optional (long milliseconds)
-      writer:                               # required only if type: sink
+      writer:                               # required only if type: sink-table
         scope: foo                          # optional (uses default-scope value)
         stream: bar                         # mandatory
         mode:                               # optional (exactly_once | atleast_once)
@@ -285,10 +289,12 @@ tables:
 ### Sample Environment File
 Here is a sample environment file for reference which can be used as a source as well as sink to read from and write data into Pravega as table records
 
+But the stream `streamX` should be created in advance to have it working.
+
 ```yaml
 tables:
   - name: sample
-    type: both
+    type: source-sink-table
     update-mode: append
     # declare the external system to connect to
     connector:
@@ -297,7 +303,7 @@ tables:
       metrics: true
       connection-config:
         controller-uri: "tcp://localhost:9090"
-        default-scope: wVamQsOSaCxvYiHQVhRl
+        default-scope: test-scope
       reader:
         stream-info:
           - stream: streamX
@@ -309,16 +315,19 @@ tables:
     format:
       type: json
       fail-on-missing-field: true
-      derive-schema: true
     schema:
       - name: category
-        type: VARCHAR
+        data-type: STRING
       - name: value
-        type: INT
+        data-type: INT
+      - name: timestamp
+        data-type: TIMESTAMP(3)
 
 functions: [] 
 
 execution:
+  # either 'old' (default) or 'blink',blink planner is recommended.Please refer to https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/common.html#main-differences-between-the-two-planners
+  planner: blink
   # 'batch' or 'streaming' execution
   type: streaming
   # allow 'event-time' or only 'processing-time' in sources
@@ -345,3 +354,52 @@ deployment:
   gateway-port: 0
 
 ```
+
+### Sample DDL
+
+Here is a sample DDL for reference which can be used as a source as well as sink to read from and write data into Pravega as table records.
+
+But the stream `streamX` should be created in advance to have it working.
+
+```
+CREATE TABLE sample (
+  category STRING,
+  cnt INT,
+  ts TIMESTAMP(3),
+  WATERMARK FOR ts as ts - INTERVAL '5' SECOND
+) WITH (
+  'update-mode' = 'append',
+  'connector.type' = 'pravega',
+  'connector.version' = '1',
+  'connector.metrics' = 'true',
+  'connector.connection-config.controller-uri' = 'tcp://localhost:9090',
+  'connector.connection-config.default-scope' = 'test',
+  'connector.reader.stream-info.0.stream' = 'streamX',
+  'connector.writer.stream' = 'streamX',
+  'connector.writer.mode' = 'atleast_once',
+  'connector.writer.txn-lease-renewal-interval' = '10000',
+  'connector.writer.routingkey-field-name' = 'category'
+  'format.type' = 'json',
+  'format.fail-on-missing-field' = 'false'
+)
+
+```
+
+The usage and definition of time attribute and DDL and usage of WATERMARK schema can be referred in:
+
+* Time Attribute
+
+https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/streaming/time_attributes.html
+
+* DDL Usage
+
+https://ci.apache.org/projects/flink/flink-docs-release-1.10/dev/table/sql/create.html#create-table
+
+
+### Timestamp format issue with Flink SQL
+
+Please refer to [Table formats documentation](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html)
+
+Here is the valid data example with the above sample yaml.
+
+`{"category": "test-category", "value": 310884, "timestamp": "2017-11-27T00:00:00Z"}`
