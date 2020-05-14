@@ -32,7 +32,7 @@ To add the Pravega connector dependencies to your project, add the following ent
   <version>0.5.1</version>
 </dependency>
 
-<!-- Pravega 0.6 -->
+<!-- Pravega 0.6 and After -->
 <dependency>
   <groupId>io.pravega</groupId>
   <artifactId>pravega-connectors-flink-1.9_2.12</artifactId>
