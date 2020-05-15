@@ -57,6 +57,6 @@ From Flink's perspective, the connector to Pravega is part of the streaming appl
 
  - If you set up a application's project and dependencies manually, you need to make sure that it builds a _jar with dependencies_, to include both the application and the connector classes.
  
- - The Flink connector has embedded and shaded the Pravega client dependency of the same version. Please **DO NOT** include both pravega-client and Pravega Flink connector dependency into the jar file, otherwise there will be dependency conflict issues.
+ - The Flink connector has embedded and shaded the `pravega-client` dependency of the same version. Please **DO NOT** include both `pravega-client` and `pravega-flink-connector` dependency into the jar file, otherwise there will be dependency conflict issues.
  
- - If user application uses Table API and SQL, please **DO NOT** compile flink-table-planner or flink-table-planner-blink into the jar file as they are provided by the Flink cluster.
+ - If user application uses Table API and SQL, please **DO NOT** compile `flink-table-planner` or `flink-table-planner-blink` into the jar file as they are provided by the Flink cluster.
