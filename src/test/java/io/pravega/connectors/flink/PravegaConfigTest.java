@@ -76,6 +76,14 @@ public class PravegaConfigTest {
         config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withDefaultScope("scope1");
         assertEquals("scope2", config.getDefaultScope());
+
+        config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
+                .withScope("scope1");
+        assertEquals("scope1", config.getDefaultScope());
+
+        config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
+                .withScope("scope1");
+        assertEquals("scope1", config.getDefaultScope());
     }
 
     @Test
