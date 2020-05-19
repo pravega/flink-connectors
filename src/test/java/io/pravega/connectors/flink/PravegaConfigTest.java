@@ -75,7 +75,7 @@ public class PravegaConfigTest {
 
         config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withDefaultScope("scope1");
-        assertEquals("scope2", config.getDefaultScope());
+        assertEquals("scope1", config.getDefaultScope());
     }
 
     @Test
