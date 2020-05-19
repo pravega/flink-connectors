@@ -79,7 +79,7 @@ public class PravegaConfigTest {
     }
 
     @Test
-    public void testScopeSet(){
+    public void testScopeSet() {
         PravegaConfig config;
 
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))

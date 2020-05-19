@@ -137,14 +137,14 @@ public class PravegaConfig implements Serializable {
      * @param scope The scope to use (with lowest priority).
      */
     public PravegaConfig withDefaultScope(String scope) {
-        if (this.defaultScope == null){
+        if (this.defaultScope == null) {
             this.defaultScope = scope;
         }
         return this;
     }
 
     /**
-     * Configures the self-defined Pravega scope
+     * Configures the self-defined Pravega scope.
      *
      * @param scope The scope to use.
      */
