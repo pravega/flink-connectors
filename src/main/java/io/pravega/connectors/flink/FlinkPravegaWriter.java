@@ -26,6 +26,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.typeutils.SimpleTypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.base.TypeSerializerSingleton;
+import org.apache.flink.api.common.typeutils.base.VoidSerializer;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.memory.DataInputView;
 import org.apache.flink.core.memory.DataOutputView;
@@ -39,16 +40,12 @@ import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.HashSet;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
-
-import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
  * Flink sink implementation for writing into pravega storage.
@@ -57,7 +54,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  */
 @Slf4j
 public class FlinkPravegaWriter<T>
-        extends TwoPhaseCommitSinkFunction<T, FlinkPravegaWriter.PravegaTransactionState, FlinkPravegaWriter.PravegaTransactionContext> {
+        extends TwoPhaseCommitSinkFunction<T, FlinkPravegaWriter.PravegaTransactionState, Void> {
 
     private static final long serialVersionUID = 1L;
 
@@ -137,7 +134,7 @@ public class FlinkPravegaWriter<T>
             final boolean enableWatermark,
             final boolean enableMetrics) {
 
-        super(new TransactionStateSerializer(), new ContextStateSerializer());
+        super(new TransactionStateSerializer(), VoidSerializer.INSTANCE);
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
@@ -534,41 +531,6 @@ public class FlinkPravegaWriter<T>
     }
 
     /**
-     * Context associated to this instance of the {@link FlinkPravegaWriter}. User for keeping track of the
-     * transactionalIds.
-     */
-    @VisibleForTesting
-    @Internal
-    public static class PravegaTransactionContext {
-        final Set<String> transactionIds;
-
-        @VisibleForTesting
-        public PravegaTransactionContext(Set<String> transactionalIds) {
-            checkNotNull(transactionalIds);
-            this.transactionIds = transactionalIds;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || getClass() != o.getClass()) {
-                return false;
-            }
-
-            PravegaTransactionContext that = (PravegaTransactionContext) o;
-
-            return transactionIds.equals(that.transactionIds);
-        }
-
-        @Override
-        public int hashCode() {
-            return transactionIds.hashCode();
-        }
-    }
-
-    /**
      * {@link org.apache.flink.api.common.typeutils.TypeSerializer} for
      * {@link FlinkPravegaWriter.PravegaTransactionState}.
      */
@@ -675,98 +637,6 @@ public class FlinkPravegaWriter<T>
         }
     }
 
-    /**
-     * {@link org.apache.flink.api.common.typeutils.TypeSerializer} for
-     * {@link FlinkPravegaWriter.PravegaTransactionContext}.
-     */
-    @VisibleForTesting
-    @Internal
-    public static class ContextStateSerializer extends TypeSerializerSingleton<FlinkPravegaWriter.PravegaTransactionContext> {
-
-        private static final long serialVersionUID = 1L;
-
-        @Override
-        public boolean isImmutableType() {
-            return true;
-        }
-
-        @Override
-        public FlinkPravegaWriter.PravegaTransactionContext createInstance() {
-            return null;
-        }
-
-        @Override
-        public FlinkPravegaWriter.PravegaTransactionContext copy(FlinkPravegaWriter.PravegaTransactionContext from) {
-            return from;
-        }
-
-        @Override
-        public FlinkPravegaWriter.PravegaTransactionContext copy(
-                FlinkPravegaWriter.PravegaTransactionContext from,
-                FlinkPravegaWriter.PravegaTransactionContext reuse) {
-            return from;
-        }
-
-        @Override
-        public void copy(DataInputView source, DataOutputView target) throws IOException {
-            int numIds = source.readInt();
-            target.writeInt(numIds);
-            for (int i = 0; i < numIds; i++) {
-                target.writeUTF(source.readUTF());
-            }
-        }
-
-        @Override
-        public int getLength() {
-            return -1;
-        }
-
-        @Override
-        public void serialize(
-                FlinkPravegaWriter.PravegaTransactionContext record,
-                DataOutputView target) throws IOException {
-            int numIds = record.transactionIds.size();
-            target.writeInt(numIds);
-            for (String id : record.transactionIds) {
-                target.writeUTF(id);
-            }
-        }
-
-        @Override
-        public FlinkPravegaWriter.PravegaTransactionContext deserialize(DataInputView source) throws IOException {
-            int numIds = source.readInt();
-            Set<String> ids = new HashSet<>(numIds);
-            for (int i = 0; i < numIds; i++) {
-                ids.add(source.readUTF());
-            }
-            return new FlinkPravegaWriter.PravegaTransactionContext(ids);
-        }
-
-        @Override
-        public FlinkPravegaWriter.PravegaTransactionContext deserialize(
-                FlinkPravegaWriter.PravegaTransactionContext reuse,
-                DataInputView source) throws IOException {
-            return deserialize(source);
-        }
-
-        // -----------------------------------------------------------------------------------
-
-        @Override
-        public TypeSerializerSnapshot<PravegaTransactionContext> snapshotConfiguration() {
-            return new ContextStateSerializerSnapshot();
-        }
-
-        /**
-         * Serializer configuration snapshot for compatibility and format evolution.
-         */
-        @SuppressWarnings("WeakerAccess")
-        public static final class ContextStateSerializerSnapshot extends SimpleTypeSerializerSnapshot<PravegaTransactionContext> {
-
-            public ContextStateSerializerSnapshot() {
-                super(ContextStateSerializer::new);
-            }
-        }
-    }
 
     // ------------------------------------------------------------------------
     //  builder
