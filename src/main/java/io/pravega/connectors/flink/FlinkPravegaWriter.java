@@ -19,7 +19,6 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.common.Exceptions;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -40,6 +39,7 @@ import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -58,29 +58,41 @@ public class FlinkPravegaWriter<T>
 
     private static final long serialVersionUID = 1L;
 
-    // ----- metrics field constants -----
-
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
 
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
-    // flag to enable/disable metrics
-    final boolean enableMetrics;
+    // ----------- Runtime fields ----------------
+
+    // Error which will be detected asynchronously and reported to Flink
+    @VisibleForTesting
+    volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
+
+    // Used to track confirmation from all writes to ensure guaranteed writes.
+    @VisibleForTesting
+    AtomicLong pendingWritesCount = new AtomicLong();
+
+    private ExecutorService executorService;
+
+    private long currentWatermark = Long.MIN_VALUE;
 
     // ----------- configuration fields -----------
 
+    // flag to enable/disable metrics
+    private final boolean enableMetrics;
+
     // The Pravega client config.
-    final ClientConfig clientConfig;
+    private final ClientConfig clientConfig;
 
     // The supplied event serializer.
-    final SerializationSchema<T> serializationSchema;
+    private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream.
-    final PravegaEventRouter<T> eventRouter;
+    private final PravegaEventRouter<T> eventRouter;
 
     // The destination stream.
     @SuppressFBWarnings("SE_BAD_FIELD")
-    final Stream stream;
+    private final Stream stream;
 
     // Various timeouts
     private final long txnLeaseRenewalPeriod;
@@ -94,23 +106,14 @@ public class FlinkPravegaWriter<T>
     // Client factory for PravegaWriter instances
     private transient EventStreamClientFactory clientFactory = null;
 
+    // Pravega writer instance
     private transient EventStreamWriter<T> writer = null;
+
+    // Transactional Pravega writer instance
     private transient TransactionalEventStreamWriter<T> transactionalWriter = null;
 
     // Pravega Writer prefix that will be used by all Pravega Writers in this Sink
     private String writerIdPrefix;
-
-    // -------------------------------- Runtime fields ------------------------------------------
-
-    // Error which will be detected asynchronously and reported to Flink
-    private volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
-
-    // Used to track confirmation from all writes to ensure guaranteed writes.
-    private AtomicLong pendingWritesCount = new AtomicLong();
-
-    private ExecutorService executorService;
-
-    private long currentWatermark = Long.MIN_VALUE;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a Flink job.
@@ -313,10 +316,27 @@ public class FlinkPravegaWriter<T>
     public void close() throws Exception {
         Exception exception = null;
 
+        try {
+            // Current transaction will be aborted with this method
+            super.close();
+        } catch (Exception e) {
+            exception = ExceptionUtils.firstOrSuppressed(e, exception);
+        }
+
         if (writer != null) {
             try {
                 flushAndVerify();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+
+            try {
                 writer.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+
+            try {
                 executorService.shutdown();
             } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
@@ -325,17 +345,6 @@ public class FlinkPravegaWriter<T>
 
         if (transactionalWriter != null) {
             try {
-                PravegaTransactionState transaction = currentTransaction();
-                if (transaction != null) {
-                    Transaction<T> txn = transaction.getTransaction();
-                    if (txn != null) {
-                        try {
-                            Exceptions.handleInterrupted(txn::abort);
-                        } catch (Exception e) {
-                            exception = e;
-                        }
-                    }
-                }
                 transactionalWriter.close();
             } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
@@ -527,6 +536,24 @@ public class FlinkPravegaWriter<T>
 
         Transaction getTransaction() {
             return transaction;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            PravegaTransactionState that = (PravegaTransactionState) o;
+            return Objects.equals(transactionId, that.transactionId) &&
+                    Objects.equals(watermark, that.watermark);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(transactionId, watermark);
         }
     }
 
