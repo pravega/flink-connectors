@@ -170,4 +170,9 @@ public class ThrottledIntegerGeneratingSource
             blocker.notifyAll();
         }
     }
+
+    @Override
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {
+
+    }
 }

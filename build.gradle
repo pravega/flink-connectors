@@ -77,6 +77,9 @@ repositories {
         maven {
             url "https://oss.jfrog.org/jfrog-dependencies"
         }
+        maven {
+            url "https://repository.apache.org/content/repositories/orgapacheflink-1370/"
+        }
     }
 }
 
