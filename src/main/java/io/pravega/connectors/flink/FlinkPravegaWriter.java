@@ -273,7 +273,7 @@ public class FlinkPravegaWriter<T>
                                 writerId(), txn.getTxnId(), status);
                     }
                 } catch (TxnFailedException e) {
-                    log.warn("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
+                    log.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
                 }
                 break;
             case ATLEAST_ONCE:

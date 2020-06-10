@@ -15,6 +15,7 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
+import io.pravega.client.stream.TxnFailedException;
 import io.pravega.common.function.RunnableWithException;
 import io.pravega.connectors.flink.utils.DirectExecutorService;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
@@ -40,6 +41,7 @@ import static io.pravega.connectors.flink.AbstractStreamingWriterBuilder.DEFAULT
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -374,6 +376,47 @@ public class FlinkPravegaWriterTest {
         }
     }
 
+    /**
+     * Tests the error handling.
+     */
+    @Test
+    public void testTransactionalWriterCommitFailCase() throws Exception {
+        try (WriterTestContext context = new WriterTestContext(false)) {
+            Transaction<Integer> trans = context.prepareTransaction();
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.open();
+                StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+                testHarness.processElement(e1);
+                testHarness.snapshot(1L, 1L);
+
+                Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
+                Mockito.doThrow(new TxnFailedException()).when(trans).commit();
+                testHarness.notifyOfCompletedCheckpoint(1L);
+                // TxnFailedException is caught
+            }
+        }
+    }
+
+    /**
+     * Tests the wrong transaction status while committing.
+     */
+    @Test
+    public void testTransactionalWriterCommitWrongStatusCase() throws Exception {
+        try (WriterTestContext context = new WriterTestContext(false)) {
+            Transaction<Integer> trans = context.prepareTransaction();
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.open();
+                StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+                testHarness.processElement(e1);
+
+                testHarness.snapshot(1L, 1L);
+                Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.ABORTED);
+                testHarness.notifyOfCompletedCheckpoint(1L);
+
+                verify(trans, never()).commit();
+            }
+        }
+    }
 
     // endregion
 
