@@ -3,14 +3,28 @@ package io.pravega.connectors.flink.table.catalog.pravega;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.admin.impl.StreamManagerImpl;
+import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.schemaregistry.client.SchemaRegistryClient;
+import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
+import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.*;
 import org.apache.flink.table.catalog.exceptions.*;
 import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
+import org.apache.flink.table.expressions.Expression;
+import org.apache.flink.table.factories.FunctionDefinitionFactory;
+import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.factories.TableFactory;
+import org.apache.flink.table.factories.TableFactoryService;
 
+import java.net.URI;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -20,13 +34,18 @@ import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CO
 @Slf4j
 public class PravegaCatalog extends AbstractCatalog {
     private StreamManager streamManager;
-    private String controllerUri;
+    private SchemaRegistryClient schemaRegistryClient;
+    private URI controllerUri;
+    private URI schemaRegistryUri;
+    private String defaultScope;
     private Map<String, String> properties;
 
-    public PravegaCatalog(String controllerUri, String catalogName, Map<String, String> props, String defaultDatabase) {
+    public PravegaCatalog(String controllerUri, String schemaRegistryUri, String catalogName, Map<String, String> props, String defaultDatabase) {
         super(catalogName, defaultDatabase);
 
-        this.controllerUri = controllerUri;
+        this.controllerUri = URI.create(controllerUri);
+        this.schemaRegistryUri = URI.create(schemaRegistryUri);
+        this.defaultScope = defaultDatabase;
         this.properties = new HashMap<>();
         for (Map.Entry<String, String> kv : props.entrySet()) {
             properties.put(CONNECTOR + "." + kv.getKey(), kv.getValue());
@@ -39,20 +58,30 @@ public class PravegaCatalog extends AbstractCatalog {
     public void open() throws CatalogException {
         if (streamManager == null) {
             try {
-                streamManager = new StreamManagerImpl(ClientConfig.builder().build());
+                streamManager = new StreamManagerImpl(ClientConfig.builder().controllerURI(controllerUri).build());
             } catch (Exception e) {
                 throw new CatalogException("Failed to create streamManager");
+            }
+        }
+        if (schemaRegistryClient == null) {
+            try {
+                SchemaRegistryClientConfig config = SchemaRegistryClientConfig.builder()
+                        .schemaRegistryUri(schemaRegistryUri).namespace(defaultScope).build();
+                schemaRegistryClient = SchemaRegistryClientFactory.createRegistryClient(config);
+            } catch (Exception e) {
+                throw new CatalogException("Failed to create schemaRegistryClient");
             }
         }
     }
 
     @Override
     public void close() throws CatalogException {
-        if(streamManager!=null) {
+        if (streamManager != null) {
             streamManager.close();
-            streamManager=null;
             log.info("Close connection to Pravega");
         }
+
+        // TODO: schema registry client close
     }
 
     @Override
@@ -62,12 +91,20 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public Optional<TableFactory> getTableFactory() {
+        // TODO: now only streaming read
+        TableFactory tableFactory = TableFactoryService.find(StreamTableSourceFactory.class, properties);
+        return Optional.of(tableFactory);
+    }
+
+    @Override
+    public Optional<FunctionDefinitionFactory> getFunctionDefinitionFactory() {
         return Optional.empty();
     }
 
     @Override
     public CatalogDatabase getDatabase(String databaseName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        Map<String, String> properties = new HashMap<>();
+        return new CatalogDatabaseImpl(properties, databaseName);
     }
 
     @Override
@@ -77,13 +114,14 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public void createDatabase(String name, CatalogDatabase database, boolean ignoreIfExists) throws DatabaseAlreadyExistException, CatalogException {
+        boolean isExists;
         try {
-            streamManager.createScope(name);
+            isExists = streamManager.createScope(name);
         } catch (Exception e) {
-            if (!ignoreIfExists) {
-                throw new DatabaseAlreadyExistException(getName(), name, e);
-            }
-            else throw new CatalogException(String.format("Failed to create database %s", name), e);
+            throw new CatalogException(String.format("Failed to create database %s", name), e);
+        }
+        if (isExists && !ignoreIfExists) {
+            throw new DatabaseAlreadyExistException(getName(), name);
         }
     }
 
@@ -100,13 +138,25 @@ public class PravegaCatalog extends AbstractCatalog {
     }
 
     @Override
+    public void dropDatabase(String name, boolean ignoreIfNotExists, boolean cascade) throws DatabaseNotExistException, DatabaseNotEmptyException, CatalogException {
+        throw new UnsupportedOperationException();
+    }
+
+    @Override
     public void alterDatabase(String name, CatalogDatabase newDatabase, boolean ignoreIfNotExists) throws DatabaseNotExistException, CatalogException {
         throw new UnsupportedOperationException();
     }
 
     @Override
     public List<String> listTables(String databaseName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        List<String> result = new ArrayList<>();
+        try {
+            Iterator<Stream> iterator = streamManager.listStreams(databaseName);
+            iterator.forEachRemaining( stream -> result.add(stream.getStreamName()) );
+        } catch (Exception e) {
+            throw new CatalogException(String.format("Failed to list tables for database %s", databaseName), e);
+        }
+        return result;
     }
 
     @Override
@@ -116,7 +166,12 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public CatalogBaseTable getTable(ObjectPath tablePath) throws TableNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        // the groupId is the same as the stream name
+        String groupId = tablePath.getObjectName();
+        SchemaInfo schemaInfo = schemaRegistryClient.getLatestSchemaVersion(groupId, null).getSchemaInfo();
+        TableSchema tableSchema = PravegaSchemaUtils.schemaInfoToTableSchema(schemaInfo);
+
+        return new CatalogTableImpl(tableSchema, properties, "Pravega Catalog Table");
     }
 
     @Override
@@ -152,6 +207,11 @@ public class PravegaCatalog extends AbstractCatalog {
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws TableNotExistException, TableNotPartitionedException, CatalogException {
         throw new UnsupportedOperationException();
+    }
+
+    @Override
+    public List<CatalogPartitionSpec> listPartitionsByFilter(ObjectPath tablePath, List<Expression> filters) throws TableNotExistException, TableNotPartitionedException, CatalogException {
+        return null;
     }
 
     @Override

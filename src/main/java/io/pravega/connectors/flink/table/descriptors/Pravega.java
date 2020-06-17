@@ -86,6 +86,9 @@ public class Pravega extends ConnectorDescriptor {
     public static final String CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL = "connector.reader.reader-group.event-read-timeout-interval";
     public static final String CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL = "connector.reader.reader-group.checkpoint-initiate-timeout-interval";
 
+    // Reader Configurations - SCHEMA REGISTRY
+    public static final String CONNECTOR_READER_SCHEMA_REGISTRY_GROUP_ID = "connector.reader.scheam-registry.group-id";
+
     // Reader Configurations - USER
     public static final String CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER = "connector.reader.user.timestamp-assigner";
 

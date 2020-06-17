@@ -122,6 +122,9 @@ dependencies {
         // pravega-shared pulls in curator which isn't needed on the client
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
+    compile group: 'io.pravega.schemaregistry', name: 'pravega-client', version: schemaRegistryVersion
+    compile group: 'io.pravega.schemaregistry', name: 'pravega-serializers', version: schemaRegistryVersion
+
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime

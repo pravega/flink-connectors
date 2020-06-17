@@ -15,12 +15,12 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
     private String pravegaVersion;
 
     public PravegaCatalogDescriptor() {
-        super(CATALOG_TYPE_VALUE_PRAVEGA,1, "public/default");
+        super(CATALOG_TYPE_VALUE_PRAVEGA,1, "default-scope");
     }
 
     public PravegaCatalogDescriptor pravegaVersion(String pravegaVersion) {
         Preconditions.checkArgument(!StringUtils.isNullOrWhitespaceOnly(pravegaVersion));
-        this.pravegaVersion=pravegaVersion;
+        this.pravegaVersion = pravegaVersion;
         return this;
     }
 
@@ -28,7 +28,7 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
     protected Map<String, String> toCatalogProperties() {
         DescriptorProperties props = new DescriptorProperties();
 
-        if(pravegaVersion!=null) {
+        if (pravegaVersion != null) {
             props.putString(CATALOG_PRAVEGA_VERSION, pravegaVersion);
         }
 

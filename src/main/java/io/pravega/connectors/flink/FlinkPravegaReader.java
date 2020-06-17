@@ -10,6 +10,15 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.EventStreamClientFactory;
+import io.pravega.client.stream.Serializer;
+import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import io.pravega.schemaregistry.schemas.AvroSchema;
+import io.pravega.schemaregistry.schemas.JSONSchema;
+import io.pravega.schemaregistry.schemas.ProtobufSchema;
+import io.pravega.schemaregistry.serializers.SerializerConfig;
+import io.pravega.schemaregistry.serializers.SerializerFactory;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
@@ -646,6 +655,38 @@ public class FlinkPravegaReader<T>
          */
         public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the deserialization schema from schema registry.
+         *
+         * @param groupId The group id in schema registry
+         * @param tClass  The class describing the deserialized type.
+         * @return Builder instance.
+         */
+        public Builder<T> withDeserializationSchemafromRegistry(String groupId, SerializationFormat format, Class<T> tClass) {
+
+            SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
+            SerializerConfig serializerConfig = SerializerConfig.builder()
+                    .groupId(groupId)
+                    .registerSchema(false)
+                    .registryConfig(schemaRegistryClientConfig)
+                    .build();
+            Serializer<T> serializer;
+
+            switch (format) {
+                case Json:
+                    serializer = SerializerFactory.jsonSerializer(serializerConfig, JSONSchema.of(tClass));
+                    break;
+                case Avro:
+                    serializer = SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(tClass));
+                    break;
+                default:
+                    throw new NotImplementedException("Not supporting serialization format");
+            }
+
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass, serializer);
             return builder();
         }
 

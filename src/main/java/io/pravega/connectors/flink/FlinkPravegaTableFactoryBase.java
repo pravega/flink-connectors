@@ -104,6 +104,7 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
         properties.add(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
         properties.add(CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER);
+        properties.add(CONNECTOR_READER_SCHEMA_REGISTRY_GROUP_ID);
 
         properties.add(CONNECTOR_WRITER);
         properties.add(CONNECTOR_WRITER_SCOPE);

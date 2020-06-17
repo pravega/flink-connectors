@@ -9,6 +9,8 @@ import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.client.cli.DefaultCLI;
+import org.apache.flink.client.deployment.ClusterClientServiceLoader;
+import org.apache.flink.client.deployment.DefaultClusterClientServiceLoader;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
 import org.apache.flink.table.api.TableEnvironment;
@@ -61,7 +63,7 @@ public class CatalogITest {
         String pravegaCatalog2 = "pravegacatalog2";
 
         ExecutionContext context = createExecutionContext(CATALOGS_ENVIRONMENT_FILE, getStreamingConfs());
-        TableEnvironment tableEnv = context.createEnvironmentInstance().getTableEnvironment();
+        TableEnvironment tableEnv = context.getTableEnvironment();
 
         assertEquals(tableEnv.getCurrentCatalog(), inmemoryCatalog);
         assertEquals(tableEnv.getCurrentDatabase(), "mydatabase");
@@ -70,7 +72,7 @@ public class CatalogITest {
         assertNotNull(catalog);
         assertTrue(catalog instanceof PravegaCatalog);
         tableEnv.useCatalog(pravegaCatalog1);
-        assertEquals(tableEnv.getCurrentDatabase(), "public/default");
+        assertEquals(tableEnv.getCurrentDatabase(), "default-scope");
 
         catalog = tableEnv.getCatalog(pravegaCatalog2).orElse(null);
         assertNotNull(catalog);
@@ -79,20 +81,21 @@ public class CatalogITest {
         assertEquals(tableEnv.getCurrentDatabase(), "tn/ns");
     }
 
-    private <T> ExecutionContext<T> createExecutionContext(String file, Map<String, String> replaceVars) throws Exception {
+    private ExecutionContext createExecutionContext(String file, Map<String, String> replaceVars) throws Exception {
         final Environment env = EnvironmentFileUtil.parseModified(
                 file,
                 replaceVars
         );
         final Configuration flinkConfig = new Configuration();
-        return new ExecutionContext<>(
+        return ExecutionContext.builder(
                 env,
                 new SessionContext("test-session", new Environment()),
                 Collections.emptyList(),
                 flinkConfig,
+                new DefaultClusterClientServiceLoader(),
                 new Options(),
                 Collections.singletonList(new DefaultCLI(flinkConfig))
-        );
+        ).build();
     }
 
     public String getControllerUri() {

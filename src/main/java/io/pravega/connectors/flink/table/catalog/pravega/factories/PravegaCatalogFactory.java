@@ -18,10 +18,11 @@ public class PravegaCatalogFactory implements CatalogFactory {
     @Override
     public Catalog createCatalog(String name, Map<String, String> properties) {
         DescriptorProperties dp = getValidateProperties(properties);
-        String defaultDB = dp.getOptionalString(CATALOG_DEFAULT_DATABASE).orElse("public/default");
+        String defaultDB = dp.getOptionalString(CATALOG_DEFAULT_DATABASE).orElse("default-scope");
         String controllerUri = dp.getString(CATALOG_CONTROLLER_URI);
+        String schemaRegistryUri = dp.getString(CATALOG_SCHEMA_REGISTRY_URI);
 
-        return new PravegaCatalog(controllerUri, name, dp.asMap(), defaultDB);
+        return new PravegaCatalog(controllerUri, schemaRegistryUri, name, dp.asMap(), defaultDB);
     }
 
     @Override
@@ -36,6 +37,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
     public List<String> supportedProperties() {
         List props = new ArrayList<String>();
         props.add(CATALOG_CONTROLLER_URI);
+        props.add(CATALOG_SCHEMA_REGISTRY_URI);
         props.add(CATALOG_DEFAULT_DATABASE);
         props.add(CATALOG_PRAVEGA_VERSION);
         return props;
