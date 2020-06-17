@@ -69,13 +69,13 @@ repositories {
         jcenter()
         mavenCentral()
         maven {
+            url "https://oss.jfrog.org/jfrog-dependencies"
+        }
+        maven {
             url "https://repository.apache.org/snapshots"
         }
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
-        }
-        maven {
-            url "https://oss.jfrog.org/jfrog-dependencies"
         }
     }
 }
@@ -143,6 +143,7 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
+    testCompile group: 'org.apache.flink', name: 'flink-sql-client_'+flinkScalaVersion, version: flinkVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion

@@ -1,0 +1,11 @@
+catalogs:
+  - name: pravegacatalog1
+    type: pravega
+    controller-uri: "$VAR_CONTROLLERURI"
+  - name: pravegacatalog2
+    type: pravega
+    default-database: tn/ns
+    controller-uri: "$VAR_CONTROLLERURI"
+  - name: inmemorycatalog
+    type: generic_in_memory
+    default-database: mydatabase
