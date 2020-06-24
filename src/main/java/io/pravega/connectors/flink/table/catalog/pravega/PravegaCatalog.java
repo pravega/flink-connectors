@@ -24,12 +24,19 @@ import org.apache.flink.table.factories.TableFactoryService;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
-import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_READER_STREAM_INFO;
+import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_READER_STREAM_INFO_STREAM;
+import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
+import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
 
 @Slf4j
 public class PravegaCatalog extends AbstractCatalog {
@@ -47,8 +54,19 @@ public class PravegaCatalog extends AbstractCatalog {
         this.schemaRegistryUri = URI.create(schemaRegistryUri);
         this.defaultScope = defaultDatabase;
         this.properties = new HashMap<>();
+        properties.put(CONNECTOR_TYPE, "pravega");
+        properties.put(CONNECTOR_VERSION, "1");
         for (Map.Entry<String, String> kv : props.entrySet()) {
-            properties.put(CONNECTOR + "." + kv.getKey(), kv.getValue());
+            switch (kv.getKey()) {
+                case "controller-uri":
+                    properties.put(CONNECTOR_CONNECTION_CONFIG_CONTROLLER_URI, kv.getValue());
+                    break;
+                case "default-database":
+                    properties.put(CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE, kv.getValue());
+                    break;
+                default:
+                    break;
+            }
         }
 
         log.info("Created Pravega Catalog {}", catalogName);
@@ -109,7 +127,7 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public boolean databaseExists(String databaseName) throws CatalogException {
-        throw new UnsupportedOperationException();
+        return true;
     }
 
     @Override
@@ -152,7 +170,16 @@ public class PravegaCatalog extends AbstractCatalog {
         List<String> result = new ArrayList<>();
         try {
             Iterator<Stream> iterator = streamManager.listStreams(databaseName);
-            iterator.forEachRemaining( stream -> result.add(stream.getStreamName()) );
+            Set<String> groupSet = new HashSet<>();
+            schemaRegistryClient.listGroups().forEachRemaining( kv -> {
+                groupSet.add(kv.getKey());
+            });
+            iterator.forEachRemaining( stream -> {
+                String table = stream.getStreamName();
+                if (groupSet.contains(table)) {
+                    result.add(table);
+                }
+            } );
         } catch (Exception e) {
             throw new CatalogException(String.format("Failed to list tables for database %s", databaseName), e);
         }
@@ -171,12 +198,27 @@ public class PravegaCatalog extends AbstractCatalog {
         SchemaInfo schemaInfo = schemaRegistryClient.getLatestSchemaVersion(groupId, null).getSchemaInfo();
         TableSchema tableSchema = PravegaSchemaUtils.schemaInfoToTableSchema(schemaInfo);
 
+        Map<String, String> properties = this.properties;
+        properties.put(CONNECTOR_READER_STREAM_INFO + ".0." + CONNECTOR_READER_STREAM_INFO_STREAM, groupId);
+        properties.put("format.type", schemaInfo.getSerializationFormat().name().toLowerCase());
+        properties.put("format.fail-on-missing-field", "false");
+        properties.put("update-mode", "append");
+
         return new CatalogTableImpl(tableSchema, properties, "Pravega Catalog Table");
     }
 
     @Override
     public boolean tableExists(ObjectPath tablePath) throws CatalogException {
-        throw new UnsupportedOperationException();
+        String scope = tablePath.getDatabaseName();
+        String stream = tablePath.getObjectName();
+
+        Iterator<Stream> streamList = streamManager.listStreams(scope);
+        while (streamList.hasNext()) {
+            if (streamList.next().getStreamName().equals(stream)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -191,7 +233,6 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public void createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists) throws TableAlreadyExistException, DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
     }
 
     @Override
@@ -271,12 +312,12 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public CatalogTableStatistics getTableStatistics(ObjectPath tablePath) throws TableNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return CatalogTableStatistics.UNKNOWN;
     }
 
     @Override
     public CatalogColumnStatistics getTableColumnStatistics(ObjectPath tablePath) throws TableNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return CatalogColumnStatistics.UNKNOWN;
     }
 
     @Override
