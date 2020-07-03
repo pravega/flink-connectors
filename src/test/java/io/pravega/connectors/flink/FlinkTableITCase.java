@@ -273,8 +273,7 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tableSinkPath),
                 connectorCatalogTableSink, false);
 
-        table.insertInto("PravegaSink");
-        env.execute();
+        table.executeInsert("PravegaSink");
 
         String tableSourcePath = tableEnv.getCurrentDatabase() + "." + "samples";
 
@@ -336,8 +335,7 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePath),
                 connectorCatalogTable, false);
 
-        table.insertInto("PravegaSink");
-        env.execute();
+        table.executeInsert("PravegaSink");
     }
 
     @Test
@@ -399,8 +397,7 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePath),
                 connectorCatalogTable, false);
 
-        table.insertInto(tablePath);
-        env.execute();
+        table.executeInsert(tablePath);
     }
 
     @Test
@@ -440,8 +437,7 @@ public class FlinkTableITCase {
         tableEnv.getCatalog(tableEnv.getCurrentCatalog()).get().createTable(
                 ObjectPath.fromString(tableSinkPath),
                 connectorCatalogSinkTable, false);
-        table.insertInto("PravegaSink");
-        env.execute();
+        table.executeInsert("PravegaSink");
     }
 
     @Test
@@ -498,8 +494,7 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePath),
                 connectorCatalogTable, false);
 
-        table.insertInto("PravegaSink");
-        env.execute();
+        table.executeInsert("PravegaSink");
     }
 
     private static class TestSink extends RichSinkFunction<SampleRecord> {
