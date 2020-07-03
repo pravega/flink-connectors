@@ -85,6 +85,12 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
     @Override
     public void initializeState(StateInitializationContext context) throws Exception {
         super.initializeState(context);
+    }
+
+    @Override
+    public void open() throws Exception {
+        super.open();
+        internalTimerService = getInternalTimerService("ordering-timers", VoidNamespaceSerializer.INSTANCE, this);
 
         // create a map-based queue to buffer input elements
         if (elementQueueState == null) {
@@ -96,12 +102,6 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
                     )
             );
         }
-    }
-
-    @Override
-    public void open() throws Exception {
-        super.open();
-        internalTimerService = getInternalTimerService("ordering-timers", VoidNamespaceSerializer.INSTANCE, this);
     }
 
     @Override
