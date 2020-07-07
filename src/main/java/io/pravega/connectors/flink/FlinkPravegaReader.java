@@ -9,15 +9,21 @@
  */
 package io.pravega.connectors.flink;
 
+import com.google.protobuf.DynamicMessage;
+import com.google.protobuf.InvalidProtocolBufferException;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.Serializer;
+import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.schemas.AvroSchema;
 import io.pravega.schemaregistry.schemas.JSONSchema;
 import io.pravega.schemaregistry.schemas.ProtobufSchema;
 import io.pravega.schemaregistry.serializers.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.IndexedRecord;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
@@ -56,6 +62,7 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
+import java.util.IllegalFormatException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -659,28 +666,48 @@ public class FlinkPravegaReader<T>
         }
 
         /**
-         * Sets the deserialization schema from schema registry.
+         * Sets the deserialization schema from schema registry. It supports Json, Avro and Protobuf format.
          *
          * @param groupId The group id in schema registry
          * @param tClass  The class describing the deserialized type.
          * @return Builder instance.
          */
-        public Builder<T> withDeserializationSchemafromRegistry(String groupId, SerializationFormat format, Class<T> tClass) {
+        @SuppressWarnings("unchecked")
+        public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
 
             SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
+
+            // TODO: add try with resource when autoclosable is ready
+            SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.createRegistryClient(schemaRegistryClientConfig);
+
+            SerializationFormat format = schemaRegistryClient.getLatestSchemaVersion(groupId, null)
+                    .getSchemaInfo().getSerializationFormat();
+
             SerializerConfig serializerConfig = SerializerConfig.builder()
                     .groupId(groupId)
                     .registerSchema(false)
                     .registryConfig(schemaRegistryClientConfig)
                     .build();
-            Serializer<T> serializer;
+            Serializer<T> serializer = null;
 
             switch (format) {
                 case Json:
-                    serializer = SerializerFactory.jsonSerializer(serializerConfig, JSONSchema.of(tClass));
+                    serializer = SerializerFactory.jsonDeserializer(serializerConfig, JSONSchema.of(tClass));
                     break;
                 case Avro:
-                    serializer = SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(tClass));
+                    Preconditions.checkArgument(IndexedRecord.class.isAssignableFrom(tClass));
+                    if (GenericRecord.class.isAssignableFrom(tClass)) {
+                        serializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(serializerConfig, null);
+                    } else {
+                        serializer = SerializerFactory.avroDeserializer(serializerConfig, AvroSchema.of(tClass));
+                    }
+                    break;
+                case Protobuf:
+                    if (DynamicMessage.class.isAssignableFrom(tClass)) {
+                        serializer = (Serializer<T>) SerializerFactory.protobufGenericDeserializer(serializerConfig, null);
+                    } else {
+                        throw new UnsupportedOperationException("Only support DynamicMessage in Protobuf");
+                    }
                     break;
                 default:
                     throw new NotImplementedException("Not supporting serialization format");

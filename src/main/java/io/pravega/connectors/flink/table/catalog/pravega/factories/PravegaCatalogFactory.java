@@ -15,15 +15,6 @@ import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.Prav
 import static org.apache.flink.table.descriptors.CatalogDescriptorValidator.CATALOG_DEFAULT_DATABASE;
 
 public class PravegaCatalogFactory implements CatalogFactory {
-    @Override
-    public Catalog createCatalog(String name, Map<String, String> properties) {
-        DescriptorProperties dp = getValidateProperties(properties);
-        String defaultDB = dp.getOptionalString(CATALOG_DEFAULT_DATABASE).orElse("default-scope");
-        String controllerUri = dp.getString(CATALOG_CONTROLLER_URI);
-        String schemaRegistryUri = dp.getString(CATALOG_SCHEMA_REGISTRY_URI);
-
-        return new PravegaCatalog(controllerUri, schemaRegistryUri, name, dp.asMap(), defaultDB);
-    }
 
     @Override
     public Map<String, String> requiredContext() {
@@ -35,17 +26,31 @@ public class PravegaCatalogFactory implements CatalogFactory {
 
     @Override
     public List<String> supportedProperties() {
-        List props = new ArrayList<String>();
+        List<String> props = new ArrayList<>();
+
+        props.add(CATALOG_DEFAULT_DATABASE);
+
         props.add(CATALOG_CONTROLLER_URI);
         props.add(CATALOG_SCHEMA_REGISTRY_URI);
-        props.add(CATALOG_DEFAULT_DATABASE);
-        props.add(CATALOG_PRAVEGA_VERSION);
+
         return props;
     }
 
+    @Override
+    public Catalog createCatalog(String name, Map<String, String> properties) {
+        final DescriptorProperties dp = getValidateProperties(properties);
+
+        return new PravegaCatalog(
+                name,
+                dp.getString(CATALOG_DEFAULT_DATABASE),
+                dp.getString(CATALOG_CONTROLLER_URI),
+                dp.getString(CATALOG_SCHEMA_REGISTRY_URI));
+    }
+
     private DescriptorProperties getValidateProperties(Map<String, String> properties) {
-        DescriptorProperties dp = new DescriptorProperties();
+        final DescriptorProperties dp = new DescriptorProperties();
         dp.putProperties(properties);
+
         new PravegaCatalogValidator().validate(dp);
         return dp;
     }

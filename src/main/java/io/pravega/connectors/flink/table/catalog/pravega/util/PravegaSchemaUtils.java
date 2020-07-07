@@ -4,9 +4,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import io.pravega.schemaregistry.schemas.AvroSchema;
 import io.pravega.schemaregistry.schemas.JSONSchema;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonRowSchemaConverter;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.types.DataType;
@@ -18,22 +21,40 @@ import org.apache.flink.util.Preconditions;
 
 @Internal
 public class PravegaSchemaUtils {
+
+    private PravegaSchemaUtils() {
+        // private
+    }
+
     public static TableSchema schemaInfoToTableSchema(SchemaInfo schemaInfo) {
 
-        // TODO: we support only json now
-        Preconditions.checkArgument(schemaInfo.getSerializationFormat() == SerializationFormat.Json);
-
-        ObjectMapper objectMapper = new ObjectMapper();
-        JSONSchema jsonSchema = JSONSchema.from(schemaInfo);
+        SerializationFormat format = schemaInfo.getSerializationFormat();
         String schemaString;
+        TypeInformation<Row> typeInformation = null;
 
-        try {
-            schemaString = objectMapper.writeValueAsString(jsonSchema.getSchema());
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Failed to write message schema.", e);
+        switch (format) {
+            case Json:
+                ObjectMapper objectMapper = new ObjectMapper();
+                JSONSchema jsonSchema = JSONSchema.from(schemaInfo);
+
+                try {
+                    schemaString = objectMapper.writeValueAsString(jsonSchema.getSchema());
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException("Failed to write message schema.", e);
+                }
+
+                typeInformation = JsonRowSchemaConverter.convert(schemaString);
+                break;
+            case Avro:
+                AvroSchema avroSchema = AvroSchema.from(schemaInfo);
+
+                schemaString = avroSchema.getSchema().toString();
+                typeInformation = AvroSchemaConverter.convertToTypeInfo(schemaString);
+                break;
+
+            default:
+                throw new NotImplementedException("Not supporting serialization format");
         }
-
-        TypeInformation<Row> typeInformation = JsonRowSchemaConverter.convert(schemaString);
 
         return TableSchema.fromTypeInfo(typeInformation);
     }
