@@ -20,6 +20,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.testutils.CheckedThread;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.client.JobCancellationException;
@@ -61,15 +62,11 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     // the flink mini cluster
-    private static final MiniCluster MINI_CLUSTER = new MiniCluster(
-            new MiniClusterConfiguration.Builder()
-                    .setNumTaskManagers(1)
-                    .setNumSlotsPerTaskManager(PARALLELISM)
-                    .build());
+    private static MiniCluster MINI_CLUSTER;
 
     //Ensure each test completes within 120 seconds.
     @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
 
     @Rule
     public final TemporaryFolder tmpFolder = new TemporaryFolder();
@@ -77,6 +74,14 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     @BeforeClass
     public static void setup() throws Exception {
         SETUP_UTILS.startAllServices();
+        Configuration configuration = new Configuration();
+        configuration.setInteger("rest.port", 8082);
+        MINI_CLUSTER = new MiniCluster(
+                new MiniClusterConfiguration.Builder()
+                        .setNumTaskManagers(1)
+                        .setNumSlotsPerTaskManager(PARALLELISM)
+                        .setConfiguration(configuration)
+                        .build());
         MINI_CLUSTER.start();
     }
 
