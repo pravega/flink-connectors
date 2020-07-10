@@ -14,11 +14,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.control.impl.Controller;
-import io.pravega.client.control.impl.ControllerImpl;
-import io.pravega.client.control.impl.ControllerImplConfig;
 import io.pravega.client.stream.impl.DefaultCredentials;
-import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
@@ -42,7 +38,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.UUID;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
 
@@ -53,7 +48,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 @NotThreadSafe
 public final class SetupUtils {
 
-    private static final ScheduledExecutorService DEFAULT_SCHEDULED_EXECUTOR_SERVICE = ExecutorServiceHelpers.newScheduledThreadPool(3, "SetupUtils");
     private static final String PRAVEGA_USERNAME = "admin";
     private static final String PRAVEGA_PASSWORD = "1111_aaaa";
     private static final String PASSWD_FILE = "passwd";
@@ -179,24 +173,6 @@ public final class SetupUtils {
                 .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                 .withHostnameValidation(enableHostNameValidation)
                 .withTrustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE));
-    }
-
-    /**
-     * Create a controller facade for this cluster.
-     * @return The controller facade, which must be closed by the caller.
-     */
-    public Controller newController() {
-        ControllerImplConfig config = ControllerImplConfig.builder()
-                .clientConfig(getClientConfig())
-                .build();
-        return new ControllerImpl(config, DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
-    }
-
-    /**
-     * Create a {@link EventStreamClientFactory} for this cluster and scope.
-     */
-    public EventStreamClientFactory newClientFactory() {
-        return EventStreamClientFactory.withScope(this.scope, getClientConfig());
     }
 
     /**
