@@ -523,7 +523,14 @@ public class FlinkPravegaReaderTest {
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
+        TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName("flink" + RandomStringUtils.randomAlphanumeric(20).toLowerCase())
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
+        String uid3 = builder3.generateUid();
+
         assertNotEquals(uid1, uid2);
+        assertEquals(uid2, uid3);
     }
 
     // endregion
