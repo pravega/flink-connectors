@@ -32,6 +32,7 @@ import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -489,22 +490,32 @@ public class FlinkPravegaReaderTest {
     public void testGenerateUid() {
         TestableStreamingReaderBuilder builder1 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
         String uid1 = builder1.generateUid();
 
         TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2)
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
         TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM_2);
         String uid3 = builder3.generateUid();
 
+        TestableStreamingReaderBuilder builder4 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName("flink" + RandomStringUtils.randomAlphanumeric(20).toLowerCase())
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
+        String uid4 = builder4.generateUid();
+
         assertEquals(uid1, uid2);
         assertNotEquals(uid1, uid3);
+        assertNotEquals(uid1, uid4);
     }
 
     // endregion
