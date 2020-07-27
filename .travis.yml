@@ -42,10 +42,12 @@ jobs:
   include:
     - stage: build
       script: ./gradlew clean build
+    - script: ./gradlew clean build -PflinkScalaVersion=2.11
       after_success: bash <(curl -s https://codecov.io/bash) -t 9c42ff48-d98f-4444-af05-cf734aa1dbd0
     
     - stage: snapshot
       script: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
+    - script: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY -PflinkScalaVersion=2.11
 
 notifications:
   slack:
