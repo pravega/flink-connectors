@@ -317,6 +317,10 @@ public class FlinkPravegaReader<T>
                 }
             }
         }
+        catch (RuntimeException e) {
+            log.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
+            throw e;
+        }
     }
 
     @Override
