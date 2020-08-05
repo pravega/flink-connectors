@@ -14,9 +14,6 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.impl.Controller;
-import io.pravega.client.stream.impl.ControllerImpl;
-import io.pravega.client.stream.impl.ControllerImplConfig;
 import io.pravega.client.stream.impl.DefaultCredentials;
 import io.pravega.common.concurrent.ExecutorServiceHelpers;
 import io.pravega.connectors.flink.PravegaConfig;
@@ -179,24 +176,6 @@ public final class SetupUtils {
                 .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                 .withHostnameValidation(enableHostNameValidation)
                 .withTrustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE));
-    }
-
-    /**
-     * Create a controller facade for this cluster.
-     * @return The controller facade, which must be closed by the caller.
-     */
-    public Controller newController() {
-        ControllerImplConfig config = ControllerImplConfig.builder()
-                .clientConfig(getClientConfig())
-                .build();
-        return new ControllerImpl(config, DEFAULT_SCHEDULED_EXECUTOR_SERVICE);
-    }
-
-    /**
-     * Create a {@link EventStreamClientFactory} for this cluster and scope.
-     */
-    public EventStreamClientFactory newClientFactory() {
-        return EventStreamClientFactory.withScope(this.scope, getClientConfig());
     }
 
     /**
