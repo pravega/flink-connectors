@@ -10,27 +10,26 @@
 
 package io.pravega.connectors.flink;
 
-import org.apache.flink.table.factories.StreamTableSourceFactory;
-import org.apache.flink.table.sources.StreamTableSource;
+import org.apache.flink.table.factories.BatchTableSinkFactory;
+import org.apache.flink.table.factories.BatchTableSourceFactory;
+import org.apache.flink.table.sinks.BatchTableSink;
+import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.types.Row;
 
 import java.util.List;
 import java.util.Map;
 
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
-import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE;
-import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
 /**
- * A stream table source factory implementation of {@link StreamTableSourceFactory} to access Pravega streams.
+ * A batch table source factory implementation of {@link BatchTableSourceFactory} to access Pravega streams.
  */
-public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableFactoryBase implements StreamTableSourceFactory<Row> {
+public class FlinkPravegaBatchTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
+        BatchTableSourceFactory<Row>, BatchTableSinkFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {
-        Map<String, String> context = getRequiredContext();
-        context.put(UPDATE_MODE(), UPDATE_MODE_VALUE_APPEND());
-        return context;
+        return getRequiredContext();
     }
 
     @Override
@@ -39,8 +38,13 @@ public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableFacto
     }
 
     @Override
-    public StreamTableSource<Row> createStreamTableSource(Map<String, String> properties) {
+    public BatchTableSource<Row> createBatchTableSource(Map<String, String> properties) {
         return createFlinkPravegaTableSource(properties);
+    }
+
+    @Override
+    public BatchTableSink<Row> createBatchTableSink(Map<String, String> properties) {
+        return createFlinkPravegaTableSink(properties);
     }
 
     @Override
@@ -50,7 +54,7 @@ public class FlinkPravegaStreamTableSourceFactory extends FlinkPravegaTableFacto
 
     @Override
     protected boolean isStreamEnvironment() {
-        return true;
+        return false;
     }
 
 }

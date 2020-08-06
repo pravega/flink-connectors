@@ -15,6 +15,7 @@ import org.apache.flink.table.api.NoMatchingTableFactoryException;
 import org.apache.flink.table.api.Types;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.Json;
+import org.apache.flink.table.descriptors.Rowtime;
 import org.apache.flink.table.descriptors.Schema;
 import org.apache.flink.table.factories.StreamTableSinkFactory;
 import org.apache.flink.table.factories.StreamTableSourceFactory;
@@ -22,6 +23,7 @@ import org.apache.flink.table.factories.TableFactoryService;
 import org.apache.flink.table.sinks.TableSink;
 import org.apache.flink.table.sources.TableSource;
 import org.apache.flink.table.sources.TableSourceUtil;
+import org.apache.flink.table.sources.wmstrategies.BoundedOutOfOrderTimestamps;
 import org.junit.Test;
 
 import java.net.URI;
@@ -50,6 +52,58 @@ public class FlinkPravegaTableFactoryTest {
             .withDefaultScope(SCOPE);
 
     /**
+     * Processing time attribute should be of type TIMESTAMP.
+     */
+    @Test (expected = ValidationException.class)
+    public void testWrongProcTimeAttributeType() {
+        final Schema schema = new Schema()
+                .field("name", Types.STRING())
+                .field("age", Types.INT()).proctime();
+
+        Pravega pravega = new Pravega();
+        Stream stream = Stream.of(SCOPE, STREAM);
+        pravega.tableSourceReaderBuilder()
+                .forStream(stream)
+                .withPravegaConfig(PRAVEGA_CONFIG);
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(JSON)
+                .withSchema(schema)
+                .inAppendMode();
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
+        tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
+        fail("Schema validation failed");
+    }
+
+    /**
+     * Rowtime attribute should be of type TIMESTAMP.
+     */
+    @Test (expected = ValidationException.class)
+    public void testWrongRowTimeAttributeType() {
+        final Schema schema = new Schema()
+                .field("name", Types.STRING())
+                .field("age", Types.INT()).rowtime(new Rowtime()
+                                                                .timestampsFromField("age")
+                                                                .watermarksFromStrategy(
+                                                                        new BoundedOutOfOrderTimestamps(30000L)));
+        Pravega pravega = new Pravega();
+        Stream stream = Stream.of(SCOPE, STREAM);
+        pravega.tableSourceReaderBuilder()
+                .forStream(stream)
+                .withPravegaConfig(PRAVEGA_CONFIG);
+        final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
+                .withFormat(JSON)
+                .withSchema(schema)
+                .inAppendMode();
+        final Map<String, String> propertiesMap = testDesc.toProperties();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
+        tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
+        fail("Schema validation failed");
+    }
+
+
+    /**
+>>>>>>> 1832510... [issue-384] Merge the table sink and source factory (#385)
      * Scope should be supplied either through {@link PravegaConfig} or {@link Pravega.TableSourceReaderBuilder}.
      */
     @Test (expected = IllegalStateException.class)
@@ -68,7 +122,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("scope validation failed");
     }
@@ -93,7 +147,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
     }
 
