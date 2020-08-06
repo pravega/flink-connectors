@@ -7,10 +7,13 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
+
 package io.pravega.connectors.flink;
 
 import org.apache.flink.table.factories.BatchTableSinkFactory;
+import org.apache.flink.table.factories.BatchTableSourceFactory;
 import org.apache.flink.table.sinks.BatchTableSink;
+import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.types.Row;
 
 import java.util.List;
@@ -19,14 +22,10 @@ import java.util.Map;
 import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 
 /**
- * A batch table sink factory implementation of {@link BatchTableSinkFactory} to access Pravega streams.
+ * A batch table source factory implementation of {@link BatchTableSourceFactory} to access Pravega streams.
  */
-public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryBase implements BatchTableSinkFactory<Row> {
-
-    @Override
-    public BatchTableSink<Row> createBatchTableSink(Map<String, String> properties) {
-        return createFlinkPravegaTableSink(properties);
-    }
+public class FlinkPravegaBatchTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
+        BatchTableSourceFactory<Row>, BatchTableSinkFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {
@@ -39,6 +38,16 @@ public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryB
     }
 
     @Override
+    public BatchTableSource<Row> createBatchTableSource(Map<String, String> properties) {
+        return createFlinkPravegaTableSource(properties);
+    }
+
+    @Override
+    public BatchTableSink<Row> createBatchTableSink(Map<String, String> properties) {
+        return createFlinkPravegaTableSink(properties);
+    }
+
+    @Override
     protected String getVersion() {
         return String.valueOf(CONNECTOR_VERSION_VALUE);
     }
@@ -47,4 +56,5 @@ public class FlinkPravegaBatchTableSinkFactory extends FlinkPravegaTableFactoryB
     protected boolean isStreamEnvironment() {
         return false;
     }
+
 }
