@@ -10,6 +10,7 @@ import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.*;
@@ -43,6 +44,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
 public class PravegaCatalog extends AbstractCatalog {
     private StreamManager streamManager;
     private SchemaRegistryClient schemaRegistryClient;
+    private SchemaRegistryClientConfig config;
     private final URI controllerUri;
     private final URI schemaRegistryUri;
     private Map<String, String> properties;
@@ -53,6 +55,8 @@ public class PravegaCatalog extends AbstractCatalog {
 
         this.controllerUri = URI.create(controllerUri);
         this.schemaRegistryUri = URI.create(schemaRegistryUri);
+        this.config = SchemaRegistryClientConfig.builder()
+                .schemaRegistryUri(this.schemaRegistryUri).build();
 
         this.properties = new HashMap<>();
         properties.put(CONNECTOR_TYPE, CONNECTOR_TYPE_VALUE_PRAVEGA);
@@ -83,8 +87,8 @@ public class PravegaCatalog extends AbstractCatalog {
         if (schemaRegistryClient == null) {
             try {
                 SchemaRegistryClientConfig config = SchemaRegistryClientConfig.builder()
-                        .schemaRegistryUri(schemaRegistryUri).namespace(getDefaultDatabase()).build();
-                schemaRegistryClient = SchemaRegistryClientFactory.createRegistryClient(config);
+                        .schemaRegistryUri(schemaRegistryUri).build();
+                schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(getDefaultDatabase(), config);
             } catch (Exception e) {
                 throw new CatalogException("Failed to connect Pravega Schema Registry");
             }
@@ -117,17 +121,15 @@ public class PravegaCatalog extends AbstractCatalog {
         return Optional.of(tableFactory);
     }
 
+    @SneakyThrows
     @Override
     public CatalogDatabase getDatabase(String databaseName) throws DatabaseNotExistException, CatalogException {
         if (!databaseExists(databaseName)) {
             throw new DatabaseNotExistException(getName(), databaseName);
         }
 
-        // Switch the schema registry client to the new namespace
-        // schemaRegistryClient.close();
-        SchemaRegistryClientConfig config = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryUri).namespace(databaseName).build();
-        schemaRegistryClient = SchemaRegistryClientFactory.createRegistryClient(config);
+        schemaRegistryClient.close();
+        schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(getDefaultDatabase(), config);
 
         return new CatalogDatabaseImpl(Collections.emptyMap(), null);
     }

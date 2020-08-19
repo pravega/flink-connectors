@@ -77,6 +77,9 @@ repositories {
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
         }
+        maven {
+            url 'https://repository.mulesoft.org/nexus/content/repositories/public'
+        }
     }
 }
 
@@ -123,7 +126,7 @@ dependencies {
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
 
-    compileOnly (group: 'io.pravega.schemaregistry', name: 'pravega-serializers', version: schemaRegistryVersion) {
+    compileOnly (group: 'io.pravega.schemaregistry', name: 'serializers', version: schemaRegistryVersion) {
         exclude group: 'io.pravega', module: 'pravega-client'
         exclude group: 'io.pravega', module: 'pravega-common'
     }

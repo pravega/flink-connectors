@@ -81,11 +81,12 @@ public class PravegaRegistryRowFormatFactory extends TableFormatFactoryBase<Row>
         String group = descriptorProperties.getString(PravegaRegistryValidator.FORMAT_SCHEMA_REGISTRY_GROUP);
 
         SchemaRegistryClientConfig config = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(URI.create(schemaRegistryUri)).namespace(namespace).build();
+                .schemaRegistryUri(URI.create(schemaRegistryUri)).build();
 
         SerializerConfig serializerConfig = SerializerConfig.builder()
                 .groupId(group)
                 .registryConfig(config)
+                .namespace(namespace)
                 .build();
 
         return serializerConfig;
