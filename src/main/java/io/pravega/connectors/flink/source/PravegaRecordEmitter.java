@@ -21,6 +21,5 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<T>, T, P
     public void emitRecord(EventRead<T> record, SourceOutput<T> output, PravegaSplit state) throws Exception {
         // The value is the first element.
         output.collect(record.getEvent());
-        state.setPosition(record.getPosition());
     }
 }

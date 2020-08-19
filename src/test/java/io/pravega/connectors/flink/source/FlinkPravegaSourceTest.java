@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -120,7 +120,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
 
             env.setParallelism(sourceParallelism);
             env.enableCheckpointing(100);
-            env.setRestartStrategy(RestartStrategies.fixedDelayRestart(3, 0L));
+            env.setRestartStrategy(RestartStrategies.fixedDelayRestart(6, 0L));
 
             // we currently need this to work around the case where tasks are
             // started too late, a checkpoint was already triggered, and some tasks
@@ -132,6 +132,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
                     .forStream(streamName)
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withReaderGroupName("flink-reader")
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 

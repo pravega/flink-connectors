@@ -71,6 +71,7 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
         do {
             try {
                 eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                log.info("read event: {} on reader {}", eventRead.getEvent(), split.getSubtaskId());
             } catch (TruncatedDataException e) {
                 continue;
             }
@@ -97,8 +98,8 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
             Preconditions.checkNotNull(readerGroup);
             if (readerGroup.getOnlineReaders().contains(split.splitId())) {
                 ReaderGroupManager.withScope(scope, clientConfig).getReaderGroup(readerGroupName)
-                        .readerOffline(split.splitId(), split.getPosition());
-                log.info("Close reader for subtask {} at position: {}", split.getSubtaskId(), split.getPosition());
+                        .readerOffline(split.splitId(), null);
+                log.info("Close reader for subtask {} at position", split.getSubtaskId());
             }
         }
 
@@ -115,5 +116,6 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
 
     @Override
     public void wakeUp() {
+        log.info("Call wakeup");
     }
 }

@@ -17,7 +17,8 @@ import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.SingleThreadMultiplexSourceReaderBase;
+import org.apache.flink.connector.base.source.reader.SourceReaderBase;
+import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureNotifier;
@@ -33,7 +34,7 @@ import java.util.function.Supplier;
 
 @Slf4j
 public class PravegaSourceReader<T>
-        extends SingleThreadMultiplexSourceReaderBase<EventRead<T>, T, PravegaSplit, PravegaSplit> {
+        extends SourceReaderBase<EventRead<T>, T, PravegaSplit, PravegaSplit> {
 
     public PravegaSourceReader(
             FutureNotifier futureNotifier,
@@ -45,7 +46,7 @@ public class PravegaSourceReader<T>
         super(
                 futureNotifier,
                 elementsQueue,
-                splitFetcherSupplier,
+                new SingleThreadFetcherManager<>(futureNotifier, elementsQueue, splitFetcherSupplier),
                 recordEmitter,
                 config,
                 context);

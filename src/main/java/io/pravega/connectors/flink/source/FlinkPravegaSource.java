@@ -14,6 +14,7 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
+import io.pravega.connectors.flink.CheckpointSerializer;
 import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
@@ -42,7 +43,7 @@ import java.util.List;
 @Slf4j
 @PublicEvolving
 public class FlinkPravegaSource<T>
-        implements Source<T, PravegaSplit, List<PravegaSplit>>, ResultTypeQueryable<T> {
+        implements Source<T, PravegaSplit, Checkpoint>, ResultTypeQueryable<T> {
 
     final ClientConfig clientConfig;
     // The Pravega reader group config.
@@ -108,20 +109,29 @@ public class FlinkPravegaSource<T>
     }
 
     @Override
-    public SplitEnumerator<PravegaSplit, List<PravegaSplit>> createEnumerator(
+    public SplitEnumerator<PravegaSplit, Checkpoint> createEnumerator(
             SplitEnumeratorContext<PravegaSplit> enumContext) {
         return new PravegaSplitEnumerator(
                 enumContext,
                 this.scope,
                 this.readerGroupName,
                 this.clientConfig,
-                this.readerGroupConfig);
+                this.readerGroupConfig,
+                null);
     }
 
     @Override
-    public SplitEnumerator<PravegaSplit, List<PravegaSplit>> restoreEnumerator(
-            SplitEnumeratorContext<PravegaSplit> enumContext, List<PravegaSplit> checkpoint) throws IOException {
-        return createEnumerator(enumContext);
+    public SplitEnumerator<PravegaSplit, Checkpoint> restoreEnumerator(
+            SplitEnumeratorContext<PravegaSplit> enumContext, Checkpoint checkpoint) throws IOException {
+        log.info("Restore Enumerator called");
+        return new PravegaSplitEnumerator(
+                enumContext,
+                this.scope,
+                this.readerGroupName,
+                this.clientConfig,
+                this.readerGroupConfig,
+                checkpoint);
+
     }
 
     @Override
@@ -130,8 +140,8 @@ public class FlinkPravegaSource<T>
     }
 
     @Override
-    public SimpleVersionedSerializer<List<PravegaSplit>> getEnumeratorCheckpointSerializer() {
-        return new PravegaSplitListSerializer();
+    public SimpleVersionedSerializer<Checkpoint> getEnumeratorCheckpointSerializer() {
+        return new CheckpointSerializer();
     }
 
     @Override

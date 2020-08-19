@@ -20,13 +20,11 @@ public class PravegaSplit implements SourceSplit, Serializable {
     private String readerID;
     private int subtaskId;
     private String readerGroupName;
-    private Position position;
 
     public PravegaSplit(String readerGroupName, int subtaskId) {
         this.readerGroupName = readerGroupName;
         this.subtaskId = subtaskId;
         this.readerID = readerGroupName + "-" + subtaskId;
-        this.position = null;
     }
 
     public int getSubtaskId() {
@@ -35,14 +33,6 @@ public class PravegaSplit implements SourceSplit, Serializable {
 
     public String getReaderGroupName() {
         return readerGroupName;
-    }
-
-    public Position getPosition() {
-        return position;
-    }
-
-    public void setPosition(Position position) {
-        this.position = position;
     }
 
     @Override

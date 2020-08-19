@@ -21,7 +21,7 @@ import java.nio.ByteBuffer;
  * <p>The serializer currently uses {@link java.io.Serializable Java Serialization} to
  * serialize the checkpoint objects.
  */
-class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
+public class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
 
     private static final int VERSION = 2;
 
