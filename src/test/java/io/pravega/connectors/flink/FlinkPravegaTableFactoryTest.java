@@ -72,7 +72,7 @@ public class FlinkPravegaTableFactoryTest {
                 .withSchema(schema)
                 .inAppendMode();
         final Map<String, String> propertiesMap = testDesc.toProperties();
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("Schema validation failed");
     }
@@ -98,7 +98,7 @@ public class FlinkPravegaTableFactoryTest {
                 .withSchema(schema)
                 .inAppendMode();
         final Map<String, String> propertiesMap = testDesc.toProperties();
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("Schema validation failed");
     }
@@ -123,7 +123,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("scope validation failed");
     }
@@ -148,7 +148,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
     }
 
