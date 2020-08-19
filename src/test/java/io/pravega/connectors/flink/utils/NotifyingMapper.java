@@ -33,7 +33,5 @@ public class NotifyingMapper<T> implements MapFunction<T, T>, CheckpointListener
     }
 
     @Override
-    public void notifyCheckpointAborted(long checkpointId) throws Exception {
-
-    }
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {}
 }

@@ -264,9 +264,7 @@ public class FlinkPravegaWriter<T>
     }
 
     @Override
-    public void notifyCheckpointAborted(long checkpointId) throws Exception {
-
-    }
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {}
 
     // ------------------------------------------------------------------------
     //  helper methods
