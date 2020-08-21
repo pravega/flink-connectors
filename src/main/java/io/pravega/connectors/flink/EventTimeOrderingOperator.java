@@ -18,7 +18,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.ListSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.java.typeutils.InputTypeConfigurable;
-import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.VoidNamespace;
 import org.apache.flink.runtime.state.VoidNamespaceSerializer;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -83,8 +82,9 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
     }
 
     @Override
-    public void initializeState(StateInitializationContext context) throws Exception {
-        super.initializeState(context);
+    public void open() throws Exception {
+        super.open();
+        internalTimerService = getInternalTimerService("ordering-timers", VoidNamespaceSerializer.INSTANCE, this);
 
         // create a map-based queue to buffer input elements
         if (elementQueueState == null) {
@@ -96,12 +96,6 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
                     )
             );
         }
-    }
-
-    @Override
-    public void open() throws Exception {
-        super.open();
-        internalTimerService = getInternalTimerService("ordering-timers", VoidNamespaceSerializer.INSTANCE, this);
     }
 
     @Override
