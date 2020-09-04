@@ -9,7 +9,6 @@
  */
 package io.pravega.connectors.flink.util;
 
-import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;

@@ -90,6 +90,14 @@ public class FlinkPravegaReader<T>
 
     private static final long serialVersionUID = 1L;
 
+    // ----- runtime fields -----
+
+    // Pravega Event Stream Client Factory (NOTE: MUST be closed when reader closed)
+    protected transient EventStreamClientFactory eventStreamClientFactory;
+
+    // Pravega Reader Group Manager (NOTE: MUST be closed when reader closed)
+    protected transient ReaderGroupManager readerGroupManager = null;
+
     // ----- configuration fields -----
 
     // the uuid of the checkpoint hook, used to store state and resume existing state from savepoints
@@ -131,12 +139,6 @@ public class FlinkPravegaReader<T>
     // checkpoint trigger callback, invoked when a checkpoint event is received.
     // no need to be volatile, the source is driven by only one thread
     private transient CheckpointTrigger checkpointTrigger;
-
-    // Pravega Event Stream Client Factory (NOTE: MUST be closed when reader closed)
-    protected EventStreamClientFactory eventStreamClientFactory;
-
-    // Pravega Reader Group Manager (NOTE: MUST be closed when reader closed)
-    protected transient ReaderGroupManager readerGroupManager = null;
 
     // Pravega reader group
     private transient ReaderGroup readerGroup = null;
