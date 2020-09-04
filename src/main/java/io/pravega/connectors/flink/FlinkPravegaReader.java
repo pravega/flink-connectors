@@ -361,7 +361,7 @@ public class FlinkPravegaReader<T>
     @Override
     public void close() throws Exception {
         if (eventStreamClientFactory != null) {
-            log.info("Closing Pravega ventStreamClientFactory");
+            log.info("Closing Pravega eventStreamClientFactory");
             eventStreamClientFactory.close();
         }
 
@@ -382,7 +382,12 @@ public class FlinkPravegaReader<T>
 
     @Override
     public MasterTriggerRestoreHook<Checkpoint> createMasterTriggerRestoreHook() {
-        return new ReaderCheckpointHook(this.hookUid, createReaderGroup(), this.checkpointInitiateTimeout, this.readerGroupConfig);
+        return new ReaderCheckpointHook(this.hookUid,
+            this.readerGroupName,
+            this.readerGroupScope,
+            this.checkpointInitiateTimeout,
+            this.clientConfig,
+            this.readerGroupConfig);
     }
 
     @Override
@@ -588,7 +593,7 @@ public class FlinkPravegaReader<T>
      */
     protected EventStreamClientFactory createEventStreamClientFactory() {
         if (eventStreamClientFactory == null) {
-            EventStreamClientFactory.withScope(readerGroupScope, clientConfig);
+            eventStreamClientFactory = EventStreamClientFactory.withScope(readerGroupScope, clientConfig);
         }
 
         return eventStreamClientFactory;
