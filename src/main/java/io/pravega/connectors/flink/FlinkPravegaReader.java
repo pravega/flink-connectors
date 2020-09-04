@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.client.EventStreamClientFactory;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
@@ -131,6 +132,12 @@ public class FlinkPravegaReader<T>
     // no need to be volatile, the source is driven by only one thread
     private transient CheckpointTrigger checkpointTrigger;
 
+    // Pravega Event Stream Client Factory (NOTE: MUST be closed when reader closed)
+    protected EventStreamClientFactory eventStreamClientFactory;
+
+    // Pravega Reader Group Manager (NOTE: MUST be closed when reader closed)
+    protected transient ReaderGroupManager readerGroupManager = null;
+
     // Pravega reader group
     private transient ReaderGroup readerGroup = null;
 
@@ -181,9 +188,12 @@ public class FlinkPravegaReader<T>
      * Initializes the reader.
      */
     void initialize() {
+        createEventStreamClientFactory();
+
         // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
         //       See https://github.com/pravega/flink-connectors/issues/130.
         log.info("Creating reader group: {}/{} for the Flink job", this.readerGroupScope, this.readerGroupName);
+        createReaderGroupManager();
         createReaderGroup();
         if (isEventTimeMode()) {
             Preconditions.checkArgument(readerGroup.getStreamNames().size() == 1,
@@ -333,6 +343,8 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
+        createEventStreamClientFactory();
+        createReaderGroupManager();
         createReaderGroup();
         if (enableMetrics) {
             registerMetrics();
@@ -346,7 +358,18 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
+        if (eventStreamClientFactory != null) {
+            log.info("Closing Pravega ventStreamClientFactory");
+            eventStreamClientFactory.close();
+        }
+
+        if (readerGroupManager != null) {
+            log.info("Closing Pravega ReaderGroupManager");
+            readerGroupManager.close();
+        }
+
         if (readerGroup != null) {
+            log.info("Closing Pravega ReaderGroup");
             readerGroup.close();
         }
     }
@@ -542,7 +565,6 @@ public class FlinkPravegaReader<T>
      * Create the {@link ReaderGroup} for the current configuration.
      */
     private ReaderGroup createReaderGroup() {
-        ReaderGroupManager readerGroupManager = createReaderGroupManager();
         readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
         readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
         return readerGroup;
@@ -552,7 +574,22 @@ public class FlinkPravegaReader<T>
      * Create the {@link ReaderGroupManager} for the current configuration.
      */
     protected ReaderGroupManager createReaderGroupManager() {
-        return ReaderGroupManager.withScope(readerGroupScope, clientConfig);
+        if (readerGroupManager == null) {
+            readerGroupManager = ReaderGroupManager.withScope(readerGroupScope, clientConfig);
+        }
+
+        return readerGroupManager;
+    }
+
+    /**
+     * Create the {@link EventStreamClientFactory} for the current configuration.
+     */
+    protected EventStreamClientFactory createEventStreamClientFactory() {
+        if (eventStreamClientFactory == null) {
+            EventStreamClientFactory.withScope(readerGroupScope, clientConfig);
+        }
+
+        return eventStreamClientFactory;
     }
 
     /**
@@ -561,12 +598,11 @@ public class FlinkPravegaReader<T>
      */
     protected EventStreamReader<T> createEventStreamReader(String readerId) {
         return createPravegaReader(
-                this.clientConfig,
                 readerId,
-                this.readerGroupScope,
                 this.readerGroupName,
                 this.deserializationSchema,
-                ReaderConfig.builder().build());
+                ReaderConfig.builder().build(),
+                eventStreamClientFactory);
     }
 
     // ------------------------------------------------------------------------

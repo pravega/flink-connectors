@@ -80,22 +80,20 @@ public class FlinkPravegaUtils {
     /**
      * Creates a Pravga {@link EventStreamReader}.
      *
-     * @param clientConfig The Pravega client configuration.
      * @param readerId The id of the Pravega reader.
-     * @param readerGroupScopeName The reader group scope name.
      * @param readerGroupName The reader group name.
      * @param deserializationSchema The implementation to deserialize events from pravega streams.
      * @param readerConfig The reader configuration.
+     * @param eventStreamClientFactory The eventStreamClientFactory used to create the EventStreamReader
      * @param <T> The type of the event.
      * @return the create Pravega reader.
      */
     public static <T> EventStreamReader<T> createPravegaReader(
-            ClientConfig clientConfig,
             String readerId,
-            String readerGroupScopeName,
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
-            ReaderConfig readerConfig) {
+            ReaderConfig readerConfig,
+            EventStreamClientFactory eventStreamClientFactory) {
 
         // create the adapter between Pravega's serializers and Flink's serializers
         @SuppressWarnings("unchecked")
@@ -103,8 +101,7 @@ public class FlinkPravegaUtils {
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
                 : new FlinkDeserializer<>(deserializationSchema);
 
-        return EventStreamClientFactory.withScope(readerGroupScopeName, clientConfig)
-                .createReader(readerId, readerGroupName, deserializer, readerConfig);
+        return eventStreamClientFactory.createReader(readerId, readerGroupName, deserializer, readerConfig);
     }
 
     /**
