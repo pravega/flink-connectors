@@ -76,6 +76,8 @@ public final class SetupUtils {
 
     private boolean enableRestServer = true;
 
+    private EventStreamClientFactory eventStreamClientFactory;
+
     // The test Scope name.
     @Getter
     private final String scope = RandomStringUtils.randomAlphabetic(20);
@@ -106,6 +108,7 @@ public final class SetupUtils {
             return;
         }
         gateway.start();
+        eventStreamClientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
     }
 
     /**
@@ -118,6 +121,8 @@ public final class SetupUtils {
             log.warn("Services not yet started or already stopped, not attempting to stop");
             return;
         }
+
+        eventStreamClientFactory.close();
 
         try {
             gateway.stop();
@@ -221,8 +226,7 @@ public final class SetupUtils {
         Preconditions.checkState(this.started.get(), "Services not yet started");
         Preconditions.checkNotNull(streamName);
 
-        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
-        return clientFactory.createEventWriter(
+        return eventStreamClientFactory.createEventWriter(
                 streamName,
                 new IntegerSerializer(),
                 EventWriterConfig.builder().build());
@@ -239,15 +243,16 @@ public final class SetupUtils {
         Preconditions.checkState(this.started.get(), "Services not yet started");
         Preconditions.checkNotNull(streamName);
 
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig());
         final String readerGroup = "testReaderGroup" + this.scope + streamName;
-        readerGroupManager.createReaderGroup(
-                readerGroup,
-                ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
 
-        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig())) {
+            readerGroupManager.createReaderGroup(
+                    readerGroup,
+                    ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
+        }
+
         final String readerGroupId = UUID.randomUUID().toString();
-        return clientFactory.createReader(
+        return eventStreamClientFactory.createReader(
                 readerGroupId,
                 readerGroup,
                 new IntegerSerializer(),
