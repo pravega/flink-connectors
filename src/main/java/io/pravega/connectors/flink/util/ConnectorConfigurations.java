@@ -63,6 +63,8 @@ import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WR
  */
 @Data
 public final class ConnectorConfigurations {
+    private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";
+    private static final String AUTH_PARAM_LOAD_DYNAMIC_ENV = "pravega_client_auth_loadDynamic";
 
     private Optional<Boolean> metrics;
 
@@ -223,7 +225,8 @@ public final class ConnectorConfigurations {
         if (defaultScope.isPresent()) {
             pravegaConfig.withDefaultScope(defaultScope.get());
         }
-        if (authType.isPresent() && authToken.isPresent()) {
+        // Populate only static credentials
+        if (authType.isPresent() && authToken.isPresent() && !isCredentialsLoadDynamic()) {
             pravegaConfig.withCredentials(new SimpleCredentials(authType.get(), authToken.get()));
         }
         if (validateHostName.isPresent()) {
@@ -255,5 +258,12 @@ public final class ConnectorConfigurations {
         public String getAuthenticationToken() {
             return authToken;
         }
+    }
+
+    private boolean isCredentialsLoadDynamic() {
+        return (System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) &&
+                Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC))) ||
+                (System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) &&
+                Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV)));
     }
 }
