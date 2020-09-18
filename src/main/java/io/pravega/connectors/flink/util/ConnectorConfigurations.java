@@ -17,7 +17,6 @@ import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
@@ -25,7 +24,7 @@ import org.apache.flink.util.InstantiationUtil;
 
 import java.net.URI;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -63,6 +62,8 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_REN
  */
 @Data
 public final class ConnectorConfigurations {
+    private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";
+    private static final String AUTH_PARAM_LOAD_DYNAMIC_ENV = "pravega_client_auth_loadDynamic";
 
     private Optional<Boolean> metrics;
 
@@ -126,16 +127,15 @@ public final class ConnectorConfigurations {
         rgScope = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_SCOPE);
         rgName = descriptorProperties.getOptionalString(CONNECTOR_READER_READER_GROUP_NAME);
         refreshInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL);
-        eventReadTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
-        checkpointInitiateTimeoutInterval = descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
+        eventReadTimeoutInterval =
+                descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL);
+        checkpointInitiateTimeoutInterval =
+                descriptorProperties.getOptionalLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL);
 
         final Optional<Class<AssignerWithTimeWindows>> assignerClass = descriptorProperties.getOptionalClass(
                 CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER, AssignerWithTimeWindows.class);
-        if (assignerClass.isPresent()) {
-            assignerWithTimeWindows = Optional.of((AssignerWithTimeWindows<Row>) InstantiationUtil.instantiate(assignerClass.get()));
-        } else {
-            assignerWithTimeWindows = Optional.empty();
-        }
+        assignerWithTimeWindows = assignerClass.map(assignerWithTimeWindowsClass ->
+                (AssignerWithTimeWindows<Row>) InstantiationUtil.instantiate(assignerWithTimeWindowsClass));
 
         if (!defaultScope.isPresent() && !rgScope.isPresent()) {
             throw new ValidationException("Must supply either " + CONNECTOR_READER_READER_GROUP_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
@@ -143,7 +143,7 @@ public final class ConnectorConfigurations {
 
         final List<Map<String, String>> streamPropsList = descriptorProperties.getVariableIndexedProperties(
                 CONNECTOR_READER_STREAM_INFO,
-                Arrays.asList(CONNECTOR_READER_STREAM_INFO_STREAM));
+                Collections.singletonList(CONNECTOR_READER_STREAM_INFO_STREAM));
 
         if (streamPropsList.isEmpty()) {
             throw new ValidationException(CONNECTOR_READER_STREAM_INFO + " cannot be empty");
@@ -186,7 +186,7 @@ public final class ConnectorConfigurations {
             throw new ValidationException("Must supply either " + CONNECTOR_WRITER_SCOPE + " or " + CONNECTOR_CONNECTION_CONFIG_DEFAULT_SCOPE);
         }
 
-        final String scopeVal = streamScope.isPresent() ? streamScope.get() : defaultScope.get();
+        final String scopeVal = streamScope.orElseGet(() -> defaultScope.get());
 
         if (!descriptorProperties.containsKey(CONNECTOR_WRITER_STREAM)) {
             throw new ValidationException("Missing " + CONNECTOR_WRITER_STREAM + " configuration.");
@@ -220,18 +220,13 @@ public final class ConnectorConfigurations {
         pravegaConfig = PravegaConfig.fromDefaults()
                 .withControllerURI(URI.create(controllerUri));
 
-        if (defaultScope.isPresent()) {
-            pravegaConfig.withDefaultScope(defaultScope.get());
-        }
-        if (authType.isPresent() && authToken.isPresent()) {
+        defaultScope.ifPresent(s -> pravegaConfig.withDefaultScope(s));
+        // Populate only static credentials
+        if (authType.isPresent() && authToken.isPresent() && !isCredentialsLoadDynamic()) {
             pravegaConfig.withCredentials(new SimpleCredentials(authType.get(), authToken.get()));
         }
-        if (validateHostName.isPresent()) {
-            pravegaConfig = pravegaConfig.withHostnameValidation(validateHostName.get());
-        }
-        if (trustStore.isPresent()) {
-            pravegaConfig = pravegaConfig.withTrustStore(trustStore.get());
-        }
+        validateHostName.ifPresent(hv -> pravegaConfig = pravegaConfig.withHostnameValidation(hv));
+        trustStore.ifPresent(ts -> pravegaConfig = pravegaConfig.withTrustStore(ts));
     }
 
     public enum ConfigurationType {
@@ -239,12 +234,14 @@ public final class ConnectorConfigurations {
         WRITER
     }
 
-    @Data
-    @EqualsAndHashCode
     public static final class SimpleCredentials implements Credentials {
-
         private final String authType;
         private final String authToken;
+
+        public SimpleCredentials(String authType, String authToken) {
+            this.authType = authType;
+            this.authToken = authToken;
+        }
 
         @Override
         public String getAuthenticationType() {
@@ -255,5 +252,10 @@ public final class ConnectorConfigurations {
         public String getAuthenticationToken() {
             return authToken;
         }
+    }
+
+    private boolean isCredentialsLoadDynamic() {
+        return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
+                System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
     }
 }
