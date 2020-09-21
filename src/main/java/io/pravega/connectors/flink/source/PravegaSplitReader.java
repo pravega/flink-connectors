@@ -11,7 +11,6 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -24,11 +23,11 @@ import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.util.Preconditions;
 
+import java.io.IOException;
 import java.util.*;
 
 @Slf4j
 public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaSplit> {
-
     private EventStreamReader<T> pravegaReader;
     private PravegaSplit split;
 
@@ -65,8 +64,8 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
     }
 
     @Override
-    public RecordsWithSplitIds<EventRead<T>> fetch() throws InterruptedException {
-        RecordsBySplits<EventRead<T>> records = new RecordsBySplits<>();
+    public RecordsWithSplitIds<EventRead<T>> fetch() throws IOException {
+        RecordsBySplits.Builder<EventRead<T>> records = new RecordsBySplits.Builder<>();
         EventRead<T> eventRead = null;
         do {
             try {
@@ -79,28 +78,15 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
                 records.add(split.splitId(), eventRead);
             }
         } while (eventRead == null || eventRead.getEvent() == null);
-        return records;
+        return records.build();
     }
 
     @Override
-    public void handleSplitsChanges(Queue<SplitsChange<PravegaSplit>> splitsChanges) {
-        do {
-            SplitsChange<PravegaSplit> splitsChange = splitsChanges.poll();
-            if (splitsChange instanceof SplitsAddition) {
-                // One reader for one split
-                Preconditions.checkArgument(splitsChange.splits().size() == 1);
-                this.split = splitsChange.splits().get(0);
-            }
-        } while (!splitsChanges.isEmpty());
-
-        try (ReaderGroup readerGroup = ReaderGroupManager.withScope(scope, clientConfig)
-                .getReaderGroup(readerGroupName)) {
-            Preconditions.checkNotNull(readerGroup);
-            if (readerGroup.getOnlineReaders().contains(split.splitId())) {
-                ReaderGroupManager.withScope(scope, clientConfig).getReaderGroup(readerGroupName)
-                        .readerOffline(split.splitId(), null);
-                log.info("Close reader for subtask {} at position", split.getSubtaskId());
-            }
+    public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
+        if (splitsChange instanceof SplitsAddition) {
+            // One reader for one split
+            Preconditions.checkArgument(splitsChange.splits().size() == 1);
+            this.split = splitsChange.splits().get(0);
         }
 
         pravegaReader = FlinkPravegaUtils.createPravegaReader(
@@ -117,5 +103,9 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
     @Override
     public void wakeUp() {
         log.info("Call wakeup");
+    }
+
+    protected EventStreamReader<T> getPravegaReader() {
+        return pravegaReader;
     }
 }

@@ -30,9 +30,7 @@ import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.SourceReaderOptions;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
-import org.apache.flink.connector.base.source.reader.synchronization.FutureNotifier;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
@@ -89,20 +87,16 @@ public class FlinkPravegaSource<T>
 
     @Override
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
-        FutureNotifier futureNotifier = new FutureNotifier();
         FutureCompletingBlockingQueue<RecordsWithSplitIds<EventRead<T>>> elementsQueue =
-                new FutureCompletingBlockingQueue<>(futureNotifier);
+                new FutureCompletingBlockingQueue<>();
 
         return new PravegaSourceReader<T>(
-                futureNotifier,
                 elementsQueue,
-                () -> new PravegaSplitReader<>(
-                        clientConfig,
-                        scope,
-                        readerGroupName,
-                        deserializationSchema,
-                        ReaderConfig.builder().build(),
-                        eventReadTimeout),
+                clientConfig,
+                scope,
+                readerGroupName,
+                deserializationSchema,
+                eventReadTimeout,
                 new PravegaRecordEmitter<>(),
                 new Configuration(),
                 readerContext);

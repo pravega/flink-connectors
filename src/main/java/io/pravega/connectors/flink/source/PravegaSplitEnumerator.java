@@ -104,7 +104,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void addReader(int subtaskId) {
-        log.info("Add reader called");
+        log.info("Add reader called for subtask {}", subtaskId);
         if (enumContext.registeredReaders().size() == enumContext.currentParallelism() && splits.size() > 0) {
             int numReaders = enumContext.registeredReaders().size();
             Map<Integer, List<PravegaSplit>> assignment = new HashMap<>();
