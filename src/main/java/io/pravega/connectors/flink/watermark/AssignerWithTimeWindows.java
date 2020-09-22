@@ -11,7 +11,7 @@ package io.pravega.connectors.flink.watermark;
 
 import io.pravega.client.stream.TimeWindow;
 import org.apache.flink.annotation.Public;
-import org.apache.flink.streaming.api.functions.TimestampAssigner;
+import org.apache.flink.api.common.eventtime.TimestampAssigner;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
 import javax.annotation.Nullable;
