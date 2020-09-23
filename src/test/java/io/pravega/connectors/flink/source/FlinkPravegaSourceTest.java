@@ -49,36 +49,6 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
     }
 
     @Test
-    public void testPure() throws Exception {
-        // set up the stream
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 4);
-
-        try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-
-                // create the producer that writes to the stream
-                final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
-                        eventWriter,
-                        1000,
-                        1000 / 2,  // the latest when a checkpoint must have happened
-                        1,                 // the initial sleep time per element
-                        false
-                );
-        ) {
-            EventStreamReader<Integer> eventReader = SETUP_UTILS.getIntegerReader(streamName);
-            producer.start();
-            EventRead<Integer> eventRead = eventReader.readNextEvent(1000);
-            log.info("position: {}", eventRead.getPosition());
-            eventRead = eventReader.readNextEvent(1000);
-            log.info("position: {}", eventRead.getPosition());
-            eventRead = eventReader.readNextEvent(1000);
-            log.info("position: {}", eventRead.getPosition());
-
-        }
-    }
-
-    @Test
     public void testSource() throws Exception {
         runTest(2,4,10000);
     }

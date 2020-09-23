@@ -89,6 +89,8 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
             this.split = splitsChange.splits().get(0);
         }
 
+        // TODO: If we can know the subtaskID of the split reader as legacy source,
+        // we can have a complete no-op split approach.
         pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 clientConfig,
                 split.splitId(),

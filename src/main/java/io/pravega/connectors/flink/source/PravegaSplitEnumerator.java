@@ -36,13 +36,13 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     private final SplitEnumeratorContext<PravegaSplit> enumContext;
     private ReaderGroup readerGroup;
     private ReaderGroupManager readerGroupManager;
-    private ClientConfig clientConfig;
-    private ReaderGroupConfig readerGroupConfig;
-    private String scope;
-    private String readerGroupName;
-    private AtomicInteger checkpointId;
-    private List<PravegaSplit> splits;
-    private Checkpoint checkpoint;
+    private final ClientConfig clientConfig;
+    private final ReaderGroupConfig readerGroupConfig;
+    private final String scope;
+    private final String readerGroupName;
+    private final AtomicInteger checkpointId;
+    private final List<PravegaSplit> splits;
+    private final Checkpoint checkpoint;
 
     /** Default thread pool size of the checkpoint scheduler */
     private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
@@ -88,6 +88,9 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
         if (this.checkpoint != null) {
             log.info("Recover from checkpoint: {}", checkpoint.getName());
+
+            // TODO: Is there a way to get the checkpoint ID as legacy source?
+            this.checkpointId.set(getCheckpointId(checkpoint.getName()) + 1);
             this.readerGroup.resetReaderGroup(ReaderGroupConfig
                     .builder()
                     .maxOutstandingCheckpointRequest(this.readerGroupConfig.getMaxOutstandingCheckpointRequest())
@@ -142,7 +145,9 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
         log.info("Call addSplitsBack");
-        throw new RuntimeException("Intentional");
+        if (subtaskId == 0) {
+            throw new RuntimeException("Intentional");
+        }
     }
 
 
@@ -167,5 +172,9 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     static String createCheckpointName(long checkpointId) {
         return "PVG-CHK-" + checkpointId;
+    }
+
+    static int getCheckpointId(String checkpointName) {
+        return Integer.parseInt(checkpointName.substring(8));
     }
 }
