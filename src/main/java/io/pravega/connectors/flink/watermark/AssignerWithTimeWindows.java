@@ -15,9 +15,10 @@ import org.apache.flink.api.common.eventtime.TimestampAssigner;
 import org.apache.flink.streaming.api.watermark.Watermark;
 
 import javax.annotation.Nullable;
+import java.io.Serializable;
 
 @Public
-public interface AssignerWithTimeWindows<T> extends TimestampAssigner<T> {
+public interface AssignerWithTimeWindows<T> extends TimestampAssigner<T>, Serializable {
 
     // app must implement the timestamp extraction
     @Nullable
