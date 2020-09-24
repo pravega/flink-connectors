@@ -11,6 +11,7 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.ReaderConfig;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ import java.util.function.Supplier;
 public class PravegaFetcherManager<T>
         extends SplitFetcherManager<EventRead<T>, PravegaSplit> {
 
+    private static EventStreamClientFactory eventStreamClientFactory;
     private static List<PravegaSplitReader> splitReaders = new ArrayList<>();
 
     public PravegaFetcherManager(
@@ -41,9 +43,12 @@ public class PravegaFetcherManager<T>
             DeserializationSchema<T> deserializationSchema,
             Time eventReadTimeout) {
         super(elementsQueue, () -> {
+            if (eventStreamClientFactory != null) {
+                eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
+            }
+
             PravegaSplitReader<T> splitReader = new PravegaSplitReader<>(
-                    clientConfig,
-                    scope,
+                    eventStreamClientFactory,
                     readerGroupName,
                     deserializationSchema,
                     ReaderConfig.builder().build(),

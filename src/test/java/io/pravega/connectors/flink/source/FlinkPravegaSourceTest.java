@@ -91,6 +91,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
             env.setParallelism(sourceParallelism);
             env.enableCheckpointing(100);
             env.setRestartStrategy(RestartStrategies.fixedDelayRestart(6, 0L));
+            env.getCheckpointConfig().setTolerableCheckpointFailureNumber(1);
 
             // we currently need this to work around the case where tasks are
             // started too late, a checkpoint was already triggered, and some tasks

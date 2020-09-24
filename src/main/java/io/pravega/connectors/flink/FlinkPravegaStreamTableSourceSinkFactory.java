@@ -7,10 +7,13 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
+
 package io.pravega.connectors.flink;
 
 import org.apache.flink.table.factories.StreamTableSinkFactory;
+import org.apache.flink.table.factories.StreamTableSourceFactory;
 import org.apache.flink.table.sinks.StreamTableSink;
+import org.apache.flink.table.sources.StreamTableSource;
 import org.apache.flink.types.Row;
 
 import java.util.List;
@@ -21,14 +24,10 @@ import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.
 import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.UPDATE_MODE_VALUE_APPEND;
 
 /**
- * A stream table sink factory implementation of {@link StreamTableSinkFactory} to access Pravega streams.
+ * A stream table source factory implementation of {@link StreamTableSourceFactory} to access Pravega streams.
  */
-public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableFactoryBase implements StreamTableSinkFactory<Row> {
-
-    @Override
-    public StreamTableSink<Row> createStreamTableSink(Map<String, String> properties) {
-        return createFlinkPravegaTableSink(properties);
-    }
+public class FlinkPravegaStreamTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
+        StreamTableSourceFactory<Row>, StreamTableSinkFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {
@@ -40,6 +39,16 @@ public class FlinkPravegaStreamTableSinkFactory extends FlinkPravegaTableFactory
     @Override
     public List<String> supportedProperties() {
         return getSupportedProperties();
+    }
+
+    @Override
+    public StreamTableSource<Row> createStreamTableSource(Map<String, String> properties) {
+        return createFlinkPravegaTableSource(properties);
+    }
+
+    @Override
+    public StreamTableSink<Row> createStreamTableSink(Map<String, String> properties) {
+        return createFlinkPravegaTableSink(properties);
     }
 
     @Override

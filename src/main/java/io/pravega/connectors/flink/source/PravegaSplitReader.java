@@ -11,6 +11,7 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -29,15 +30,12 @@ import java.util.*;
 @Slf4j
 public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaSplit> {
     private EventStreamReader<T> pravegaReader;
-    private PravegaSplit split;
+    private EventStreamClientFactory eventStreamClientFactory;
 
-    private final ClientConfig clientConfig;
+    private PravegaSplit split;
 
     // The Pravega reader config.
     private final ReaderConfig readerConfig;
-
-    // The scope name of the reader group.
-    private final String scope;
 
     // The readergroup name to coordinate the parallel readers. This should be unique for a Flink job.
     private final String readerGroupName;
@@ -49,15 +47,13 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
     private final Time eventReadTimeout;
 
     public PravegaSplitReader(
-            ClientConfig clientConfig,
-            String readerGroupScopeName,
+            EventStreamClientFactory eventStreamClientFactory,
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
             ReaderConfig readerConfig,
             Time eventReadTimeout) {
         this.eventReadTimeout = eventReadTimeout;
-        this.clientConfig = clientConfig;
-        this.scope = readerGroupScopeName;
+        this.eventStreamClientFactory = eventStreamClientFactory;
         this.readerGroupName = readerGroupName;
         this.deserializationSchema = deserializationSchema;
         this.readerConfig = readerConfig;
@@ -92,12 +88,11 @@ public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaS
         // TODO: If we can know the subtaskID of the split reader as legacy source,
         // we can have a complete no-op split approach.
         pravegaReader = FlinkPravegaUtils.createPravegaReader(
-                clientConfig,
                 split.splitId(),
-                scope,
                 readerGroupName,
                 deserializationSchema,
-                readerConfig);
+                readerConfig,
+                eventStreamClientFactory);
 
         log.info("Create reader for subtask: {}", split.getSubtaskId());
     }

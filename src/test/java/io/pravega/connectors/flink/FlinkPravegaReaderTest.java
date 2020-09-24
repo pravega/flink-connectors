@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.segment.impl.Segment;
 import io.pravega.client.stream.EventPointer;
@@ -21,6 +22,8 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TimeWindow;
+import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.client.stream.impl.EventReadImpl;
@@ -32,6 +35,7 @@ import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -77,6 +81,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.any;
 
 
 /**
@@ -111,6 +116,9 @@ public class FlinkPravegaReaderTest {
     public void testInitialize() {
         TestableFlinkPravegaReader<Integer> reader = createReader();
         reader.initialize();
+
+        assertNotNull(reader.eventStreamClientFactory);
+        assertNotNull(reader.readerGroupManager);
         verify(reader.readerGroupManager).createReaderGroup(GROUP_NAME, reader.readerGroupConfig);
     }
 
@@ -122,7 +130,7 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<Integer> reader = createReader();
 
         try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+                 createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
             testHarness.open();
 
             // prepare a sequence of events
@@ -163,8 +171,11 @@ public class FlinkPravegaReaderTest {
             validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
             validateMetricGroup(scopeString, ONLINE_READERS_METRICS_GAUGE, readerGroupMetricGroup);
             validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
-
         }
+
+        verify(reader.readerGroupManager).close();
+        verify(reader.eventStreamClientFactory).close();
+        verify(reader.readerGroup).close();
     }
 
     /**
@@ -197,6 +208,10 @@ public class FlinkPravegaReaderTest {
             expected.add(record(2));
             TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
         }
+
+        verify(reader.readerGroupManager).close();
+        verify(reader.eventStreamClientFactory).close();
+        verify(reader.readerGroup).close();
     }
 
     /**
@@ -234,6 +249,10 @@ public class FlinkPravegaReaderTest {
             assertEquals(outputEventPointer, evts.getEventPointer(1));
         }
 
+        verify(reader.readerGroupManager).close();
+        verify(reader.eventStreamClientFactory).close();
+        verify(reader.readerGroup).close();
+
         // Test default implementation of extractEvent
         reader = createReaderWithMetadata(false);
         try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
@@ -260,6 +279,10 @@ public class FlinkPravegaReaderTest {
             assertEquals(output.getValue(), 1);
             assertNull(output.getEventPointerBytes());
         }
+
+        verify(reader.readerGroupManager).close();
+        verify(reader.eventStreamClientFactory).close();
+        verify(reader.readerGroup).close();
     }
 
 
@@ -316,6 +339,10 @@ public class FlinkPravegaReaderTest {
 
             TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
         }
+
+        verify(reader.readerGroupManager).close();
+        verify(reader.eventStreamClientFactory).close();
+        verify(reader.readerGroup).close();
     }
 
 
@@ -489,22 +516,32 @@ public class FlinkPravegaReaderTest {
     public void testGenerateUid() {
         TestableStreamingReaderBuilder builder1 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
         String uid1 = builder1.generateUid();
 
         TestableStreamingReaderBuilder builder2 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, SAMPLE_CUT2)
                 .withEventReadTimeout(Time.seconds(42L));
         String uid2 = builder2.generateUid();
 
         TestableStreamingReaderBuilder builder3 = new TestableStreamingReaderBuilder()
                 .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName(GROUP_NAME)
                 .forStream(SAMPLE_STREAM_2);
         String uid3 = builder3.generateUid();
 
+        TestableStreamingReaderBuilder builder4 = new TestableStreamingReaderBuilder()
+                .withReaderGroupScope(SAMPLE_SCOPE)
+                .withReaderGroupName("flink" + RandomStringUtils.randomAlphanumeric(20).toLowerCase())
+                .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
+        String uid4 = builder4.generateUid();
+
         assertEquals(uid1, uid2);
         assertNotEquals(uid1, uid3);
+        assertNotEquals(uid1, uid4);
     }
 
     // endregion
@@ -594,9 +631,6 @@ public class FlinkPravegaReaderTest {
     private static class TestableFlinkPravegaReader<T> extends FlinkPravegaReader<T> {
 
         @SuppressWarnings("unchecked")
-        final ReaderGroupManager readerGroupManager = mock(ReaderGroupManager.class);
-
-        @SuppressWarnings("unchecked")
         final ReaderGroup readerGroup = mock(ReaderGroup.class);
 
         @SuppressWarnings("unchecked")
@@ -613,7 +647,24 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
+        protected EventStreamClientFactory createEventStreamClientFactory() {
+            if (eventStreamClientFactory != null) {
+                return eventStreamClientFactory;
+            }
+
+            eventStreamClientFactory = mock(EventStreamClientFactory.class);
+            doReturn(eventStreamReader).when(eventStreamClientFactory).createReader(any(String.class), any(String.class), any(Serializer.class), any(ReaderConfig.class));
+
+            return eventStreamClientFactory;
+        }
+
+        @Override
         protected ReaderGroupManager createReaderGroupManager() {
+            if (readerGroupManager != null) {
+                return readerGroupManager;
+            }
+
+            readerGroupManager = mock(ReaderGroupManager.class);
             doNothing().when(readerGroupManager).createReaderGroup(readerGroupName, readerGroupConfig);
             doReturn(new HashSet<>(Arrays.asList(SAMPLE_COMPLETE_STREAM_NAME))).when(readerGroup).getStreamNames();
             doReturn(readerGroup).when(readerGroupManager).getReaderGroup(readerGroupName);
