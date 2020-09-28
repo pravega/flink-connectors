@@ -31,4 +31,7 @@ public class NotifyingMapper<T> implements MapFunction<T, T>, CheckpointListener
     public void notifyCheckpointComplete(long l) throws Exception {
         TO_CALL_ON_COMPLETION.get().run();
     }
+
+    @Override
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {}
 }

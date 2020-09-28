@@ -263,6 +263,9 @@ public class FlinkPravegaWriter<T>
         writer.notifyCheckpointComplete(checkpointId);
     }
 
+    @Override
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {}
+
     // ------------------------------------------------------------------------
     //  helper methods
     // ------------------------------------------------------------------------
