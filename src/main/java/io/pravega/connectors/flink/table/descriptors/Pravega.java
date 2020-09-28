@@ -23,6 +23,7 @@ import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
 import io.pravega.connectors.flink.AbstractStreamingWriterBuilder;
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSink;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -32,6 +33,7 @@ import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.table.api.TableException;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.descriptors.ConnectorDescriptor;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
@@ -102,7 +104,11 @@ public class Pravega extends ConnectorDescriptor {
 
     private TableSourceReaderBuilder tableSourceReaderBuilder = null;
 
+    private DynamicTableSourceReaderBuilder dynamicTableSourceReaderBuilder = null;
+
     private TableSinkWriterBuilder tableSinkWriterBuilder = null;
+
+    private DynamicTableSinkWriterBuilder dynamicTableSinkWriterBuilder = null;
 
     public Pravega() {
         super(CONNECTOR_TYPE_VALUE_PRAVEGA, CONNECTOR_VERSION_VALUE, true);
@@ -111,27 +117,53 @@ public class Pravega extends ConnectorDescriptor {
     /**
      * Internal method for connector properties conversion.
      */
+//    @Override
+//    protected Map<String, String> toConnectorProperties() {
+//        final DescriptorProperties properties = new DescriptorProperties();
+//        properties.putString(CONNECTOR_VERSION, String.valueOf(CONNECTOR_VERSION_VALUE));
+//
+//        if (tableSourceReaderBuilder == null && tableSinkWriterBuilder == null) {
+//            throw new ValidationException("Missing both reader and writer configurations.");
+//        }
+//
+//        PravegaConfig pravegaConfig = tableSourceReaderBuilder != null ?
+//                tableSourceReaderBuilder.getPravegaConfig() : tableSinkWriterBuilder.getPravegaConfig();
+//        populateConnectionConfig(pravegaConfig, properties);
+//
+//        boolean metrics = tableSourceReaderBuilder != null ?
+//                tableSourceReaderBuilder.isMetricsEnabled() : tableSinkWriterBuilder.isMetricsEnabled();
+//        properties.putBoolean(CONNECTOR_METRICS, metrics);
+//
+//        if (tableSourceReaderBuilder != null) {
+//            populateReaderProperties(properties);
+//        }
+//        if (tableSinkWriterBuilder != null) {
+//            populateWriterProperties(properties);
+//        }
+//        return properties.asMap();
+//    }
+
     @Override
     protected Map<String, String> toConnectorProperties() {
         final DescriptorProperties properties = new DescriptorProperties();
         properties.putString(CONNECTOR_VERSION, String.valueOf(CONNECTOR_VERSION_VALUE));
 
-        if (tableSourceReaderBuilder == null && tableSinkWriterBuilder == null) {
+        if (dynamicTableSourceReaderBuilder == null && dynamicTableSinkWriterBuilder == null) {
             throw new ValidationException("Missing both reader and writer configurations.");
         }
 
-        PravegaConfig pravegaConfig = tableSourceReaderBuilder != null ?
-                tableSourceReaderBuilder.getPravegaConfig() : tableSinkWriterBuilder.getPravegaConfig();
+        PravegaConfig pravegaConfig = dynamicTableSourceReaderBuilder != null ?
+                dynamicTableSourceReaderBuilder.getPravegaConfig() : dynamicTableSinkWriterBuilder.getPravegaConfig();
         populateConnectionConfig(pravegaConfig, properties);
 
-        boolean metrics = tableSourceReaderBuilder != null ?
-                tableSourceReaderBuilder.isMetricsEnabled() : tableSinkWriterBuilder.isMetricsEnabled();
+        boolean metrics = dynamicTableSourceReaderBuilder != null ?
+                dynamicTableSourceReaderBuilder.isMetricsEnabled() : dynamicTableSinkWriterBuilder.isMetricsEnabled();
         properties.putBoolean(CONNECTOR_METRICS, metrics);
 
-        if (tableSourceReaderBuilder != null) {
+        if (dynamicTableSourceReaderBuilder != null) {
             populateReaderProperties(properties);
         }
-        if (tableSinkWriterBuilder != null) {
+        if (dynamicTableSinkWriterBuilder != null) {
             populateWriterProperties(properties);
         }
         return properties.asMap();
@@ -204,7 +236,7 @@ public class Pravega extends ConnectorDescriptor {
         properties.putBoolean(CONNECTOR_READER, true);
 
         // reader stream information
-        AbstractStreamingReaderBuilder.ReaderGroupInfo readerGroupInfo = tableSourceReaderBuilder.buildReaderGroupInfo();
+        AbstractStreamingReaderBuilder.ReaderGroupInfo readerGroupInfo = dynamicTableSourceReaderBuilder.buildReaderGroupInfo();
 
         Map<Stream, StreamCut> startStreamCuts = readerGroupInfo.getReaderGroupConfig().getStartingStreamCuts();
         Map<Stream, StreamCut> endStreamCuts = readerGroupInfo.getReaderGroupConfig().getEndingStreamCuts();
@@ -215,30 +247,30 @@ public class Pravega extends ConnectorDescriptor {
             values.add(Arrays.asList(stream.getScope(), stream.getStreamName(), startStreamCut.asText(), endStreamCut.asText()));
         });
         properties.putIndexedFixedProperties(
-                                                CONNECTOR_READER_STREAM_INFO,
-                                                Arrays.asList(
-                                                            CONNECTOR_READER_STREAM_INFO_SCOPE,
-                                                            CONNECTOR_READER_STREAM_INFO_STREAM,
-                                                            CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                                                            CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
-                                                        ),
-                                                values
-                                            );
+                CONNECTOR_READER_STREAM_INFO,
+                Arrays.asList(
+                        CONNECTOR_READER_STREAM_INFO_SCOPE,
+                        CONNECTOR_READER_STREAM_INFO_STREAM,
+                        CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
+                        CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
+                ),
+                values
+        );
 
         // reader group information
-        String uid = Optional.ofNullable(tableSourceReaderBuilder.uid).orElseGet(tableSourceReaderBuilder::generateUid);
+        String uid = Optional.ofNullable(dynamicTableSourceReaderBuilder.uid).orElseGet(dynamicTableSourceReaderBuilder::generateUid);
         properties.putString(CONNECTOR_READER_READER_GROUP_UID, uid);
         properties.putString(CONNECTOR_READER_READER_GROUP_SCOPE, readerGroupInfo.getReaderGroupScope());
         properties.putString(CONNECTOR_READER_READER_GROUP_NAME, readerGroupInfo.getReaderGroupName());
         properties.putLong(CONNECTOR_READER_READER_GROUP_REFRESH_INTERVAL, readerGroupInfo.getReaderGroupConfig().getGroupRefreshTimeMillis());
-        properties.putLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL, tableSourceReaderBuilder.eventReadTimeout.toMilliseconds());
-        properties.putLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL, tableSourceReaderBuilder.checkpointInitiateTimeout.toMilliseconds());
+        properties.putLong(CONNECTOR_READER_READER_GROUP_EVENT_READ_TIMEOUT_INTERVAL, dynamicTableSourceReaderBuilder.eventReadTimeout.toMilliseconds());
+        properties.putLong(CONNECTOR_READER_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL, dynamicTableSourceReaderBuilder.checkpointInitiateTimeout.toMilliseconds());
 
         // user information
-        if (tableSourceReaderBuilder.getAssignerWithTimeWindows() != null) {
+        if (dynamicTableSourceReaderBuilder.getAssignerWithTimeWindows() != null) {
             try {
                 @SuppressWarnings("unchecked")
-                AssignerWithTimeWindows<Row> assigner = (AssignerWithTimeWindows<Row>) tableSourceReaderBuilder
+                AssignerWithTimeWindows<Row> assigner = (AssignerWithTimeWindows<Row>) dynamicTableSourceReaderBuilder
                         .getAssignerWithTimeWindows().deserializeValue(getClass().getClassLoader());
 
                 properties.putClass(CONNECTOR_READER_USER_TIMESTAMP_ASSIGNER, assigner.getClass());
@@ -253,9 +285,19 @@ public class Pravega extends ConnectorDescriptor {
         return tableSourceReaderBuilder;
     }
 
+    public DynamicTableSourceReaderBuilder dynamicTableSourceReaderBuilder() {
+        dynamicTableSourceReaderBuilder = new DynamicTableSourceReaderBuilder();
+        return dynamicTableSourceReaderBuilder;
+    }
+
     public TableSinkWriterBuilder tableSinkWriterBuilder() {
         tableSinkWriterBuilder = new TableSinkWriterBuilder();
         return tableSinkWriterBuilder;
+    }
+
+    public DynamicTableSinkWriterBuilder dynamicTableSinkWriterBuilder() {
+        dynamicTableSinkWriterBuilder = new DynamicTableSinkWriterBuilder();
+        return dynamicTableSinkWriterBuilder;
     }
 
     /**
@@ -317,6 +359,67 @@ public class Pravega extends ConnectorDescriptor {
          * @return a supplier to eagerly validate the configuration and lazily construct the input format.
          */
         public FlinkPravegaInputFormat<Row> buildInputFormat() {
+            Preconditions.checkState(deserializationSchema != null, "The deserializationSchema must be provided.");
+            final List<StreamWithBoundaries> streams = resolveStreams();
+            final ClientConfig clientConfig = getPravegaConfig().getClientConfig();
+            return new FlinkPravegaInputFormat<>(clientConfig, streams, deserializationSchema);
+        }
+    }
+
+    public static class DynamicTableSourceReaderBuilder<T extends AbstractStreamingReaderBuilder>
+            extends AbstractStreamingReaderBuilder<RowData, DynamicTableSourceReaderBuilder> {
+
+        private DeserializationSchema<RowData> deserializationSchema;
+        private SerializedValue<AssignerWithTimeWindows<RowData>> assignerWithTimeWindows;
+
+        @Override
+        protected DeserializationSchema<RowData> getDeserializationSchema() {
+            return this.deserializationSchema;
+        }
+
+        @Override
+        protected SerializedValue<AssignerWithTimeWindows<RowData>> getAssignerWithTimeWindows() {
+            return this.assignerWithTimeWindows;
+        }
+
+        @Override
+        protected DynamicTableSourceReaderBuilder builder() {
+            return this;
+        }
+
+        /**
+         * Pass the deserialization schema to be used.
+         * @param deserializationSchema the deserialization schema.
+         * @return TableSourceReaderBuilder instance.
+         */
+        public DynamicTableSourceReaderBuilder withDeserializationSchema(DeserializationSchema<RowData> deserializationSchema) {
+            this.deserializationSchema = deserializationSchema;
+            return this;
+        }
+
+        /**
+         * Configures the timestamp and watermark assigner.
+         *
+         * @param assignerWithTimeWindows the timestamp and watermark assigner.
+         * @return TableSourceReaderBuilder instance.
+         */
+        // TODO: Due to the serialization validation for `connectorProperties`, only `public` `static-inner/outer` class implements
+        // `AssignerWithTimeWindow` is supported as a parameter of `withTimestampAssigner` in Table API stream table source.
+        public DynamicTableSourceReaderBuilder withTimestampAssigner(AssignerWithTimeWindows<RowData> assignerWithTimeWindows) {
+            try {
+                ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
+                this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
+            } catch (IOException e) {
+                throw new IllegalArgumentException("The given assigner is not serializable", e);
+            }
+            return this;
+        }
+
+        /**
+         * factory to build an {@link FlinkPravegaInputFormat} for using Table API in a batch environment.
+         * @return a supplier to eagerly validate the configuration and lazily construct the input format.
+         */
+        public FlinkPravegaInputFormat<RowData> buildInputFormat() {
             Preconditions.checkState(deserializationSchema != null, "The deserializationSchema must be provided.");
             final List<StreamWithBoundaries> streams = resolveStreams();
             final ClientConfig clientConfig = getPravegaConfig().getClientConfig();
@@ -386,5 +489,68 @@ public class Pravega extends ConnectorDescriptor {
             );
         }
 
+    }
+
+    /**
+     * Writer builder which can be used to define the Pravega writer configurations. The supplied configurations will be used
+     * to create appropriate Table sink implementation.
+     *
+     */
+    public static class DynamicTableSinkWriterBuilder<T extends AbstractStreamingWriterBuilder>
+            extends AbstractStreamingWriterBuilder<RowData, DynamicTableSinkWriterBuilder> {
+
+        private String routingKeyFieldName;
+
+        private SerializationSchema<RowData> serializationSchema;
+
+        /**
+         * Sets the field name to use as a Pravega event routing key.
+         * @param fieldName the field name.
+         */
+        public DynamicTableSinkWriterBuilder withRoutingKeyField(String fieldName) {
+            this.routingKeyFieldName = fieldName;
+            return builder();
+        }
+
+        /**
+         * Pass the serialization schema to be used.
+         * @param serializationSchema the serialization schema.
+         */
+        public DynamicTableSinkWriterBuilder withSerializationSchema(SerializationSchema<RowData> serializationSchema) {
+            this.serializationSchema = serializationSchema;
+            return builder();
+        }
+
+        @Override
+        protected DynamicTableSinkWriterBuilder builder() {
+            return this;
+        }
+
+        /**
+         * Creates the sink function based on the given table schema and current builder state.
+         * @param tableSchema the schema of the sink table
+         */
+        public FlinkPravegaWriter<RowData> createSinkFunction(TableSchema tableSchema) {
+            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
+            Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
+            PravegaEventRouter<RowData> eventRouter = new FlinkPravegaDynamicTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            return createSinkFunction(serializationSchema, eventRouter);
+        }
+
+        /**
+         * Creates FlinkPravegaOutputFormat based on the given table schema and current builder state.
+         * @param tableSchema the schema of the sink table
+         */
+        public FlinkPravegaOutputFormat<RowData> createOutputFormat(TableSchema tableSchema) {
+            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
+            Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
+            PravegaEventRouter<RowData> eventRouter = new FlinkPravegaDynamicTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            return new FlinkPravegaOutputFormat<>(
+                    getPravegaConfig().getClientConfig(),
+                    resolveStream(),
+                    serializationSchema,
+                    eventRouter
+            );
+        }
     }
 }
