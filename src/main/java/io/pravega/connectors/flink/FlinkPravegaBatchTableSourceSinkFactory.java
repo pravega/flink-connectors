@@ -10,7 +10,9 @@
 
 package io.pravega.connectors.flink;
 
+import org.apache.flink.table.factories.BatchTableSinkFactory;
 import org.apache.flink.table.factories.BatchTableSourceFactory;
+import org.apache.flink.table.sinks.BatchTableSink;
 import org.apache.flink.table.sources.BatchTableSource;
 import org.apache.flink.types.Row;
 
@@ -22,7 +24,8 @@ import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_VE
 /**
  * A batch table source factory implementation of {@link BatchTableSourceFactory} to access Pravega streams.
  */
-public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableFactoryBase implements BatchTableSourceFactory<Row> {
+public class FlinkPravegaBatchTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
+        BatchTableSourceFactory<Row>, BatchTableSinkFactory<Row> {
 
     @Override
     public Map<String, String> requiredContext() {
@@ -37,6 +40,11 @@ public class FlinkPravegaBatchTableSourceFactory extends FlinkPravegaTableFactor
     @Override
     public BatchTableSource<Row> createBatchTableSource(Map<String, String> properties) {
         return createFlinkPravegaTableSource(properties);
+    }
+
+    @Override
+    public BatchTableSink<Row> createBatchTableSink(Map<String, String> properties) {
+        return createFlinkPravegaTableSink(properties);
     }
 
     @Override

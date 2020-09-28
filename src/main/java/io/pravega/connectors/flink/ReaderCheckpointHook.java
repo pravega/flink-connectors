@@ -9,6 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.client.ClientConfig;
+import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
@@ -42,6 +44,12 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
     // ------------------------------------------------------------------------
 
+    /** The reader group used to trigger and restore pravega checkpoints (MUST be closed when Hook Closed) */
+    protected ReaderGroup readerGroup;
+
+    /** The reader group manager used to create the reader group (MUST be closed when Hook Closed) */
+    protected ReaderGroupManager readerGroupManager;
+
     /** The logical name of the operator. This is different from the (randomly generated)
      * reader group name, because it is used to identify the state in a checkpoint/savepoint
      * when resuming the checkpoint/savepoint with another job. */
@@ -49,9 +57,6 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
     /** The serializer for Pravega checkpoints, to store them in Flink checkpoints */
     private final CheckpointSerializer checkpointSerializer;
-
-    /** The reader group used to trigger and restore pravega checkpoints */
-    private final ReaderGroup readerGroup;
 
     /** The timeout on the future returned by the 'initiateCheckpoint()' call */
     private final Time triggerTimeout;
@@ -65,16 +70,21 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     @GuardedBy("scheduledExecutorLock")
     private ScheduledExecutorService scheduledExecutorService;
 
-    ReaderCheckpointHook(String hookUid, ReaderGroup readerGroup, Time triggerTimeout, ReaderGroupConfig readerGroupConfig) {
-
+    ReaderCheckpointHook(String hookUid, String readerGroupName,  String readerGroupScope, Time triggerTimeout, ClientConfig clientConfig, ReaderGroupConfig readerGroupConfig) {
         this.hookUid = checkNotNull(hookUid);
-        this.readerGroup = checkNotNull(readerGroup);
         this.triggerTimeout = triggerTimeout;
         this.readerGroupConfig = readerGroupConfig;
         this.checkpointSerializer = new CheckpointSerializer();
+
+        initializeReaderGroup(readerGroupName, readerGroupScope, clientConfig);
     }
 
     // ------------------------------------------------------------------------
+    protected void initializeReaderGroup(String readerGroupName, String readerGroupScope, ClientConfig clientConfig) {
+        readerGroupManager = ReaderGroupManager.withScope(readerGroupScope, clientConfig);
+        readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+        readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+    }
 
     @Override
     public String getIdentifier() {
@@ -123,6 +133,9 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
 
     @Override
     public void close() {
+        log.info("closing reader group Manager");
+        this.readerGroupManager.close();
+
         // close the reader group properly
         log.info("closing the reader group");
         this.readerGroup.close();

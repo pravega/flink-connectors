@@ -72,7 +72,7 @@ public class FlinkPravegaTableFactoryTest {
                 .withSchema(schema)
                 .inAppendMode();
         final Map<String, String> propertiesMap = testDesc.toProperties();
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("Schema validation failed");
     }
@@ -98,7 +98,7 @@ public class FlinkPravegaTableFactoryTest {
                 .withSchema(schema)
                 .inAppendMode();
         final Map<String, String> propertiesMap = testDesc.toProperties();
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("Schema validation failed");
     }
@@ -110,11 +110,15 @@ public class FlinkPravegaTableFactoryTest {
     @Test (expected = IllegalStateException.class)
     public void testMissingRGScopeFail() {
 
+        final PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(CONTROLLER_URI));
+
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);
 
         pravega.tableSourceReaderBuilder()
-                .forStream(stream);
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
                 .withFormat(JSON)
@@ -123,7 +127,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
         fail("scope validation failed");
     }
@@ -148,7 +152,7 @@ public class FlinkPravegaTableFactoryTest {
 
         final Map<String, String> propertiesMap = testDesc.toProperties();
 
-        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceFactory();
+        FlinkPravegaTableFactoryBase tableFactoryBase = new FlinkPravegaStreamTableSourceSinkFactory();
         tableFactoryBase.createFlinkPravegaTableSource(propertiesMap);
     }
 
