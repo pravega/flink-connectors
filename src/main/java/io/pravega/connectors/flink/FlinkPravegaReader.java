@@ -360,19 +360,48 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
+        Throwable lastThrowable = null;
         if (eventStreamClientFactory != null) {
-            log.info("Closing Pravega eventStreamClientFactory");
-            eventStreamClientFactory.close();
+            try {
+                log.info("Closing Pravega eventStreamClientFactory");
+                eventStreamClientFactory.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    eventStreamClientFactory.close();
+                } else {
+                    lastThrowable = e;
+                }
+            }
         }
-
         if (readerGroupManager != null) {
             log.info("Closing Pravega ReaderGroupManager");
-            readerGroupManager.close();
+            try {
+                readerGroupManager.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    readerGroupManager.close();
+                } else {
+                    lastThrowable = e;
+                }
+            }
         }
-
         if (readerGroup != null) {
-            log.info("Closing Pravega ReaderGroup");
-            readerGroup.close();
+            try {
+                log.info("Closing Pravega ReaderGroup");
+                readerGroup.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    readerGroup.close();
+                } else {
+                    lastThrowable = e;
+                }
+            }
+        }
+        if (lastThrowable != null && lastThrowable instanceof Exception) {
+            throw (Exception) lastThrowable;
         }
     }
 
