@@ -62,7 +62,11 @@ public class FlinkPravegaUtils {
      * @return the generated default reader name.
      */
     public static String getReaderName(final String taskName, final int index, final int total) {
-        String readerName = "flink-task-" + taskName + "-" + index + "-" + total;
+        String shortTaskName = "";
+        if (taskName.length() >= 200) {
+            shortTaskName = taskName.substring(0, 200);
+        }
+        String readerName = "flink-task-" + shortTaskName + "-" + index + "-" + total;
         readerName = StringUtils.removePattern(readerName, "[^\\p{Alnum}\\.\\-]");
         return readerName;
     }
