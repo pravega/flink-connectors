@@ -144,10 +144,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
-        log.info("Call addSplitsBack");
-        if (subtaskId == 0) {
-            throw new RuntimeException("Intentional");
-        }
+        log.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
+        throw new RuntimeException("Intentional");
     }
 
 

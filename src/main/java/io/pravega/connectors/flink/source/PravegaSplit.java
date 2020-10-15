@@ -17,14 +17,12 @@ import java.io.Serializable;
 
 
 public class PravegaSplit implements SourceSplit, Serializable {
-    private String readerID;
     private int subtaskId;
     private String readerGroupName;
 
     public PravegaSplit(String readerGroupName, int subtaskId) {
         this.readerGroupName = readerGroupName;
         this.subtaskId = subtaskId;
-        this.readerID = readerGroupName + "-" + subtaskId;
     }
 
     public int getSubtaskId() {
@@ -37,6 +35,6 @@ public class PravegaSplit implements SourceSplit, Serializable {
 
     @Override
     public String splitId() {
-        return readerID;
+        return readerGroupName + "-" + subtaskId;
     }
 }

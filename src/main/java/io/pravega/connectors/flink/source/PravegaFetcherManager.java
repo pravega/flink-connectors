@@ -19,6 +19,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.connector.source.SourceSplit;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
+import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcher;
 import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -30,10 +31,10 @@ import java.util.function.Supplier;
 
 @Slf4j
 public class PravegaFetcherManager<T>
-        extends SplitFetcherManager<EventRead<T>, PravegaSplit> {
+        extends SingleThreadFetcherManager<EventRead<T>, PravegaSplit> {
 
     private static EventStreamClientFactory eventStreamClientFactory;
-    private static List<PravegaSplitReader> splitReaders = new ArrayList<>();
+    private static PravegaSplitReader splitReader = null;
 
     public PravegaFetcherManager(
             FutureCompletingBlockingQueue<RecordsWithSplitIds<EventRead<T>>> elementsQueue,
@@ -43,41 +44,26 @@ public class PravegaFetcherManager<T>
             DeserializationSchema<T> deserializationSchema,
             Time eventReadTimeout) {
         super(elementsQueue, () -> {
-            if (eventStreamClientFactory != null) {
+            if (eventStreamClientFactory == null) {
                 eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
             }
 
-            PravegaSplitReader<T> splitReader = new PravegaSplitReader<>(
+            splitReader = new PravegaSplitReader<>(
                     eventStreamClientFactory,
                     readerGroupName,
                     deserializationSchema,
                     ReaderConfig.builder().build(),
                     eventReadTimeout);
 
-            splitReaders.add(splitReader);
             return splitReader;
         });
     }
 
     @Override
-    public void addSplits(List<PravegaSplit> splitsToAdd) {
-        log.info("splitReaders: {}", splitReaders.size());
-        SplitFetcher<EventRead<T>, PravegaSplit> fetcher = fetchers.get(0);
-        if (fetcher == null) {
-            fetcher = createSplitFetcher();
-            // Add the splits to the fetchers.
-            fetcher.addSplits(splitsToAdd);
-            startFetcher(fetcher);
-        } else {
-            fetcher.addSplits(splitsToAdd);
-        }
-    }
-
-    @Override
     public synchronized void close(long timeoutMs) throws Exception {
-        splitReaders.forEach( (r) -> r.getPravegaReader().close());
-        log.info("Close readers");
-        splitReaders.clear();
+        splitReader.close();
+        log.info("Close reader {} ...", splitReader.split.getSubtaskId());
+        splitReader = null;
         super.close(timeoutMs);
     }
 }
