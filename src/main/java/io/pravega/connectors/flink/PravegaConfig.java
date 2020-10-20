@@ -94,13 +94,10 @@ public class PravegaConfig implements Serializable {
         Preconditions.checkNotNull(schemaRegistryURI, "Schema Registry URI should be set for schema registry client");
 
         SchemaRegistryClientConfig.SchemaRegistryClientConfigBuilder builder = SchemaRegistryClientConfig.builder()
-                .namespace(defaultScope)
                 .schemaRegistryUri(schemaRegistryURI);
 
         if (credentials != null) {
-            builder.authEnabled(true)
-                    .authMethod(credentials.getAuthenticationType())
-                    .authToken(credentials.getAuthenticationToken());
+            builder.authentication(credentials.getAuthenticationType(), credentials.getAuthenticationToken());
         }
 
         return builder.build();

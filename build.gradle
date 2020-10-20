@@ -126,10 +126,13 @@ dependencies {
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
 
-    compileOnly (group: 'io.pravega.schemaregistry', name: 'serializers', version: schemaRegistryVersion) {
+    compileOnly (group: 'io.pravega', name: 'schemaregistry-serializers', version: schemaRegistryVersion) {
         exclude group: 'io.pravega', module: 'pravega-client'
         exclude group: 'io.pravega', module: 'pravega-common'
     }
+
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-json', version: schemaRegistryVersion
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-avro', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion

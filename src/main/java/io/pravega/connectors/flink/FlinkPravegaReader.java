@@ -10,17 +10,15 @@
 package io.pravega.connectors.flink;
 
 import com.google.protobuf.DynamicMessage;
-import com.google.protobuf.InvalidProtocolBufferException;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.Serializer;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
-import io.pravega.schemaregistry.schemas.AvroSchema;
-import io.pravega.schemaregistry.schemas.JSONSchema;
-import io.pravega.schemaregistry.schemas.ProtobufSchema;
-import io.pravega.schemaregistry.serializers.SerializerConfig;
+import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
+import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
+import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
@@ -678,7 +676,7 @@ public class FlinkPravegaReader<T>
             SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
 
             // TODO: add try with resource when autoclosable is ready
-            SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.createRegistryClient(schemaRegistryClientConfig);
+            SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(readerGroupScope, schemaRegistryClientConfig);
 
             SerializationFormat format = schemaRegistryClient.getLatestSchemaVersion(groupId, null)
                     .getSchemaInfo().getSerializationFormat();

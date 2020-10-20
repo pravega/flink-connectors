@@ -3,7 +3,7 @@ package io.pravega.connectors.flink.serialization;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.table.descriptors.PravegaRegistryValidator;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.serializers.SerializerConfig;
+import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
