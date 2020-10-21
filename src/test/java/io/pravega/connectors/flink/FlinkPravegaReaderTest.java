@@ -35,6 +35,7 @@ import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -54,6 +55,7 @@ import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -343,6 +345,48 @@ public class FlinkPravegaReaderTest {
         verify(reader.readerGroupManager).close();
         verify(reader.eventStreamClientFactory).close();
         verify(reader.readerGroup).close();
+    }
+
+    /**
+     * Tests the schema registry deserialization support.
+     */
+    @Test
+    public void testSchemaRegistryDeserialization() throws Exception {
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
+        try {
+            FlinkPravegaReader.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing default scope"
+        }
+
+        pravegaConfig.withDefaultScope("scope");
+        try {
+            FlinkPravegaReader.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing Schema Registry URI"
+        }
+
+        pravegaConfig.withSchemaRegistryURI(URI.create("http://localhost:9092"));
+
+        try {
+            FlinkPravegaReader.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .build();
+        } catch (NotImplementedException e) {
+            // "Not support SerializationFormat.Any"
+        }
     }
 
 

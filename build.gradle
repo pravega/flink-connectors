@@ -77,6 +77,9 @@ repositories {
         maven {
             url "https://oss.jfrog.org/jfrog-dependencies"
         }
+        maven {
+            url 'https://repository.mulesoft.org/nexus/content/repositories/public'
+        }
     }
 }
 
@@ -122,6 +125,12 @@ dependencies {
         // pravega-shared pulls in curator which isn't needed on the client
         exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
+
+    // schema registry dependencies
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', version: schemaRegistryVersion
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-json', version: schemaRegistryVersion
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-avro', version: schemaRegistryVersion
+
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
