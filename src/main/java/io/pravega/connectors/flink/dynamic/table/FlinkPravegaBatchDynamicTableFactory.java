@@ -1,6 +1,6 @@
 package io.pravega.connectors.flink.dynamic.table;
 
-public class FlinkPravegaBatchDynamicTableFactory extends FlinkPravegaDynamicTableFactoryBase{
+public class FlinkPravegaBatchDynamicTableFactory extends FlinkPravegaDynamicTableFactoryBase {
     public static final String IDENTIFIER = "pravega-batch";
 
     @Override
