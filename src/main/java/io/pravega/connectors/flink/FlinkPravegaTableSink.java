@@ -11,6 +11,7 @@ package io.pravega.connectors.flink;
 
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
+import org.apache.flink.api.java.operators.DataSink;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.table.api.DataTypes;
@@ -70,15 +71,6 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchT
         return new FlinkPravegaTableSink(writerFactory, outputFormatFactory, schema);
     }
 
-    /**
-     * NOTE: This method is for internal use only for defining a TableSink.
-     *       Do not use it in Table API programs.
-     */
-    @Override
-    public void emitDataStream(DataStream<Row> dataStream) {
-        consumeDataStream(dataStream);
-    }
-
     @Override
     public DataStreamSink<?> consumeDataStream(DataStream<Row> dataStream) {
         checkState(schema != null, "Table sink is not configured");
@@ -89,10 +81,10 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchT
     }
 
     @Override
-    public void emitDataSet(DataSet<Row> dataSet) {
+    public DataSink<?> consumeDataSet(DataSet<Row> dataSet) {
         checkState(schema != null, "Table sink is not configured");
         FlinkPravegaOutputFormat<Row> outputFormat = outputFormatFactory.apply(schema);
-        dataSet.output(outputFormat);
+        return dataSet.output(outputFormat);
     }
 
     @Override
