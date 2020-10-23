@@ -110,11 +110,15 @@ public class FlinkPravegaTableFactoryTest {
     @Test (expected = IllegalStateException.class)
     public void testMissingRGScopeFail() {
 
+        final PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
+                .withControllerURI(URI.create(CONTROLLER_URI));
+
         Pravega pravega = new Pravega();
         Stream stream = Stream.of(SCOPE, STREAM);
 
         pravega.tableSourceReaderBuilder()
-                .forStream(stream);
+                .forStream(stream)
+                .withPravegaConfig(pravegaConfig);
 
         final TestTableDescriptor testDesc = new TestTableDescriptor(pravega)
                 .withFormat(JSON)
