@@ -375,18 +375,6 @@ public class FlinkPravegaReaderTest {
         } catch (NullPointerException e) {
             // "missing Schema Registry URI"
         }
-
-        pravegaConfig.withSchemaRegistryURI(URI.create("http://localhost:9092"));
-
-        try {
-            FlinkPravegaReader.<Integer>builder()
-                    .withPravegaConfig(pravegaConfig)
-                    .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
-                    .build();
-        } catch (NotImplementedException e) {
-            // "Not support SerializationFormat.Any"
-        }
     }
 
 

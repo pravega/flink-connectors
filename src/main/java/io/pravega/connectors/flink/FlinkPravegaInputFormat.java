@@ -10,16 +10,8 @@
 
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.schemaregistry.client.SchemaRegistryClient;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
-import io.pravega.schemaregistry.contract.data.SerializationFormat;
-import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
-import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
-import io.pravega.schemaregistry.serializers.SerializerFactory;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.Preconditions;
 
 import io.pravega.client.ClientConfig;
@@ -221,37 +213,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
          * @return Builder instance.
          */
         public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
-
-            SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
-            SerializationFormat format = SerializationFormat.Any;
-
-            try (SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(
-                    getPravegaConfig().getDefaultScope(), schemaRegistryClientConfig)) {
-                format = schemaRegistryClient.getLatestSchemaVersion(groupId, null)
-                        .getSchemaInfo().getSerializationFormat();
-            } catch (Exception e) {
-                log.error("Error while closing the schema registry client", e);
-            }
-
-            SerializerConfig serializerConfig = SerializerConfig.builder()
-                    .groupId(groupId)
-                    .registerSchema(false)
-                    .registryConfig(schemaRegistryClientConfig)
-                    .build();
-            Serializer<T> serializer;
-
-            switch (format) {
-                case Json:
-                    serializer = SerializerFactory.jsonSerializer(serializerConfig, JSONSchema.of(tClass));
-                    break;
-                case Avro:
-                    serializer = SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(tClass));
-                    break;
-                default:
-                    throw new NotImplementedException("Not supporting serialization format");
-            }
-
-            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass, serializer);
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
+                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 
