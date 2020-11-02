@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.EventStreamClientFactory;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
@@ -360,7 +361,7 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
-        Throwable lastThrowable = null;
+        Throwable ex = null;
         if (eventStreamClientFactory != null) {
             try {
                 log.info("Closing Pravega eventStreamClientFactory");
@@ -370,7 +371,7 @@ public class FlinkPravegaReader<T>
                     log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
                     eventStreamClientFactory.close();
                 } else {
-                    lastThrowable = e;
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
                 }
             }
         }
@@ -383,7 +384,7 @@ public class FlinkPravegaReader<T>
                     log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
                     readerGroupManager.close();
                 } else {
-                    lastThrowable = e;
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
                 }
             }
         }
@@ -396,12 +397,12 @@ public class FlinkPravegaReader<T>
                     log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
                     readerGroup.close();
                 } else {
-                    lastThrowable = e;
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
                 }
             }
         }
-        if (lastThrowable != null && lastThrowable instanceof Exception) {
-            throw (Exception) lastThrowable;
+        if (ex != null && ex instanceof Exception) {
+            throw (Exception) ex;
         }
     }
 
