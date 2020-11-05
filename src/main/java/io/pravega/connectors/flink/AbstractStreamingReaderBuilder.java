@@ -147,7 +147,7 @@ public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStream
      * @throws IllegalStateException if the configuration is invalid.
      * @return an uninitiailized reader as a source function.
      */
-    public FlinkPravegaReader<T> buildSourceFunction() {
+    protected FlinkPravegaReader<T> buildSourceFunction() {
         ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
         return new FlinkPravegaReader<>(
                 Optional.ofNullable(this.uid).orElseGet(this::generateUid),

@@ -139,6 +139,7 @@ dependencies {
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
     testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion

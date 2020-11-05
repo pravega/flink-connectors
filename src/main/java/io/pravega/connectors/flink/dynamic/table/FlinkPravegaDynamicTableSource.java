@@ -1,64 +1,118 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
 package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;
 import io.pravega.connectors.flink.FlinkPravegaReader;
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.api.ValidationException;
+import org.apache.flink.api.common.time.Time;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.sources.*;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.logical.LogicalTypeRoot;
-import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.Preconditions;
 
-import javax.annotation.Nullable;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-import static org.apache.flink.util.Preconditions.checkNotNull;
+public class FlinkPravegaDynamicTableSource implements ScanTableSource {
 
-public class FlinkPravegaDynamicTableSource implements ScanTableSource, DefinedProctimeAttribute, DefinedRowtimeAttributes{
+    // Source produced data type
+    private final DataType producedDataType;
 
-    private final Supplier<FlinkPravegaReader<RowData>> sourceFunctionFactory;
+    // Scan format for decoding records from Pravega
+    private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
 
-    private final Supplier<FlinkPravegaInputFormat<RowData>> inputFormatFactory;
+    // The reader group name to coordinate the parallel readers. This should be unique for a Flink job.
+    private final String readerGroupName;
 
-    private final TableSchema schema;
+    // Pravega connection configuration
+    private final PravegaConfig pravegaConfig;
 
-    /** Scan format for decoding records from Pravega. */
-    protected final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
+    // Pravega source streams with start and end streamcuts
+    private final List<StreamWithBoundaries> streams;
 
-    /** Field name of the processing time attribute, null if no processing time field is defined. */
-    private String proctimeAttribute;
+    // Refresh interval for reader group
+    private final long readerGroupRefreshTimeMillis;
 
-    /** Descriptor for a rowtime attribute. */
-    private List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors;
+    // Timeout for call that initiates the Pravega checkpoint
+    private final long checkpointInitiateTimeoutMillis;
+
+    // Timeout for event read call
+    private final long eventReadTimeoutMillis;
+
+    // Maximum outstanding Pravega checkpoint requests
+    private final int maxOutstandingCheckpointRequest;
+
+    // Uid of the table source to identify the checkpoint state
+    private final Optional<String> uid;
+
+    // Flag to determine streaming or batch read
+    private final boolean isStreamingReader;
+
+    // Flag to determine if the source stream is bounded
+    private final boolean isBounded;
 
     /**
-     * Creates a Pravega {@link TableSource}.
-     * @param sourceFunctionFactory a factory for the {@link FlinkPravegaReader} to implement {@link StreamTableSource}
-     * @param inputFormatFactory a factory for the {@link FlinkPravegaInputFormat} to implement {@link BatchTableSource}
-     * @param schema the table schema
+     * Creates a Pravega {@link DynamicTableSource}.
+     * @param producedDataType                source produced data type
+     * @param decodingFormat                  scan format for decoding records from Pravega
+     * @param readerGroupName                 the reader group name
+     * @param pravegaConfig                   Pravega connection configuration
+     * @param streams                         list of Pravega source streams with start and end streamcuts
+     * @param uid                             uid of the table source
+     * @param readerGroupRefreshTimeMillis    refresh interval for reader group
+     * @param checkpointInitiateTimeoutMillis timeout for call that initiates the Pravega checkpoint
+     * @param eventReadTimeoutMillis          timeout for event read call
+     * @param maxOutstandingCheckpointRequest maximum outstanding Pravega checkpoint requests
+     * @param isStreamingReader               flag to determine streaming or batch read
+     * @param isBounded                       flag to determine if the source stream is bounded
      */
-    protected FlinkPravegaDynamicTableSource(
-            Supplier<FlinkPravegaReader<RowData>> sourceFunctionFactory,
-            Supplier<FlinkPravegaInputFormat<RowData>> inputFormatFactory,
-            TableSchema schema,
-            DecodingFormat<DeserializationSchema<RowData>> decodingFormat) {
-        this.sourceFunctionFactory = checkNotNull(sourceFunctionFactory, "sourceFunctionFactory");
-        this.inputFormatFactory = checkNotNull(inputFormatFactory, "inputFormatFactory");
-        this.schema = TableSchemaUtils.checkNoGeneratedColumns(schema);
+    public FlinkPravegaDynamicTableSource(DataType producedDataType,
+                                          DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
+                                          String readerGroupName,
+                                          PravegaConfig pravegaConfig,
+                                          List<StreamWithBoundaries> streams,
+                                          long readerGroupRefreshTimeMillis,
+                                          long checkpointInitiateTimeoutMillis,
+                                          long eventReadTimeoutMillis,
+                                          int maxOutstandingCheckpointRequest,
+                                          Optional<String> uid,
+                                          boolean isStreamingReader,
+                                          boolean isBounded) {
+        this.producedDataType = Preconditions.checkNotNull(
+                producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
+        Preconditions.checkArgument(!isStreamingReader || readerGroupName != null,
+                "Reader group name is required in streaming mode");
+        this.readerGroupName = readerGroupName;
+        this.pravegaConfig = Preconditions.checkNotNull(
+                pravegaConfig, "Pravega config must not be null.");
+        this.streams = Preconditions.checkNotNull(
+                streams, "Source streams must not be null.");
+        this.readerGroupRefreshTimeMillis = readerGroupRefreshTimeMillis;
+        this.checkpointInitiateTimeoutMillis = checkpointInitiateTimeoutMillis;
+        this.eventReadTimeoutMillis = eventReadTimeoutMillis;
+        this.maxOutstandingCheckpointRequest = maxOutstandingCheckpointRequest;
+        this.uid = uid;
+        this.isStreamingReader = isStreamingReader;
+        this.isBounded = isBounded;
     }
-
 
     @Override
     public ChangelogMode getChangelogMode() {
@@ -67,70 +121,96 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, DefinedP
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
-        FlinkPravegaReader<RowData> reader = sourceFunctionFactory.get();
-        //reader.initialize();
-        return SourceFunctionProvider.of(reader, false);
+        if (isStreamingReader) {
+            FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .withReaderGroupName(readerGroupName)
+                    .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType))
+                    .withReaderGroupRefreshTime(Time.milliseconds(readerGroupRefreshTimeMillis))
+                    .withCheckpointInitiateTimeout(Time.milliseconds(checkpointInitiateTimeoutMillis))
+                    .withEventReadTimeout(Time.milliseconds(eventReadTimeoutMillis))
+                    .withMaxOutstandingCheckpointRequest(maxOutstandingCheckpointRequest);
+
+            for (StreamWithBoundaries stream : streams) {
+                readerBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
+            }
+
+            String generatedUid = readerBuilder.generateUid();
+            readerBuilder.uid(uid.orElse(generatedUid));
+            return SourceFunctionProvider.of(readerBuilder.build(), isBounded);
+        } else {
+            FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
+
+            for (StreamWithBoundaries stream : streams) {
+                inputFormatBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
+            }
+
+            return InputFormatProvider.of(inputFormatBuilder.build());
+        }
     }
 
     @Override
     public DynamicTableSource copy() {
         return new FlinkPravegaDynamicTableSource(
-                this.sourceFunctionFactory,
-                this.inputFormatFactory,
-                this.schema,
-                this.decodingFormat);
+                this.producedDataType,
+                this.decodingFormat,
+                this.readerGroupName,
+                this.pravegaConfig,
+                this.streams,
+                this.readerGroupRefreshTimeMillis,
+                this.checkpointInitiateTimeoutMillis,
+                this.eventReadTimeoutMillis,
+                this.maxOutstandingCheckpointRequest,
+                this.uid,
+                this.isStreamingReader,
+                this.isBounded);
     }
 
     @Override
     public String asSummaryString() {
-        return "Flink Pravega Dynamic Table Source";
-    }
-
-    @Nullable
-    @Override
-    public String getProctimeAttribute() {
-        return proctimeAttribute;
+        return "Pravega";
     }
 
     @Override
-    public List<RowtimeAttributeDescriptor> getRowtimeAttributeDescriptors() {
-        return rowtimeAttributeDescriptors;
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final FlinkPravegaDynamicTableSource that = (FlinkPravegaDynamicTableSource) o;
+        boolean f = readerGroupRefreshTimeMillis == that.readerGroupRefreshTimeMillis &&
+                checkpointInitiateTimeoutMillis == that.checkpointInitiateTimeoutMillis &&
+                eventReadTimeoutMillis == that.eventReadTimeoutMillis &&
+                maxOutstandingCheckpointRequest == that.maxOutstandingCheckpointRequest &&
+                isStreamingReader == that.isStreamingReader &&
+                isBounded == that.isBounded &&
+                producedDataType.equals(that.producedDataType) &&
+                decodingFormat.equals(that.decodingFormat) &&
+                readerGroupName.equals(that.readerGroupName) &&
+                pravegaConfig.equals(that.pravegaConfig) &&
+                streams.equals(that.streams) &&
+                uid.equals(that.uid);
+        return f;
     }
 
-    /**
-     * Declares a field of the schema to be the processing time attribute.
-     *
-     * @param proctimeAttribute The name of the field that becomes the processing time field.
-     */
-    protected void setProctimeAttribute(String proctimeAttribute) {
-        if (proctimeAttribute != null) {
-            // validate that field exists and is of correct type
-            Optional<DataType> tpe = schema.getFieldDataType(proctimeAttribute);
-            if (!tpe.isPresent()) {
-                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get().getLogicalType().getTypeRoot() != LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE) {
-                throw new ValidationException("Processing time attribute " + proctimeAttribute + " is not of type TIMESTAMP.");
-            }
-        }
-        this.proctimeAttribute = proctimeAttribute;
-    }
-
-    /**
-     * Declares a list of fields to be rowtime attributes.
-     *
-     * @param rowtimeAttributeDescriptors The descriptors of the rowtime attributes.
-     */
-    protected void setRowtimeAttributeDescriptors(List<RowtimeAttributeDescriptor> rowtimeAttributeDescriptors) {
-        // validate that all declared fields exist and are of correct type
-        for (RowtimeAttributeDescriptor desc : rowtimeAttributeDescriptors) {
-            String rowtimeAttribute = desc.getAttributeName();
-            Optional<DataType> tpe = schema.getFieldDataType(rowtimeAttribute);
-            if (!tpe.isPresent()) {
-                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not present in TableSchema.");
-            } else if (tpe.get().getLogicalType().getTypeRoot() != LogicalTypeRoot.TIMESTAMP_WITHOUT_TIME_ZONE) {
-                throw new ValidationException("Rowtime attribute " + rowtimeAttribute + " is not of type TIMESTAMP.");
-            }
-        }
-        this.rowtimeAttributeDescriptors = rowtimeAttributeDescriptors;
+    @Override
+    public int hashCode() {
+        return Objects.hash(
+                producedDataType,
+                decodingFormat,
+                readerGroupName,
+                pravegaConfig,
+                streams,
+                readerGroupRefreshTimeMillis,
+                checkpointInitiateTimeoutMillis,
+                eventReadTimeoutMillis,
+                maxOutstandingCheckpointRequest,
+                uid,
+                isStreamingReader,
+                isBounded);
     }
 }
