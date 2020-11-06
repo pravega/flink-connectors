@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink.dynamic.table;
 
-
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;

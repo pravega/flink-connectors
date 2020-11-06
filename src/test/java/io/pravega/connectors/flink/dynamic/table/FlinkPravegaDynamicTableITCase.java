@@ -23,7 +23,6 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
-import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
@@ -161,26 +160,26 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
                 "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
 
-        assertEquals(expected, TestingSinkFunction.rows);
+        assertEquals(expected, TestingSinkFunction.ROWS);
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
 
         private static final long serialVersionUID = 455430015321124493L;
 
-        private static final List<String> rows = new ArrayList<>();
+        private static final List<String> ROWS = new ArrayList<>();
 
         private final int expectedSize;
 
         private TestingSinkFunction(int expectedSize) {
             this.expectedSize = expectedSize;
-            rows.clear();
+            ROWS.clear();
         }
 
         @Override
         public void invoke(RowData value, Context context) throws Exception {
-            rows.add(value.toString());
-            if (rows.size() >= expectedSize) {
+            ROWS.add(value.toString());
+            if (ROWS.size() >= expectedSize) {
                 // job finish
                 throw new SuccessException();
             }
