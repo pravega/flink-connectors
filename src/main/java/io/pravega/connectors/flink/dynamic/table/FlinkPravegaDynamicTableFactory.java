@@ -106,18 +106,18 @@ public class FlinkPravegaDynamicTableFactory implements
     public Set<ConfigOption<?>> requiredOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
         options.add(FactoryUtil.FORMAT);
-        options.add(CONNECTION_CONTROLLER_URL);
-        options.add(CONNECTION_SCOPE);
+        options.add(CONTROLLER_URL);
+        options.add(SCOPE);
         return options;
     }
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
-        options.add(CONNECTION_SECURITY_AUTH_TYPE);
-        options.add(CONNECTION_SECURITY_AUTH_TOKEN);
-        options.add(CONNECTION_SECURITY_VALIDATE_HOSTNAME);
-        options.add(CONNECTION_SECURITY_TRUST_STORE);
+        options.add(SECURITY_AUTH_TYPE);
+        options.add(SECURITY_AUTH_TOKEN);
+        options.add(SECURITY_VALIDATE_HOSTNAME);
+        options.add(SECURITY_TRUST_STORE);
         options.add(SCAN_EXECUTION_TYPE);
         options.add(SCAN_STREAMS);
         options.add(SCAN_START_STREAMCUTS);

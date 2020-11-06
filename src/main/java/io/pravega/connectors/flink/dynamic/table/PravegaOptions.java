@@ -38,41 +38,41 @@ public class PravegaOptions {
     // Connection specific options
     // --------------------------------------------------------------------------------------------
 
-    public static final ConfigOption<String> CONNECTION_CONTROLLER_URL = ConfigOptions
-            .key("connection.controller-uri")
+    public static final ConfigOption<String> CONTROLLER_URL = ConfigOptions
+            .key("controller-uri")
             .stringType()
             .noDefaultValue()
             .withDescription("Required Pravega controller URI");
 
-    public static final ConfigOption<String> CONNECTION_SCOPE = ConfigOptions
-            .key("connection.scope")
+    public static final ConfigOption<String> SCOPE = ConfigOptions
+            .key("scope")
             .stringType()
             .noDefaultValue()
             .withDescription("Required default scope name");
 
-    public static final ConfigOption<String> CONNECTION_SECURITY_AUTH_TYPE = ConfigOptions
-            .key("connection.security.auth-type")
+    public static final ConfigOption<String> SECURITY_AUTH_TYPE = ConfigOptions
+            .key("security.auth-type")
             .stringType()
             .noDefaultValue()
             .withDescription("Optional static authentication/authorization type for security");
 
-    public static final ConfigOption<String> CONNECTION_SECURITY_AUTH_TOKEN = ConfigOptions
-            .key("connection.security.auth-token")
+    public static final ConfigOption<String> SECURITY_AUTH_TOKEN = ConfigOptions
+            .key("security.auth-token")
             .stringType()
             .noDefaultValue()
             .withDescription("Optional static authentication/authorization token for security");
 
-    public static final ConfigOption<Boolean> CONNECTION_SECURITY_VALIDATE_HOSTNAME = ConfigOptions
-            .key("connection.security.validate-hostname")
+    public static final ConfigOption<Boolean> SECURITY_VALIDATE_HOSTNAME = ConfigOptions
+            .key("security.validate-hostname")
             .booleanType()
             .defaultValue(true)
             .withDescription("Optional flag to decide whether to enable host name validation when TLS is enabled");
 
-    public static final ConfigOption<String> CONNECTION_SECURITY_TRUST_STORE = ConfigOptions
-            .key("connection.trust-store")
+    public static final ConfigOption<String> SECURITY_TRUST_STORE = ConfigOptions
+            .key("security.trust-store")
             .stringType()
             .noDefaultValue()
-            .withDescription("Optional truststore path for Pravega client");
+            .withDescription("Optional trust store for Pravega client");
 
     // --------------------------------------------------------------------------------------------
     // Scan specific options
@@ -88,7 +88,7 @@ public class PravegaOptions {
             .key("scan.reader-group.name")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required reader group name");
+            .withDescription("Required Pravega reader group name");
 
     public static final ConfigOption<List<String>> SCAN_STREAMS = ConfigOptions
             .key("scan.streams")
@@ -175,7 +175,7 @@ public class PravegaOptions {
             .key("sink.routing-key.field.name")
             .stringType()
             .noDefaultValue()
-            .withDescription("Optional field name to use as a Pravega event routing key, random routing if not specified");
+            .withDescription("Optional field name to use as a Pravega event routing key, field type must be STRING, random routing if not specified");
 
     // --------------------------------------------------------------------------------------------
     // Option enumerations
@@ -291,13 +291,13 @@ public class PravegaOptions {
 
     public static PravegaConfig getPravegaConfig(ReadableConfig tableOptions) {
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(URI.create(tableOptions.get(CONNECTION_CONTROLLER_URL)))
-                .withDefaultScope(tableOptions.get(CONNECTION_SCOPE))
-                .withHostnameValidation(tableOptions.get(CONNECTION_SECURITY_VALIDATE_HOSTNAME))
-                .withTrustStore(tableOptions.get(CONNECTION_SECURITY_TRUST_STORE));
+                .withControllerURI(URI.create(tableOptions.get(CONTROLLER_URL)))
+                .withDefaultScope(tableOptions.get(SCOPE))
+                .withHostnameValidation(tableOptions.get(SECURITY_VALIDATE_HOSTNAME))
+                .withTrustStore(tableOptions.get(SECURITY_TRUST_STORE));
 
-        Optional<String> authType = tableOptions.getOptional(CONNECTION_SECURITY_AUTH_TYPE);
-        Optional<String> authToken = tableOptions.getOptional(CONNECTION_SECURITY_AUTH_TOKEN);
+        Optional<String> authType = tableOptions.getOptional(SECURITY_AUTH_TYPE);
+        Optional<String> authToken = tableOptions.getOptional(SECURITY_AUTH_TOKEN);
         if (authType.isPresent() && authToken.isPresent() && !isCredentialsLoadDynamic()) {
             pravegaConfig.withCredentials(new FlinkPravegaUtils.SimpleCredentials(authType.get(), authToken.get()));
         }
@@ -342,7 +342,7 @@ public class PravegaOptions {
     }
 
     public static List<StreamWithBoundaries> resolveScanStreams(ReadableConfig tableOptions) {
-        String scope = tableOptions.get(CONNECTION_SCOPE);
+        String scope = tableOptions.get(SCOPE);
         List<String> streams = tableOptions.getOptional(SCAN_STREAMS)
                 .orElseThrow(() -> new TableException("Validator should have checked that"));
         List<String> startStreamCuts = tableOptions.get(SCAN_START_STREAMCUTS);
@@ -362,7 +362,7 @@ public class PravegaOptions {
     // ------------------------------------- Writer ----------------------------------------
 
     public static Stream getSinkStream(ReadableConfig tableOptions) {
-        String scope = tableOptions.get(CONNECTION_SCOPE);
+        String scope = tableOptions.get(SCOPE);
         String stream = tableOptions.get(SINK_STREAM);
         return Stream.of(scope, stream);
     }

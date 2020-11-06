@@ -182,7 +182,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
             return false;
         }
         final FlinkPravegaDynamicTableSource that = (FlinkPravegaDynamicTableSource) o;
-        boolean f = readerGroupRefreshTimeMillis == that.readerGroupRefreshTimeMillis &&
+        return readerGroupRefreshTimeMillis == that.readerGroupRefreshTimeMillis &&
                 checkpointInitiateTimeoutMillis == that.checkpointInitiateTimeoutMillis &&
                 eventReadTimeoutMillis == that.eventReadTimeoutMillis &&
                 maxOutstandingCheckpointRequest == that.maxOutstandingCheckpointRequest &&
@@ -194,7 +194,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
                 uid.equals(that.uid);
-        return f;
     }
 
     @Override

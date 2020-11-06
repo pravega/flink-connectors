@@ -13,13 +13,20 @@ package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
+import io.pravega.connectors.flink.FlinkPravegaInputFormat;
+import io.pravega.connectors.flink.FlinkPravegaReader;
+import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
+import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.streaming.api.functions.sink.SinkFunction;
+import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
@@ -29,10 +36,16 @@ import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
+import org.apache.flink.table.connector.sink.SinkFunctionProvider;
 import org.apache.flink.table.connector.source.DynamicTableSource;
+import org.apache.flink.table.connector.source.InputFormatProvider;
+import org.apache.flink.table.connector.source.ScanTableSource;
+import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.TestFormatFactory;
+import org.apache.flink.table.runtime.connector.sink.SinkRuntimeProviderContext;
+import org.apache.flink.table.runtime.connector.source.ScanRuntimeProviderContext;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.TestLogger;
@@ -40,6 +53,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 
+import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -50,6 +64,7 @@ import java.util.function.Consumer;
 
 import static org.apache.flink.util.CoreMatchers.containsCause;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String SCOPE = "scope";
@@ -93,7 +108,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
-    @SuppressWarnings("unchecked")
     public void testStreamingTableSource() {
         // prepare parameters for Pravega table source
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
@@ -133,7 +147,35 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
-    @SuppressWarnings("unchecked")
+    public void testStreamingTableSourceProvider() {
+        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestPravegaDecodingFormat(",", true);
+
+        final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
+                producedDataType,
+                decodingFormat,
+                READER_GROUP,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                Optional.empty(),
+                true,
+                false);
+
+        ScanTableSource.ScanRuntimeProvider provider =
+                source.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
+        assertTrue(provider instanceof SourceFunctionProvider);
+        final SourceFunctionProvider sourceFunctionProvider = (SourceFunctionProvider) provider;
+        final SourceFunction<RowData> sourceFunction = sourceFunctionProvider.createSourceFunction();
+        assertTrue(sourceFunction instanceof FlinkPravegaReader);
+    }
+
+    @Test
     public void testBatchTableSource() {
         // prepare parameters for Pravega table source
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
@@ -173,6 +215,35 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
+    public void testBatchTableSourceProvider() {
+        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestPravegaDecodingFormat(",", true);
+
+        final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
+                producedDataType,
+                decodingFormat,
+                READER_GROUP,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                Optional.empty(),
+                false,
+                false);
+
+        ScanTableSource.ScanRuntimeProvider provider =
+                source.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
+        assertTrue(provider instanceof InputFormatProvider);
+        final InputFormatProvider inputFormatProvider = (InputFormatProvider) provider;
+        final InputFormat<RowData, ?> sourceFunction = inputFormatProvider.createInputFormat();
+        assertTrue(sourceFunction instanceof FlinkPravegaInputFormat);
+    }
+
+    @Test
     public void testTableSink() {
         final DataType consumedDataType = SINK_SCHEMA.toPhysicalRowDataType();
         EncodingFormat<SerializationSchema<RowData>> encodingFormat =
@@ -202,6 +273,44 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 Optional.of(NAME)
         );
         assertEquals(expectedSink, actualSink);
+    }
+
+    @Test
+    public void testTableSinkProvider() {
+        final DataType consumedDataType = SINK_SCHEMA.toPhysicalRowDataType();
+        EncodingFormat<SerializationSchema<RowData>> encodingFormat =
+                new TestPravegaEncodingFormat(",");
+
+        // Construct table sink using options and table sink factory.
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "sinkTable");
+        final CatalogTable sinkTable = createPravegaSinkCatalogTable();
+        final DynamicTableSink actualSink = FactoryUtil.createTableSink(
+                null,
+                objectIdentifier,
+                sinkTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader());
+
+        final FlinkPravegaDynamicTableSink sink = new FlinkPravegaDynamicTableSink(
+                TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
+                encodingFormat,
+                getTestPravegaConfig(),
+                Stream.of(SCOPE, STREAM3),
+                PravegaWriterMode.EXACTLY_ONCE,
+                LEASE_MILLIS,
+                false,
+                Optional.of(NAME)
+        );
+
+        DynamicTableSink.SinkRuntimeProvider provider =
+                sink.getSinkRuntimeProvider(new SinkRuntimeProviderContext(false));
+        assertTrue(provider instanceof SinkFunctionProvider);
+        final SinkFunctionProvider sinkFunctionProvider = (SinkFunctionProvider) provider;
+        final SinkFunction<RowData> sinkFunction = sinkFunctionProvider.createSinkFunction();
+        assertTrue(sinkFunction instanceof FlinkPravegaWriter);
     }
 
     // --------------------------------------------------------------------------------------------
@@ -433,11 +542,11 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         Map<String, String> tableOptions = new HashMap<>();
         // Pravega connection options.
         tableOptions.put("connector", "pravega");
-        tableOptions.put("connection.controller-uri", CONTROLLER_URI);
-        tableOptions.put("connection.scope", SCOPE);
-        tableOptions.put("connection.security.auth-type", AUTH_TYPE);
-        tableOptions.put("connection.security.auth-token", AUTH_TOKEN);
-        tableOptions.put("connection.security.validate-hostname", "true");
+        tableOptions.put("controller-uri", CONTROLLER_URI);
+        tableOptions.put("scope", SCOPE);
+        tableOptions.put("security.auth-type", AUTH_TYPE);
+        tableOptions.put("security.auth-token", AUTH_TOKEN);
+        tableOptions.put("security.validate-hostname", "true");
 
         tableOptions.put("scan.execution.type", "streaming");
         tableOptions.put("scan.reader-group.name", READER_GROUP);
@@ -468,11 +577,11 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         Map<String, String> tableOptions = new HashMap<>();
         // Pravega connection options.
         tableOptions.put("connector", "pravega");
-        tableOptions.put("connection.controller-uri", CONTROLLER_URI);
-        tableOptions.put("connection.scope", SCOPE);
-        tableOptions.put("connection.security.auth-type", AUTH_TYPE);
-        tableOptions.put("connection.security.auth-token", AUTH_TOKEN);
-        tableOptions.put("connection.security.validate-hostname", "true");
+        tableOptions.put("controller-uri", CONTROLLER_URI);
+        tableOptions.put("scope", SCOPE);
+        tableOptions.put("security.auth-type", AUTH_TYPE);
+        tableOptions.put("security.auth-token", AUTH_TOKEN);
+        tableOptions.put("security.validate-hostname", "true");
 
         tableOptions.put("sink.stream", STREAM3);
         tableOptions.put("sink.semantic", EXACTLY_ONCE);
@@ -503,5 +612,63 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 StreamWithBoundaries.of(stream1, StreamCut.UNBOUNDED, StreamCut.UNBOUNDED),
                 StreamWithBoundaries.of(stream2, StreamCut.UNBOUNDED, StreamCut.UNBOUNDED)
         );
+    }
+
+    private static class DummySerializationSchema implements SerializationSchema<RowData> {
+
+        private static final DummySerializationSchema INSTANCE = new DummySerializationSchema();
+
+        @Override
+        public byte[] serialize(RowData element) {
+            return new byte[0];
+        }
+    }
+
+    private static class DummyDeserializationSchema implements DeserializationSchema<RowData> {
+
+        private static final DummyDeserializationSchema INSTANCE = new DummyDeserializationSchema();
+
+        @Override
+        public RowData deserialize(byte[] message) throws IOException {
+            return null;
+        }
+
+        @Override
+        public boolean isEndOfStream(RowData nextElement) {
+            return false;
+        }
+
+        @Override
+        public TypeInformation<RowData> getProducedType() {
+            return null;
+        }
+    }
+
+    private static class TestPravegaEncodingFormat extends TestFormatFactory.EncodingFormatMock {
+
+        private TestPravegaEncodingFormat(String delimiter) {
+            super(delimiter);
+        }
+
+        @Override
+        public SerializationSchema<RowData> createRuntimeEncoder(
+                DynamicTableSink.Context context,
+                DataType consumeDataType) {
+            return DummySerializationSchema.INSTANCE;
+        }
+    }
+
+    private static class TestPravegaDecodingFormat extends TestFormatFactory.DecodingFormatMock {
+
+        private TestPravegaDecodingFormat(String delimiter, Boolean failOnMissing) {
+            super(delimiter, failOnMissing);
+        }
+
+        @Override
+        public DeserializationSchema<RowData> createRuntimeDecoder(
+                DynamicTableSource.Context context,
+                DataType producedDataType) {
+            return DummyDeserializationSchema.INSTANCE;
+        }
     }
 }
