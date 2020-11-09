@@ -74,29 +74,29 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         SETUP_UTILS.createTestStream(stream, 3);
 
         final String createTable = String.format(
-                "create table pravega (\n" +
-                        "  `computed-price` as price + 1.0,\n" +
-                        "  price decimal(38, 18),\n" +
-                        "  currency string,\n" +
-                        "  log_date date,\n" +
-                        "  log_time time(3),\n" +
-                        "  log_ts timestamp(3),\n" +
-                        "  ts as log_ts + INTERVAL '1' SECOND,\n" +
-                        "  watermark for ts as ts\n" +
-                        ") with (\n" +
-                        "  'connector' = 'pravega',\n" +
-                        "  'controller-uri' = '%s',\n" +
-                        "  'scope' = '%s',\n" +
-                        "  'security.auth-type' = '%s',\n" +
-                        "  'security.auth-token' = '%s',\n" +
-                        "  'security.validate-hostname' = '%s',\n" +
-                        "  'security.trust-store' = '%s',\n" +
-                        "  'scan.execution.type' = '%s',\n" +
-                        "  'scan.reader-group.name' = '%s',\n" +
-                        "  'scan.streams' = '%s',\n" +
-                        "  'sink.stream' = '%s',\n" +
-                        "  'sink.routing-key.field.name' = 'currency',\n" +
-                        "  'format' = 'json'\n" +
+                "create table pravega (%n" +
+                        "  `computed-price` as price + 1.0,%n" +
+                        "  price decimal(38, 18),%n" +
+                        "  currency string,%n" +
+                        "  log_date date,%n" +
+                        "  log_time time(3),%n" +
+                        "  log_ts timestamp(3),%n" +
+                        "  ts as log_ts + INTERVAL '1' SECOND,%n" +
+                        "  watermark for ts as ts%n" +
+                        ") with (%n" +
+                        "  'connector' = 'pravega',%n" +
+                        "  'controller-uri' = '%s',%n" +
+                        "  'scope' = '%s',%n" +
+                        "  'security.auth-type' = '%s',%n" +
+                        "  'security.auth-token' = '%s',%n" +
+                        "  'security.validate-hostname' = '%s',%n" +
+                        "  'security.trust-store' = '%s',%n" +
+                        "  'scan.execution.type' = '%s',%n" +
+                        "  'scan.reader-group.name' = '%s',%n" +
+                        "  'scan.streams' = '%s',%n" +
+                        "  'sink.stream' = '%s',%n" +
+                        "  'sink.routing-key.field.name' = 'currency',%n" +
+                        "  'format' = 'json'%n" +
                         ")",
                 SETUP_UTILS.getControllerUri().toString(),
                 SETUP_UTILS.getScope(),
