@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.EventStreamClientFactory;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
@@ -360,19 +361,48 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
+        Throwable ex = null;
         if (eventStreamClientFactory != null) {
-            log.info("Closing Pravega eventStreamClientFactory");
-            eventStreamClientFactory.close();
+            try {
+                log.info("Closing Pravega eventStreamClientFactory");
+                eventStreamClientFactory.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    eventStreamClientFactory.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroupManager != null) {
             log.info("Closing Pravega ReaderGroupManager");
-            readerGroupManager.close();
+            try {
+                readerGroupManager.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    readerGroupManager.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroup != null) {
-            log.info("Closing Pravega ReaderGroup");
-            readerGroup.close();
+            try {
+                log.info("Closing Pravega ReaderGroup");
+                readerGroup.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    readerGroup.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+        if (ex != null && ex instanceof Exception) {
+            throw (Exception) ex;
         }
     }
 
