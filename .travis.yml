@@ -10,7 +10,7 @@
 language: java
 install: true
 jdk:
-  - openjdk8
+  - openjdk11
 
 # the secure configurations in env: section is for BINTRAY_USER=<USER> and BINTRAY_KEY=<KEY> properties
 # which will be used for publishing artifacts to snapshot repository
