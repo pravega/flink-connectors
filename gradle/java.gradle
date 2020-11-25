@@ -62,6 +62,6 @@ tasks.withType(Test) {
     testLogging.showStackTraces = true
     testLogging.events = ["PASSED", "FAILED"]
     maxParallelForks = System.properties['maxParallelForks'] ? System.properties['maxParallelForks'].toInteger() : 1
-    minHeapSize = "512m"
-    maxHeapSize = "2048m"
+    minHeapSize = "128m"
+    maxHeapSize = "512m"
 }
