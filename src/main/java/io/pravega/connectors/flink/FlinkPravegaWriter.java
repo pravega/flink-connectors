@@ -72,7 +72,7 @@ public class FlinkPravegaWriter<T>
     @VisibleForTesting
     AtomicLong pendingWritesCount = new AtomicLong();
 
-    private ExecutorService executorService;
+    private transient ExecutorService executorService;
 
     private long currentWatermark = Long.MIN_VALUE;
 
