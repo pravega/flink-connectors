@@ -12,7 +12,6 @@ package io.pravega.connectors.flink.util;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import io.pravega.client.stream.impl.Credentials;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
@@ -56,15 +55,13 @@ import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WR
 import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WRITER_SCOPE;
 import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WRITER_STREAM;
 import static io.pravega.connectors.flink.table.descriptors.Pravega.CONNECTOR_WRITER_TXN_LEASE_RENEWAL_INTERVAL;
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLoadDynamic;
 
 /**
  * Pravega connector configurations used to parse and map the {@link DescriptorProperties}.
  */
 @Data
 public final class ConnectorConfigurations {
-    private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";
-    private static final String AUTH_PARAM_LOAD_DYNAMIC_ENV = "pravega_client_auth_loadDynamic";
-
     private Optional<Boolean> metrics;
 
     // connection config
@@ -223,7 +220,7 @@ public final class ConnectorConfigurations {
         defaultScope.ifPresent(s -> pravegaConfig.withDefaultScope(s));
         // Populate only static credentials
         if (authType.isPresent() && authToken.isPresent() && !isCredentialsLoadDynamic()) {
-            pravegaConfig.withCredentials(new SimpleCredentials(authType.get(), authToken.get()));
+            pravegaConfig.withCredentials(new FlinkPravegaUtils.SimpleCredentials(authType.get(), authToken.get()));
         }
         validateHostName.ifPresent(hv -> pravegaConfig = pravegaConfig.withHostnameValidation(hv));
         trustStore.ifPresent(ts -> pravegaConfig = pravegaConfig.withTrustStore(ts));
@@ -232,30 +229,5 @@ public final class ConnectorConfigurations {
     public enum ConfigurationType {
         READER,
         WRITER
-    }
-
-    public static final class SimpleCredentials implements Credentials {
-        private final String authType;
-        private final String authToken;
-
-        public SimpleCredentials(String authType, String authToken) {
-            this.authType = authType;
-            this.authToken = authToken;
-        }
-
-        @Override
-        public String getAuthenticationType() {
-            return authType;
-        }
-
-        @Override
-        public String getAuthenticationToken() {
-            return authToken;
-        }
-    }
-
-    private boolean isCredentialsLoadDynamic() {
-        return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
-                System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
     }
 }
