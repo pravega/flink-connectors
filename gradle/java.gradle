@@ -63,5 +63,5 @@ tasks.withType(Test) {
     testLogging.events = ["PASSED", "FAILED"]
     maxParallelForks = System.properties['maxParallelForks'] ? System.properties['maxParallelForks'].toInteger() : 1
     minHeapSize = "128m"
-    maxHeapSize = "512m"
+    maxHeapSize = "1024m"
 }
