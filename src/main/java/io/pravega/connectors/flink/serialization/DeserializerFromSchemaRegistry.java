@@ -33,11 +33,12 @@ import java.nio.ByteBuffer;
 
 @Slf4j
 public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
+
+    private static final long serialVersionUID = 1L;
+
     private final PravegaConfig pravegaConfig;
     private final String group;
     private final Class<T> tClass;
-
-    private final Object lock = new Object[0];
 
     // the Pravega serializer
     private transient Serializer<T> serializer;
@@ -47,10 +48,12 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
         this.pravegaConfig = pravegaConfig;
         this.group = group;
         this.tClass = tClass;
+        this.serializer = null;
     }
 
+    @SuppressWarnings("unchecked")
     private void initialize() {
-        synchronized (lock) {
+        synchronized (this) {
             SchemaRegistryClientConfig schemaRegistryClientConfig = pravegaConfig.getSchemaRegistryClientConfig();
             SerializationFormat format;
 

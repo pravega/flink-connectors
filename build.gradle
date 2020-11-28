@@ -120,9 +120,7 @@ dependencies {
     }
 
     // schema registry dependencies
-    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', version: schemaRegistryVersion
-    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-json', version: schemaRegistryVersion
-    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers-avro', version: schemaRegistryVersion
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
@@ -149,8 +147,10 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
-    testCompile group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion
-    testCompile group: 'io.pravega', name: 'schemaregistry-serializers-avro', version: schemaRegistryVersion
+    testCompile (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
+        transitive = false
+    }
+    testCompile group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion

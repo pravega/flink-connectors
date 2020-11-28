@@ -21,14 +21,13 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
-import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -45,13 +44,14 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     protected static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static final Schema schema = SchemaBuilder
+    private static final Schema SCHEMA = SchemaBuilder
             .record("MyTest")
             .fields()
             .name("a")
             .type(Schema.create(Schema.Type.STRING))
             .noDefault()
             .endRecord();
+    private static final GenericRecord EVENT = new GenericRecordBuilder(SCHEMA).set("a", "test").build();
 
     //Ensure each test completes within 180 seconds.
     @Rule
@@ -69,10 +69,6 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         SCHEMA_REGISTRY_UTILS.tearDownServices();
     }
 
-    /**
-     * Ignore the test now as failure, waiting for schema registry to refactor the pravega usage to pass
-     */
-    @Ignore
     @Test
     public void testReaderWithRegistryDeserializer() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -105,10 +101,6 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         }
     }
 
-    /**
-     * Ignore the test now as failure, waiting for schema registry to refactor the pravega usage to pass
-     */
-    @Ignore
     @Test
     public void testInputFormatWithRegistryDeserializer() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -122,9 +114,9 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
                 .withDeserializationSchemafromRegistry(streamName, GenericRecord.class)
                 .build();
 
-        List<GenericRecord> result = env.createInput(reader, TypeInformation.of(GenericRecord.class)).collect();
+        List<GenericRecord> result = env.createInput(reader, new GenericRecordAvroTypeInfo(SCHEMA)).collect();
         Assert.assertEquals(result.size(), 1);
-        Assert.assertEquals(result.get(0), 1);
+        Assert.assertEquals(result.get(0), EVENT);
     }
 
     // ================================================================================
@@ -135,9 +127,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     }
 
     private void prepareStream(String streamName) throws Exception {
-        configurePravegaStream(streamName, schema);
-        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(streamName, schema);
-        GenericRecord record = new GenericRecordBuilder(schema).set("a", "test").build();
-        writer.writeEvent(record).join();
+        configurePravegaStream(streamName, SCHEMA);
+        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(streamName, SCHEMA);
+        writer.writeEvent(EVENT).join();
     }
 }

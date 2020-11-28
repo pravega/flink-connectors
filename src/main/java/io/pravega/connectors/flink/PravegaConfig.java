@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.impl.Credentials;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Preconditions;
