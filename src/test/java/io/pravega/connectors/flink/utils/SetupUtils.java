@@ -34,9 +34,11 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -71,6 +73,7 @@ public final class SetupUtils {
     @Setter
     private boolean enableTls = true;
 
+    @Getter
     @Setter
     private boolean enableHostNameValidation = false;
 
@@ -168,6 +171,28 @@ public final class SetupUtils {
      */
     public ClientConfig getClientConfig() {
         return this.gateway.getClientConfig();
+    }
+
+    /**
+     * Fetch the auth type.
+     */
+    public String getAuthType() {
+        return "Basic";
+    }
+
+    /**
+     * Fetch the auth token.
+     */
+    public String getAuthToken() {
+        String decoded = PRAVEGA_USERNAME + ":" + PRAVEGA_PASSWORD;
+        return Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Fetch Pravega client trust store.
+     */
+    public String getPravegaClientTrustStore() {
+        return getFileFromResource(CLIENT_TRUST_STORE_FILE);
     }
 
     /**

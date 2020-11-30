@@ -713,7 +713,6 @@ public class FlinkPravegaReader<T>
          */
         public FlinkPravegaReader<T> build() {
             FlinkPravegaReader<T> reader = buildSourceFunction();
-            reader.initialize();
             return reader;
         }
     }

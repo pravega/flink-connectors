@@ -135,15 +135,17 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-table_'+flinkScalaVersion, version: flinkVersion
+    shadowOnly group: 'org.apache.flink', name: 'flink-table', version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 }

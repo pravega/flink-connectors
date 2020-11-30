@@ -21,6 +21,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -80,6 +81,27 @@ public class PravegaConfig implements Serializable {
             builder.trustStore(trustStore);
         }
         return builder.build();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final PravegaConfig that = (PravegaConfig) o;
+        return validateHostname == that.validateHostname &&
+                controllerURI.equals(that.controllerURI) &&
+                defaultScope.equals(that.defaultScope) &&
+                Objects.equals(credentials, that.credentials) &&
+                Objects.equals(trustStore, that.trustStore);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(controllerURI, defaultScope, credentials, validateHostname, trustStore);
     }
 
     /**

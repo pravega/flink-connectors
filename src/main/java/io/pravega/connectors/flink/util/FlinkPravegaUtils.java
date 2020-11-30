@@ -13,6 +13,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.impl.Credentials;
 import io.pravega.connectors.flink.EventTimeOrderingOperator;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
@@ -25,8 +26,11 @@ import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FlinkPravegaUtils {
+    private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";
+    private static final String AUTH_PARAM_LOAD_DYNAMIC_ENV = "pravega_client_auth_loadDynamic";
 
     private FlinkPravegaUtils() {
     }
@@ -138,5 +142,48 @@ public class FlinkPravegaUtils {
 
             return deserializationSchema.deserialize(array);
         }
+    }
+
+    public static final class SimpleCredentials implements Credentials {
+        private final String authType;
+        private final String authToken;
+
+        public SimpleCredentials(String authType, String authToken) {
+            this.authType = authType;
+            this.authToken = authToken;
+        }
+
+        @Override
+        public String getAuthenticationType() {
+            return authType;
+        }
+
+        @Override
+        public String getAuthenticationToken() {
+            return authToken;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final SimpleCredentials that = (SimpleCredentials) o;
+            return Objects.equals(authType, that.authType) &&
+                    Objects.equals(authToken, that.authToken);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(authType, authToken);
+        }
+    }
+
+    public static boolean isCredentialsLoadDynamic() {
+        return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
+                System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
     }
 }
