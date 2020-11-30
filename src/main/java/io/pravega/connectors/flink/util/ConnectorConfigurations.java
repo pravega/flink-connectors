@@ -15,7 +15,6 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
-import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.DescriptorProperties;
