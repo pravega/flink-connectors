@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.impl.Credentials;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Preconditions;
@@ -22,6 +22,7 @@ import java.io.Serializable;
 import java.net.URI;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -86,6 +87,27 @@ public class PravegaConfig implements Serializable {
         return builder.build();
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final PravegaConfig that = (PravegaConfig) o;
+        return validateHostname == that.validateHostname &&
+                controllerURI.equals(that.controllerURI) &&
+                defaultScope.equals(that.defaultScope) &&
+                Objects.equals(credentials, that.credentials) &&
+                Objects.equals(trustStore, that.trustStore);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(controllerURI, defaultScope, credentials, validateHostname, trustStore);
+    }
+
     /**
      * Gets the schema registry client.
      */
@@ -136,6 +158,7 @@ public class PravegaConfig implements Serializable {
      * Configures the Pravega controller RPC URI.
      *
      * @param controllerURI The URI.
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withControllerURI(URI controllerURI) {
         this.controllerURI = controllerURI;
@@ -146,6 +169,7 @@ public class PravegaConfig implements Serializable {
      * Configures the Pravega schema registry URI.
      *
      * @param schemaRegistryURI The URI.
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withSchemaRegistryURI(URI schemaRegistryURI) {
         this.schemaRegistryURI = schemaRegistryURI;
@@ -166,6 +190,7 @@ public class PravegaConfig implements Serializable {
      * Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.
      *
      * @param scope The scope to use (with lowest priority).
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withDefaultScope(String scope) {
         if (this.defaultScope == null) {
@@ -178,6 +203,7 @@ public class PravegaConfig implements Serializable {
      * Configures the self-defined Pravega scope.
      *
      * @param scope The scope to use (with highest priority).
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withScope(String scope) {
         this.defaultScope = scope;
@@ -200,6 +226,7 @@ public class PravegaConfig implements Serializable {
      * Configures the Pravega credentials to use.
      *
      * @param credentials a credentials object.
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withCredentials(Credentials credentials) {
         this.credentials = credentials;
@@ -210,6 +237,7 @@ public class PravegaConfig implements Serializable {
      * Enables or disables TLS hostname validation (default: true).
      *
      * @param validateHostname a boolean indicating whether to validate the hostname on incoming requests.
+     * @return current instance of PravegaConfig.
      */
     public PravegaConfig withHostnameValidation(boolean validateHostname) {
         this.validateHostname = validateHostname;

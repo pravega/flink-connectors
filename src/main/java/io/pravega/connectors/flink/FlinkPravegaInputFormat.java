@@ -18,6 +18,7 @@ import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.commons.lang3.NotImplementedException;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import org.apache.flink.util.Preconditions;
 
 import io.pravega.client.ClientConfig;
@@ -218,28 +219,9 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
          * @param tClass  The class describing the deserialized type.
          * @return Builder instance.
          */
-        public Builder<T> withDeserializationSchemafromRegistry(String groupId, SerializationFormat format, Class<T> tClass) {
-
-            SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
-            SerializerConfig serializerConfig = SerializerConfig.builder()
-                    .groupId(groupId)
-                    .registerSchema(false)
-                    .registryConfig(schemaRegistryClientConfig)
-                    .build();
-            Serializer<T> serializer;
-
-            switch (format) {
-                case Json:
-                    serializer = SerializerFactory.jsonSerializer(serializerConfig, JSONSchema.of(tClass));
-                    break;
-                case Avro:
-                    serializer = SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(tClass));
-                    break;
-                default:
-                    throw new NotImplementedException("Not supporting serialization format");
-            }
-
-            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass, serializer);
+        public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
+                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 

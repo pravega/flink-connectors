@@ -218,15 +218,15 @@ public class Pravega extends ConnectorDescriptor {
             values.add(Arrays.asList(stream.getScope(), stream.getStreamName(), startStreamCut.asText(), endStreamCut.asText()));
         });
         properties.putIndexedFixedProperties(
-                                                CONNECTOR_READER_STREAM_INFO,
-                                                Arrays.asList(
-                                                            CONNECTOR_READER_STREAM_INFO_SCOPE,
-                                                            CONNECTOR_READER_STREAM_INFO_STREAM,
-                                                            CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                                                            CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
-                                                        ),
-                                                values
-                                            );
+                CONNECTOR_READER_STREAM_INFO,
+                Arrays.asList(
+                        CONNECTOR_READER_STREAM_INFO_SCOPE,
+                        CONNECTOR_READER_STREAM_INFO_STREAM,
+                        CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
+                        CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
+                ),
+                values
+        );
 
         // reader group information
         String uid = Optional.ofNullable(tableSourceReaderBuilder.uid).orElseGet(tableSourceReaderBuilder::generateUid);
@@ -388,6 +388,5 @@ public class Pravega extends ConnectorDescriptor {
                     eventRouter
             );
         }
-
     }
 }

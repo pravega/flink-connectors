@@ -9,21 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
-import com.google.protobuf.DynamicMessage;
 import io.pravega.client.EventStreamClientFactory;
-import io.pravega.client.stream.Serializer;
-import io.pravega.schemaregistry.client.SchemaRegistryClient;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
-import io.pravega.schemaregistry.contract.data.SerializationFormat;
-import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
-import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
-import io.pravega.schemaregistry.serializers.SerializerFactory;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.IndexedRecord;
-import org.apache.commons.lang3.NotImplementedException;
-import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
@@ -34,8 +20,9 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.client.stream.TruncatedDataException;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -56,11 +43,12 @@ import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
+import org.apache.flink.util.ExceptionUtils;
+import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
-import java.util.IllegalFormatException;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -374,19 +362,48 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
+        Throwable ex = null;
         if (eventStreamClientFactory != null) {
-            log.info("Closing Pravega eventStreamClientFactory");
-            eventStreamClientFactory.close();
+            try {
+                log.info("Closing Pravega eventStreamClientFactory");
+                eventStreamClientFactory.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    eventStreamClientFactory.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroupManager != null) {
             log.info("Closing Pravega ReaderGroupManager");
-            readerGroupManager.close();
+            try {
+                readerGroupManager.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    readerGroupManager.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroup != null) {
-            log.info("Closing Pravega ReaderGroup");
-            readerGroup.close();
+            try {
+                log.info("Closing Pravega ReaderGroup");
+                readerGroup.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    readerGroup.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+        if (ex != null && ex instanceof Exception) {
+            throw (Exception) ex;
         }
     }
 
@@ -672,46 +689,8 @@ public class FlinkPravegaReader<T>
          */
         @SuppressWarnings("unchecked")
         public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
-
-            SchemaRegistryClientConfig schemaRegistryClientConfig = getPravegaConfig().getSchemaRegistryClientConfig();
-
-            // TODO: add try with resource when autoclosable is ready
-            SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(readerGroupScope, schemaRegistryClientConfig);
-
-            SerializationFormat format = schemaRegistryClient.getLatestSchemaVersion(groupId, null)
-                    .getSchemaInfo().getSerializationFormat();
-
-            SerializerConfig serializerConfig = SerializerConfig.builder()
-                    .groupId(groupId)
-                    .registerSchema(false)
-                    .registryConfig(schemaRegistryClientConfig)
-                    .build();
-            Serializer<T> serializer = null;
-
-            switch (format) {
-                case Json:
-                    serializer = SerializerFactory.jsonDeserializer(serializerConfig, JSONSchema.of(tClass));
-                    break;
-                case Avro:
-                    Preconditions.checkArgument(IndexedRecord.class.isAssignableFrom(tClass));
-                    if (GenericRecord.class.isAssignableFrom(tClass)) {
-                        serializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(serializerConfig, null);
-                    } else {
-                        serializer = SerializerFactory.avroDeserializer(serializerConfig, AvroSchema.of(tClass));
-                    }
-                    break;
-                case Protobuf:
-                    if (DynamicMessage.class.isAssignableFrom(tClass)) {
-                        serializer = (Serializer<T>) SerializerFactory.protobufGenericDeserializer(serializerConfig, null);
-                    } else {
-                        throw new UnsupportedOperationException("Only support DynamicMessage in Protobuf");
-                    }
-                    break;
-                default:
-                    throw new NotImplementedException("Not supporting serialization format");
-            }
-
-            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass, serializer);
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
+                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 
@@ -749,7 +728,6 @@ public class FlinkPravegaReader<T>
          */
         public FlinkPravegaReader<T> build() {
             FlinkPravegaReader<T> reader = buildSourceFunction();
-            reader.initialize();
             return reader;
         }
     }

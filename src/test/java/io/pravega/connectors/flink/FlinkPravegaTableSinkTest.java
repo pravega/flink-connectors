@@ -76,7 +76,7 @@ public class FlinkPravegaTableSinkTest {
         FlinkPravegaTableSink tableSink = new FlinkPravegaTableSink(schema -> writer, schema -> outputFormat, TUPLE1);
         TypeInformation<Row> rowTypeInfo = (TypeInformation<Row>) TypeConversions.fromDataTypeToLegacyInfo(TUPLE1.toRowDataType());
         DataStreamMock dataStream = new DataStreamMock(new StreamExecutionEnvironmentMock(), rowTypeInfo);
-        tableSink.emitDataStream(dataStream);
+        tableSink.consumeDataStream(dataStream);
         assertTrue(FlinkPravegaWriter.class.isAssignableFrom(dataStream.sinkFunction.getClass()));
     }
 
@@ -86,7 +86,7 @@ public class FlinkPravegaTableSinkTest {
         FlinkPravegaOutputFormat<Row> outputFormat = mock(FlinkPravegaOutputFormat.class);
         FlinkPravegaTableSink tableSink = new FlinkPravegaTableSink(schema -> writer, schema -> outputFormat, TUPLE1);
         DataSet<Row> dataSet = mock(DataSet.class);
-        tableSink.emitDataSet(dataSet);
+        tableSink.consumeDataSet(dataSet);
         verify(dataSet).output(outputFormat);
     }
 
