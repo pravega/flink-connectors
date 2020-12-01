@@ -1,9 +1,23 @@
 package io.pravega.connectors.flink;
 
+import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
-import io.pravega.connectors.flink.utils.EnvironmentFileUtil;
+import io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogDescriptor;
+import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.schemaregistry.client.SchemaRegistryClient;
+import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
+import io.pravega.schemaregistry.contract.data.Compatibility;
+import io.pravega.schemaregistry.contract.data.GroupProperties;
+import io.pravega.schemaregistry.contract.data.SchemaInfo;
+import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.avro.Schema;
+import org.apache.avro.SchemaBuilder;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.cli.Options;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
@@ -15,26 +29,41 @@ import org.apache.flink.client.deployment.DefaultClusterClientServiceLoader;
 import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.Table;
 import org.apache.flink.table.api.TableEnvironment;
+import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.catalog.Catalog;
+import org.apache.flink.table.catalog.CatalogDatabase;
+import org.apache.flink.table.catalog.CatalogDatabaseImpl;
+import org.apache.flink.table.catalog.CatalogTable;
+import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.CatalogTestUtil;
+import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
+import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
+import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 import org.apache.flink.table.client.gateway.SessionContext;
 import org.apache.flink.table.client.gateway.local.ExecutionContext;
 import org.apache.flink.table.client.config.Environment;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.types.Row;
+import org.apache.flink.table.descriptors.CatalogDescriptor;
+import org.apache.flink.table.descriptors.GenericInMemoryCatalogDescriptor;
+import org.apache.flink.table.factories.CatalogFactory;
+import org.apache.flink.table.factories.TableFactoryService;
 import org.junit.After;
 import org.junit.AfterClass;
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
-import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -42,15 +71,32 @@ import static org.junit.Assert.*;
 
 @Slf4j
 public class CatalogITest {
-    private static final String CATALOGS_ENVIRONMENT_FILE = "test-sql-client-pravega-catalog.yaml";
+    private static final Schema TEST_SCHEMA = SchemaBuilder
+            .record("MyTest")
+            .fields()
+            .name("a")
+            .type(Schema.create(Schema.Type.STRING))
+            .noDefault()
+            .endRecord();
+    private static final TableSchema TEST_TABLE_SCHEMA = TableSchema.builder()
+            .field("a", DataTypes.STRING())
+            .build();
+    private static final String TEST_CATALOG_NAME = "mycatalog";
+    private static final String TEST_STREAM = "stream";
+    private static final GenericRecord EVENT = new GenericRecordBuilder(TEST_SCHEMA).set("a", "test").build();
 
-    private static final String CONTROLLER_URI = "tcp://localhost:9090";
+    private final String db1 = "db1";
+    protected final String t1 = "t1";
+    protected final ObjectPath path1 = new ObjectPath(db1, t1);
 
-    private EventTimeOrderingOperator<String, Tuple2<String, Long>> operator;
-    private KeyedOneInputStreamOperatorTestHarness<String, Tuple2<String, Long>, Tuple2<String, Long>> testHarness;
+    private final CatalogDatabase catalogDb = new CatalogDatabaseImpl(Collections.emptyMap(), null);
+    private final CatalogTable catalogTable = new CatalogTableImpl(TEST_TABLE_SCHEMA, Collections.emptyMap(), null);
+    private static PravegaCatalog catalog;
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
+            new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
@@ -60,97 +106,143 @@ public class CatalogITest {
     @BeforeClass
     public static void setupPravega() throws Exception {
         SETUP_UTILS.startAllServices();
+        SCHEMA_REGISTRY_UTILS.setupServices();
+        catalog = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
+                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        init();
+        catalog.open();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
+        catalog.close();
         SETUP_UTILS.stopAllServices();
-    }
-
-    @Before
-    public void before() throws Exception {
-        operator = new EventTimeOrderingOperator<>();
-        operator.setInputType(TypeInformation.of(new TypeHint<Tuple2<String, Long>>() {
-        }), new ExecutionConfig());
-        testHarness = new KeyedOneInputStreamOperatorTestHarness<>(
-                operator, in -> in.f0, TypeInformation.of(String.class));
-        testHarness.setTimeCharacteristic(TimeCharacteristic.EventTime);
-        testHarness.open();
+        SCHEMA_REGISTRY_UTILS.tearDownServices();
     }
 
     @After
-    public void after() throws Exception {
-        testHarness.close();
-        operator.close();
+    public void cleanup() throws Exception {
+        if (catalog.tableExists(path1)) {
+            catalog.dropTable(path1, true);
+        }
+//        if (catalog.tableExists(path2)) {
+//            catalog.dropTable(path2, true);
+//        }
+//        if (catalog.tableExists(path3)) {
+//            catalog.dropTable(path3, true);
+//        }
+//        if (catalog.tableExists(path4)) {
+//            catalog.dropTable(path4, true);
+//        }
+        if (catalog.databaseExists(db1)) {
+            catalog.dropDatabase(db1, true, false);
+        }
+//        if (catalog.databaseExists(db2)) {
+//            catalog.dropDatabase(db2, true, false);
+//        }
     }
 
     @Test
-    public void testCatalogs() throws Exception {
-        String inmemoryCatalog = "inmemorycatalog";
-        String pravegaCatalog1 = "pravegacatalog1";
-        String pravegaCatalog2 = "pravegacatalog2";
+    public void testCreateCatalogFromFactory() {
 
-        ExecutionContext context = createExecutionContext(CATALOGS_ENVIRONMENT_FILE, getStreamingConfs());
-        TableEnvironment tableEnv = context.getTableEnvironment();
+        final CatalogDescriptor catalogDescriptor = new PravegaCatalogDescriptor(
+                SETUP_UTILS.getControllerUri().toString(),
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
+                SETUP_UTILS.getScope());
+        final Map<String, String> properties = catalogDescriptor.toProperties();
 
-        assertEquals(tableEnv.getCurrentCatalog(), inmemoryCatalog);
-        assertEquals(tableEnv.getCurrentDatabase(), "mydatabase");
+        final Catalog actualCatalog = TableFactoryService.find(CatalogFactory.class, properties)
+                .createCatalog(TEST_CATALOG_NAME, properties);
 
-        Catalog catalog = tableEnv.getCatalog(pravegaCatalog1).orElse(null);
-        assertNotNull(catalog);
-        assertTrue(catalog instanceof PravegaCatalog);
-        tableEnv.useCatalog(pravegaCatalog1);
-        assertEquals(tableEnv.getCurrentDatabase(), "default-scope");
-
-        catalog = tableEnv.getCatalog(pravegaCatalog2).orElse(null);
-        assertNotNull(catalog);
-        assertTrue(catalog instanceof PravegaCatalog);
-        tableEnv.useCatalog(pravegaCatalog2);
-        assertEquals(tableEnv.getCurrentDatabase(), "tn/ns");
+        assertTrue(actualCatalog instanceof PravegaCatalog);
+        assertEquals(((PravegaCatalog) actualCatalog).getName(), catalog.getName());
+        assertEquals(((PravegaCatalog) actualCatalog).getDefaultDatabase(), catalog.getDefaultDatabase());
     }
 
     @Test
-    public void testTableReadStartFromLatestByDefault() throws Exception {
-        String catalog1 = "pravegacatalog1";
+    public void testCreateDb() throws Exception {
+        assertFalse(catalog.databaseExists(db1));
+        catalog.createDatabase(db1, catalogDb, false);
 
-        String tableName = "test";
-        String scopeName = "scope";
-
-        ExecutionContext context = createExecutionContext(CATALOGS_ENVIRONMENT_FILE, getStreamingConfs());
-        TableEnvironment tableEnv = context.getTableEnvironment();
-
-        tableEnv.useCatalog(catalog1);
-
-        tableEnv.useDatabase(scopeName);
-
-        Table t = tableEnv.from(tableName).select("value");
-        DataStream stream = ((StreamTableEnvironment) tableEnv).toAppendStream(t, t.getSchema().toRowType());
+        assertTrue(catalog.databaseExists(db1));
+        CatalogTestUtil.checkEquals(catalogDb, catalog.getDatabase(db1));
     }
 
-    private ExecutionContext createExecutionContext(String file, Map<String, String> replaceVars) throws Exception {
-        final Environment env = EnvironmentFileUtil.parseModified(
-                file,
-                replaceVars
-        );
-        final Configuration flinkConfig = new Configuration();
-        return ExecutionContext.builder(
-                env,
-                new SessionContext("test-session", new Environment()),
-                Collections.emptyList(),
-                flinkConfig,
-                new DefaultClusterClientServiceLoader(),
-                new Options(),
-                Collections.singletonList(new DefaultCLI(flinkConfig))
-        ).build();
+    @Test(expected = DatabaseAlreadyExistException.class)
+    public void testCreateDbAlreadyExist() throws Exception {
+        catalog.createDatabase(db1, catalogDb, false);
+        catalog.createDatabase(db1, catalogDb, false);
     }
 
-    public String getControllerUri() {
-        return CONTROLLER_URI;
+    @Test
+    public void testCreateDbAlreadyExistIgnore() throws Exception {
+        catalog.createDatabase(db1, catalogDb, false);
+        List<String> dbs = catalog.listDatabases();
+        assertEquals(2, dbs.size());
+        catalog.createDatabase(db1, catalogDb, true);
+        dbs = catalog.listDatabases();
+        assertEquals(2, dbs.size());
     }
 
-    private Map<String, String> getStreamingConfs() {
-        Map<String, String> replaceVars = new HashMap<>();
-        replaceVars.put("$VAR_CONTROLLERURI", getControllerUri());
-        return replaceVars;
+    @Test(expected = DatabaseNotExistException.class)
+    public void testGetDbNotExist() throws Exception {
+        catalog.getDatabase("nonexistent");
+    }
+
+    @Test
+    public void testDropDb() throws Exception {
+        catalog.createDatabase(db1, catalogDb, false);
+        assertTrue(catalog.databaseExists(db1));
+        catalog.dropDatabase(db1, false, true);
+        assertFalse(catalog.databaseExists(db1));
+    }
+
+    @Test(expected = DatabaseNotExistException.class)
+    public void testDropDbNotExist() throws Exception {
+        catalog.dropDatabase(db1, false, false);
+    }
+
+    @Test(expected = DatabaseNotEmptyException.class)
+    public void testDropDbNotEmpty() throws Exception {
+        catalog.createDatabase(db1, catalogDb, false);
+        catalog.createTable(path1, catalogTable, false);
+        catalog.dropDatabase(db1, true, false);
+    }
+
+    @Test
+    public void testDbExists() throws Exception {
+        assertFalse(catalog.databaseExists("nonexistent"));
+        catalog.createDatabase(db1, catalogDb, false);
+        assertTrue(catalog.databaseExists(db1));
+    }
+
+    // ------ tables ------
+
+    @Test
+    public void testCreateTable() throws Exception {
+        catalog.createDatabase(db1, catalogDb, false);
+        catalog.createTable(path1, catalogTable, false);
+        registerAvroSchema(db1, t1);
+        CatalogTable actual = (CatalogTable) catalog.getTable(path1);
+        Assert.assertEquals(catalogTable.getClass(), actual.getClass());
+        Assert.assertEquals(catalogTable.getSchema(), actual.getSchema());
+    }
+
+
+    // ------ utils ------
+    private static void init() throws Exception {
+        SCHEMA_REGISTRY_UTILS.registerAvroSchema(TEST_STREAM, TEST_SCHEMA);
+        SETUP_UTILS.createTestStream(TEST_STREAM, 3);
+        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, TEST_SCHEMA);
+        writer.writeEvent(EVENT).join();
+        writer.close();
+    }
+
+    private static void registerAvroSchema(String scope, String stream) throws Exception {
+        SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(scope,
+                SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build());
+        SchemaInfo schemaInfo = AvroSchema.of(TEST_SCHEMA).getSchemaInfo();
+        client.addSchema(stream, schemaInfo);
+        client.close();
     }
 }

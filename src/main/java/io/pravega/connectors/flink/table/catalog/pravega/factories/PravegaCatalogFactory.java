@@ -20,7 +20,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
     public Map<String, String> requiredContext() {
         HashMap<String, String> context = new HashMap<>();
         context.put(CATALOG_TYPE, CATALOG_TYPE_VALUE_PRAVEGA);
-        context.put(CATALOG_PROPERTY_VERSION, "1");
+        context.put(CATALOG_PROPERTY_VERSION, "1"); // backwards compatibility
         return context;
     }
 
