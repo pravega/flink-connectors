@@ -14,4 +14,3 @@ io.pravega.connectors.flink.FlinkPravegaStreamTableSourceSinkFactory
 io.pravega.connectors.flink.FlinkPravegaBatchTableSourceSinkFactory
 
 io.pravega.connectors.flink.table.catalog.pravega.factories.PravegaCatalogFactory
-io.pravega.connectors.flink.serialization.PravegaRegistryRowFormatFactory
