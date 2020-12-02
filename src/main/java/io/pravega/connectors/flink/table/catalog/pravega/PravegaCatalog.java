@@ -1,3 +1,13 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package io.pravega.connectors.flink.table.catalog.pravega;
 
 import io.pravega.client.admin.StreamManager;
@@ -10,7 +20,6 @@ import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
-import io.pravega.schemaregistry.client.exceptions.RegistryExceptions;
 import io.pravega.schemaregistry.contract.data.Compatibility;
 import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
@@ -18,15 +27,43 @@ import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.catalog.*;
-import org.apache.flink.table.catalog.exceptions.*;
+import org.apache.flink.table.catalog.AbstractCatalog;
+import org.apache.flink.table.catalog.CatalogBaseTable;
+import org.apache.flink.table.catalog.CatalogDatabase;
+import org.apache.flink.table.catalog.CatalogDatabaseImpl;
+import org.apache.flink.table.catalog.CatalogFunction;
+import org.apache.flink.table.catalog.CatalogPartition;
+import org.apache.flink.table.catalog.CatalogPartitionSpec;
+import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.exceptions.CatalogException;
+import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
+import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
+import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
+import org.apache.flink.table.catalog.exceptions.FunctionAlreadyExistException;
+import org.apache.flink.table.catalog.exceptions.FunctionNotExistException;
+import org.apache.flink.table.catalog.exceptions.PartitionAlreadyExistsException;
+import org.apache.flink.table.catalog.exceptions.PartitionNotExistException;
+import org.apache.flink.table.catalog.exceptions.PartitionSpecInvalidException;
+import org.apache.flink.table.catalog.exceptions.TableAlreadyExistException;
+import org.apache.flink.table.catalog.exceptions.TableNotExistException;
+import org.apache.flink.table.catalog.exceptions.TableNotPartitionedException;
+import org.apache.flink.table.catalog.exceptions.TablePartitionedException;
 import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.factories.Factory;
 
 import java.net.URI;
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import static org.apache.flink.table.descriptors.FormatDescriptorValidator.FORMAT_TYPE;
 
@@ -112,8 +149,15 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<String> listDatabases() throws CatalogException {
-        List<String> databaseList = new ArrayList<>();
-        streamManager.listScopes().forEachRemaining(databaseList::add);
+
+        Iterable<String> iterable = () -> streamManager.listScopes();
+
+        List<String> databaseList = StreamSupport
+                .stream(iterable.spliterator(), false)
+                .filter(s -> !s.startsWith("_"))
+                .collect(Collectors.toList());
+
+        log.info("aaa: {}", databaseList);
         return databaseList;
     }
 
@@ -179,22 +223,22 @@ public class PravegaCatalog extends AbstractCatalog {
             throw new DatabaseNotExistException(getName(), databaseName);
         }
 
-        List<String> result = new ArrayList<>();
+        Iterable<Stream> iterable = () -> streamManager.listStreams(databaseName);
 
-        Iterator<Stream> iterator = streamManager.listStreams(databaseName);
         Set<String> groupSet = new HashSet<>();
         changeRegistryNamespace(databaseName);
         schemaRegistryClient.listGroups().forEachRemaining( kv -> {
             groupSet.add(kv.getKey());
         });
-        iterator.forEachRemaining( stream -> {
-            String table = stream.getStreamName();
-            if (groupSet.contains(table)) {
-                result.add(table);
-            }
-        } );
 
-        return result;
+        List<String> tableList = StreamSupport
+                .stream(iterable.spliterator(), false)
+                .map(s -> s.getStreamName())
+                .filter(s -> !s.startsWith("_"))
+                .filter(s -> groupSet.contains(s))
+                .collect(Collectors.toList());
+
+        return tableList;
     }
 
     @Override
@@ -283,12 +327,12 @@ public class PravegaCatalog extends AbstractCatalog {
         // Users need to register the schema manually on schema registry before reading from/writing to the table
     }
 
-    // ------ partitions/functions/statistics NOT supported ------
-
     @Override
     public void alterTable(ObjectPath tablePath, CatalogBaseTable newTable, boolean ignoreIfNotExists) throws TableNotExistException, CatalogException {
         throw new UnsupportedOperationException();
     }
+
+    // ------ partitions/functions/statistics NOT supported ------
 
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath) throws TableNotExistException, TableNotPartitionedException, CatalogException {
@@ -401,10 +445,7 @@ public class PravegaCatalog extends AbstractCatalog {
     }
 
     private void changeRegistryNamespace(String namespace) {
-        if (getDefaultDatabase().equals(namespace)) {
-            return;
-        }
-
+        // TODO: If the client keeps the same namespace, it is redundant.
         try {
             schemaRegistryClient.close();
         } catch (Exception e) {

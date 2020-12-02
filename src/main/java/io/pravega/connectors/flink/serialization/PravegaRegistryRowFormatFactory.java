@@ -1,3 +1,13 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
@@ -32,7 +42,7 @@ public class PravegaRegistryRowFormatFactory extends TableFormatFactoryBase<Row>
         SerializerConfig serializerConfig = getSerializerConfig(descriptorProperties);
         AtomicReference<TypeInformation<Row>> rowTypeInfo = new AtomicReference<>();
 
-        Serializer<Row> serializer = SerializerFactory.deserializeAsT(serializerConfig, ((serializationFormat, o) -> {
+        Serializer<Row> serializer = SerializerFactory.deserializeAsT(serializerConfig, (serializationFormat, o) -> {
             switch (serializationFormat) {
                 case Json:
                 case Avro:
@@ -41,7 +51,7 @@ public class PravegaRegistryRowFormatFactory extends TableFormatFactoryBase<Row>
                     return new Row(1);
             }
             return new Row(0);
-        }));
+        });
 
         return new PravegaDeserializationSchema<>(rowTypeInfo.get(), serializer);
     }
@@ -52,7 +62,7 @@ public class PravegaRegistryRowFormatFactory extends TableFormatFactoryBase<Row>
 
         SerializerConfig serializerConfig = getSerializerConfig(descriptorProperties);
 
-        Serializer<Row> serializer = SerializerFactory.deserializeAsT(serializerConfig, ((serializationFormat, o) -> {
+        Serializer<Row> serializer = SerializerFactory.deserializeAsT(serializerConfig, (serializationFormat, o) -> {
             switch (serializationFormat) {
                 case Json:
                 case Avro:
@@ -60,7 +70,7 @@ public class PravegaRegistryRowFormatFactory extends TableFormatFactoryBase<Row>
                     return new Row(1);
             }
             return new Row(0);
-        }));
+        });
 
         return new PravegaSerializationSchema<>(serializer);
     }

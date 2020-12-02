@@ -11,13 +11,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.contract.data.SerializationFormat;
-import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
-import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
-import io.pravega.schemaregistry.serializers.SerializerFactory;
-import org.apache.commons.lang3.NotImplementedException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import org.apache.flink.util.Preconditions;
 

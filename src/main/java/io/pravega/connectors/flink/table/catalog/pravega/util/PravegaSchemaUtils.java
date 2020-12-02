@@ -1,3 +1,13 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package io.pravega.connectors.flink.table.catalog.pravega.util;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -12,12 +22,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonRowSchemaConverter;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.utils.DataTypeUtils;
-import org.apache.flink.table.types.utils.TypeConversions;
-import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.types.Row;
-import org.apache.flink.util.Preconditions;
 
 @Internal
 public class PravegaSchemaUtils {
