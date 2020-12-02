@@ -10,8 +10,8 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
 import io.pravega.client.ClientConfig;
