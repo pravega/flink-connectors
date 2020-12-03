@@ -22,7 +22,7 @@ buildscript {
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
-        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
+        classpath "gradle.plugin.com.github.spotbugs.snom:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
 plugins {
@@ -44,13 +44,6 @@ gradle.projectsEvaluated {
     tasks.withType(JavaCompile) {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-    }
-}
-
-tasks.withType(com.github.spotbugs.SpotBugsTask) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
     }
 }
 
@@ -109,9 +102,9 @@ test {
 
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
-    testCompile group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
+    testCompileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
     compileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
-    testCompile group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
+    testCompileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
 
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
@@ -125,6 +118,7 @@ dependencies {
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
+    annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
@@ -135,6 +129,7 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
 
+    testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testCompile group: 'junit', name: 'junit', version: junitVersion
     testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
     testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
