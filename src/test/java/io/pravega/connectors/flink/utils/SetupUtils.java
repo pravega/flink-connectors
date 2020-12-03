@@ -125,7 +125,9 @@ public final class SetupUtils {
             return;
         }
 
-        eventStreamClientFactory.close();
+        if (eventStreamClientFactory != null) {
+            eventStreamClientFactory.close();
+        }
 
         try {
             gateway.stop();
