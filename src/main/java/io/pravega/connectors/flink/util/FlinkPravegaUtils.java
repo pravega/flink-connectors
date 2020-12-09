@@ -13,10 +13,10 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
-import io.pravega.client.stream.impl.Credentials;
 import io.pravega.connectors.flink.EventTimeOrderingOperator;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
+import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
 
 import org.apache.commons.lang3.RandomStringUtils;
