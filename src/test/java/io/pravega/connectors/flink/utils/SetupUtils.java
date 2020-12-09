@@ -295,7 +295,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(enableTls) //configure ZK for security
+                    .secureZK(false) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
