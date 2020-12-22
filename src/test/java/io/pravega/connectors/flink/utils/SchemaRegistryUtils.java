@@ -19,17 +19,18 @@ import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.Compatibility;
 import io.pravega.schemaregistry.contract.data.GroupProperties;
-import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
+import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
+import io.pravega.schemaregistry.serializer.protobuf.schemas.ProtobufSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
+import io.pravega.schemaregistry.serializer.shared.schemas.Schema;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import io.pravega.schemaregistry.server.rest.RestServer;
 import io.pravega.schemaregistry.server.rest.ServiceConfig;
 import io.pravega.schemaregistry.service.SchemaRegistryService;
 import io.pravega.schemaregistry.storage.SchemaStore;
 import io.pravega.schemaregistry.storage.SchemaStoreFactory;
-import org.apache.avro.Schema;
 
 import java.net.URI;
 import java.util.concurrent.Executors;
@@ -84,23 +85,21 @@ public class SchemaRegistryUtils {
         return schemaRegistryUri;
     }
 
-    public EventStreamWriter<Object> getWriter(String stream, Schema schema) {
+    public EventStreamWriter<Object> getWriter(String stream, Schema schema, SerializationFormat format) {
         return eventStreamClientFactory.createEventWriter(
                 stream,
-                getAvroSerializerFromRegistry(stream, schema),
+                getSerializerFromRegistry(stream, schema, format),
                 EventWriterConfig.builder().build());
     }
 
-    public void registerAvroSchema(String stream, Schema schema) {
+    public void registerSchema(String stream, Schema schema, SerializationFormat format) {
         SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(setupUtils.getScope(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(schemaRegistryUri).build());
-        client.addGroup(stream, new GroupProperties(SerializationFormat.Avro,
+        client.addGroup(stream, new GroupProperties(format,
                 Compatibility.allowAny(),
                 true));
 
-        SchemaInfo schemaInfo = AvroSchema.of(schema).getSchemaInfo();
-
-        client.addSchema(stream, schemaInfo);
+        client.addSchema(stream, schema.getSchemaInfo());
         try {
             client.close();
         } catch (Exception e) {
@@ -108,7 +107,8 @@ public class SchemaRegistryUtils {
         }
     }
 
-    public Serializer<Object> getAvroSerializerFromRegistry(String stream, Schema schema) {
+    @SuppressWarnings("unchecked")
+    public Serializer<Object> getSerializerFromRegistry(String stream, Schema<?> schema, SerializationFormat format) {
         SchemaRegistryClientConfig registryConfig = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(schemaRegistryUri)
                 .build();
@@ -119,6 +119,15 @@ public class SchemaRegistryUtils {
                 .registryConfig(registryConfig)
                 .build();
 
-        return SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(schema));
+        switch (format) {
+            case Json:
+                return SerializerFactory.jsonSerializer(serializerConfig, (JSONSchema) schema);
+            case Avro:
+                return SerializerFactory.avroSerializer(serializerConfig, (AvroSchema) schema);
+            case Protobuf:
+                return SerializerFactory.protobufSerializer(serializerConfig, (ProtobufSchema) schema);
+            default:
+                return SerializerFactory.genericDeserializer(serializerConfig);
+        }
     }
 }

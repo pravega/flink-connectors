@@ -688,7 +688,7 @@ public class FlinkPravegaReader<T>
          * @return Builder instance.
          */
         @SuppressWarnings("unchecked")
-        public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
+        public Builder<T> withDeserializationSchemaFromRegistry(String groupId, Class<T> tClass) {
             this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
                     new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();

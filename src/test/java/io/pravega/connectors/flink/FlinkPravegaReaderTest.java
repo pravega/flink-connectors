@@ -355,7 +355,7 @@ public class FlinkPravegaReaderTest {
             FlinkPravegaReader.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
             fail();
         } catch (NullPointerException e) {
@@ -367,7 +367,7 @@ public class FlinkPravegaReaderTest {
             FlinkPravegaReader.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
             fail();
         } catch (NullPointerException e) {
