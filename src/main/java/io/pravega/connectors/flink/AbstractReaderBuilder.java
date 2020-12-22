@@ -48,6 +48,7 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
      * The default client configuration is obtained from {@code PravegaConfig.fromDefaults()}.
      *
      * @param pravegaConfig the configuration to use.
+     * @return A builder to configure and create a reader.
      */
     public B withPravegaConfig(PravegaConfig pravegaConfig) {
         this.pravegaConfig = pravegaConfig;
@@ -124,6 +125,8 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Gets the Pravega configuration.
+     *
+     * @return the instance of {@link PravegaConfig}.
      */
     public PravegaConfig getPravegaConfig() {
         Preconditions.checkState(pravegaConfig != null, "A Pravega configuration must be supplied.");
@@ -132,6 +135,8 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * Resolves the streams to be provided to the reader, based on the configured default scope.
+     *
+     * @return A list of {@link StreamWithBoundaries} that is ready to be read
      */
     protected List<StreamWithBoundaries> resolveStreams() {
         Preconditions.checkState(!streams.isEmpty(), "At least one stream must be supplied.");
@@ -154,6 +159,8 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
 
     /**
      * getter to fetch the metrics flag.
+     *
+     * @return A boolean if metrics is enabled
      */
     public boolean isMetricsEnabled() {
         return enableMetrics;
