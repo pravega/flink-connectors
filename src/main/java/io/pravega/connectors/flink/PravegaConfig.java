@@ -12,6 +12,7 @@ package io.pravega.connectors.flink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.serializer.shared.credentials.PravegaCredentialProvider;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -120,6 +121,8 @@ public class PravegaConfig implements Serializable {
 
         if (credentials != null) {
             builder.authentication(credentials.getAuthenticationType(), credentials.getAuthenticationToken());
+        } else {
+            builder.authentication(new PravegaCredentialProvider(getClientConfig()));
         }
 
         return builder.build();
