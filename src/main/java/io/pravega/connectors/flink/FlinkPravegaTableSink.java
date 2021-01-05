@@ -66,7 +66,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchT
     /**
      * Creates a copy of the sink for configuration purposes.
      */
-    protected FlinkPravegaTableSink createCopy() {
+    private FlinkPravegaTableSink createCopy() {
         return new FlinkPravegaTableSink(writerFactory, outputFormatFactory, schema);
     }
 

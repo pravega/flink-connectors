@@ -243,6 +243,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
          * Sets the serialization schema.
          *
          * @param serializationSchema The serialization schema
+         * @return A builder to configure and create a batch writer.
          */
         public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
             this.serializationSchema = serializationSchema;
@@ -253,6 +254,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
          * Sets the event router.
          *
          * @param eventRouter the event router which produces a key per event.
+         * @return A builder to configure and create a batch writer.
          */
         public Builder<T> withEventRouter(PravegaEventRouter<T> eventRouter) {
             this.eventRouter = eventRouter;
@@ -266,6 +268,8 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
 
         /**
          * Builds the {@link FlinkPravegaOutputFormat}.
+         *
+         * @return An instance of {@link FlinkPravegaOutputFormat}
          */
         public FlinkPravegaOutputFormat<T> build() {
             Preconditions.checkNotNull(serializationSchema, "serializationSchema");

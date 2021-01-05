@@ -42,6 +42,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      * Sets the writer mode to provide at-least-once or exactly-once guarantees.
      *
      * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
+     * @return A builder to configure and create a streaming writer.
      */
     public B withWriterMode(PravegaWriterMode writerMode) {
         this.writerMode = writerMode;
@@ -52,6 +53,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      * Enable watermark.
      *
      * @param enableWatermark boolean
+     * @return A builder to configure and create a streaming writer.
      */
     public B enableWatermark(boolean enableWatermark) {
         this.enableWatermark = enableWatermark;
@@ -67,6 +69,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      * This configuration setting sets the lease renewal period.  The default value is 30 seconds.
      *
      * @param period the lease renewal period
+     * @return A builder to configure and create a streaming writer.
      */
     public B withTxnLeaseRenewalPeriod(Time period) {
         Preconditions.checkArgument(period.getSize() > 0, "The timeout must be a positive value.");
@@ -79,6 +82,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      *
      * @param serializationSchema the deserialization schema to use.
      * @param eventRouter the event router to use.
+     * @return An instance of {@link FlinkPravegaWriter}.
      */
     protected FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
