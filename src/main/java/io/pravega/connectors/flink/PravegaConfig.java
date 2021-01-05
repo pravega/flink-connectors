@@ -54,6 +54,8 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets a configuration based on defaults obtained from the local environment.
+     *
+     * @return A default instance of {@link PravegaConfig}
      */
     public static PravegaConfig fromDefaults() {
         return new PravegaConfig(System.getProperties(), System.getenv(), ParameterTool.fromMap(Collections.emptyMap()));
@@ -63,6 +65,7 @@ public class PravegaConfig implements Serializable {
      * Gets a configuration based on defaults obtained from the local environment plus the given program parameters.
      *
      * @param params the parameters to use.
+     * @return An instance of {@link PravegaConfig}
      */
     public static PravegaConfig fromParams(ParameterTool params) {
         return new PravegaConfig(System.getProperties(), System.getenv(), params);
@@ -72,6 +75,8 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets the {@link ClientConfig} to use with the Pravega client.
+     *
+     * @return The Pravega {@link ClientConfig}
      */
     public ClientConfig getClientConfig() {
         ClientConfig.ClientConfigBuilder builder = ClientConfig.builder()
@@ -215,6 +220,8 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets the default Pravega scope.
+     *
+     * @return current default scope name.
      */
     @Nullable
     public String getDefaultScope() {

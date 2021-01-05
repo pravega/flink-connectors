@@ -18,6 +18,8 @@ public interface WrappingSerializer<T>  {
 
     /**
      * Gets the wrapped Pravega Serializer.
+     *
+     * @return a Pravega {@link Serializer}.
      */
     Serializer<T> getWrappedSerializer();
 }

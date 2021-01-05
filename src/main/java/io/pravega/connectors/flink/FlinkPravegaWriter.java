@@ -98,10 +98,13 @@ public class FlinkPravegaWriter<T>
     private final long txnLeaseRenewalPeriod;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private PravegaWriterMode writerMode;
+    private final PravegaWriterMode writerMode;
 
     // flag to enable/disable watermark
-    private boolean enableWatermark;
+    private final boolean enableWatermark;
+
+    // Pravega Writer prefix that will be used by all Pravega Writers in this Sink
+    private final String writerIdPrefix;
 
     // Client factory for PravegaWriter instances
     private transient EventStreamClientFactory clientFactory = null;
@@ -111,9 +114,6 @@ public class FlinkPravegaWriter<T>
 
     // Transactional Pravega writer instance
     private transient TransactionalEventStreamWriter<T> transactionalWriter = null;
-
-    // Pravega Writer prefix that will be used by all Pravega Writers in this Sink
-    private String writerIdPrefix;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a Flink job.
@@ -152,6 +152,8 @@ public class FlinkPravegaWriter<T>
 
     /**
      * Gets the associated event router.
+     *
+     * @return The {@link PravegaEventRouter} of the writer
      */
     public PravegaEventRouter<T> getEventRouter() {
         return this.eventRouter;
@@ -160,14 +162,14 @@ public class FlinkPravegaWriter<T>
     /**
      * Gets this writer's operating mode.
      */
-    public PravegaWriterMode getPravegaWriterMode() {
+    PravegaWriterMode getPravegaWriterMode() {
         return this.writerMode;
     }
 
     /**
      * Gets this enable watermark flag.
      */
-    public boolean getEnableWatermark() {
+    boolean getEnableWatermark() {
         return this.enableWatermark;
     }
 
@@ -183,6 +185,7 @@ public class FlinkPravegaWriter<T>
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     protected void invoke(PravegaTransactionState transaction, T event, Context context) throws Exception {
         checkWriteError();
 
@@ -204,7 +207,7 @@ public class FlinkPravegaWriter<T>
                 future.whenCompleteAsync(
                         (result, e) -> {
                             if (e != null) {
-                                log.warn("Detected a write failure: {}", e);
+                                log.warn("Detected a write failure", e);
 
                                 // We will record only the first error detected, since this will mostly likely help with
                                 // finding the root cause. Storing all errors will not be feasible.
@@ -258,6 +261,7 @@ public class FlinkPravegaWriter<T>
     protected void commit(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
                 final Transaction.Status status = txn.checkStatus();
@@ -294,6 +298,7 @@ public class FlinkPravegaWriter<T>
     protected void abort(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
                 txn.abort();
@@ -320,7 +325,7 @@ public class FlinkPravegaWriter<T>
             // Current transaction will be aborted with this method
             super.close();
         } catch (Exception e) {
-            exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            exception = e;
         }
 
         if (writer != null) {
@@ -688,6 +693,7 @@ public class FlinkPravegaWriter<T>
          * Sets the serialization schema.
          *
          * @param serializationSchema The serialization schema
+         * @return Builder instance.
          */
         public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
             this.serializationSchema = serializationSchema;
@@ -698,6 +704,7 @@ public class FlinkPravegaWriter<T>
          * Sets the event router.
          *
          * @param eventRouter the event router which produces a key per event.
+         * @return Builder instance.
          */
         public Builder<T> withEventRouter(PravegaEventRouter<T> eventRouter) {
             this.eventRouter = eventRouter;
@@ -706,6 +713,8 @@ public class FlinkPravegaWriter<T>
 
         /**
          * Builds the {@link FlinkPravegaWriter}.
+         *
+         * @return An instance of {@link FlinkPravegaWriter}
          */
         public FlinkPravegaWriter<T> build() {
             Preconditions.checkState(eventRouter != null, "Event router must be supplied.");
