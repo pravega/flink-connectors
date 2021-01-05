@@ -49,7 +49,7 @@ public class PravegaConfig implements Serializable {
     PravegaConfig(Properties properties, Map<String, String> env, ParameterTool params) {
         this.controllerURI = CONTROLLER_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
         this.defaultScope = SCOPE_PARAM.resolve(params, properties, env).orElse(null);
-        this.schemaRegistryURI = CONTROLLER_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
+        this.schemaRegistryURI = SCHEMA_REGISTRY_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
     }
 
     /**
@@ -116,6 +116,8 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets the schema registry client.
+     *
+     * @return the configuration for schema registry client
      */
     public SchemaRegistryClientConfig getSchemaRegistryClientConfig() {
         Preconditions.checkNotNull(defaultScope, "Default Scope should be set for schema registry client");
