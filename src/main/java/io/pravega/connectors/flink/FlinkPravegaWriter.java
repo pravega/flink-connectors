@@ -95,16 +95,16 @@ public class FlinkPravegaWriter<T>
     private final long txnLeaseRenewalPeriod;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private PravegaWriterMode writerMode;
+    private final PravegaWriterMode writerMode;
 
     // flag to enable/disable watermark
-    private boolean enableWatermark;
+    private final boolean enableWatermark;
+
+    // Pravega Writer prefix that will be used by all Pravega Writers in this Sink
+    private final String writerIdPrefix;
 
     // Client factory for PravegaWriter instances
     private transient EventStreamClientFactory clientFactory = null;
-
-    // Pravega Writer prefix that will be used by all Pravega Writers in this Sink
-    private String writerIdPrefix;
 
     /**
      * The flink pravega writer instance which can be added as a sink to a Flink job.
@@ -142,6 +142,8 @@ public class FlinkPravegaWriter<T>
 
     /**
      * Gets the associated event router.
+     *
+     * @return The {@link PravegaEventRouter} of the writer
      */
     public PravegaEventRouter<T> getEventRouter() {
         return this.eventRouter;
@@ -150,14 +152,14 @@ public class FlinkPravegaWriter<T>
     /**
      * Gets this writer's operating mode.
      */
-    public PravegaWriterMode getPravegaWriterMode() {
+    PravegaWriterMode getPravegaWriterMode() {
         return this.writerMode;
     }
 
     /**
      * Gets this enable watermark flag.
      */
-    public boolean getEnableWatermark() {
+    boolean getEnableWatermark() {
         return this.enableWatermark;
     }
 
@@ -866,6 +868,7 @@ public class FlinkPravegaWriter<T>
          * Sets the serialization schema.
          *
          * @param serializationSchema The serialization schema
+         * @return Builder instance.
          */
         public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
             this.serializationSchema = serializationSchema;
@@ -876,6 +879,7 @@ public class FlinkPravegaWriter<T>
          * Sets the event router.
          *
          * @param eventRouter the event router which produces a key per event.
+         * @return Builder instance.
          */
         public Builder<T> withEventRouter(PravegaEventRouter<T> eventRouter) {
             this.eventRouter = eventRouter;
@@ -884,6 +888,8 @@ public class FlinkPravegaWriter<T>
 
         /**
          * Builds the {@link FlinkPravegaWriter}.
+         *
+         * @return An instance of {@link FlinkPravegaWriter}
          */
         public FlinkPravegaWriter<T> build() {
             Preconditions.checkState(eventRouter != null, "Event router must be supplied.");

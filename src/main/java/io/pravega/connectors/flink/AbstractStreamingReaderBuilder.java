@@ -55,6 +55,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * The default value is generated based on other inputs.
      *
      * @param uid the uid to use.
+     * @return A builder to configure and create a streaming reader.
      */
     public B uid(String uid) {
         this.uid = uid;
@@ -67,6 +68,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * The default value is taken from the {@link PravegaConfig} {@code defaultScope} property.
      *
      * @param scope the scope name.
+     * @return A builder to configure and create a streaming reader.
      */
     public B withReaderGroupScope(String scope) {
         this.readerGroupScope = Preconditions.checkNotNull(scope);
@@ -77,6 +79,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * Configures the reader group name.
      *
      * @param readerGroupName the reader group name.
+     * @return A builder to configure and create a streaming reader.
      */
     public B withReaderGroupName(String readerGroupName) {
         this.readerGroupName = Preconditions.checkNotNull(readerGroupName);
@@ -87,6 +90,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * Sets the group refresh time, with a default of 1 second.
      *
      * @param groupRefreshTime The group refresh time
+     * @return A builder to configure and create a streaming reader.
      */
     public B withReaderGroupRefreshTime(Time groupRefreshTime) {
         this.readerGroupRefreshTime = groupRefreshTime;
@@ -97,6 +101,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * Sets the timeout for initiating a checkpoint in Pravega.
      *
      * @param checkpointInitiateTimeout The timeout
+     * @return A builder to configure and create a streaming reader.
      */
     public B withCheckpointInitiateTimeout(Time checkpointInitiateTimeout) {
         Preconditions.checkArgument(checkpointInitiateTimeout.getSize() > 0, "timeout must be > 0");
@@ -109,6 +114,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * expires (without an event being returned), another call will be made.
      *
      * @param eventReadTimeout The timeout
+     * @return A builder to configure and create a streaming reader.
      */
     public B withEventReadTimeout(Time eventReadTimeout) {
         Preconditions.checkArgument(eventReadTimeout.getSize() > 0, "timeout must be > 0");
@@ -124,6 +130,7 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * This configuration is particularly relevant when multiple checkpoint requests need to be honored (e.g., frequent savepoint requests being triggered concurrently).
      *
      * @param maxOutstandingCheckpointRequest maximum outstanding checkpoint request.
+     * @return A builder to configure and create a streaming reader.
      */
     public B withMaxOutstandingCheckpointRequest(int maxOutstandingCheckpointRequest) {
         this.maxOutstandingCheckpointRequest = maxOutstandingCheckpointRequest;
@@ -199,6 +206,8 @@ abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStreamingRead
      * 1. be stable across savepoints for the same inputs
      * 2. disambiguate one source from another (e.g. in a program that uses numerous instances of {@link FlinkPravegaReader})
      * 3. allow for reconfiguration of the stream cuts and timeouts
+     *
+     * @return A generated reader group ID.
      */
     String generateUid() {
         StringBuilder sb = new StringBuilder();

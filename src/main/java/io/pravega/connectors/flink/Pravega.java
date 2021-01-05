@@ -327,7 +327,9 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Sets the field name to use as a Pravega event routing key.
+         *
          * @param fieldName the field name.
+         * @return A builder to configure and create a writer.
          */
         public TableSinkWriterBuilder withRoutingKeyField(String fieldName) {
             this.routingKeyFieldName = fieldName;
@@ -336,7 +338,9 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Pass the serialization schema to be used.
+         *
          * @param serializationSchema the serialization schema.
+         * @return A builder to configure and create a writer.
          */
         public TableSinkWriterBuilder withSerializationSchema(SerializationSchema<Row> serializationSchema) {
             this.serializationSchema = serializationSchema;
@@ -351,6 +355,7 @@ public class Pravega extends ConnectorDescriptor {
         /**
          * Creates the sink function based on the given table sink configuration and current builder state.
          * @param configuration the table sink configuration, incl. projected fields
+         * @return An instance of {@link FlinkPravegaWriter}.
          */
         protected FlinkPravegaWriter<Row> createSinkFunction(FlinkPravegaTableSink.TableSinkConfiguration configuration) {
             Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
@@ -362,6 +367,7 @@ public class Pravega extends ConnectorDescriptor {
         /**
          * Creates FlinkPravegaOutputFormat based on the given table sink configuration and current builder state.
          * @param configuration the table sink configuration, incl. projected fields
+         * @return An instance of {@link FlinkPravegaOutputFormat}.
          */
         protected FlinkPravegaOutputFormat<Row> createOutputFormat(FlinkPravegaTableSink.TableSinkConfiguration configuration) {
             Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");

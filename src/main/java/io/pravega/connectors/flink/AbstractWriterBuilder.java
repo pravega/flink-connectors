@@ -38,6 +38,7 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
      * The default client configuration is obtained from {@code PravegaConfig.fromDefaults()}.
      *
      * @param pravegaConfig the configuration to use.
+     * @return A builder to configure and create a writer.
      */
     public B withPravegaConfig(PravegaConfig pravegaConfig) {
         this.pravegaConfig = pravegaConfig;
@@ -68,6 +69,8 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
 
     /**
      * Gets the Pravega configuration.
+     *
+     * @return the instance of {@link PravegaConfig}.
      */
     protected PravegaConfig getPravegaConfig() {
         Preconditions.checkState(pravegaConfig != null, "A Pravega configuration must be supplied.");
@@ -76,6 +79,8 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
 
     /**
      * Resolves the stream to be provided to the writer, based on the configured default scope.
+     *
+     * @return the resolved stream instance.
      */
     protected Stream resolveStream() {
         Preconditions.checkState(stream != null, "A stream must be supplied.");
@@ -96,6 +101,8 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
 
     /**
      * getter to fetch the metrics flag.
+     *
+     * @return A boolean if metrics is enabled
      */
     protected boolean isMetricsEnabled() {
         return enableMetrics;

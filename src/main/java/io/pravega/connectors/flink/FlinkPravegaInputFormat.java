@@ -174,7 +174,9 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     /**
      * Gets a builder {@link FlinkPravegaInputFormat} to read Pravega streams using the Flink batch API.
+     *
      * @param <T> the element type.
+     * @return A builder to configure and create a batch reader.
      */
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -197,6 +199,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
          * Sets the deserialization schema.
          *
          * @param deserializationSchema The deserialization schema
+         * @return A builder to configure and create a batch reader.
          */
         public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;

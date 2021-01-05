@@ -609,6 +609,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link ReaderGroupManager} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroupManager}
      */
     protected ReaderGroupManager createReaderGroupManager() {
         if (readerGroupManager == null) {
@@ -620,6 +622,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamClientFactory} for the current configuration.
+     *
+     * @return An instance of {@link EventStreamClientFactory}
      */
     protected EventStreamClientFactory createEventStreamClientFactory() {
         if (eventStreamClientFactory == null) {
@@ -631,7 +635,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamReader} for the current configuration.
+     *
      * @param readerId the readerID to use.
+     * @return An instance of {@link EventStreamReader}
      */
     protected EventStreamReader<T> createEventStreamReader(String readerId) {
         return createPravegaReader(
@@ -648,7 +654,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Gets a builder for {@link FlinkPravegaReader} to read Pravega streams using the Flink streaming API.
+     *
      * @param <T> the element type.
+     * @return A new builder of {@link FlinkPravegaReader}
      */
     public static <T> FlinkPravegaReader.Builder<T> builder() {
         return new Builder<>();
@@ -709,7 +717,9 @@ public class FlinkPravegaReader<T>
 
         /**
          * Builds a {@link FlinkPravegaReader} based on the configuration.
+         *
          * @throws IllegalStateException if the configuration is invalid.
+         * @return An instance of {@link FlinkPravegaReader}
          */
         public FlinkPravegaReader<T> build() {
             FlinkPravegaReader<T> reader = buildSourceFunction();
