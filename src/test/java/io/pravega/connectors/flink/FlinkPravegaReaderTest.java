@@ -345,6 +345,36 @@ public class FlinkPravegaReaderTest {
         verify(reader.readerGroup).close();
     }
 
+    /**
+     * Tests the schema registry deserialization support.
+     */
+    @Test
+    public void testSchemaRegistryDeserialization() throws Exception {
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
+        try {
+            FlinkPravegaReader.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing default scope"
+        }
+
+        pravegaConfig.withDefaultScope("scope");
+        try {
+            FlinkPravegaReader.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing Schema Registry URI"
+        }
+    }
+
 
     /**
      * helper method to validate the metrics
