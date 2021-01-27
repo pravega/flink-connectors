@@ -85,7 +85,7 @@ public class FlinkPravegaWriterTest {
     public void testOpenClose() throws Exception {
         EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
         EventStreamClientFactory clientFactory = mockClientFactory(pravegaWriter);
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>(), false, PravegaWriterMode.ATLEAST_ONCE);
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, null, false, PravegaWriterMode.ATLEAST_ONCE);
 
         try {
             try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction)) {
