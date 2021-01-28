@@ -119,6 +119,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
                     .groupRefreshTimeMillis(this.readerGroupConfig.getGroupRefreshTimeMillis())
                     .disableAutomaticCheckpoints()
                     .startFromCheckpoint(checkpoint)
+                    .readerGroupId(this.readerGroupConfig.getReaderGroupId())
                     .build());
         }
     }
