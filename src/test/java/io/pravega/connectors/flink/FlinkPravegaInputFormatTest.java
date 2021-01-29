@@ -16,16 +16,13 @@ import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.batch.StreamSegmentsIterator;
 import io.pravega.client.stream.Stream;
-import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.io.InputFormat;
 import org.junit.Test;
 
-import java.net.URI;
 import java.util.Iterator;
 
-import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -93,48 +90,6 @@ public class FlinkPravegaInputFormatTest {
                 .withDeserializationSchema(deserializationSchema)
                 .withPravegaConfig(pravegaConfig)
                 .build();
-    }
-
-    /**
-     * Tests the schema registry deserialization support.
-     */
-    @Test
-    public void testSchemaRegistryDeserialization() throws Exception {
-        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
-        try {
-            FlinkPravegaInputFormat.<Integer>builder()
-                    .withPravegaConfig(pravegaConfig)
-                    .forStream("stream")
-                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
-                    .build();
-            fail();
-        } catch (NullPointerException e) {
-            // "missing default scope"
-        }
-
-        pravegaConfig.withDefaultScope("scope");
-        try {
-            FlinkPravegaInputFormat.<Integer>builder()
-                    .withPravegaConfig(pravegaConfig)
-                    .forStream("stream")
-                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
-                    .build();
-            fail();
-        } catch (NullPointerException e) {
-            // "missing Schema Registry URI"
-        }
-
-        pravegaConfig.withSchemaRegistryURI(URI.create("http://localhost:9092"));
-
-        try {
-            FlinkPravegaInputFormat.<Integer>builder()
-                    .withPravegaConfig(pravegaConfig)
-                    .forStream("stream")
-                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
-                    .build();
-        } catch (NotImplementedException e) {
-            // "Not support SerializationFormat.Any"
-        }
     }
 
     /**
