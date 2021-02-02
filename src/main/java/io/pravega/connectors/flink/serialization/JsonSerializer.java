@@ -9,8 +9,8 @@
  */
 package io.pravega.connectors.flink.serialization;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.pravega.client.stream.Serializer;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
