@@ -102,8 +102,8 @@ public class PravegaConfig implements Serializable {
         final PravegaConfig that = (PravegaConfig) o;
         return validateHostname == that.validateHostname &&
                 controllerURI.equals(that.controllerURI) &&
-                schemaRegistryURI.equals(that.schemaRegistryURI) &&
                 defaultScope.equals(that.defaultScope) &&
+                Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
                 Objects.equals(credentials, that.credentials) &&
                 Objects.equals(trustStore, that.trustStore);
     }
