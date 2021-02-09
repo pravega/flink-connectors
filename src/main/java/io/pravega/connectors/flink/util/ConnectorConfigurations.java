@@ -59,7 +59,10 @@ import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLo
 
 /**
  * Pravega connector configurations used to parse and map the {@link DescriptorProperties}.
+ *
+ * @deprecated Internal class for parsing configurations for legacy Table API
  */
+@Deprecated
 @Data
 public final class ConnectorConfigurations {
     private Optional<Boolean> metrics;

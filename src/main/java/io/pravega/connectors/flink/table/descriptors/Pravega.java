@@ -49,7 +49,10 @@ import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CO
 
 /**
  *  Pravega connector descriptor.
+ *
+ *  @deprecated Please use the new Table API
  */
+@Deprecated
 public class Pravega extends ConnectorDescriptor {
 
     public static final String CONNECTOR_TYPE_VALUE_PRAVEGA = "pravega";

@@ -58,6 +58,10 @@ import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 
+/**
+ * @deprecated Internal base class for legacy table factory.
+ */
+@Deprecated
 public abstract class FlinkPravegaTableFactoryBase {
 
     protected Map<String, String> getRequiredContext() {
