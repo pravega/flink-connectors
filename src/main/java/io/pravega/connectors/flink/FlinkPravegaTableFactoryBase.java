@@ -59,6 +59,8 @@ import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 
 /**
+ * Base class for Pravega table factory.
+ *
  * @deprecated Internal base class for legacy table factory.
  */
 @Deprecated
