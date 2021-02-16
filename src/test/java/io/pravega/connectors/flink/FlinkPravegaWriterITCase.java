@@ -180,7 +180,6 @@ public class FlinkPravegaWriterITCase {
                 }
                 actualEventCount++;
             }
-            Assert.assertEquals(actualEventCount, EVENT_COUNT_PER_SOURCE);
             if (EVENT_COUNT_PER_SOURCE == actualEventCount) {
                 break;
             }
