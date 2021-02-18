@@ -69,7 +69,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 3);
+        SETUP_UTILS.createTestStream(stream, 1);
 
         final String createTable = String.format(
                 "create table pravega (%n" +
