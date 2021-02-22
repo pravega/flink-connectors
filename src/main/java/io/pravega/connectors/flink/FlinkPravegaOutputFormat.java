@@ -90,7 +90,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
         this.stream = stream.getStreamName();
         this.scope = stream.getScope();
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
+        this.eventRouter = eventRouter;
         this.writeError = new AtomicReference<>(null);
         this.pendingWritesCount = new AtomicInteger(0);
     }
@@ -114,7 +114,12 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
     public void writeRecord(T record) throws IOException {
         checkWriteError();
         this.pendingWritesCount.incrementAndGet();
-        final CompletableFuture<Void> future = pravegaWriter.writeEvent(eventRouter.getRoutingKey(record), record);
+        final CompletableFuture<Void> future;
+        if (eventRouter != null) {
+            future = pravegaWriter.writeEvent(eventRouter.getRoutingKey(record), record);
+        } else {
+            future = pravegaWriter.writeEvent(record);
+        }
         future.whenCompleteAsync(
                 (result, e) -> {
                     if (e != null) {
@@ -273,7 +278,6 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
          */
         public FlinkPravegaOutputFormat<T> build() {
             Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-            Preconditions.checkNotNull(eventRouter, "eventRouter");
             return new FlinkPravegaOutputFormat<>(
                             getPravegaConfig().getClientConfig(),
                             resolveStream(),

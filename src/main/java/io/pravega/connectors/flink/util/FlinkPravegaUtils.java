@@ -23,6 +23,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.util.Preconditions;
 
 import java.nio.ByteBuffer;
 
@@ -47,6 +48,7 @@ public class FlinkPravegaUtils {
         // a keyed stream is used to ensure that all elements for a given key are forwarded to the same writer instance.
         // the parallelism must match between the ordering operator and the sink operator to ensure that
         // a forwarding strategy (as opposed to a rebalancing strategy) is used by Flink between the two operators.
+        Preconditions.checkNotNull(writer.getEventRouter(), "Event router should not be null");
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
                 .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism).forward()
