@@ -131,7 +131,7 @@ public class FlinkPravegaWriter<T>
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
+        this.eventRouter = eventRouter;
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -469,7 +469,11 @@ public class FlinkPravegaWriter<T>
 
         @Override
         public void write(T event, Context context, boolean enableWatermark) throws Exception {
-            this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
+            if (eventRouter != null) {
+                this.currentTxn.writeEvent(eventRouter.getRoutingKey(event), event);
+            } else {
+                this.currentTxn.writeEvent(event);
+            }
             if (enableWatermark) {
                 this.setWatermark(context.currentWatermark());
             }
@@ -574,7 +578,7 @@ public class FlinkPravegaWriter<T>
 
                 String watermarkMsg = txn.watermark == null ? "" : " at watermark "+txn.watermark;
                 log.info("{} - checkpoint {} complete{}, committing completed checkpoint transaction {}",
-                    writerId(), checkpointId, watermarkMsg, txn.transaction().getTxnId());
+                        writerId(), checkpointId, watermarkMsg, txn.transaction().getTxnId());
 
                 // the big assumption is that this now actually works and that the transaction has not timed out, yet
 
@@ -638,7 +642,7 @@ public class FlinkPravegaWriter<T>
                                         stream,
                                         eventSerializer,
                                         writerConfig);
-                    ) {
+                ) {
 
                     log.info("restore state for the scope: {} and stream: {}", scope, stream);
 
@@ -718,7 +722,12 @@ public class FlinkPravegaWriter<T>
             checkWriteError();
 
             this.pendingWritesCount.incrementAndGet();
-            final CompletableFuture<Void> future = this.getPravegaWriter().writeEvent(eventRouter.getRoutingKey(event), event);
+            final CompletableFuture<Void> future;
+            if (eventRouter != null) {
+                future = this.getPravegaWriter().writeEvent(eventRouter.getRoutingKey(event), event);
+            } else {
+                future = this.getPravegaWriter().writeEvent(event);
+            }
             if (enableWatermark && shouldEmitWatermark(context)) {
                 this.getPravegaWriter().noteTime(context.currentWatermark());
                 setWatermark(context.currentWatermark());
@@ -892,7 +901,6 @@ public class FlinkPravegaWriter<T>
          * @return An instance of {@link FlinkPravegaWriter}
          */
         public FlinkPravegaWriter<T> build() {
-            Preconditions.checkState(eventRouter != null, "Event router must be supplied.");
             Preconditions.checkState(serializationSchema != null, "Serialization schema must be supplied.");
             return createSinkFunction(serializationSchema, eventRouter);
         }

@@ -204,15 +204,15 @@ public class Pravega extends ConnectorDescriptor {
             values.add(Arrays.asList(stream.getScope(), stream.getStreamName(), startStreamCut.asText(), endStreamCut.asText()));
         });
         properties.putIndexedFixedProperties(
-                                                CONNECTOR_READER_STREAM_INFO,
-                                                Arrays.asList(
-                                                            CONNECTOR_READER_STREAM_INFO_SCOPE,
-                                                            CONNECTOR_READER_STREAM_INFO_STREAM,
-                                                            CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                                                            CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
-                                                        ),
-                                                values
-                                            );
+                CONNECTOR_READER_STREAM_INFO,
+                Arrays.asList(
+                        CONNECTOR_READER_STREAM_INFO_SCOPE,
+                        CONNECTOR_READER_STREAM_INFO_STREAM,
+                        CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
+                        CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
+                ),
+                values
+        );
 
         // reader group information
         String uid = Optional.ofNullable(tableSourceReaderBuilder.uid).orElseGet(tableSourceReaderBuilder::generateUid);
@@ -358,9 +358,11 @@ public class Pravega extends ConnectorDescriptor {
          * @return An instance of {@link FlinkPravegaWriter}.
          */
         protected FlinkPravegaWriter<Row> createSinkFunction(FlinkPravegaTableSink.TableSinkConfiguration configuration) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
+            }
             return createSinkFunction(serializationSchema, eventRouter);
         }
 
@@ -370,9 +372,11 @@ public class Pravega extends ConnectorDescriptor {
          * @return An instance of {@link FlinkPravegaOutputFormat}.
          */
         protected FlinkPravegaOutputFormat<Row> createOutputFormat(FlinkPravegaTableSink.TableSinkConfiguration configuration) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, configuration.getFieldNames(), configuration.getFieldTypes());
+            }
             return new FlinkPravegaOutputFormat<>(
                     getPravegaConfig().getClientConfig(),
                     resolveStream(),

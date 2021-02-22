@@ -98,7 +98,7 @@ public class FlinkPravegaWriterTest {
     @Test
     public void testOpenClose() throws Exception {
         EventStreamClientFactory clientFactory = mockClientFactory(null);
-        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, new FixedEventRouter<>(), false, PravegaWriterMode.ATLEAST_ONCE);
+        FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, null, false, PravegaWriterMode.ATLEAST_ONCE);
         FlinkPravegaWriter.AbstractInternalWriter internalWriter = mock(FlinkPravegaWriter.AbstractInternalWriter.class);
         Mockito.doReturn(internalWriter).when(sinkFunction).createInternalWriter();
 

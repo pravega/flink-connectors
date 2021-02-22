@@ -84,7 +84,6 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      */
     FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        Preconditions.checkNotNull(eventRouter, "eventRouter");
         return new FlinkPravegaWriter<>(
                 getPravegaConfig().getClientConfig(),
                 resolveStream(),

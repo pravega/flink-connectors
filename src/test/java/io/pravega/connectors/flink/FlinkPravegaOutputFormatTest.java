@@ -82,23 +82,10 @@ public class FlinkPravegaOutputFormatTest {
 
     /**
      * Testing the builder for right configurations.
-     * Should fail since we don't pass {@link PravegaEventRouter}
-     */
-    @Test(expected = NullPointerException.class)
-    public void testBuilderForFailure2() {
-        FlinkPravegaOutputFormat.<String>builder()
-                .withSerializationSchema(serializationSchema)
-                .withPravegaConfig(pravegaConfig)
-                .forStream(stream)
-                .build();
-    }
-
-    /**
-     * Testing the builder for right configurations.
      * Should fail since we don't pass {@link Stream}
      */
     @Test(expected = IllegalStateException.class)
-    public void testBuilderForFailure3() {
+    public void testBuilderForFailure2() {
         FlinkPravegaOutputFormat.<String>builder()
                 .withEventRouter(eventRouter)
                 .withSerializationSchema(serializationSchema)
