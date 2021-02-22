@@ -151,23 +151,31 @@ public class FlinkPravegaWriterITCase {
         dataStream.addSink(pravegaSink).setParallelism(2);
 
         execEnv.execute();
-        List<Integer> readElements = readAllEvents(streamName);
 
-        // Now verify that all expected events are present in the stream. Having extra elements are fine since we are
-        // testing the at-least-once writer.
-        Collections.sort(readElements);
-        int expectedEventValue = 0;
-        for (int i = 0; i < readElements.size();) {
-            if (readElements.get(i) != expectedEventValue) {
-                throw new IllegalStateException("Element: " + expectedEventValue + " missing in the stream");
-            }
+        for (;;) {
+            List<Integer> readElements = readAllEvents(streamName);
 
-            while (i < readElements.size() && readElements.get(i) == expectedEventValue) {
-                i++;
+            // Now verify that all expected events are present in the stream. Having extra elements are fine since we are
+            // testing the at-least-once writer.
+            Collections.sort(readElements);
+            int actualEventCount = 0;
+            for (int i = 0; i < readElements.size(); ) {
+                if (readElements.get(i) != actualEventCount) {
+                    throw new IllegalStateException("Element: " + actualEventCount + " missing in the stream");
+                }
+
+                while (i < readElements.size() && readElements.get(i) == actualEventCount) {
+                    i++;
+                }
+                actualEventCount++;
             }
-            expectedEventValue++;
+            if (EVENT_COUNT_PER_SOURCE == actualEventCount) {
+                break;
+            }
+            // A batch read from Pravega may not return events that were recently written.
+            // In this case, we simply retry the read portion of this test.
+            log.info("Retrying read query. expected={}, actual={}", EVENT_COUNT_PER_SOURCE, actualEventCount);
         }
-        Assert.assertEquals(expectedEventValue, EVENT_COUNT_PER_SOURCE);
     }
 
     /**
