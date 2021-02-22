@@ -11,8 +11,6 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.serializer.shared.credentials.PravegaCredentialProvider;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -105,34 +103,14 @@ public class PravegaConfig implements Serializable {
         return validateHostname == that.validateHostname &&
                 controllerURI.equals(that.controllerURI) &&
                 defaultScope.equals(that.defaultScope) &&
+                Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
                 Objects.equals(credentials, that.credentials) &&
                 Objects.equals(trustStore, that.trustStore);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(controllerURI, defaultScope, credentials, validateHostname, trustStore);
-    }
-
-    /**
-     * Gets the schema registry client.
-     *
-     * @return the configuration for schema registry client
-     */
-    public SchemaRegistryClientConfig getSchemaRegistryClientConfig() {
-        Preconditions.checkNotNull(defaultScope, "Default Scope should be set for schema registry client");
-        Preconditions.checkNotNull(schemaRegistryURI, "Schema Registry URI should be set for schema registry client");
-
-        SchemaRegistryClientConfig.SchemaRegistryClientConfigBuilder builder = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryURI);
-
-        if (credentials != null) {
-            builder.authentication(credentials.getAuthenticationType(), credentials.getAuthenticationToken());
-        } else {
-            builder.authentication(new PravegaCredentialProvider(getClientConfig()));
-        }
-
-        return builder.build();
+        return Objects.hash(controllerURI, schemaRegistryURI, defaultScope, credentials, validateHostname, trustStore);
     }
 
     /**
@@ -230,6 +208,16 @@ public class PravegaConfig implements Serializable {
         return defaultScope;
     }
 
+    /**
+     * Gets the Pravega schema registry URI.
+     *
+     * @return Pravega schema registry URI.
+     */
+    @Nullable
+    public URI getSchemaRegistryUri() {
+        return schemaRegistryURI;
+    }
+
     // endregion
 
     // region Security
@@ -243,6 +231,16 @@ public class PravegaConfig implements Serializable {
     public PravegaConfig withCredentials(Credentials credentials) {
         this.credentials = credentials;
         return this;
+    }
+
+    /**
+     * Gets the Pravega schema registry URI.
+     *
+     * @return Pravega schema registry URI.
+     */
+    @Nullable
+    public Credentials getCredentials() {
+        return credentials;
     }
 
     /**
