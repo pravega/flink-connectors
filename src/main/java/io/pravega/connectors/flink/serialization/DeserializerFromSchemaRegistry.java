@@ -13,6 +13,7 @@ package io.pravega.connectors.flink.serialization;
 import com.google.protobuf.DynamicMessage;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -44,7 +45,7 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
     private transient Serializer<T> serializer;
 
     public DeserializerFromSchemaRegistry(PravegaConfig pravegaConfig, String group, Class<T> tClass) {
-        Preconditions.checkNotNull(pravegaConfig.getSchemaRegistryClientConfig().getSchemaRegistryUri());
+        Preconditions.checkNotNull(pravegaConfig.getSchemaRegistryUri());
         this.pravegaConfig = pravegaConfig;
         this.group = group;
         this.tClass = tClass;
@@ -54,7 +55,7 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
     @SuppressWarnings("unchecked")
     private void initialize() {
         synchronized (this) {
-            SchemaRegistryClientConfig schemaRegistryClientConfig = pravegaConfig.getSchemaRegistryClientConfig();
+            SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
             SerializationFormat format;
 
             try (SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(

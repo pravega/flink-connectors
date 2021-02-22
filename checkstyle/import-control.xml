@@ -14,12 +14,8 @@
     <allow pkg="com.google"/>
     <allow pkg="io.pravega"/>
     <allow pkg="lombok"/>
-    <allow pkg="com.fasterxml.jackson"/>
     <allow pkg="org.apache"/>
     <allow pkg="edu.umd.cs.findbugs"/>
-
-    <!-- flink dependencies -->
-    <allow pkg="scala"/>
 
     <!-- test dependencies -->
     <allow pkg="org.mockito"/>
