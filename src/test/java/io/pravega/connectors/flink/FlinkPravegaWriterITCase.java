@@ -11,7 +11,6 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
-import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TimeWindow;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
@@ -109,23 +108,13 @@ public class FlinkPravegaWriterITCase {
     private List<Integer> readAllEvents(final String streamName) throws Exception {
         Preconditions.checkNotNull(streamName);
 
-        // TODO: Remove the end marker workaround once the following issue is fixed:
-        // https://github.com/pravega/pravega/issues/408
-        final int streamEndMarker = 99999;
-
-        // Write the end marker.
-        @Cleanup
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-        eventWriter.writeEvent("fixedkey", streamEndMarker);
-        eventWriter.flush();
-
         // Read all data from the stream.
         @Cleanup
         EventStreamReader<Integer> consumer = SETUP_UTILS.getIntegerReader(streamName);
         List<Integer> elements = new ArrayList<>();
         while (true) {
             Integer event = consumer.readNextEvent(1000).getEvent();
-            if (event == null || event == streamEndMarker) {
+            if (event == null) {
                 log.info("Reached end of stream: " + streamName);
                 break;
             }
@@ -218,7 +207,6 @@ public class FlinkPravegaWriterITCase {
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
-                .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
                 .enableWatermark(true)
                 .build();
@@ -345,7 +333,6 @@ public class FlinkPravegaWriterITCase {
                     .forStream(streamName)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                     .withSerializationSchema(new IntSerializer())
-                    .withEventRouter(event -> "fixedkey")
                     .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                     .withTxnLeaseRenewalPeriod(Time.seconds(30))
                     .enableWatermark(true)
