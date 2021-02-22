@@ -23,7 +23,10 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_VERSION_VALUE;
 
 /**
  * A batch table source factory implementation of {@link BatchTableSourceFactory} to access Pravega streams.
+ *
+ * @deprecated Please use the new Table API {@link io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory}
  */
+@Deprecated
 public class FlinkPravegaBatchTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
         BatchTableSourceFactory<Row>, BatchTableSinkFactory<Row> {
 

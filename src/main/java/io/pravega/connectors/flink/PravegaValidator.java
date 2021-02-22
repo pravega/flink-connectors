@@ -23,7 +23,10 @@ import static io.pravega.connectors.flink.Pravega.*;
 
 /**
  * Pravega descriptor validation implementation for validating the Pravega reader and writer configurations.
+ *
+ * @deprecated Please use the new Table API
  */
+@Deprecated
 public class PravegaValidator extends ConnectorDescriptorValidator {
 
     @Override

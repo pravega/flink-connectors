@@ -31,7 +31,10 @@ import static org.apache.flink.util.Preconditions.checkState;
 
 /**
  * An append-only table sink to emit a streaming table as a Pravega stream.
+ *
+ * @deprecated Please use the new Table API
  */
+@Deprecated
 public abstract class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchTableSink<Row> {
 
     /** A factory for the stream writer. */

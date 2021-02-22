@@ -25,7 +25,10 @@ import static org.apache.flink.table.descriptors.StreamTableDescriptorValidator.
 
 /**
  * A stream table source factory implementation of {@link StreamTableSourceFactory} to access Pravega streams.
+ *
+ * @deprecated Please use the new Table API {@link io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory}
  */
+@Deprecated
 public class FlinkPravegaStreamTableSourceSinkFactory extends FlinkPravegaTableFactoryBase implements
         StreamTableSourceFactory<Row>, StreamTableSinkFactory<Row> {
 

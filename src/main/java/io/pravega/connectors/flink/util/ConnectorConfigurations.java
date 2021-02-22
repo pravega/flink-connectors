@@ -59,7 +59,10 @@ import static io.pravega.connectors.flink.Pravega.CONNECTOR_WRITER_TXN_LEASE_REN
 
 /**
  * Pravega connector configurations used to parse and map the {@link DescriptorProperties}.
+ *
+ * @deprecated Internal class for parsing configurations for legacy Table API
  */
+@Deprecated
 @Data
 public final class ConnectorConfigurations {
     private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";

@@ -55,6 +55,12 @@ import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
 
+/**
+ * Base class for Pravega table factory.
+ *
+ * @deprecated Internal base class for legacy table factory.
+ */
+@Deprecated
 public abstract class FlinkPravegaTableFactoryBase {
 
     protected Map<String, String> getRequiredContext() {
