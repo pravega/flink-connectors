@@ -24,7 +24,7 @@ import org.apache.flink.util.Preconditions;
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked based on the default max settings in Pravega
-    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000; // 30 seconds
+    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 120000; // 120 seconds
 
     protected PravegaWriterMode writerMode;
     protected boolean enableWatermark;
