@@ -133,7 +133,7 @@ public class ReaderCheckpointHookTest {
 
         hook.restoreCheckpoint(1L, checkpoint);
 
-        verify(hook.readerGroup).resetReaderGroup(readerGroupConfig);
+        verify(hook.readerGroup).resetReaderGroup(any(ReaderGroupConfig.class));
     }
 
     static class TestableReaderCheckpointHook extends ReaderCheckpointHook {
