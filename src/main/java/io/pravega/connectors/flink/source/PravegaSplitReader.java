@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink.source;
 
-import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
@@ -26,7 +25,6 @@ import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
-import java.util.*;
 
 @Slf4j
 public class PravegaSplitReader<T> implements SplitReader<EventRead<T>, PravegaSplit>, AutoCloseable {

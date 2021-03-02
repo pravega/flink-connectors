@@ -18,7 +18,6 @@ import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.common.typeutils.base.ListSerializer;
 import org.apache.flink.api.common.typeutils.base.LongSerializer;
 import org.apache.flink.api.java.typeutils.InputTypeConfigurable;
-import org.apache.flink.runtime.state.StateInitializationContext;
 import org.apache.flink.runtime.state.VoidNamespace;
 import org.apache.flink.runtime.state.VoidNamespaceSerializer;
 import org.apache.flink.streaming.api.operators.AbstractStreamOperator;
@@ -80,11 +79,6 @@ public class EventTimeOrderingOperator<K, T> extends AbstractStreamOperator<T>
     @SuppressWarnings("unchecked")
     public void setInputType(TypeInformation<?> type, ExecutionConfig executionConfig) {
         this.inputSerializer = (TypeSerializer<T>) type.createSerializer(executionConfig);
-    }
-
-    @Override
-    public void initializeState(StateInitializationContext context) throws Exception {
-        super.initializeState(context);
     }
 
     @Override

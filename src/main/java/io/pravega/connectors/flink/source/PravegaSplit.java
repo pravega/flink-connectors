@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink.source;
 
-import io.pravega.client.stream.Position;
 import org.apache.flink.api.connector.source.SourceSplit;
 
 import java.io.Serializable;

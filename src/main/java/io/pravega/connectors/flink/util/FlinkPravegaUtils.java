@@ -16,6 +16,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.EventTimeOrderingOperator;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
+import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
 
 import org.apache.commons.lang3.RandomStringUtils;
@@ -23,10 +24,14 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.util.Preconditions;
 
 import java.nio.ByteBuffer;
+import java.util.Objects;
 
 public class FlinkPravegaUtils {
+    private static final String AUTH_PARAM_LOAD_DYNAMIC = "pravega.client.auth.loadDynamic";
+    private static final String AUTH_PARAM_LOAD_DYNAMIC_ENV = "pravega_client_auth_loadDynamic";
 
     private FlinkPravegaUtils() {
     }
@@ -47,6 +52,7 @@ public class FlinkPravegaUtils {
         // a keyed stream is used to ensure that all elements for a given key are forwarded to the same writer instance.
         // the parallelism must match between the ordering operator and the sink operator to ensure that
         // a forwarding strategy (as opposed to a rebalancing strategy) is used by Flink between the two operators.
+        Preconditions.checkNotNull(writer.getEventRouter(), "Event router should not be null");
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
                 .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism).forward()
@@ -62,7 +68,11 @@ public class FlinkPravegaUtils {
      * @return the generated default reader name.
      */
     public static String getReaderName(final String taskName, final int index, final int total) {
-        String readerName = "flink-task-" + taskName + "-" + index + "-" + total;
+        String shortTaskName = "";
+        if (taskName.length() >= 200) {
+            shortTaskName = taskName.substring(0, 200);
+        }
+        String readerName = "flink-task-" + shortTaskName + "-" + index + "-" + total;
         readerName = StringUtils.removePattern(readerName, "[^\\p{Alnum}\\.\\-]");
         return readerName;
     }
@@ -134,5 +144,48 @@ public class FlinkPravegaUtils {
 
             return deserializationSchema.deserialize(array);
         }
+    }
+
+    public static final class SimpleCredentials implements Credentials {
+        private final String authType;
+        private final String authToken;
+
+        public SimpleCredentials(String authType, String authToken) {
+            this.authType = authType;
+            this.authToken = authToken;
+        }
+
+        @Override
+        public String getAuthenticationType() {
+            return authType;
+        }
+
+        @Override
+        public String getAuthenticationToken() {
+            return authToken;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            final SimpleCredentials that = (SimpleCredentials) o;
+            return Objects.equals(authType, that.authType) &&
+                    Objects.equals(authToken, that.authToken);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(authType, authToken);
+        }
+    }
+
+    public static boolean isCredentialsLoadDynamic() {
+        return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
+                System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
     }
 }

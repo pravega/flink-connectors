@@ -34,9 +34,11 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -71,6 +73,7 @@ public final class SetupUtils {
     @Setter
     private boolean enableTls = true;
 
+    @Getter
     @Setter
     private boolean enableHostNameValidation = false;
 
@@ -122,7 +125,9 @@ public final class SetupUtils {
             return;
         }
 
-        eventStreamClientFactory.close();
+        if (eventStreamClientFactory != null) {
+            eventStreamClientFactory.close();
+        }
 
         try {
             gateway.stop();
@@ -169,6 +174,30 @@ public final class SetupUtils {
     }
 
     /**
+     * Fetch the auth type.
+     */
+    public String getAuthType() {
+        return "Basic";
+    }
+
+    /**
+<<<<<<< HEAD
+=======
+     * Fetch the auth token.
+     */
+    public String getAuthToken() {
+        String decoded = PRAVEGA_USERNAME + ":" + PRAVEGA_PASSWORD;
+        return Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Fetch Pravega client trust store.
+     */
+    public String getPravegaClientTrustStore() {
+        return getFileFromResource(CLIENT_TRUST_STORE_FILE);
+    }
+
+    /**
      * Fetch the {@link PravegaConfig} for integration test purposes.
      */
     public PravegaConfig getPravegaConfig() {
@@ -181,6 +210,7 @@ public final class SetupUtils {
     }
 
     /**
+>>>>>>> origin/master
      * Create the test stream.
      *
      * @param streamName     Name of the test stream.
@@ -293,7 +323,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(enableTls) //configure ZK for security
+                    .secureZK(false) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)

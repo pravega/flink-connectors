@@ -17,17 +17,9 @@ import io.pravega.client.stream.ReaderConfig;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.api.connector.source.SourceSplit;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
-import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcher;
-import org.apache.flink.connector.base.source.reader.fetcher.SplitFetcherManager;
-import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Supplier;
 
 @Slf4j
 public class PravegaFetcherManager<T>

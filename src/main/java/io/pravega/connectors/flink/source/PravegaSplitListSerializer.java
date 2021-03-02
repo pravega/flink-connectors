@@ -15,10 +15,7 @@ import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.InstantiationUtil;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class PravegaSplitListSerializer implements SimpleVersionedSerializer<List<PravegaSplit>> {
     private static final int VERSION = 1;

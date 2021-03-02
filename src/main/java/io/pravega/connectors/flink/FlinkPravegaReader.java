@@ -9,8 +9,9 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.client.EventStreamClientFactory;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
@@ -21,8 +22,9 @@ import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.client.stream.TruncatedDataException;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -360,19 +362,48 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void close() throws Exception {
+        Throwable ex = null;
         if (eventStreamClientFactory != null) {
-            log.info("Closing Pravega eventStreamClientFactory");
-            eventStreamClientFactory.close();
+            try {
+                log.info("Closing Pravega eventStreamClientFactory");
+                eventStreamClientFactory.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    eventStreamClientFactory.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroupManager != null) {
             log.info("Closing Pravega ReaderGroupManager");
-            readerGroupManager.close();
+            try {
+                readerGroupManager.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    readerGroupManager.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
         }
-
         if (readerGroup != null) {
-            log.info("Closing Pravega ReaderGroup");
-            readerGroup.close();
+            try {
+                log.info("Closing Pravega ReaderGroup");
+                readerGroup.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    readerGroup.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+        if (ex != null && ex instanceof Exception) {
+            throw (Exception) ex;
         }
     }
 
@@ -579,6 +610,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link ReaderGroupManager} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroupManager}
      */
     protected ReaderGroupManager createReaderGroupManager() {
         if (readerGroupManager == null) {
@@ -590,6 +623,11 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamClientFactory} for the current configuration.
+<<<<<<< HEAD
+=======
+     *
+     * @return An instance of {@link EventStreamClientFactory}
+>>>>>>> origin/master
      */
     protected EventStreamClientFactory createEventStreamClientFactory() {
         if (eventStreamClientFactory == null) {
@@ -601,7 +639,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamReader} for the current configuration.
+     *
      * @param readerId the readerID to use.
+     * @return An instance of {@link EventStreamReader}
      */
     protected EventStreamReader<T> createEventStreamReader(String readerId) {
         return createPravegaReader(
@@ -618,7 +658,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Gets a builder for {@link FlinkPravegaReader} to read Pravega streams using the Flink streaming API.
+     *
      * @param <T> the element type.
+     * @return A new builder of {@link FlinkPravegaReader}
      */
     public static <T> FlinkPravegaReader.Builder<T> builder() {
         return new Builder<>();
@@ -646,6 +688,20 @@ public class FlinkPravegaReader<T>
          */
         public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the deserialization schema from schema registry. It supports Json, Avro and Protobuf format.
+         *
+         * @param groupId The group id in schema registry
+         * @param tClass  The class describing the deserialized type.
+         * @return Builder instance.
+         */
+        @SuppressWarnings("unchecked")
+        public Builder<T> withDeserializationSchemaFromRegistry(String groupId, Class<T> tClass) {
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
+                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 
@@ -679,11 +735,12 @@ public class FlinkPravegaReader<T>
 
         /**
          * Builds a {@link FlinkPravegaReader} based on the configuration.
+         *
          * @throws IllegalStateException if the configuration is invalid.
+         * @return An instance of {@link FlinkPravegaReader}
          */
         public FlinkPravegaReader<T> build() {
             FlinkPravegaReader<T> reader = buildSourceFunction();
-            reader.initialize();
             return reader;
         }
     }

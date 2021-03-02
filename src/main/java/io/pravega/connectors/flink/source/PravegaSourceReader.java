@@ -21,12 +21,9 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.SourceReaderBase;
-import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
-import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 
-import java.util.Collection;
-import java.util.function.Supplier;
+import java.util.Map;
 
 /**
  * An Pravega implementation of {@link SourceReader}
@@ -67,7 +64,18 @@ public class PravegaSourceReader<T>
     }
 
     @Override
-    protected void onSplitFinished(Collection<String> finishedSplitIds) {
+    public void notifyCheckpointComplete(long checkpointId) throws Exception {
+
+    }
+
+    @Override
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {
+
+    }
+
+    @Override
+    protected void onSplitFinished(Map<String, PravegaSplit> finishedSplitIds) {
+
     }
 
     @Override

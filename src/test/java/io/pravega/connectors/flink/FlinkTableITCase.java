@@ -197,7 +197,7 @@ public class FlinkTableITCase {
                 ObjectPath.fromString(tablePathSink),
                 connectorCatalogSinkTable, false);
 
-        table.insertInto("PravegaSink");
+        table.executeInsert("PravegaSink");
 
         ConnectorCatalogTable<?, ?> connectorCatalogSourceTable = ConnectorCatalogTable.source(source, false);
         String tablePathSource = tableEnv.getCurrentDatabase() + "." + "samples";

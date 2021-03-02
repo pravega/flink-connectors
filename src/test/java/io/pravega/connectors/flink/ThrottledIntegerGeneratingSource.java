@@ -172,7 +172,5 @@ public class ThrottledIntegerGeneratingSource
     }
 
     @Override
-    public void notifyCheckpointAborted(long checkpointId) throws Exception {
-
-    }
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {}
 }

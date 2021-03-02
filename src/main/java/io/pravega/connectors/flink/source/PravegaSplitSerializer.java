@@ -10,12 +10,10 @@
 
 package io.pravega.connectors.flink.source;
 
-import io.pravega.client.stream.Checkpoint;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.InstantiationUtil;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 
 public class PravegaSplitSerializer implements SimpleVersionedSerializer<PravegaSplit> {
 

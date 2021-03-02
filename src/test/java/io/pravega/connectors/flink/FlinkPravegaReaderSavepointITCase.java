@@ -194,6 +194,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         // started too late, a checkpoint was already triggered, and some tasks
         // never see the checkpoint event
         env.getCheckpointConfig().setCheckpointTimeout(5000);
+        env.getCheckpointConfig().setTolerableCheckpointFailureNumber(1);
 
         // checkpoint to files (but aggregate state below 1 MB) and don't to any async checkpoints
         env.setStateBackend(new FsStateBackend(tmpFolder.newFolder().toURI(), 1024 * 1024, false));

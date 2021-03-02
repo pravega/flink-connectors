@@ -11,13 +11,10 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
 import io.pravega.connectors.flink.CheckpointSerializer;
 import io.pravega.connectors.flink.FlinkPravegaReader;
-import io.pravega.connectors.flink.serialization.WrappingSerializer;
-import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.PublicEvolving;

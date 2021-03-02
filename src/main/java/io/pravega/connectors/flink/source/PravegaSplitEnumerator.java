@@ -20,8 +20,8 @@ import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.connector.source.SplitsAssignment;
-import org.apache.flink.connector.base.source.event.NoMoreSplitsEvent;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
 import java.util.*;
@@ -102,6 +102,11 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     }
 
     @Override
+    public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
+
+    }
+
+    @Override
     public void handleSourceEvent(int subtaskId, SourceEvent sourceEvent) {
     }
 
@@ -116,9 +121,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
             }
             enumContext.assignSplits(new SplitsAssignment<>(assignment));
             splits.clear();
-            for (int i = 0; i < numReaders; i++) {
-                enumContext.sendEventToSourceReader(i, new NoMoreSplitsEvent());
-            }
         }
     }
 
@@ -140,6 +142,16 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         readerGroup.close();
 //        readerGroupManager.deleteReaderGroup(readerGroupName);
         readerGroupManager.close();
+    }
+
+    @Override
+    public void notifyCheckpointComplete(long checkpointId) throws Exception {
+
+    }
+
+    @Override
+    public void notifyCheckpointAborted(long checkpointId) throws Exception {
+
     }
 
     @Override

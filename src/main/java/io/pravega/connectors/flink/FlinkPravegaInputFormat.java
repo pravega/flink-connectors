@@ -10,6 +10,8 @@
 
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
 import io.pravega.client.ClientConfig;
@@ -174,7 +176,9 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     /**
      * Gets a builder {@link FlinkPravegaInputFormat} to read Pravega streams using the Flink batch API.
+     *
      * @param <T> the element type.
+     * @return A builder to configure and create a batch reader.
      */
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -197,9 +201,23 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
          * Sets the deserialization schema.
          *
          * @param deserializationSchema The deserialization schema
+         * @return A builder to configure and create a batch reader.
          */
         public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the deserialization schema from schema registry.
+         *
+         * @param groupId The group id in schema registry
+         * @param tClass  The class describing the deserialized type.
+         * @return Builder instance.
+         */
+        public Builder<T> withDeserializationSchemaFromRegistry(String groupId, Class<T> tClass) {
+            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
+                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 

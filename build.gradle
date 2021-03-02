@@ -22,13 +22,14 @@ buildscript {
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
-        classpath "gradle.plugin.com.github.spotbugs:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
+        classpath "gradle.plugin.com.github.spotbugs.snom:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
 plugins {
     id "com.github.spotbugs"
 }
 apply plugin: 'eclipse'
+apply plugin: 'org.ajoberstar.grgit'
 apply from: 'gradle/idea.gradle'
 apply from: 'gradle/java.gradle'
 apply from: 'gradle/checkstyle.gradle'
@@ -36,21 +37,12 @@ apply from: 'gradle/spotbugs.gradle'
 apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
 apply from: 'gradle/bintray.gradle'
-apply plugin: 'org.ajoberstar.grgit'
 apply from: 'gradle/mkdocs.gradle'
-apply from: 'gradle/jacoco.gradle'
 
 gradle.projectsEvaluated {
     tasks.withType(JavaCompile) {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-    }
-}
-
-tasks.withType(com.github.spotbugs.SpotBugsTask) {
-    reports {
-        xml.enabled = false
-        html.enabled = true
     }
 }
 
@@ -60,6 +52,9 @@ version = getProjectVersion()
 repositories {
     mavenLocal()
     mavenCentral()
+    maven {
+        url "https://oss.jfrog.org/jfrog-dependencies"
+    }
     if (findProperty("repositoryUrl")) {
         maven {
             url findProperty("repositoryUrl")
@@ -67,15 +62,11 @@ repositories {
     }
     else {
         jcenter()
-        mavenCentral()
         maven {
             url "https://repository.apache.org/snapshots"
         }
         maven {
             url "https://oss.sonatype.org/content/repositories/snapshots"
-        }
-        maven {
-            url "https://oss.jfrog.org/jfrog-dependencies"
         }
     }
 }
@@ -109,48 +100,45 @@ test {
 
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
-    testCompile group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
-    compileOnly group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
-    testCompile group: 'net.jcip', name: 'jcip-annotations', version: jcipAnnotationsVersion
 
     compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
-
-        // lombok should be compileOnly
-        exclude group: 'org.projectlombok', module: 'lombok'
-
-        // pravega-shared pulls in curator which isn't needed on the client
-        exclude group: 'org.apache.curator', module: 'curator-recipes'
     }
+
+    // provided by application if needed
+    compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
+
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
-    compileOnly group: 'org.apache.flink', name: 'flink-streaming-scala_'+flinkScalaVersion, version: flinkVersion // provided by application
+    annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compile group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
-    compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
-    compileOnly group: 'com.fasterxml.jackson.core', name: 'jackson-databind', version: jacksonVersion // provided by flink-runtime
-
-    testCompile group: 'junit', name: 'junit', version: junitVersion
-    testCompile group: 'org.mockito', name: 'mockito-all', version: mockitoVersion
+    testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
+    testCompile (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
+        exclude group:  'org.slf4j', module: 'slf4j-api'
+    }
+    testCompile (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
+        transitive = false
+    }
+    testCompile group: 'org.mockito', name: 'mockito-core', version: mockitoVersion
+    testCompile group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    testCompile group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion
+    testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
     shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-table_'+flinkScalaVersion, version: flinkVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 }
 
 shadowJar {

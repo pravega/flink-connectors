@@ -49,7 +49,10 @@ import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CO
 
 /**
  *  Pravega connector descriptor.
+ *
+ *  @deprecated Please use the new Table API
  */
+@Deprecated
 public class Pravega extends ConnectorDescriptor {
 
     public static final String CONNECTOR_TYPE_VALUE_PRAVEGA = "pravega";
@@ -215,15 +218,15 @@ public class Pravega extends ConnectorDescriptor {
             values.add(Arrays.asList(stream.getScope(), stream.getStreamName(), startStreamCut.asText(), endStreamCut.asText()));
         });
         properties.putIndexedFixedProperties(
-                                                CONNECTOR_READER_STREAM_INFO,
-                                                Arrays.asList(
-                                                            CONNECTOR_READER_STREAM_INFO_SCOPE,
-                                                            CONNECTOR_READER_STREAM_INFO_STREAM,
-                                                            CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
-                                                            CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
-                                                        ),
-                                                values
-                                            );
+                CONNECTOR_READER_STREAM_INFO,
+                Arrays.asList(
+                        CONNECTOR_READER_STREAM_INFO_SCOPE,
+                        CONNECTOR_READER_STREAM_INFO_STREAM,
+                        CONNECTOR_READER_STREAM_INFO_START_STREAMCUT,
+                        CONNECTOR_READER_STREAM_INFO_END_STREAMCUT
+                ),
+                values
+        );
 
         // reader group information
         String uid = Optional.ofNullable(tableSourceReaderBuilder.uid).orElseGet(tableSourceReaderBuilder::generateUid);
@@ -338,7 +341,9 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Sets the field name to use as a Pravega event routing key.
+         *
          * @param fieldName the field name.
+         * @return A builder to configure and create a writer.
          */
         public TableSinkWriterBuilder withRoutingKeyField(String fieldName) {
             this.routingKeyFieldName = fieldName;
@@ -347,7 +352,9 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Pass the serialization schema to be used.
+         *
          * @param serializationSchema the serialization schema.
+         * @return A builder to configure and create a writer.
          */
         public TableSinkWriterBuilder withSerializationSchema(SerializationSchema<Row> serializationSchema) {
             this.serializationSchema = serializationSchema;
@@ -361,23 +368,31 @@ public class Pravega extends ConnectorDescriptor {
 
         /**
          * Creates the sink function based on the given table schema and current builder state.
+         *
          * @param tableSchema the schema of the sink table
+         * @return An instance of {@link FlinkPravegaWriter}.
          */
         public FlinkPravegaWriter<Row> createSinkFunction(TableSchema tableSchema) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            }
             return createSinkFunction(serializationSchema, eventRouter);
         }
 
         /**
          * Creates FlinkPravegaOutputFormat based on the given table schema and current builder state.
+         *
          * @param tableSchema the schema of the sink table
+         * @return An instance of {@link FlinkPravegaOutputFormat}.
          */
         public FlinkPravegaOutputFormat<Row> createOutputFormat(TableSchema tableSchema) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            }
             return new FlinkPravegaOutputFormat<>(
                     getPravegaConfig().getClientConfig(),
                     resolveStream(),
@@ -385,6 +400,5 @@ public class Pravega extends ConnectorDescriptor {
                     eventRouter
             );
         }
-
     }
 }
