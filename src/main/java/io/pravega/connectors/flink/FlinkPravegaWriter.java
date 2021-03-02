@@ -87,7 +87,7 @@ public class FlinkPravegaWriter<T>
     // The supplied event serializer.
     private final SerializationSchema<T> serializationSchema;
 
-    // The router used to partition events within a stream.
+    // The router used to partition events within a stream, can be null for random routing
     private final PravegaEventRouter<T> eventRouter;
 
     // The destination stream.
@@ -141,7 +141,7 @@ public class FlinkPravegaWriter<T>
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        this.eventRouter = Preconditions.checkNotNull(eventRouter, "eventRouter");
+        this.eventRouter = eventRouter;
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -191,7 +191,12 @@ public class FlinkPravegaWriter<T>
 
         switch (writerMode) {
             case EXACTLY_ONCE:
-                transaction.getTransaction().writeEvent(eventRouter.getRoutingKey(event), event);
+                if (eventRouter != null) {
+                    transaction.getTransaction().writeEvent(eventRouter.getRoutingKey(event), event);
+                } else {
+                    transaction.getTransaction().writeEvent(event);
+                }
+
                 if (enableWatermark) {
                     transaction.watermark = context.currentWatermark();
                 }
@@ -199,7 +204,12 @@ public class FlinkPravegaWriter<T>
             case ATLEAST_ONCE:
             case BEST_EFFORT:
                 this.pendingWritesCount.incrementAndGet();
-                final CompletableFuture<Void> future = writer.writeEvent(eventRouter.getRoutingKey(event), event);
+                final CompletableFuture<Void> future;
+                if (eventRouter != null) {
+                    future = writer.writeEvent(eventRouter.getRoutingKey(event), event);
+                } else {
+                    future = writer.writeEvent(event);
+                }
                 if (enableWatermark && shouldEmitWatermark(currentWatermark, context)) {
                     writer.noteTime(context.currentWatermark());
                     currentWatermark = context.currentWatermark();
@@ -717,7 +727,6 @@ public class FlinkPravegaWriter<T>
          * @return An instance of {@link FlinkPravegaWriter}
          */
         public FlinkPravegaWriter<T> build() {
-            Preconditions.checkState(eventRouter != null, "Event router must be supplied.");
             Preconditions.checkState(serializationSchema != null, "Serialization schema must be supplied.");
             return createSinkFunction(serializationSchema, eventRouter);
         }

@@ -49,7 +49,10 @@ import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CO
 
 /**
  *  Pravega connector descriptor.
+ *
+ *  @deprecated Please use the new Table API
  */
+@Deprecated
 public class Pravega extends ConnectorDescriptor {
 
     public static final String CONNECTOR_TYPE_VALUE_PRAVEGA = "pravega";
@@ -370,9 +373,11 @@ public class Pravega extends ConnectorDescriptor {
          * @return An instance of {@link FlinkPravegaWriter}.
          */
         public FlinkPravegaWriter<Row> createSinkFunction(TableSchema tableSchema) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            }
             return createSinkFunction(serializationSchema, eventRouter);
         }
 
@@ -383,9 +388,11 @@ public class Pravega extends ConnectorDescriptor {
          * @return An instance of {@link FlinkPravegaOutputFormat}.
          */
         public FlinkPravegaOutputFormat<Row> createOutputFormat(TableSchema tableSchema) {
-            Preconditions.checkState(routingKeyFieldName != null, "The routing key field must be provided.");
             Preconditions.checkState(serializationSchema != null, "The serializationSchema must be provided.");
-            PravegaEventRouter<Row> eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            PravegaEventRouter<Row> eventRouter = null;
+            if (routingKeyFieldName != null) {
+                eventRouter = new FlinkPravegaTableSink.RowBasedRouter(routingKeyFieldName, tableSchema.getFieldNames(), tableSchema.getFieldDataTypes());
+            }
             return new FlinkPravegaOutputFormat<>(
                     getPravegaConfig().getClientConfig(),
                     resolveStream(),

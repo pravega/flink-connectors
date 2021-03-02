@@ -26,7 +26,7 @@ import org.apache.flink.util.Preconditions;
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked based on the default max settings in Pravega
-    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 30000; // 30 seconds
+    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 120000; // 120 seconds
 
     public PravegaWriterMode writerMode;
     public boolean enableWatermark;
@@ -86,7 +86,6 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
      */
     protected FlinkPravegaWriter<T> createSinkFunction(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        Preconditions.checkNotNull(eventRouter, "eventRouter");
         return new FlinkPravegaWriter<>(
                 getPravegaConfig().getClientConfig(),
                 resolveStream(),
