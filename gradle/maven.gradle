@@ -19,9 +19,9 @@ if (project.hasProperty("doSigning")) {
         sign javadocJar
     }
     artifacts {
-        shadow signShadowJar.singleSignature
-        shadow signSourceJar.singleSignature
-        shadow signJavadocJar.singleSignature
+        shadow signShadowJar.signatures
+        shadow signSourceJar.signatures
+        shadow signJavadocJar.signatures
     }
 
     // Default the secretKeyRingFile to the current user's home
