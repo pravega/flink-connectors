@@ -9,7 +9,7 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.source.FlinkPravegaSource;
+import io.pravega.connectors.flink.source.PravegaSource;
 import org.apache.flink.util.Preconditions;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
@@ -170,9 +170,9 @@ public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStream
                 isMetricsEnabled());
     }
 
-    protected FlinkPravegaSource<T> buildSource() {
+    protected PravegaSource<T> buildSource() {
         ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
-        return new FlinkPravegaSource<>(
+        return new PravegaSource<>(
                 getPravegaConfig().getClientConfig(),
                 readerGroupInfo.getReaderGroupConfig(),
                 readerGroupInfo.getReaderGroupScope(),

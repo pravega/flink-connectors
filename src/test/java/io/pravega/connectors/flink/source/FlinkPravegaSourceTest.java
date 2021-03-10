@@ -10,8 +10,6 @@
 
 package io.pravega.connectors.flink.source;
 
-import io.pravega.client.stream.EventRead;
-import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.*;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -99,7 +97,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
             env.getCheckpointConfig().setCheckpointTimeout(20000);
 
             // the Pravega reader
-            final FlinkPravegaSource<Integer> pravegaSource = FlinkPravegaSource.<Integer>builder()
+            final PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
                     .forStream(streamName)
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())

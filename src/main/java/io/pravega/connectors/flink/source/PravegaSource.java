@@ -11,10 +11,17 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
 import io.pravega.connectors.flink.CheckpointSerializer;
 import io.pravega.connectors.flink.FlinkPravegaReader;
+import io.pravega.connectors.flink.source.enumerator.PravegaSplitEnumerator;
+import io.pravega.connectors.flink.source.reader.PravegaRecordEmitter;
+import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
+import io.pravega.connectors.flink.source.reader.PravegaSplitReader;
+import io.pravega.connectors.flink.source.split.PravegaSplit;
+import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.PublicEvolving;
@@ -26,18 +33,16 @@ import org.apache.flink.api.connector.source.*;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
-import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
-import org.apache.flink.connector.base.source.reader.synchronization.FutureCompletingBlockingQueue;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
-import java.util.List;
+import java.util.function.Supplier;
 
 @Slf4j
 @PublicEvolving
-public class FlinkPravegaSource<T>
+public class PravegaSource<T>
         implements Source<T, PravegaSplit, Checkpoint>, ResultTypeQueryable<T> {
 
     final ClientConfig clientConfig;
@@ -62,11 +67,11 @@ public class FlinkPravegaSource<T>
     // flag to enable/disable metrics
     final boolean enableMetrics;
 
-    public FlinkPravegaSource(ClientConfig clientConfig,
-                                 ReaderGroupConfig readerGroupConfig, String scope, String readerGroupName,
-                                 DeserializationSchema<T> deserializationSchema,
-                                 Time eventReadTimeout, Time checkpointInitiateTimeout,
-                                 boolean enableMetrics) {
+    public PravegaSource(ClientConfig clientConfig,
+                         ReaderGroupConfig readerGroupConfig, String scope, String readerGroupName,
+                         DeserializationSchema<T> deserializationSchema,
+                         Time eventReadTimeout, Time checkpointInitiateTimeout,
+                         boolean enableMetrics) {
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.readerGroupConfig = Preconditions.checkNotNull(readerGroupConfig, "readerGroupConfig");
         this.scope = Preconditions.checkNotNull(scope, "scope");
@@ -84,16 +89,14 @@ public class FlinkPravegaSource<T>
 
     @Override
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
-        FutureCompletingBlockingQueue<RecordsWithSplitIds<EventRead<T>>> elementsQueue =
-                new FutureCompletingBlockingQueue<>();
+        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
+        Supplier<PravegaSplitReader<T>> splitReaderSupplier =
+                () ->
+                        new PravegaSplitReader<>(clientFactory,
+                                readerGroupName, deserializationSchema, readerContext.getIndexOfSubtask());
 
         return new PravegaSourceReader<T>(
-                elementsQueue,
-                clientConfig,
-                scope,
-                readerGroupName,
-                deserializationSchema,
-                eventReadTimeout,
+                splitReaderSupplier,
                 new PravegaRecordEmitter<>(),
                 new Configuration(),
                 readerContext);
@@ -142,24 +145,24 @@ public class FlinkPravegaSource<T>
 
     // --------------- configurations -------------------------------
     /**
-     * Gets a builder for {@link FlinkPravegaSource} to read Pravega streams using the Flink streaming API.
+     * Gets a builder for {@link PravegaSource} to read Pravega streams using the Flink streaming API.
      * @param <T> the element type.
      */
-    public static <T> FlinkPravegaSource.Builder<T> builder() {
-        return new FlinkPravegaSource.Builder<>();
+    public static <T> PravegaSource.Builder<T> builder() {
+        return new PravegaSource.Builder<>();
     }
 
     /**
-     * A builder for {@link FlinkPravegaSource}.
+     * A builder for {@link PravegaSource}.
      *
      * @param <T> the element type.
      */
-    public static class Builder<T> extends AbstractStreamingReaderBuilder<T, FlinkPravegaSource.Builder<T>> {
+    public static class Builder<T> extends AbstractStreamingReaderBuilder<T, PravegaSource.Builder<T>> {
 
         private DeserializationSchema<T> deserializationSchema;
         private SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
-        protected FlinkPravegaSource.Builder<T> builder() {
+        protected PravegaSource.Builder<T> builder() {
             return this;
         }
 
@@ -169,7 +172,7 @@ public class FlinkPravegaSource<T>
          * @param deserializationSchema The deserialization schema
          * @return Builder instance.
          */
-        public FlinkPravegaSource.Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
+        public PravegaSource.Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
             return builder();
         }
@@ -181,7 +184,7 @@ public class FlinkPravegaSource<T>
          * @return Builder instance.
          */
 
-        public FlinkPravegaSource.Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
+        public PravegaSource.Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
                 this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
@@ -206,8 +209,8 @@ public class FlinkPravegaSource<T>
          * Builds a {@link FlinkPravegaReader} based on the configuration.
          * @throws IllegalStateException if the configuration is invalid.
          */
-        public FlinkPravegaSource<T> build() {
-            FlinkPravegaSource<T> source = buildSource();
+        public PravegaSource<T> build() {
+            PravegaSource<T> source = buildSource();
             return source;
         }
     }

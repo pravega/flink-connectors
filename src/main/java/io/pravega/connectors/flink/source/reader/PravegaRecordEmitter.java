@@ -8,9 +8,10 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.pravega.connectors.flink.source;
+package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.stream.EventRead;
+import io.pravega.connectors.flink.source.split.PravegaSplit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;

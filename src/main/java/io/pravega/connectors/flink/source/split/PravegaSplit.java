@@ -8,7 +8,7 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.pravega.connectors.flink.source;
+package io.pravega.connectors.flink.source.split;
 
 import org.apache.flink.api.connector.source.SourceSplit;
 
@@ -16,6 +16,8 @@ import java.io.Serializable;
 
 
 public class PravegaSplit implements SourceSplit, Serializable {
+
+    private static final String PREFIX = "flink-reader";
     private int subtaskId;
     private String readerGroupName;
 
@@ -34,6 +36,10 @@ public class PravegaSplit implements SourceSplit, Serializable {
 
     @Override
     public String splitId() {
-        return readerGroupName + "-" + subtaskId;
+        return splitId(subtaskId);
+    }
+
+    public static String splitId(int subtaskId) {
+        return PREFIX + "-" + subtaskId;
     }
 }
