@@ -1,3 +1,7 @@
+---
+title: Table API
+---
+
 <!--
 Copyright Pravega Authors.
 
@@ -13,8 +17,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
-# Table Connector
 
 The Flink connector library for Pravega provides a table source and table sink for use with the Flink Table API. 
 The Table API provides a unified table source API for both the Flink streaming and batch environment, and also sink for the Flink streaming environment.
@@ -89,9 +91,9 @@ WITH (
 | security.trust-store                                   | optional            | (none)        | String       | Trust Store for Pravega client                                                                                |
 | scan.execution.type                                    | optional            | streaming     | String       | Execution type for scan source. Valid values are 'streaming', 'batch'.                                        |
 | scan.reader-group.name                                 | optional            | (none)        | String       | Pravega reader group name                                                                                     |
-| scan.streams                                           | required for source | (none)        | List<String> | Semicolon-separated list of stream names from which the table is read.                                        |
-| scan.start-streamcuts                                  | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for start streamcuts, begin of the stream if not specified |
-| scan.end-streamcuts                                    | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for end streamcuts, unbounded end if not specified         |
+| scan.streams                                           | required for source | (none)        | List&lt;String&gt; | Semicolon-separated list of stream names from which the table is read.                                        |
+| scan.start-streamcuts                                  | optional            | (none)        | List&lt;String&gt; | Semicolon-separated list of base64 encoded strings for start streamcuts, begin of the stream if not specified |
+| scan.end-streamcuts                                    | optional            | (none)        | List&lt;String&gt; | Semicolon-separated list of base64 encoded strings for end streamcuts, unbounded end if not specified         |
 | scan.reader-group.max-outstanding-checkpoint-request   | optional            | 3             | Integer      | Maximum outstanding checkpoint requests to Pravega                                                            |
 | scan.reader-group.refresh.interval                     | optional            | 3 s           | Duration     | Refresh interval for reader group                                                                             |
 | scan.event-read.timeout.interval                       | optional            | 1 s           | Duration     | Timeout for the call to read events from Pravega                                                              |
@@ -109,7 +111,7 @@ WITH (
 `scan.execution.type` can be specified as user's choice to perform batch read or streaming read.
 In the streaming environment, the table source uses a [`FlinkPravegaReader`](streaming.md#flinkpravegareader) connector.
 In the batch environment, the table source uses a [`FlinkPravegaInputFormat`](batch.md#flinkpravegainputformat) connector.
-Please see the documentation of [Streaming Connector](streaming.md) and [Batch Connector](#batch.md) to have a better understanding on the below mentioned parameter list.
+Please see the documentation of [Streaming Connector](streaming.md) and [Batch Connector](batch.md) to have a better understanding on the below mentioned parameter list.
 
 ### Specify start and end streamcut
 
