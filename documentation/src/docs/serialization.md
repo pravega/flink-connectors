@@ -1,3 +1,7 @@
+---
+title: Serialization
+---
+
 <!--
 Copyright Pravega Authors.
 
@@ -13,8 +17,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
-# Serialization
 
 **Serialization** refers to converting a data element in your Flink program to/from a message in a Pravega stream.
 
