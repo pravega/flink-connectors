@@ -16,22 +16,7 @@ Learn how to build your own applications that using Flink connector for Pravega.
 To complete this guide, you need:
 * JDK 8 or 11 installed with JAVA_HOME configured appropriately
 * Pravega running(Check [here](https://pravega.io/docs/latest/getting-started/) to get started with Pravega)
-* Apache Flink running(Check [Starting-Flink](#Starting-Flink) to run Apache Flink)
 * Use Gradle or Maven
-
-# Compatibility Matrix
-
-The [master](https://github.com/pravega/flink-connectors) branch will always have the most recent
-supported versions of Flink and Pravega.
-
-| Git Branch | Pravega Version | Java Version To Build Connector | Java Version To Run Connector | Flink Version                                                                        |
-|----------|-----------------|---------------------------------|-------------------------------|-----------------------------------------------------------------------------------|
-|    [master](https://github.com/pravega/flink-connectors)       | 0.10             | Java 11                         | Java 8 or 11                  |               1.11.2               |
-| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.11)            | 0.10             | Java 11                          | Java 8 or 11                         |  1.11.2  |
-| [r0.10-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.10)          | 0.10             | Java 11                          | Java 8 or 11                       |  1.10.3  |
-|    [r0.9](https://github.com/pravega/flink-connectors/tree/r0.9)        | 0.9             | Java 11                         | Java 8 or 11                       |  1.11.2  |
-|  [r0.9-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)          | 0.9             | Java 11                         |Java 8 or 11                        |   1.10.3 |
-| [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)           | 0.9             | Java 11                         | Java 8 or 11                       |  1.9.0  |
 
 
 
@@ -44,7 +29,7 @@ However, you can go straight to the completed example at [flink-connector-exampl
 
 
 # Starting Flink
-Download Flink release and un-tar it.
+Download Flink release and un-tar it. We use Flink 1.11.2 here. 
 ```
 $ tar -xzf flink-1.11.2-bin-scala_2.11.tgz
 $ cd flink-1.11.2-bin-scala_2.11
@@ -65,65 +50,50 @@ $ ./bin/stop-cluster.sh
 
 Using Gradle or Maven to bootstrap a sample application against Pravega. Let's create a word count application as an example.
 ### Gradle
+You can follow [here](https://ci.apache.org/projects/flink/flink-docs-stable/dev/project-configuration.html#gradle) to create a gradle project.
+
+Add the below snippet to dependencies section of build.gradle in the app directory, connector dependencies should be part of the shadow jar. For flink connector dependency, we need to choose the connector which aligns the Flink major version and Scala version if you use Scala, along with the same Pravega version you run.
 ```
- gradle init --type java-application
+flinkShadowJar group: 'org.apache.flink', name: 'flink-streaming-java_2.12', version: '1.11.2'
+
+flinkShadowJar group: 'io.pravega', name: 'pravega-connectors-flink-1.11_2.12', version: '0.9.0'
 ```
-Add the below snippet to dependencies section of build.gradle in the app directory
-```
-// https://mvnrepository.com/artifact/org.apache.flink/flink-streaming-java
-compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_2.12', version: '1.11.3'
+Invoke `gradle clean shadowJar` to build/package the project. You will find a JAR file that contains your application, plus connectors and libraries that you may have added as dependencies to the application: `build/libs/<project-name>-<version>-all.jar`.
 
-// https://mvnrepository.com/artifact/io.pravega/pravega-connectors-flink
-implementation group: 'io.pravega', name: 'pravega-connectors-flink_2.12', version: '0.5.1'
-```
-Invoke `gradle run` to run the project.
-
- 
-<details>
-<summary>Expected output</summary>
-<p>
-
-```
-$ gradle run
-
-> Task :app:run
-Hello World!
-
-BUILD SUCCESSFUL in 890ms
-2 actionable tasks: 2 executed
-
-```
-
-</p>
-</details>
 
 ### Maven
-Add below dependencies into Maven POM
+
+You can check [maven-quickstart](https://ci.apache.org/projects/flink/flink-docs-release-1.12/dev/project-configuration.html#maven-quickstart) to find how to start with Maven.
+
+Add below dependencies into Maven POM, these dependencies should be part of the shadow jar
 ```
 <dependency>
   <groupId>org.apache.flink</groupId>
-  <artifactId>flink-streaming-java_2.11</artifactId>
-  <version>1.12.0</version>
+  <artifactId>flink-streaming-java_2.12</artifactId>
+  <version>1.11.2</version>
   <scope>provided</scope>
 </dependency>
 
 <dependency>
   <groupId>io.pravega</groupId>
-  <artifactId>pravega-connectors-flink-1.9_2.12</artifactId>
-  <version>0.6.0</version>
+  <artifactId>pravega-connectors-flink-1.11_2.12</artifactId>
+  <version>0.9.0</version>
 </dependency>
 ```
-You can also check [maven-quickstart](https://ci.apache.org/projects/flink/flink-docs-release-1.12/dev/project-configuration.html#maven-quickstart) to find more to start with Maven
+
+Invoke `mvn clean package` to build/package your project. You will find a JAR file that contains your application, plus connectors and libraries that you may have added as dependencies to the application: `target/<artifact-id>-<version>.jar`.
 
 
-## Create a Word Count Writer
+
+
+## Create an application that writes to Pravega
 
 Let’s first create a pravega configuration reading from arguments:
 ```java
 ParameterTool params = ParameterTool.fromArgs(args);
 PravegaConfig pravegaConfig = PravegaConfig
         .fromParams(params)
-        .withDefaultScope(Constants.DEFAULT_SCOPE);
+        .withDefaultScope("my_scope");
 ```
 Then we need to initialize the Flink execution environment
 ```java
@@ -138,25 +108,24 @@ A Pravega Stream may be used as a data sink within a Flink program using an inst
 FlinkPravegaWriter<String> writer = FlinkPravegaWriter.<String>builder()
         .withPravegaConfig(pravegaConfig)
         .forStream(stream)
-        .withEventRouter(new EventRouter())
-        .withSerializationSchema(PravegaSerialization.serializationFor(String.class))
+        .withSerializationSchema(new SimpleStringSchema())
         .build();
-dataStream.addSink(writer).name("Pravega Stream");
+dataStream.addSink(writer).name("Pravega Sink");
 ```
 Then we execute the job within the Flink environment
 ```java
-env.execute("WordCountWriter");
+env.execute("PravegaWriter");
 ```
-Executing the above lines should ensure we have created a WordCountWriter job
+Executing the above lines should ensure we have created a PravegaWriter job
 
-## Create a Word Count Reader
+## Create an application that reads from Pravega
 Creating a Word Count Reader is similar to Word Count Writer
 First create a pravega configuration reading from arguments:
 ```java
 ParameterTool params = ParameterTool.fromArgs(args);
 PravegaConfig pravegaConfig = PravegaConfig
         .fromParams(params)
-        .withDefaultScope(Constants.DEFAULT_SCOPE);
+        .withDefaultScope("my_scope");
 ```
 Initialize the Flink execution environment
 ```java
@@ -167,13 +136,13 @@ A Pravega Stream may be used as a data source within a Flink streaming program u
 FlinkPravegaReader<String> source = FlinkPravegaReader.<String>builder()
         .withPravegaConfig(pravegaConfig)
         .forStream(stream)
-        .withDeserializationSchema(PravegaSerialization.deserializationFor(String.class))
+        .withDeserializationSchema(new SimpleStringSchema())
         .build();
 ```
 Then create a datastream count each word over a 10 second time period
 ```java
 DataStream<WordCount> dataStream = env.addSource(source).name("Pravega Stream")
-        .flatMap(new WordCountReader.Splitter())
+        .flatMap(new Tokenizer()) // The Tokenizer() splits the line into words, and emit streams of "WordCount(word, 1)"
         .keyBy("word")
         .timeWindow(Time.seconds(10))
         .sum("count");
@@ -184,7 +153,7 @@ dataStream.print();
 ```
 Then we execute the job within the Flink environment
 ```java
-env.execute("WordCountReader");
+env.execute("PravegaReader");
 ```
 
 ## Run in flink environment
@@ -209,12 +178,12 @@ Make sure your Pravega and Flink are running. Then start a local server using `n
 $ nc -lk 9999
 ```
 
-Start WordCountWriter Flink job
+Start PravegaWriter Flink job
 ```
 cd .../build/install/${yourapp}/lib
 flink run -c <classname> ${yourapp}.jar --host localhost --port 9999 --controller tcp://localhost:9090
 ```
-Start WordCountReader Flink job
+Start PravegaReader Flink job
 ```
 cd .../build/install/${yourapp}/lib
 flink run -c <classname> ${yourapp}.jar --controller tcp://localhost:9090
