@@ -64,7 +64,7 @@ public class FlinkPravegaTableSink implements AppendStreamTableSink<Row>, BatchT
                                     TableSchema schema) {
         this.writerFactory = Preconditions.checkNotNull(writerFactory, "writerFactory");
         this.outputFormatFactory = Preconditions.checkNotNull(outputFormatFactory, "outputFormatFactory");
-        this.schema = TableSchemaUtils.checkNoGeneratedColumns(schema);
+        this.schema = TableSchemaUtils.checkOnlyPhysicalColumns(schema);
     }
 
     /**
