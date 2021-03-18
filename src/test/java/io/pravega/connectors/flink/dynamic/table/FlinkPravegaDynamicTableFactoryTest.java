@@ -61,7 +61,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import static org.apache.flink.util.CoreMatchers.containsCause;
+import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -124,7 +124,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
@@ -192,7 +193,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
@@ -259,7 +261,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 sinkTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         final FlinkPravegaDynamicTableSink expectedSink = new FlinkPravegaDynamicTableSink(
                 TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
@@ -291,7 +294,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 sinkTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         final FlinkPravegaDynamicTableSink sink = new FlinkPravegaDynamicTableSink(
                 TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
@@ -336,7 +340,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -359,7 +364,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -383,7 +389,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -406,7 +413,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -431,7 +439,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -456,7 +465,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -480,7 +490,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
@@ -503,7 +514,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 objectIdentifier,
                 catalogTable,
                 new Configuration(),
-                Thread.currentThread().getContextClassLoader());
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     // --------------------------------------------------------------------------------------------
