@@ -30,7 +30,7 @@ supported versions of Flink and Pravega.
 
 | Git Branch | Pravega Version | Java Version To Build Connector | Java Version To Run Connector | Flink Version | Status | Artifact Link |
 |-------------------------------------------------------------------------------------|------|---------|--------------|------|-------------------|----------------------------------------------------------------------------------------|
-| [master](https://github.com/pravega/flink-connectors)                               | 0.10 | Java 11 | Java 8 or 11 | 1.11 | Under Development | http://oss.jfrog.org/jfrog-dependencies/io/pravega/pravega-connectors-flink-1.11_2.12/ |
+| [master](https://github.com/pravega/flink-connectors)                               | 0.10 | Java 11 | Java 8 or 11 | 1.12 | Under Development | http://oss.jfrog.org/jfrog-dependencies/io/pravega/pravega-connectors-flink-1.12_2.12/ |
 | [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.11) | 0.10 | Java 11 | Java 8 or 11 | 1.11 | Under Development | http://oss.jfrog.org/jfrog-dependencies/io/pravega/pravega-connectors-flink-1.11_2.12/ |
 | [r0.10-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.10) | 0.10 | Java 11 | Java 8 or 11 | 1.10 | Under Development | http://oss.jfrog.org/jfrog-dependencies/io/pravega/pravega-connectors-flink-1.10_2.12/ |
 | [r0.9](https://github.com/pravega/flink-connectors/tree/r0.9)                       | 0.9  | Java 11 | Java 8 or 11 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.9.0/    |
@@ -46,4 +46,3 @@ More examples on how to use the connectors with Flink application can be found i
 
 Flink connectors for Pravega is 100% open source and community-driven. All components are available
 under [Apache 2 License](https://www.apache.org/licenses/LICENSE-2.0.html) on GitHub.
-
