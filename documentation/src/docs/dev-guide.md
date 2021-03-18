@@ -8,12 +8,12 @@ You may obtain a copy of the License at
     http://www.apache.org/licenses/LICENSE-2.0
 -->
 # Flink Connector - Dev Guide
-
 Learn how to build your own applications that using Flink connector for Pravega.
 
  
 # Prerequisites
 To complete this guide, you need:
+
 * JDK 8 or 11 installed with JAVA_HOME configured appropriately
 * Pravega running(Check [here](https://pravega.io/docs/latest/getting-started/) to get started with Pravega)
 * Use Gradle or Maven
@@ -54,10 +54,24 @@ You can follow [here](https://ci.apache.org/projects/flink/flink-docs-stable/dev
 
 Add the below snippet to dependencies section of build.gradle in the app directory, connector dependencies should be part of the shadow jar. For flink connector dependency, we need to choose the connector which aligns the Flink major version and Scala version if you use Scala, along with the same Pravega version you run.
 ```
-flinkShadowJar group: 'org.apache.flink', name: 'flink-streaming-java_2.12', version: '1.11.2'
+compile group 'org.apache.flink', name: 'flink-streaming-java_2.12', version: '1.11.2'
 
 flinkShadowJar group: 'io.pravega', name: 'pravega-connectors-flink-1.11_2.12', version: '0.9.0'
 ```
+Define custom configurations `flinkShadowJar`
+```
+// -> Explicitly define the // libraries we want to be included in the "flinkShadowJar" configuration!
+configurations {
+    flinkShadowJar // dependencies which go into the shadowJar
+
+    // always exclude these (also from transitive dependencies) since they are provided by Flink
+    flinkShadowJar.exclude group: 'org.apache.flink', module: 'force-shading'
+    flinkShadowJar.exclude group: 'com.google.code.findbugs', module: 'jsr305'
+    flinkShadowJar.exclude group: 'org.slf4j'
+    flinkShadowJar.exclude group: 'org.apache.logging.log4j'
+}
+```
+
 Invoke `gradle clean shadowJar` to build/package the project. You will find a JAR file that contains your application, plus connectors and libraries that you may have added as dependencies to the application: `build/libs/<project-name>-<version>-all.jar`.
 
 
@@ -119,7 +133,7 @@ env.execute("PravegaWriter");
 Executing the above lines should ensure we have created a PravegaWriter job
 
 ## Create an application that reads from Pravega
-Creating a Word Count Reader is similar to Word Count Writer
+Creating a Pravega Reader is similar to Pravega Writer
 First create a pravega configuration reading from arguments:
 ```java
 ParameterTool params = ParameterTool.fromArgs(args);
@@ -156,47 +170,25 @@ Then we execute the job within the Flink environment
 env.execute("PravegaReader");
 ```
 
+## Run and Debug in local IDE
+Connector project uses [Project Lombok](https://projectlombok.org/), so we should ensure that we have our IDE setup with the required plugins. (**IntelliJ is recommended**).
+
+To import the source into IntelliJ:
+
+1. Import the project directory into IntelliJ IDE. It will automatically detect the gradle project and import things correctly.
+2. Enable `Annotation Processing` by going to `Build, Execution, Deployment` -> `Compiler` > `Annotation Processors` and checking `Enable annotation processing`.
+3. Install the `Lombok Plugin`. This can be found in `Preferences` -> `Plugins`. Restart your IDE.
+4. Connectors project compiles properly after applying the above steps.
+5. Set your Run and Debug Configurations in `Run` -> `Edit Configurations...`. Add your application configurations.
+
+For eclipse, we can generate eclipse project files by running `./gradlew eclipse`.
+
 ## Run in flink environment
 First build your application. From Flink's perspective, the connector to Pravega is part of the streaming application (not part of Flink's core runtime), so the connector code must be part of the application's code artifact (JAR file). Typically, a Flink application is bundled as a `fat-jar` (also known as an `uber-jar`) , such that all its dependencies are embedded.
 
-Use gradle or maven to assemble a distribution folder containing the Flink programs as a ready-to-deploy fat-jar
+Make sure your Pravega and Flink are running. Use the packaged jar, and run:
 ```
-./gradlew clean installDist
-
-ls -R .../build/install/${yourapp}
-bin	lib
-
-.../build/install/${yourapp}/bin:
-${yourapp} ...
-
-../build/install/${yourapp}/lib:
-${yourapp}.jar ...
-```
-
-Make sure your Pravega and Flink are running. Then start a local server using `netcat`:
-```
-$ nc -lk 9999
-```
-
-Start PravegaWriter Flink job
-```
-cd .../build/install/${yourapp}/lib
-flink run -c <classname> ${yourapp}.jar --host localhost --port 9999 --controller tcp://localhost:9090
-```
-Start PravegaReader Flink job
-```
-cd .../build/install/${yourapp}/lib
-flink run -c <classname> ${yourapp}.jar --controller tcp://localhost:9090
-```
-Enter some text in the windows where `netcat` is running:
-```
-aa bb cc aa
-```
-Then you can check output either on your browser `http://<your_flink_host>:8081` or check the flink log on `.../flink/log/`:
-```
-Word: aa:  Count: 2
-Word: cc:  Count: 1
-Word: bb:  Count: 1
+flink run -c <classname> ${your-app}.jar --controller <pravega-controller-uri>
 ```
 
 # What’s next?
