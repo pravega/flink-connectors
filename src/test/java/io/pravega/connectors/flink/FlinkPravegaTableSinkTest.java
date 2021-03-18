@@ -34,7 +34,8 @@ import org.apache.flink.types.Row;
 import org.junit.Test;
 
 import java.net.URI;
-import java.util.Collection;
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.Assert.assertEquals;
@@ -169,8 +170,13 @@ public class FlinkPravegaTableSinkTest {
         }
 
         @Override
-        public Collection<Transformation<?>> getTransitivePredecessors() {
+        public List<Transformation<?>> getTransitivePredecessors() {
             return null;
+        }
+
+        @Override
+        public List<Transformation<?>> getInputs() {
+            return Collections.emptyList();
         }
     }
 }

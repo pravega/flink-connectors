@@ -70,7 +70,7 @@ public class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTab
             TableSchema schema) {
         this.sourceFunctionFactory = checkNotNull(sourceFunctionFactory, "sourceFunctionFactory");
         this.inputFormatFactory = checkNotNull(inputFormatFactory, "inputFormatFactory");
-        this.schema = TableSchemaUtils.checkNoGeneratedColumns(schema);
+        this.schema = TableSchemaUtils.checkOnlyPhysicalColumns(schema);
     }
 
     /**

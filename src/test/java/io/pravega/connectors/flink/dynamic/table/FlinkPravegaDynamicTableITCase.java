@@ -121,11 +121,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 "  AS orders (price, currency, d, t, ts)";
 
         // Write stream, Block until data is ready or job finished
-        tEnv.executeSql(initialValues)
-                .getJobClient()
-                .get()
-                .getJobExecutionResult(Thread.currentThread().getContextClassLoader())
-                .get();
+        tEnv.executeSql(initialValues).await();
 
         // ---------- Read stream from Pravega -------------------
 
