@@ -1,6 +1,6 @@
 module.exports = {
     mainSidebar: [
-        'index',
+        'overview',
         'getting-started',
         'quickstart',
         {
