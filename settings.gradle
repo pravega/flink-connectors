@@ -19,29 +19,3 @@ pluginManagement {
 }
 
 rootProject.name='flink-connectors'
-
-
-
-includeBuild('pravega') {
-    if (usePravegaVersionSubModule.toBoolean()) {
-        dependencySubstitution {
-            substitute module('io.pravega:pravega-client') with project(':client')
-            substitute module('io.pravega:pravega-common') with project(':common')
-            substitute module('io.pravega:pravega-controller') with project(':controller')
-            substitute module('io.pravega:pravega-segmentstore') with project(':segmentstore')
-            substitute module('io.pravega:pravega-segmentstore-contracts') with project(':segmentstore:contracts')
-            substitute module('io.pravega:pravega-segmentstore-server') with project(':segmentstore:server')
-            substitute module('io.pravega:pravega-segmentstore-server-host') with project(':segmentstore:server:host')
-            substitute module('io.pravega:pravega-segmentstore-storage') with project(':segmentstore:storage')
-            substitute module('io.pravega:pravega-segmentstore-storage-impl') with project(':segmentstore:storage:impl')
-            substitute module('io.pravega:pravega-shared') with project(':shared')
-            substitute module('io.pravega:pravega-shared-controller-api') with project(':shared:controller-api')
-            substitute module('io.pravega:pravega-shared-metrics') with project(':shared:metrics')
-            substitute module('io.pravega:pravega-shared-protocol') with project(':shared:protocol')
-            substitute module('io.pravega:pravega-standalone') with project(':standalone')
-
-            substitute module('io.pravega:pravega-segmentstore-storage-impl') with project(':segmentstore:storage:impl')
-            substitute module('io.pravega:pravega-authplugin') with project(':shared:authplugin')
-        }
-    }
-}

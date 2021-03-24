@@ -35,6 +35,7 @@ import org.apache.flink.test.util.AbstractTestBase;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -74,6 +75,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
         SETUP_UTILS.stopAllServices();
     }
 
+    @Ignore("Test failed due to https://issues.apache.org/jira/browse/FLINK-21178")
     @Test
     public void testReaderState() throws Exception {
 

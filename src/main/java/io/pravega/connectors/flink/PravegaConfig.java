@@ -11,7 +11,6 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
@@ -48,11 +47,13 @@ public class PravegaConfig implements Serializable {
     PravegaConfig(Properties properties, Map<String, String> env, ParameterTool params) {
         this.controllerURI = CONTROLLER_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
         this.defaultScope = SCOPE_PARAM.resolve(params, properties, env).orElse(null);
-        this.schemaRegistryURI = CONTROLLER_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
+        this.schemaRegistryURI = SCHEMA_REGISTRY_PARAM.resolve(params, properties, env).map(URI::create).orElse(null);
     }
 
     /**
      * Gets a configuration based on defaults obtained from the local environment.
+     *
+     * @return A default instance of {@link PravegaConfig}
      */
     public static PravegaConfig fromDefaults() {
         return new PravegaConfig(System.getProperties(), System.getenv(), ParameterTool.fromMap(Collections.emptyMap()));
@@ -62,6 +63,7 @@ public class PravegaConfig implements Serializable {
      * Gets a configuration based on defaults obtained from the local environment plus the given program parameters.
      *
      * @param params the parameters to use.
+     * @return An instance of {@link PravegaConfig}
      */
     public static PravegaConfig fromParams(ParameterTool params) {
         return new PravegaConfig(System.getProperties(), System.getenv(), params);
@@ -71,6 +73,8 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets the {@link ClientConfig} to use with the Pravega client.
+     *
+     * @return The Pravega {@link ClientConfig}
      */
     public ClientConfig getClientConfig() {
         ClientConfig.ClientConfigBuilder builder = ClientConfig.builder()
@@ -99,30 +103,14 @@ public class PravegaConfig implements Serializable {
         return validateHostname == that.validateHostname &&
                 controllerURI.equals(that.controllerURI) &&
                 defaultScope.equals(that.defaultScope) &&
+                Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
                 Objects.equals(credentials, that.credentials) &&
                 Objects.equals(trustStore, that.trustStore);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(controllerURI, defaultScope, credentials, validateHostname, trustStore);
-    }
-
-    /**
-     * Gets the schema registry client.
-     */
-    public SchemaRegistryClientConfig getSchemaRegistryClientConfig() {
-        Preconditions.checkNotNull(defaultScope, "Default Scope should be set for schema registry client");
-        Preconditions.checkNotNull(schemaRegistryURI, "Schema Registry URI should be set for schema registry client");
-
-        SchemaRegistryClientConfig.SchemaRegistryClientConfigBuilder builder = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryURI);
-
-        if (credentials != null) {
-            builder.authentication(credentials.getAuthenticationType(), credentials.getAuthenticationToken());
-        }
-
-        return builder.build();
+        return Objects.hash(controllerURI, schemaRegistryURI, defaultScope, credentials, validateHostname, trustStore);
     }
 
     /**
@@ -212,10 +200,22 @@ public class PravegaConfig implements Serializable {
 
     /**
      * Gets the default Pravega scope.
+     *
+     * @return current default scope name.
      */
     @Nullable
     public String getDefaultScope() {
         return defaultScope;
+    }
+
+    /**
+     * Gets the Pravega schema registry URI.
+     *
+     * @return Pravega schema registry URI.
+     */
+    @Nullable
+    public URI getSchemaRegistryUri() {
+        return schemaRegistryURI;
     }
 
     // endregion
@@ -231,6 +231,16 @@ public class PravegaConfig implements Serializable {
     public PravegaConfig withCredentials(Credentials credentials) {
         this.credentials = credentials;
         return this;
+    }
+
+    /**
+     * Gets the Pravega schema registry URI.
+     *
+     * @return Pravega schema registry URI.
+     */
+    @Nullable
+    public Credentials getCredentials() {
+        return credentials;
     }
 
     /**

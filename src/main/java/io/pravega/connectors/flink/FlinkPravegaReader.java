@@ -10,6 +10,8 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.EventStreamClientFactory;
+import org.apache.flink.util.ExceptionUtils;
+import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
@@ -43,8 +45,6 @@ import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
-import org.apache.flink.util.ExceptionUtils;
-import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.SerializedValue;
 
@@ -610,6 +610,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link ReaderGroupManager} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroupManager}
      */
     protected ReaderGroupManager createReaderGroupManager() {
         if (readerGroupManager == null) {
@@ -621,6 +623,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamClientFactory} for the current configuration.
+     *
+     * @return An instance of {@link EventStreamClientFactory}
      */
     protected EventStreamClientFactory createEventStreamClientFactory() {
         if (eventStreamClientFactory == null) {
@@ -632,7 +636,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamReader} for the current configuration.
+     *
      * @param readerId the readerID to use.
+     * @return An instance of {@link EventStreamReader}
      */
     protected EventStreamReader<T> createEventStreamReader(String readerId) {
         return createPravegaReader(
@@ -649,7 +655,9 @@ public class FlinkPravegaReader<T>
 
     /**
      * Gets a builder for {@link FlinkPravegaReader} to read Pravega streams using the Flink streaming API.
+     *
      * @param <T> the element type.
+     * @return A new builder of {@link FlinkPravegaReader}
      */
     public static <T> FlinkPravegaReader.Builder<T> builder() {
         return new Builder<>();
@@ -688,7 +696,7 @@ public class FlinkPravegaReader<T>
          * @return Builder instance.
          */
         @SuppressWarnings("unchecked")
-        public Builder<T> withDeserializationSchemafromRegistry(String groupId, Class<T> tClass) {
+        public Builder<T> withDeserializationSchemaFromRegistry(String groupId, Class<T> tClass) {
             this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
                     new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
@@ -724,7 +732,9 @@ public class FlinkPravegaReader<T>
 
         /**
          * Builds a {@link FlinkPravegaReader} based on the configuration.
+         *
          * @throws IllegalStateException if the configuration is invalid.
+         * @return An instance of {@link FlinkPravegaReader}
          */
         public FlinkPravegaReader<T> build() {
             FlinkPravegaReader<T> reader = buildSourceFunction();

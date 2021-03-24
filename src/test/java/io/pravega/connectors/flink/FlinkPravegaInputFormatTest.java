@@ -105,7 +105,7 @@ public class FlinkPravegaInputFormatTest {
             FlinkPravegaInputFormat.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
             fail();
         } catch (NullPointerException e) {
@@ -117,7 +117,7 @@ public class FlinkPravegaInputFormatTest {
             FlinkPravegaInputFormat.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
             fail();
         } catch (NullPointerException e) {
@@ -130,7 +130,7 @@ public class FlinkPravegaInputFormatTest {
             FlinkPravegaInputFormat.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemafromRegistry("stream", Integer.class)
+                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
         } catch (NotImplementedException e) {
             // "Not support SerializationFormat.Any"
