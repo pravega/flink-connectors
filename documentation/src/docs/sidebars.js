@@ -3,6 +3,7 @@ module.exports = {
         'overview',
         'getting-started',
         'quickstart',
+        'dev-guide',
         {
             'Features': [
                 'streaming',

@@ -1,3 +1,7 @@
+---
+title: Developer's Guide
+---
+
 <!--
 Copyright Pravega Authors.
 
