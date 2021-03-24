@@ -1,0 +1,62 @@
+name: build-artifacts
+
+on: [push, pull_request, workflow_dispatch]
+# workflow_dispatch should make manually triggered ci/cd possible
+# workflow file (like this) with `workflow_dispatch` after on should exist on the **master** or default branch,
+# or there will be no ui for a manual trigger. https://github.community/t/workflow-dispatch-event-not-working/128856/2
+
+env:
+  GRADLE_OPTS: "-Xms128m -Xmx1024m"
+  ORG_GRADLE_PROJECT_logOutput: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up JDK 11
+        uses: actions/setup-java@v1
+        with:
+          java-version: '11' # major or semver Java version will be acceptable, see https://github.com/marketplace/actions/setup-java-jdk#basic
+          java-package: jdk  # (jre, jdk, or jdk+fx) - defaults to jdk
+          architecture: x64  # (x64 or x86) - defaults to x64
+
+      - name: Cache gradle modules
+        uses: actions/cache@v2
+        with:
+          # gradle packages need to be cached
+          path: |
+            .gradle
+            $HOME/.gradle
+            $HOME/.m2
+          # key to identify the specific cache
+          # so if we upgrade some modules, the key(hash) of `gradle.properties` will change
+          # and we will rerun the download to get the newest packages
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Build via Gradle
+        run: ./gradlew clean build
+
+      - name: Build via Gradle with Scala 2.11
+        run: |
+          ./gradlew clean build -PflinkScalaVersion=2.11
+          bash <(curl -s https://codecov.io/bash) -t 9c42ff48-d98f-4444-af05-cf734aa1dbd0
+
+  snapshot:
+    needs: [build]
+    runs-on: ubuntu-latest
+    # only publish the snapshot when it is a push on the master or the release branch (starts with r0.x or r1.x)
+    if: ${{ github.event_name == 'push' && (github.ref == 'refs/heads/master' || startsWith(github.ref, 'refs/heads/r0.') || startsWith(github.ref, 'refs/heads/r1.')) }}
+    env:
+      BINTRAY_USER: ${{ secrets.BINTRAY_USER }}
+      BINTRAY_KEY: ${{ secrets.BINTRAY_KEY }}
+    steps:
+      - name: Publish to repo
+        run: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
+
+      - name: Publish to repo with Scala 2.11
+        run: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY -PflinkScalaVersion=2.11
