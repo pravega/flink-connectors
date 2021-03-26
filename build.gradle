@@ -118,6 +118,9 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
+    compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
+
     testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testCompile (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
@@ -132,8 +135,6 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 
     //  configuring the shaded pom dependencies
     shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion

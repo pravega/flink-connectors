@@ -231,14 +231,12 @@ public class PravegaCatalog extends AbstractCatalog {
             groupSet.add(kv.getKey());
         });
 
-        List<String> tableList = StreamSupport
+        return StreamSupport
                 .stream(iterable.spliterator(), false)
                 .map(s -> s.getStreamName())
                 .filter(s -> !s.startsWith("_"))
                 .filter(s -> groupSet.contains(s))
                 .collect(Collectors.toList());
-
-        return tableList;
     }
 
     @Override
