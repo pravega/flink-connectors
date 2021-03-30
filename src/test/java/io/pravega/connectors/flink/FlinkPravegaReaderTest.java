@@ -164,7 +164,7 @@ public class FlinkPravegaReaderTest {
             // verify if metrics are generated
             MetricGroup pravegaReaderMetricGroup = testHarness.getMetricGroup().addGroup(PRAVEGA_READER_METRICS_GROUP);
             MetricGroup readerGroupMetricGroup = pravegaReaderMetricGroup.addGroup(READER_GROUP_METRICS_GROUP);
-            String scopeString = ScopeFormat.concat('.', readerGroupMetricGroup.getScopeComponents());
+            String scopeString = ScopeFormat.concat(s -> s, '.', readerGroupMetricGroup.getScopeComponents());
 
             validateMetricGroup(scopeString, UNREAD_BYTES_METRICS_GAUGE, readerGroupMetricGroup);
             validateMetricGroup(scopeString, READER_GROUP_NAME_METRICS_GAUGE, readerGroupMetricGroup);

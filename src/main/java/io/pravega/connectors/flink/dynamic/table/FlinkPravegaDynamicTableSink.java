@@ -16,7 +16,6 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -24,6 +23,7 @@ import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.sink.SinkFunctionProvider;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
 import java.util.Arrays;
@@ -176,7 +176,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
             int keyIndex = Arrays.asList(fieldNames).indexOf(routingKeyFieldName);
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");
-            checkArgument(DataTypes.STRING().equals(fieldTypes[keyIndex]),
+            checkArgument(isStringType(fieldTypes[keyIndex]),
                     "Key field must be of type 'STRING'");
             this.keyIndex = keyIndex;
         }
@@ -184,6 +184,11 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
         @Override
         public String getRoutingKey(RowData event) {
             return event.getString(keyIndex).toString();
+        }
+
+        private boolean isStringType(DataType type) {
+            LogicalTypeRoot typeRoot = type.getLogicalType().getTypeRoot();
+            return typeRoot == LogicalTypeRoot.CHAR || typeRoot == LogicalTypeRoot.VARCHAR;
         }
     }
 }
