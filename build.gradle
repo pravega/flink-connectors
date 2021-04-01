@@ -86,18 +86,6 @@ configurations {
     testCompile.exclude group: 'log4j', module: 'log4j'
 }
 
-test {
-    testLogging {
-        onOutput { descriptor, event ->
-            if (project.hasProperty('logOutput')) {
-                events = ["passed", "failed", "skipped"]
-                showStandardStreams = true
-                logger.lifecycle(event.message)
-            }
-        }
-    }
-}
-
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
 
@@ -121,6 +109,7 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testCompile (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
+        exclude group:  'ch.qos.logback', module: 'logback-classic'
     }
     testCompile (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
