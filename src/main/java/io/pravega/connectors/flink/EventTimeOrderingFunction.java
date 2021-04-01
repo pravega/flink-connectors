@@ -23,6 +23,13 @@ import org.apache.flink.util.Collector;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Orders elements into event time order using the managed timestamp state.
+ * Buffer the elements if they come early.
+ * The type of the key is String.
+ *
+ * @param <T> The input type of the function.
+ */
 public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T, T> {
 
     private static final long serialVersionUID = 1L;
@@ -37,9 +44,9 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
     private final TypeInformation<T> typeInformation;
 
     /**
-     * The queue of input elements keyed by event timestamp.
+     * State to buffer all the data between watermarks.
      */
-    private transient MapState<Long, List<T>> elementQueueState;
+    private transient MapState<Long, List<T>> dataState;
 
     /**
      * State to keep the last triggering timestamp. Used to filter late events.
@@ -55,21 +62,17 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
         super.open(config);
 
         // create a map-based queue to buffer input elements
-        if (elementQueueState == null) {
-            MapStateDescriptor<Long, List<T>> elementQueueStateDescriptor = new MapStateDescriptor<>(
-                    EVENT_QUEUE_STATE_NAME,
-                    BasicTypeInfo.LONG_TYPE_INFO,
-                    new ListTypeInfo<>(this.typeInformation)
-            );
-            elementQueueState = getRuntimeContext().getMapState(elementQueueStateDescriptor);
-        }
+        MapStateDescriptor<Long, List<T>> elementQueueStateDescriptor = new MapStateDescriptor<>(
+                EVENT_QUEUE_STATE_NAME,
+                BasicTypeInfo.LONG_TYPE_INFO,
+                new ListTypeInfo<>(this.typeInformation)
+        );
+        dataState = getRuntimeContext().getMapState(elementQueueStateDescriptor);
 
         // maintain a timestamp so anything before this time will be ignored
-        if (lastTriggeringTsState == null) {
-            ValueStateDescriptor<Long> lastTriggeringTsDescriptor =
-                    new ValueStateDescriptor<>(LAST_TRIGGERING_TS_STATE_NAME, Long.class);
-            lastTriggeringTsState = getRuntimeContext().getState(lastTriggeringTsDescriptor);
-        }
+        ValueStateDescriptor<Long> lastTriggeringTsDescriptor =
+                new ValueStateDescriptor<>(LAST_TRIGGERING_TS_STATE_NAME, Long.class);
+        lastTriggeringTsState = getRuntimeContext().getState(lastTriggeringTsDescriptor);
     }
 
     @Override
@@ -77,8 +80,7 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
         // timestamp of the processed element
         Long timestamp = ctx.timestamp();
         if (timestamp == null) {
-            // elements with no time component are simply forwarded.
-            // likely cause: the time characteristic of the program is not event-time.
+            // Simply forward the elements when the time characteristic of the program is set to ProcessingTime.
             out.collect(element);
             return;
         }
@@ -91,7 +93,7 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
 
         // check if the element is late and drop it if it is late
         if (lastTriggeringTs == null || timestamp > lastTriggeringTs) {
-            List<T> elementsForTimestamp = elementQueueState.get(timestamp);
+            List<T> elementsForTimestamp = dataState.get(timestamp);
 
             if (elementsForTimestamp == null) {
                 elementsForTimestamp = new ArrayList<>(1);
@@ -102,21 +104,21 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
 
             elementsForTimestamp.add(element);
 
-            elementQueueState.put(timestamp, elementsForTimestamp);
+            dataState.put(timestamp, elementsForTimestamp);
         }
     }
 
     @Override
     public void onTimer(long timestamp, OnTimerContext ctx, Collector<T> out) throws Exception {
         // gets all elements for the triggering timestamps
-        List<T> elements = elementQueueState.get(timestamp);
+        List<T> elements = dataState.get(timestamp);
 
         if (elements != null) {
             // emit elements in order
             elements.forEach(out::collect);
 
             // remove emitted elements from state
-            elementQueueState.remove(timestamp);
+            dataState.remove(timestamp);
 
             // update the latest processing time
             lastTriggeringTsState.update(timestamp);

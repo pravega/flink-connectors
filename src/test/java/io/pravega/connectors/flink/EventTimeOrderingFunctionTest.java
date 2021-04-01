@@ -100,16 +100,28 @@ public class EventTimeOrderingFunctionTest {
     @Test
     public void testLateElements() throws Exception {
         testHarness.processWatermark(1L);
-        testHarness.processElement(record(K1, 0L));
+
+        // ----------These elements should be sorted by timestamp---------
         testHarness.processElement(record(K1, 1L));
-        testHarness.processWatermark(2L);
+        testHarness.processElement(record(K1, 3L));
+        testHarness.processElement(record(K1, 2L));
+        testHarness.processElement(record(K1, 1L));
+        // ----------These elements should be sorted by timestamp---------
+
+        testHarness.processWatermark(3L);
+
+        // ----------       This element should be ignored       ---------
+        testHarness.processElement(record(K1, 2L));
+        // ----------       This element should be ignored       ---------
 
         Queue<Object> actual = testHarness.getOutput();
         Queue<Object> expected = new ConcurrentLinkedQueue<>();
         expected.add(watermark(1L));
-        expected.add(record(K1, 0L));
         expected.add(record(K1, 1L));
-        expected.add(watermark(2L));
+        expected.add(record(K1, 1L));
+        expected.add(record(K1, 2L));
+        expected.add(record(K1, 3L));
+        expected.add(watermark(3L));
         TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
     }
 
