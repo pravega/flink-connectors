@@ -20,11 +20,12 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction;
 import org.apache.flink.util.Collector;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
 public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T, T> {
+
+    private static final long serialVersionUID = 1L;
 
     private static final String EVENT_QUEUE_STATE_NAME = "eventQueue";
 
@@ -47,10 +48,6 @@ public class EventTimeOrderingFunction<T> extends KeyedProcessFunction<String, T
 
     public EventTimeOrderingFunction(TypeInformation<T> typeInformation) {
         this.typeInformation = typeInformation;
-    }
-
-    long getLastTriggeringTs() throws IOException {
-        return this.lastTriggeringTsState.value();
     }
 
     @Override

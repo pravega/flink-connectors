@@ -56,6 +56,9 @@ public class FlinkPravegaUtils {
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
                 .process(new EventTimeOrderingFunction<>(stream.getType()))
+                // The next line add `TypeInformation` to the return type of `EventTimeOrderingFunction`.
+                // Because some Lambda functions may erase the type information.
+                .returns(stream.getType())
                 .addSink(writer).setParallelism(parallelism);
     }
 
