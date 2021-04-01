@@ -13,7 +13,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
-import io.pravega.connectors.flink.EventTimeOrderingOperator;
+import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.shared.security.auth.Credentials;
@@ -55,7 +55,7 @@ public class FlinkPravegaUtils {
         Preconditions.checkNotNull(writer.getEventRouter(), "Event router should not be null");
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
-                .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism).forward()
+                .process(new EventTimeOrderingFunction<>(stream.getType()))
                 .addSink(writer).setParallelism(parallelism);
     }
 

@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -18,6 +17,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
+import org.apache.flink.streaming.util.ProcessFunctionTestHarnesses;
 import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.junit.After;
 import org.junit.Before;
@@ -26,26 +26,22 @@ import org.junit.Test;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import static org.junit.Assert.assertEquals;
-
 /**
- * Unit tests for {@link EventTimeOrderingOperator}.
+ * Unit tests for {@link EventTimeOrderingFunction}.
  */
 @Slf4j
-public class EventTimeOrderingOperatorTest {
+public class EventTimeOrderingFunctionTest {
 
     private static final String K1 = "K1";
 
-    private EventTimeOrderingOperator<String, Tuple2<String, Long>> operator;
+    private EventTimeOrderingFunction<Tuple2<String, Long>> function;
     private KeyedOneInputStreamOperatorTestHarness<String, Tuple2<String, Long>, Tuple2<String, Long>> testHarness;
 
     @Before
     public void before() throws Exception {
-        operator = new EventTimeOrderingOperator<>();
-        operator.setInputType(TypeInformation.of(new TypeHint<Tuple2<String, Long>>() {
-        }), new ExecutionConfig());
-        testHarness = new KeyedOneInputStreamOperatorTestHarness<>(
-                operator, in -> in.f0, TypeInformation.of(String.class));
+        function = new EventTimeOrderingFunction<>(TypeInformation.of(new TypeHint<Tuple2<String, Long>>() {
+        }));
+        testHarness = ProcessFunctionTestHarnesses.forKeyedProcessFunction(function, in -> in.f0, TypeInformation.of(String.class));
         testHarness.setTimeCharacteristic(TimeCharacteristic.EventTime);
         testHarness.open();
     }
@@ -53,7 +49,7 @@ public class EventTimeOrderingOperatorTest {
     @After
     public void after() throws Exception {
         testHarness.close();
-        operator.close();
+        function.close();
     }
 
     @Test
@@ -104,15 +100,15 @@ public class EventTimeOrderingOperatorTest {
     @Test
     public void testLateElements() throws Exception {
         testHarness.processWatermark(1L);
-        assertEquals(1L, operator.lastWatermark);
         testHarness.processElement(record(K1, 0L));
         testHarness.processElement(record(K1, 1L));
         testHarness.processWatermark(2L);
-        assertEquals(2L, operator.lastWatermark);
 
         Queue<Object> actual = testHarness.getOutput();
         Queue<Object> expected = new ConcurrentLinkedQueue<>();
         expected.add(watermark(1L));
+        expected.add(record(K1, 0L));
+        expected.add(record(K1, 1L));
         expected.add(watermark(2L));
         TestHarnessUtil.assertOutputEquals("Unexpected output", expected, actual);
     }
