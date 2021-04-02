@@ -1,11 +1,11 @@
 /**
  * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.pravega.connectors.flink.dynamic.table;
 
@@ -16,7 +16,6 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -24,6 +23,7 @@ import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.sink.SinkFunctionProvider;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
 import java.util.Arrays;
@@ -171,13 +171,17 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
         public RowDataBasedRouter(String routingKeyFieldName, TableSchema tableSchema) {
             String[] fieldNames = tableSchema.getFieldNames();
-            DataType[] fieldTypes = tableSchema.getFieldDataTypes();
-
             int keyIndex = Arrays.asList(fieldNames).indexOf(routingKeyFieldName);
+
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");
-            checkArgument(DataTypes.STRING().equals(fieldTypes[keyIndex]),
-                    "Key field must be of type 'STRING'");
+
+            DataType[] fieldTypes = tableSchema.getFieldDataTypes();
+            LogicalTypeRoot logicalTypeRoot = fieldTypes[keyIndex].getLogicalType().getTypeRoot();
+
+            checkArgument(LogicalTypeRoot.CHAR == logicalTypeRoot || LogicalTypeRoot.VARCHAR == logicalTypeRoot,
+                    "Key field must be of string type");
+
             this.keyIndex = keyIndex;
         }
 
