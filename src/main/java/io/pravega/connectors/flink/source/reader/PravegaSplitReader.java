@@ -41,13 +41,23 @@ public class PravegaSplitReader<T>
 
     private final int subtaskId;
 
+    private final String readerGroupName;
+
+    private final DeserializationSchema<T> deserializationSchema;
+
+    private final EventStreamClientFactory eventStreamClientFactory;
+
     public PravegaSplitReader(
             EventStreamClientFactory eventStreamClientFactory,
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
             int subtaskId) {
+        log.info("Initiated split reader {}", subtaskId);
         this.subtaskId = subtaskId;
         this.options = new Configuration();
+        this.readerGroupName = readerGroupName;
+        this.deserializationSchema = deserializationSchema;
+        this.eventStreamClientFactory = eventStreamClientFactory;
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
@@ -58,6 +68,7 @@ public class PravegaSplitReader<T>
 
     @Override
     public RecordsWithSplitIds<EventRead<T>> fetch() throws IOException {
+        log.info("Call fetch");
         RecordsBySplits.Builder<EventRead<T>> records = new RecordsBySplits.Builder<>();
         EventRead<T> eventRead = null;
         do {
@@ -69,12 +80,13 @@ public class PravegaSplitReader<T>
                 continue;
             }
             records.add(split, eventRead);
-        } while (eventRead == null || eventRead.getEvent() == null);
+        } while (eventRead != null && !eventRead.isCheckpoint() && eventRead.getEvent() != null);
         return records.build();
     }
 
     @Override
     public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
+        log.info("Call handleSplitsChanges");
         if (splitsChange instanceof SplitsAddition) {
             // One reader for one split
             Preconditions.checkArgument(splitsChange.splits().size() == 1);
@@ -85,10 +97,20 @@ public class PravegaSplitReader<T>
     @Override
     public void wakeUp() {
         log.info("Call wakeup");
+        if (this.pravegaReader != null) {
+            this.pravegaReader.close();
+        }
+        this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
+                PravegaSplit.splitId(subtaskId),
+                readerGroupName,
+                deserializationSchema,
+                ReaderConfig.builder().build(),
+                eventStreamClientFactory);
     }
 
     @Override
     public void close() {
+        log.info("Call close");
         pravegaReader.close();
     }
 }

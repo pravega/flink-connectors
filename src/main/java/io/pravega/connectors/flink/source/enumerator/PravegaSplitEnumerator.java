@@ -15,6 +15,7 @@ import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.connector.source.SourceEvent;
@@ -41,16 +42,15 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     private final ReaderGroupConfig readerGroupConfig;
     private final String scope;
     private final String readerGroupName;
-    private final AtomicInteger checkpointId;
     private final List<PravegaSplit> splits;
-    private final Checkpoint checkpoint;
+    private Checkpoint checkpoint;
+    private long checkpointId;
+    private boolean isRecovered;
 
     /** Default thread pool size of the checkpoint scheduler */
     private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
-    private final Object scheduledExecutorLock = new Object();
 
     // A long-lived thread pool for scheduling all checkpoint tasks
-    @GuardedBy("scheduledExecutorLock")
     private ScheduledExecutorService scheduledExecutorService;
 
     public PravegaSplitEnumerator(
@@ -69,8 +69,11 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         for (int i = 0; i < enumContext.currentParallelism(); i++) {
             splits.add(new PravegaSplit(readerGroupName, i));
         }
-        this.checkpointId = new AtomicInteger();
         this.checkpoint = checkpoint;
+        if (checkpoint != null) {
+            this.checkpointId = getCheckpointId(checkpoint.getName());
+        }
+        this.scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
 
     @Override
@@ -90,8 +93,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         if (this.checkpoint != null) {
             log.info("Recover from checkpoint: {}", checkpoint.getName());
 
-            // TODO: Is there a way to get the checkpoint ID as legacy source?
-            this.checkpointId.set(getCheckpointId(checkpoint.getName()) + 1);
             this.readerGroup.resetReaderGroup(ReaderGroupConfig
                     .builder()
                     .maxOutstandingCheckpointRequest(this.readerGroupConfig.getMaxOutstandingCheckpointRequest())
@@ -113,7 +114,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void addReader(int subtaskId) {
-        log.info("Add reader called for subtask {}", subtaskId);
         if (enumContext.registeredReaders().size() == enumContext.currentParallelism() && splits.size() > 0) {
             int numReaders = enumContext.registeredReaders().size();
             Map<Integer, List<PravegaSplit>> assignment = new HashMap<>();
@@ -127,27 +127,36 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public Checkpoint snapshotState() throws Exception {
-        ensureScheduledExecutorExists();
-
-        final String checkpointName = createCheckpointName(checkpointId.getAndIncrement());
+        checkpointId++;
+        final String checkpointName = createCheckpointName(checkpointId);
 
         log.info("Initiate checkpoint {}", checkpointName);
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
+        try {
+            this.checkpoint = checkpointResult.get(5, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("Pravega checkpoint met error.", e);
+            this.checkpoint = null;
+        }
 
-        return checkpointResult.get(5, TimeUnit.SECONDS);
+        for (int i = 0; i < enumContext.currentParallelism(); i++) {
+            enumContext.sendEventToSourceReader(i, new CheckpointEvent(checkpointId));
+        }
+
+        return checkpoint;
     }
 
     @Override
     public void close() throws IOException {
         readerGroup.close();
-//        readerGroupManager.deleteReaderGroup(readerGroupName);
         readerGroupManager.close();
     }
 
     @Override
     public void notifyCheckpointComplete(long checkpointId) throws Exception {
-
+        log.info("complete checkpoint {}", checkpointId);
+        this.checkpointId = checkpointId;
     }
 
     @Override
@@ -158,34 +167,35 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
         log.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
-        throw new RuntimeException("Intentional");
+        if (!isRecovered) {
+            isRecovered = true;
+            throw new RuntimeException("hahaha");
+        } else {
+            log.info("huhuhu");
+        }
     }
 
 
     // -------------
 
-    private void ensureScheduledExecutorExists() {
-        synchronized (scheduledExecutorLock) {
-            if (scheduledExecutorService == null) {
-                log.info("Creating Scheduled Executor");
-                scheduledExecutorService = createScheduledExecutorService();
-            }
-        }
-    }
-
-    protected ScheduledExecutorService createScheduledExecutorService() {
-        return Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
-    }
-
-    protected ScheduledExecutorService getScheduledExecutorService() {
-        return this.scheduledExecutorService;
-    }
 
     static String createCheckpointName(long checkpointId) {
         return "PVG-CHK-" + checkpointId;
     }
 
-    static int getCheckpointId(String checkpointName) {
-        return Integer.parseInt(checkpointName.substring(8));
+    public static long getCheckpointId(String checkpointName) {
+        return Long.parseLong(checkpointName.substring(8));
+    }
+
+    public static class CheckpointEvent implements SourceEvent {
+        private final long checkpointId;
+
+        private CheckpointEvent(long checkpointId) {
+            this.checkpointId = checkpointId;
+        }
+
+        public long getCheckpointId() {
+            return checkpointId;
+        }
     }
 }

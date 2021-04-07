@@ -11,7 +11,10 @@
 package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.ClientConfig;
+import io.pravega.client.admin.ReaderGroupManager;
+import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.EventRead;
+import io.pravega.connectors.flink.source.enumerator.PravegaSplitEnumerator;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -37,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
+import javax.annotation.concurrent.GuardedBy;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -44,8 +48,12 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkState;
 
 /**
@@ -91,6 +99,17 @@ public class PravegaSourceReader<T>
     /** Indicating whether the SourceReader will be assigned more splits or not. */
     private boolean noMoreSplitsAssignment;
 
+    /** Default thread pool size of the checkpoint scheduler */
+    private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
+    private final Object scheduledExecutorLock = new Object();
+    private boolean shouldCheckpoint;
+
+    // A long-lived thread pool for scheduling all checkpoint tasks
+    @GuardedBy("scheduledExecutorLock")
+    private ScheduledExecutorService scheduledExecutorService;
+
+    private long checkpointId;
+
     public PravegaSourceReader(
             Supplier<PravegaSplitReader<T>> splitReaderSupplier,
             RecordEmitter<EventRead<T>, T, PravegaSplit> recordEmitter,
@@ -108,7 +127,8 @@ public class PravegaSourceReader<T>
     }
 
     @Override
-    public void start() {}
+    public void start() {
+    }
 
     @Override
     public InputStatus pollNext(ReaderOutput<T> output) throws Exception {
@@ -127,6 +147,9 @@ public class PravegaSourceReader<T>
             final EventRead<T> record = recordsWithSplitId.nextRecordFromSplit();
             if (record != null) {
                 if (record.isCheckpoint()) {
+                    String checkpointName = record.getCheckpointName();
+                    checkpointId = PravegaSplitEnumerator.getCheckpointId(checkpointName);
+                    log.info("read checkpoint {}", checkpointName);
                     return trace(InputStatus.NOTHING_AVAILABLE);
                 }
                 // emit the record.
@@ -215,6 +238,7 @@ public class PravegaSourceReader<T>
 
     @Override
     public List<PravegaSplit> snapshotState(long checkpointId) {
+        log.info("source reader snapshot");
         List<PravegaSplit> splits = new ArrayList<>();
         splitStates.forEach((id, context) -> splits.add(toSplitType(id, context.state)));
         return splits;
@@ -241,7 +265,11 @@ public class PravegaSourceReader<T>
 
     @Override
     public void handleSourceEvents(SourceEvent sourceEvent) {
-        LOG.info("Received unhandled source event: {}", sourceEvent);
+        if (sourceEvent instanceof PravegaSplitEnumerator.CheckpointEvent) {
+            this.checkpointId = ((PravegaSplitEnumerator.CheckpointEvent) sourceEvent).getCheckpointId();
+            LOG.info("Received checkpoint event {}", this.checkpointId);
+            this.shouldCheckpoint = true;
+        }
     }
 
     @Override
@@ -326,6 +354,13 @@ public class PravegaSourceReader<T>
 
     @Override
     public Optional<Long> shouldTriggerCheckpoint() {
-        return Optional.empty();
+        if (shouldCheckpoint) {
+            log.info("Entered shouldTriggerCheckpoint {}", checkpointId);
+            shouldCheckpoint = false;
+            return Optional.of(checkpointId);
+        } else {
+            return Optional.empty();
+        }
     }
+
 }

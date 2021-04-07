@@ -148,8 +148,8 @@ public class PravegaSource<T>
      * Gets a builder for {@link PravegaSource} to read Pravega streams using the Flink streaming API.
      * @param <T> the element type.
      */
-    public static <T> PravegaSource.Builder<T> builder() {
-        return new PravegaSource.Builder<>();
+    public static <T> Builder<T> builder() {
+        return new Builder<>();
     }
 
     /**
@@ -157,12 +157,12 @@ public class PravegaSource<T>
      *
      * @param <T> the element type.
      */
-    public static class Builder<T> extends AbstractStreamingReaderBuilder<T, PravegaSource.Builder<T>> {
+    public static class Builder<T> extends AbstractStreamingReaderBuilder<T, Builder<T>> {
 
         private DeserializationSchema<T> deserializationSchema;
         private SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
 
-        protected PravegaSource.Builder<T> builder() {
+        protected Builder<T> builder() {
             return this;
         }
 
@@ -172,7 +172,7 @@ public class PravegaSource<T>
          * @param deserializationSchema The deserialization schema
          * @return Builder instance.
          */
-        public PravegaSource.Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
+        public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
             return builder();
         }
@@ -184,7 +184,7 @@ public class PravegaSource<T>
          * @return Builder instance.
          */
 
-        public PravegaSource.Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
+        public Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
             try {
                 ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
                 this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
