@@ -98,8 +98,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
-        Preconditions.checkArgument(!isStreamingReader || readerGroupName != null,
-                "Reader group name is required in streaming mode");
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
                 pravegaConfig, "Pravega config must not be null.");
@@ -114,6 +112,31 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
         this.isBounded = isBounded;
     }
 
+    public FlinkPravegaDynamicTableSource(DataType producedDataType,
+                                          DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
+                                          PravegaConfig pravegaConfig,
+                                          List<StreamWithBoundaries> streams,
+                                          long readerGroupRefreshTimeMillis,
+                                          long checkpointInitiateTimeoutMillis,
+                                          long eventReadTimeoutMillis,
+                                          int maxOutstandingCheckpointRequest,
+                                          Optional<String> uid,
+                                          boolean isStreamingReader,
+                                          boolean isBounded) {
+        this(producedDataType,
+             decodingFormat,
+             null,
+             pravegaConfig,
+             streams,
+             readerGroupRefreshTimeMillis,
+             checkpointInitiateTimeoutMillis,
+             eventReadTimeoutMillis,
+             maxOutstandingCheckpointRequest,
+             uid,
+             isStreamingReader,
+             isBounded);
+    }
+
     @Override
     public ChangelogMode getChangelogMode() {
         return this.decodingFormat.getChangelogMode();
@@ -124,12 +147,12 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType))
                     .withReaderGroupRefreshTime(Time.milliseconds(readerGroupRefreshTimeMillis))
                     .withCheckpointInitiateTimeout(Time.milliseconds(checkpointInitiateTimeoutMillis))
                     .withEventReadTimeout(Time.milliseconds(eventReadTimeoutMillis))
                     .withMaxOutstandingCheckpointRequest(maxOutstandingCheckpointRequest);
+            Optional.ofNullable(readerGroupName).ifPresent(readerBuilder::withReaderGroupName);
 
             for (StreamWithBoundaries stream : streams) {
                 readerBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());

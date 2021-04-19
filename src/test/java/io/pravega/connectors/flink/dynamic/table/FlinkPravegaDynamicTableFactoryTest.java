@@ -147,6 +147,35 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
+    public void testMissingReaderGroupName() {
+        // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        final Map<String, String> modifiedOptions = getModifiedOptions(
+                getFullStreamingSourceOptions(),
+                options -> {
+                    options.remove("scan.reader-group.name");
+                });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
+        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+
+        ScanTableSource.ScanRuntimeProvider provider =
+                actualPravegaSource.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
+        assertTrue(provider instanceof SourceFunctionProvider);
+        final SourceFunctionProvider sourceFunctionProvider = (SourceFunctionProvider) provider;
+        final SourceFunction<RowData> sourceFunction = sourceFunctionProvider.createSourceFunction();
+        assertTrue(sourceFunction instanceof FlinkPravegaReader);
+    }
+
+    @Test
     public void testStreamingTableSourceProvider() {
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
 
@@ -336,30 +365,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'scan.execution.type'. "
                 + "Supported values are ['streaming', 'batch'].")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                catalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
-    }
-
-    @Test
-    public void testMissingReaderGroupName() {
-        // Construct table source using DDL and table source factory
-        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
-                "default",
-                "default",
-                "scanTable");
-        final Map<String, String> modifiedOptions = getModifiedOptions(
-                getFullStreamingSourceOptions(),
-                options -> {
-                    options.remove("scan.reader-group.name");
-                });
-        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
-
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("'scan.reader-group.name' is required but missing")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
                 catalogTable,
