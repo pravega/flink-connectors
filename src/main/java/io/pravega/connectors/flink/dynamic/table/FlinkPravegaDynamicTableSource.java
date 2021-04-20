@@ -112,31 +112,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
         this.isBounded = isBounded;
     }
 
-    public FlinkPravegaDynamicTableSource(DataType producedDataType,
-                                          DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
-                                          PravegaConfig pravegaConfig,
-                                          List<StreamWithBoundaries> streams,
-                                          long readerGroupRefreshTimeMillis,
-                                          long checkpointInitiateTimeoutMillis,
-                                          long eventReadTimeoutMillis,
-                                          int maxOutstandingCheckpointRequest,
-                                          Optional<String> uid,
-                                          boolean isStreamingReader,
-                                          boolean isBounded) {
-        this(producedDataType,
-             decodingFormat,
-             null,
-             pravegaConfig,
-             streams,
-             readerGroupRefreshTimeMillis,
-             checkpointInitiateTimeoutMillis,
-             eventReadTimeoutMillis,
-             maxOutstandingCheckpointRequest,
-             uid,
-             isStreamingReader,
-             isBounded);
-    }
-
     @Override
     public ChangelogMode getChangelogMode() {
         return this.decodingFormat.getChangelogMode();
@@ -214,6 +189,27 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 producedDataType.equals(that.producedDataType) &&
                 decodingFormat.equals(that.decodingFormat) &&
                 readerGroupName.equals(that.readerGroupName) &&
+                pravegaConfig.equals(that.pravegaConfig) &&
+                streams.equals(that.streams) &&
+                uid.equals(that.uid);
+    }
+
+    public boolean equalsWithoutGroupName(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        final FlinkPravegaDynamicTableSource that = (FlinkPravegaDynamicTableSource) o;
+        return readerGroupRefreshTimeMillis == that.readerGroupRefreshTimeMillis &&
+                checkpointInitiateTimeoutMillis == that.checkpointInitiateTimeoutMillis &&
+                eventReadTimeoutMillis == that.eventReadTimeoutMillis &&
+                maxOutstandingCheckpointRequest == that.maxOutstandingCheckpointRequest &&
+                isStreamingReader == that.isStreamingReader &&
+                isBounded == that.isBounded &&
+                producedDataType.equals(that.producedDataType) &&
+                decodingFormat.equals(that.decodingFormat) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
                 uid.equals(that.uid);

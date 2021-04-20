@@ -62,8 +62,7 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.*;
 
 public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String SCOPE = "scope";
@@ -110,7 +109,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     public void testStreamingTableSource() {
         // prepare parameters for Pravega table source
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
-
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -142,12 +140,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 true,
                 false);
 
+        // expect the source to be constructed successfully
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertTrue(actualPravegaSource.equalsWithoutGroupName(expectedPravegaSource));
     }
 
     @Test
-    public void testMissingReaderGroupName() {
+    public void testHavingOptionalReaderGroupName() {
+        // prepare parameters for Pravega table source
+        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestFormatFactory.DecodingFormatMock(",", true);
+
         // Construct table source using DDL and table source factory
         ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
                 "default",
@@ -155,9 +159,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
-                options -> {
-                    options.remove("scan.reader-group.name");
-                });
+                options -> options.put("scan.reader-group.name", READER_GROUP));
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
                 objectIdentifier,
@@ -165,20 +167,29 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
-        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
 
-        ScanTableSource.ScanRuntimeProvider provider =
-                actualPravegaSource.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
-        assertTrue(provider instanceof SourceFunctionProvider);
-        final SourceFunctionProvider sourceFunctionProvider = (SourceFunctionProvider) provider;
-        final SourceFunction<RowData> sourceFunction = sourceFunctionProvider.createSourceFunction();
-        assertTrue(sourceFunction instanceof FlinkPravegaReader);
+        // Test scan source equals
+        final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
+                producedDataType,
+                decodingFormat,
+                READER_GROUP,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                Optional.empty(),
+                true,
+                false);
+
+        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+        assertEquals(actualPravegaSource, expectedPravegaSource);
     }
 
     @Test
     public void testStreamingTableSourceProvider() {
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
-
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestPravegaDecodingFormat(",", true);
 
@@ -208,7 +219,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     public void testBatchTableSource() {
         // prepare parameters for Pravega table source
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
-
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -241,7 +251,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertTrue(actualPravegaSource.equalsWithoutGroupName(expectedPravegaSource));
     }
 
     @Test
@@ -565,7 +575,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         tableOptions.put("security.validate-hostname", "true");
 
         tableOptions.put("scan.execution.type", "streaming");
-        tableOptions.put("scan.reader-group.name", READER_GROUP);
         tableOptions.put("scan.streams", String.format("%s;%s", STREAM1, STREAM2));
         tableOptions.put("scan.event-read.timeout.interval", TIMEOUT_INTERVAL);
 
