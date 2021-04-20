@@ -129,7 +129,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
                 producedDataType,
                 decodingFormat,
-                READER_GROUP,
+                null,
                 getTestPravegaConfig(),
                 getTestScanStreamList(),
                 3000L,
@@ -142,7 +142,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // expect the source to be constructed successfully
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertTrue(actualPravegaSource.equalsWithoutGroupName(expectedPravegaSource));
+        assertEquals(actualPravegaSource, expectedPravegaSource);
     }
 
     @Test
@@ -239,7 +239,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
                 producedDataType,
                 decodingFormat,
-                READER_GROUP,
+                null,
                 getTestPravegaConfig(),
                 getTestScanStreamList(),
                 3000L,
@@ -251,7 +251,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertTrue(actualPravegaSource.equalsWithoutGroupName(expectedPravegaSource));
+        assertEquals(actualPravegaSource, expectedPravegaSource);
     }
 
     @Test

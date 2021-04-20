@@ -1,11 +1,11 @@
 /**
  * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
- *
+ * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
  */
 package io.pravega.connectors.flink.dynamic.table;
 
@@ -188,28 +188,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 isBounded == that.isBounded &&
                 producedDataType.equals(that.producedDataType) &&
                 decodingFormat.equals(that.decodingFormat) &&
-                readerGroupName.equals(that.readerGroupName) &&
-                pravegaConfig.equals(that.pravegaConfig) &&
-                streams.equals(that.streams) &&
-                uid.equals(that.uid);
-    }
-
-    public boolean equalsWithoutGroupName(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        final FlinkPravegaDynamicTableSource that = (FlinkPravegaDynamicTableSource) o;
-        return readerGroupRefreshTimeMillis == that.readerGroupRefreshTimeMillis &&
-                checkpointInitiateTimeoutMillis == that.checkpointInitiateTimeoutMillis &&
-                eventReadTimeoutMillis == that.eventReadTimeoutMillis &&
-                maxOutstandingCheckpointRequest == that.maxOutstandingCheckpointRequest &&
-                isStreamingReader == that.isStreamingReader &&
-                isBounded == that.isBounded &&
-                producedDataType.equals(that.producedDataType) &&
-                decodingFormat.equals(that.decodingFormat) &&
+                Objects.equals(readerGroupName, that.readerGroupName) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
                 uid.equals(that.uid);
