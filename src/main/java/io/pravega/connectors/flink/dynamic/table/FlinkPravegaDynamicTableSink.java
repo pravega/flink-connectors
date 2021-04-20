@@ -171,13 +171,17 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
         public RowDataBasedRouter(String routingKeyFieldName, TableSchema tableSchema) {
             String[] fieldNames = tableSchema.getFieldNames();
-            DataType[] fieldTypes = tableSchema.getFieldDataTypes();
-
             int keyIndex = Arrays.asList(fieldNames).indexOf(routingKeyFieldName);
+
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");
-            checkArgument(isStringType(fieldTypes[keyIndex]),
-                    "Key field must be of type 'STRING'");
+
+            DataType[] fieldTypes = tableSchema.getFieldDataTypes();
+            LogicalTypeRoot logicalTypeRoot = fieldTypes[keyIndex].getLogicalType().getTypeRoot();
+
+            checkArgument(LogicalTypeRoot.CHAR == logicalTypeRoot || LogicalTypeRoot.VARCHAR == logicalTypeRoot,
+                    "Key field must be of string type");
+
             this.keyIndex = keyIndex;
         }
 
