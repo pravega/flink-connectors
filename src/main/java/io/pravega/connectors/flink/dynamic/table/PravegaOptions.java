@@ -209,7 +209,7 @@ public class PravegaOptions {
         validateScanExecutionType(tableOptions);
         validateSourceStreams(tableOptions);
         if (tableOptions.get(SCAN_EXECUTION_TYPE).equals(SCAN_EXECUTION_TYPE_VALUE_STREAMING)) {
-            validateReaderGroup(tableOptions);
+            validateReaderGroupConfig(tableOptions);
         }
     }
 
@@ -251,14 +251,7 @@ public class PravegaOptions {
         });
     }
 
-    private static void validateReaderGroup(ReadableConfig tableOptions) {
-        Optional<String> readerGroupName = tableOptions.getOptional(SCAN_READER_GROUP_NAME);
-        if (!readerGroupName.isPresent()) {
-            throw new ValidationException(String.format("'%s' is required but missing", SCAN_READER_GROUP_NAME.key()));
-        } else {
-            NameUtils.validateReaderGroupName(readerGroupName.get());
-        }
-
+    private static void validateReaderGroupConfig(ReadableConfig tableOptions) {
         tableOptions.getOptional(SCAN_READER_GROUP_MAX_OUTSTANDING_CHECKPOINT_REQUEST).ifPresent(num -> {
             if (num < 1) {
                 throw new ValidationException(String.format("'%s' requires a positive integer, received %d",
