@@ -62,7 +62,8 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String SCOPE = "scope";
