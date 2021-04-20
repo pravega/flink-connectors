@@ -25,6 +25,7 @@ import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,7 +39,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
 
     // The reader group name to coordinate the parallel readers. This should be unique for a Flink job.
-    private final String readerGroupName;
+    @Nullable private final String readerGroupName;
 
     // Pravega connection configuration
     private final PravegaConfig pravegaConfig;
@@ -59,7 +60,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
     private final int maxOutstandingCheckpointRequest;
 
     // Uid of the table source to identify the checkpoint state
-    private final Optional<String> uid;
+    @Nullable private final String uid;
 
     // Flag to determine streaming or batch read
     private final boolean isStreamingReader;
@@ -91,7 +92,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                                           long checkpointInitiateTimeoutMillis,
                                           long eventReadTimeoutMillis,
                                           int maxOutstandingCheckpointRequest,
-                                          Optional<String> uid,
+                                          String uid,
                                           boolean isStreamingReader,
                                           boolean isBounded) {
         this.producedDataType = Preconditions.checkNotNull(
@@ -133,8 +134,13 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 readerBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
             }
 
-            String generatedUid = readerBuilder.generateUid();
-            readerBuilder.uid(uid.orElse(generatedUid));
+            Optional.ofNullable(uid)
+                    .or(()-> Optional.of(readerBuilder.generateUid()))
+                    .map(readerBuilder::uid);
+            Optional.ofNullable(uid)
+                    .map(readerBuilder::uid)
+                    .orElseGet(()-> readerBuilder.uid(readerBuilder.generateUid()));
+
             return SourceFunctionProvider.of(readerBuilder.build(), isBounded);
         } else {
             FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()

@@ -26,6 +26,7 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,7 +57,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
     private final boolean enableWatermarkPropagation;
 
     // Pravega routing key field name
-    private final Optional<String> routingKeyFieldName;
+    @Nullable private final String routingKeyFieldName;
 
     /**
      * Creates a Pravega {@link DynamicTableSink}.
