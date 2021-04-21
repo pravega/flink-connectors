@@ -58,7 +58,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.function.Consumer;
 
 import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
@@ -137,7 +136,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 5000L,
                 TIMEOUT_MILLIS,
                 3,
-                Optional.empty(),
+                null,
                 true,
                 false);
 
@@ -180,7 +179,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 5000L,
                 TIMEOUT_MILLIS,
                 3,
-                Optional.empty(),
+                null,
                 true,
                 false);
 
@@ -204,7 +203,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 5000L,
                 TIMEOUT_MILLIS,
                 3,
-                Optional.empty(),
+                null,
                 true,
                 false);
 
@@ -247,7 +246,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 5000L,
                 TIMEOUT_MILLIS,
                 3,
-                Optional.empty(),
+                null,
                 false,
                 false);
 
@@ -272,7 +271,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 5000L,
                 TIMEOUT_MILLIS,
                 3,
-                Optional.empty(),
+                null,
                 false,
                 false);
 
@@ -312,7 +311,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 PravegaWriterMode.EXACTLY_ONCE,
                 LEASE_MILLIS,
                 false,
-                Optional.of(NAME)
+                NAME
         );
         assertEquals(expectedSink, actualSink);
     }
@@ -345,7 +344,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 PravegaWriterMode.EXACTLY_ONCE,
                 LEASE_MILLIS,
                 false,
-                Optional.of(NAME)
+                NAME
         );
 
         DynamicTableSink.SinkRuntimeProvider provider =

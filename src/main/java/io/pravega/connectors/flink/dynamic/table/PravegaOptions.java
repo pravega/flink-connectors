@@ -308,8 +308,8 @@ public class PravegaOptions {
         return tableOptions.get(SCAN_READER_GROUP_NAME);
     }
 
-    public static Optional<String> getUid(ReadableConfig tableOptions) {
-        return tableOptions.getOptional(SCAN_UID);
+    public static String getUid(ReadableConfig tableOptions) {
+        return tableOptions.get(SCAN_UID);
     }
 
     public static long getReaderGroupRefreshTimeMillis(ReadableConfig tableOptions) {
@@ -381,7 +381,7 @@ public class PravegaOptions {
         return tableOptions.get(SINK_ENABLE_WATERMARK_PROPAGATION);
     }
 
-    public static Optional<String> getRoutingKeyField(ReadableConfig tableOptions) {
-        return tableOptions.getOptional(SINK_ROUTINGKEY_FIELD_NAME);
+    public static String getRoutingKeyField(ReadableConfig tableOptions) {
+        return tableOptions.get(SINK_ROUTINGKEY_FIELD_NAME);
     }
 }
