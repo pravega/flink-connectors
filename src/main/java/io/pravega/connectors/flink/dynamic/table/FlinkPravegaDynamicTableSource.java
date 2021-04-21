@@ -194,7 +194,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 Objects.equals(readerGroupName, that.readerGroupName) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
-                uid.equals(that.uid);
+                Objects.equals(uid, that.uid);
     }
 
     @Override
