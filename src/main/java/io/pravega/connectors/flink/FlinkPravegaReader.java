@@ -554,13 +554,9 @@ public class FlinkPravegaReader<T>
             builder.append("scope=").append(scope).append(", ");
             builder.append("stream=").append(stream).append(", segments={");
 
-            readerGroup
-                    .getStreamCuts()
-                    .entrySet()
-                    .stream()
+            readerGroup.getStreamCuts().entrySet().stream()
                     .filter(e -> e.getKey().getStreamName().equals(stream) &&
-                            e.getKey().getScope().equals(scope))
-                    .findFirst()
+                            e.getKey().getScope().equals(scope)).findFirst()
                     .ifPresent(streamStreamCutEntry -> builder.append(streamStreamCutEntry.getValue().toString()));
 
             builder.append("}");
