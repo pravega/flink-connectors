@@ -21,7 +21,6 @@ import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
@@ -49,8 +48,6 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -556,15 +553,12 @@ public class FlinkPravegaReader<T>
             StringBuilder builder = new StringBuilder();
             builder.append("scope=").append(scope).append(", ");
             builder.append("stream=").append(stream).append(", segments={");
-            Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
-            Optional<Map.Entry<Stream, StreamCut>> optionalStreamCutEntry =
-                    streamCuts.entrySet().stream()
-                            .filter(e -> e.getKey().getStreamName().equals(stream) &&
-                                    e.getKey().getScope().equals(scope))
-                            .findFirst();
-            if (optionalStreamCutEntry.isPresent()) {
-                builder.append(optionalStreamCutEntry.get().getValue().toString());
-            }
+
+            readerGroup.getStreamCuts().entrySet().stream()
+                    .filter(e -> e.getKey().getStreamName().equals(stream) &&
+                            e.getKey().getScope().equals(scope)).findFirst()
+                    .ifPresent(streamStreamCutEntry -> builder.append(streamStreamCutEntry.getValue().toString()));
+
             builder.append("}");
             return builder.toString();
         }

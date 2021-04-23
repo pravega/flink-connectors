@@ -69,28 +69,28 @@ with (
 ```
 
 ## Connector options
-| Option                                                 | Required                      | Default       | Type         | Description                                                                                                   |
-|--------------------------------------------------------|-------------------------------|---------------|--------------|---------------------------------------------------------------------------------------------------------------|
-| connector                                              | required                      | (none)        | String       | Specify what connector to use, here should be 'pravega'                                                       |
-| controller-uri                                         | required                      | (none)        | String       | Pravega controller URI                                                                                        |
-| security.auth-type                                     | optional                      | (none)        | String       | Static authentication/authorization type for security                                                         |
-| security.auth-token                                    | optional                      | (none)        | String       | Static authentication/authorization token for security                                                        |
-| security.validate-hostname                             | optional                      | (none)        | Boolean      | If host name validation should be enabled when TLS is enabled                                                 |
-| security.trust-store                                   | optional                      | (none)        | String       | Trust Store for Pravega client                                                                                |
-| scan.execution.type                                    | optional                      | streaming     | String       | Execution type for scan source. Valid values are 'streaming', 'batch'.                                        |
-| scan.reader-group.name                                 | required for streaming source | (none)        | String       | Pravega reader group name                                                                                     |
-| scan.streams                                           | required for source           | (none)        | List<String> | Semicolon-separated list of stream names from which the table is read.                                        |
-| scan.start-streamcuts                                  | optional                      | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for start streamcuts, begin of the stream if not specified |
-| scan.end-streamcuts                                    | optional                      | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for end streamcuts, unbounded end if not specified         |
-| scan.reader-group.max-outstanding-checkpoint-request   | optional                      | 3             | Integer      | Maximum outstanding checkpoint requests to Pravega                                                            |
-| scan.reader-group.refresh.interval                     | optional                      | 3 s           | Duration     | Refresh interval for reader group                                                                             |
-| scan.event-read.timeout.interval                       | optional                      | 1 s           | Duration     | Timeout for the call to read events from Pravega                                                              |
-| scan.reader-group.checkpoint-initiate-timeout.interval | optional                      | 5 s           | Duration     | Timeout for call that initiates the Pravega checkpoint                                                        |
-| sink.stream                                            | required for sink             | (none)        | String       | Stream name to which the table is written                                                                     |
-| sink.semantic                                          | optional                      | at-least-once | String       | Semantic when commit. Valid values are 'at-least-once', 'exactly-once', 'best-effort'                         |
-| sink.txn-lease-renewal.interval                        | optional                      | 30 s          | Duration     | Transaction lease renewal period, valid for exactly-once semantic.                                            |
-| sink.enable.watermark-propagation                      | optional                      | false         | Boolean      | If watermark propagation should be enabled from Flink table to Pravega stream                                 |
-| sink.routing-key.field.name                            | optional                      | (none)        | String       | Field name to use as a Pravega event routing key, field type must be STRING, random routing if not specified. |
+| Option                                                 | Required            | Default       | Type         | Description                                                                                                   |
+|--------------------------------------------------------|---------------------|---------------|--------------|---------------------------------------------------------------------------------------------------------------|
+| connector                                              | required            | (none)        | String       | Specify what connector to use, here should be 'pravega'                                                       |
+| controller-uri                                         | required            | (none)        | String       | Pravega controller URI                                                                                        |
+| security.auth-type                                     | optional            | (none)        | String       | Static authentication/authorization type for security                                                         |
+| security.auth-token                                    | optional            | (none)        | String       | Static authentication/authorization token for security                                                        |
+| security.validate-hostname                             | optional            | (none)        | Boolean      | If host name validation should be enabled when TLS is enabled                                                 |
+| security.trust-store                                   | optional            | (none)        | String       | Trust Store for Pravega client                                                                                |
+| scan.execution.type                                    | optional            | streaming     | String       | Execution type for scan source. Valid values are 'streaming', 'batch'.                                        |
+| scan.reader-group.name                                 | optional            | (none)        | String       | Pravega reader group name                                                                                     |
+| scan.streams                                           | required for source | (none)        | List<String> | Semicolon-separated list of stream names from which the table is read.                                        |
+| scan.start-streamcuts                                  | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for start streamcuts, begin of the stream if not specified |
+| scan.end-streamcuts                                    | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for end streamcuts, unbounded end if not specified         |
+| scan.reader-group.max-outstanding-checkpoint-request   | optional            | 3             | Integer      | Maximum outstanding checkpoint requests to Pravega                                                            |
+| scan.reader-group.refresh.interval                     | optional            | 3 s           | Duration     | Refresh interval for reader group                                                                             |
+| scan.event-read.timeout.interval                       | optional            | 1 s           | Duration     | Timeout for the call to read events from Pravega                                                              |
+| scan.reader-group.checkpoint-initiate-timeout.interval | optional            | 5 s           | Duration     | Timeout for call that initiates the Pravega checkpoint                                                        |
+| sink.stream                                            | required for sink   | (none)        | String       | Stream name to which the table is written                                                                     |
+| sink.semantic                                          | optional            | at-least-once | String       | Semantic when commit. Valid values are 'at-least-once', 'exactly-once', 'best-effort'                         |
+| sink.txn-lease-renewal.interval                        | optional            | 30 s          | Duration     | Transaction lease renewal period, valid for exactly-once semantic.                                            |
+| sink.enable.watermark-propagation                      | optional            | false         | Boolean      | If watermark propagation should be enabled from Flink table to Pravega stream                                 |
+| sink.routing-key.field.name                            | optional            | (none)        | String       | Field name to use as a Pravega event routing key, field type must be STRING, random routing if not specified. |
 
 ## Features
 

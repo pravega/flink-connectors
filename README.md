@@ -42,6 +42,10 @@ To learn more about how to build and use the Flink Connector library, follow the
 
 More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples) repository.
 
+## Support
+
+Don't hesitate to ask! Contact the developers and community on [Slack](https://pravega-io.slack.com/) ([signup](https://pravega-slack-invite.herokuapp.com/)) if you need any help. Open an issue if you found a bug on [Github Issues](https://github.com/pravega/flink-connectors/issues).
+
 ## About
 
 Flink connectors for Pravega is 100% open source and community-driven. All components are available

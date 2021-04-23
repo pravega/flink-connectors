@@ -36,7 +36,6 @@ apply from: 'gradle/checkstyle.gradle'
 apply from: 'gradle/spotbugs.gradle'
 apply from: 'gradle/jacoco.gradle'
 apply from: 'gradle/maven.gradle'
-apply from: 'gradle/bintray.gradle'
 apply from: 'gradle/mkdocs.gradle'
 
 gradle.projectsEvaluated {
@@ -86,18 +85,6 @@ configurations {
     testCompile.exclude group: 'log4j', module: 'log4j'
 }
 
-test {
-    testLogging {
-        onOutput { descriptor, event ->
-            if (project.hasProperty('logOutput')) {
-                events = ["passed", "failed", "skipped"]
-                showStandardStreams = true
-                logger.lifecycle(event.message)
-            }
-        }
-    }
-}
-
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
 
@@ -118,12 +105,10 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
-    compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
-
     testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testCompile (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
+        exclude group:  'ch.qos.logback', module: 'logback-classic'
     }
     testCompile (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
@@ -135,10 +120,8 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-
-    //  configuring the shaded pom dependencies
-    shadowOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion
-    shadowOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
+    testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 }
 
 shadowJar {

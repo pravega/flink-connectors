@@ -25,6 +25,7 @@ import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -38,6 +39,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
 
     // The reader group name to coordinate the parallel readers. This should be unique for a Flink job.
+    @Nullable
     private final String readerGroupName;
 
     // Pravega connection configuration
@@ -59,7 +61,8 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
     private final int maxOutstandingCheckpointRequest;
 
     // Uid of the table source to identify the checkpoint state
-    private final Optional<String> uid;
+    @Nullable
+    private final String uid;
 
     // Flag to determine streaming or batch read
     private final boolean isStreamingReader;
@@ -91,15 +94,13 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                                           long checkpointInitiateTimeoutMillis,
                                           long eventReadTimeoutMillis,
                                           int maxOutstandingCheckpointRequest,
-                                          Optional<String> uid,
+                                          String uid,
                                           boolean isStreamingReader,
                                           boolean isBounded) {
         this.producedDataType = Preconditions.checkNotNull(
                 producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
-        Preconditions.checkArgument(!isStreamingReader || readerGroupName != null,
-                "Reader group name is required in streaming mode");
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
                 pravegaConfig, "Pravega config must not be null.");
@@ -124,19 +125,19 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType))
                     .withReaderGroupRefreshTime(Time.milliseconds(readerGroupRefreshTimeMillis))
                     .withCheckpointInitiateTimeout(Time.milliseconds(checkpointInitiateTimeoutMillis))
                     .withEventReadTimeout(Time.milliseconds(eventReadTimeoutMillis))
                     .withMaxOutstandingCheckpointRequest(maxOutstandingCheckpointRequest);
+            Optional.ofNullable(readerGroupName).ifPresent(readerBuilder::withReaderGroupName);
 
             for (StreamWithBoundaries stream : streams) {
                 readerBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
             }
 
-            String generatedUid = readerBuilder.generateUid();
-            readerBuilder.uid(uid.orElse(generatedUid));
+            readerBuilder.uid(uid == null ? readerBuilder.generateUid() : uid);
+
             return SourceFunctionProvider.of(readerBuilder.build(), isBounded);
         } else {
             FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
@@ -190,10 +191,10 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 isBounded == that.isBounded &&
                 producedDataType.equals(that.producedDataType) &&
                 decodingFormat.equals(that.decodingFormat) &&
-                readerGroupName.equals(that.readerGroupName) &&
+                Objects.equals(readerGroupName, that.readerGroupName) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
-                uid.equals(that.uid);
+                Objects.equals(uid, that.uid);
     }
 
     @Override
