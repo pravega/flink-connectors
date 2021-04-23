@@ -99,8 +99,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     }
 
     public void initializeSerializer() {
+        schema = AvroSchemaConverter.convertToSchema(rowType);
         synchronized (this) {
-            schema = AvroSchemaConverter.convertToSchema(rowType);
             SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
                     .schemaRegistryUri(schemaRegistryURI)
                     .build();
