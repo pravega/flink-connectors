@@ -14,6 +14,7 @@ import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
+import org.apache.avro.Schema;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -62,5 +63,12 @@ public class PravegaSchemaUtils {
         }
 
         return TableSchema.fromTypeInfo(typeInformation);
+    }
+
+    public static SchemaInfo tableSchemaToSchemaInfo(TableSchema tableSchema) {
+        // only support avro format for now
+        Schema schema = AvroSchemaConverter.convertToSchema(tableSchema.toRowDataType().getLogicalType());
+        AvroSchema avroSchema = AvroSchema.of(schema);
+        return avroSchema.getSchemaInfo();
     }
 }

@@ -79,9 +79,7 @@ public class PravegaCatalogITCase {
     private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static final PravegaCatalog CATALOG =
-            new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
-                    SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+    private static PravegaCatalog CATALOG = null;
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
@@ -288,6 +286,8 @@ public class PravegaCatalogITCase {
     private static void init() throws Exception {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
+        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
+                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();

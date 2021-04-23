@@ -53,6 +53,7 @@ import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.factories.Factory;
+import org.apache.flink.table.factories.FactoryUtil;
 
 import java.net.URI;
 import java.util.Collections;
@@ -64,8 +65,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
-
-import static org.apache.flink.table.descriptors.FormatDescriptorValidator.FORMAT_TYPE;
 
 @Slf4j
 public class PravegaCatalog extends AbstractCatalog {
@@ -88,6 +87,7 @@ public class PravegaCatalog extends AbstractCatalog {
         this.properties = new HashMap<>();
         properties.put("connector", FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put("controller-uri", controllerUri);
+        properties.put("pravega-registry.uri", schemaRegistryUri);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -261,9 +261,9 @@ public class PravegaCatalog extends AbstractCatalog {
         properties.put(PravegaOptions.SCAN_READER_GROUP_NAME.key(), RandomStringUtils.randomAlphanumeric(20));
         properties.put(PravegaOptions.SCAN_STREAMS.key(), stream);
         properties.put(PravegaOptions.SINK_STREAM.key(), stream);
-
-        // TODO: Fix with format factory
-        properties.put(FORMAT_TYPE, schemaInfo.getSerializationFormat().name().toLowerCase());
+        properties.put(FactoryUtil.FORMAT.key(), "pravega-registry");
+        properties.put("pravega-registry.namespace", scope);
+        properties.put("pravega-registry.group-id", stream);
 
         return new CatalogTableImpl(tableSchema, properties, "");
     }
@@ -323,6 +323,9 @@ public class PravegaCatalog extends AbstractCatalog {
                 Compatibility.allowAny(),
                 true));
         // Users need to register the schema manually on schema registry before reading from/writing to the table
+
+        SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(table.getSchema());
+        schemaRegistryClient.addSchema(stream, schemaInfo);
     }
 
     @Override
