@@ -137,8 +137,12 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
         PravegaRegistryRowDataDeserializationSchema that = (PravegaRegistryRowDataDeserializationSchema) o;
         return Objects.equals(typeInfo, that.typeInfo) && Objects.equals(genericDeserializer, that.genericDeserializer) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI);
     }

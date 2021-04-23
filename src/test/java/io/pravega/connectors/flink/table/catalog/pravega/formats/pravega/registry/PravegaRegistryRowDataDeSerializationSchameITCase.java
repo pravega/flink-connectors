@@ -34,12 +34,17 @@ import org.junit.Test;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static org.apache.flink.table.api.DataTypes.*;
 import static org.junit.Assert.assertArrayEquals;
 
 /** Intergration Test for Pravega Registry serialization and deserialization schema. */
+@SuppressWarnings("checkstyle:StaticVariableName")
 public class PravegaRegistryRowDataDeSerializationSchameITCase {
     private static final String TEST_CATALOG_NAME = "mycatalog";
     private static final String TEST_STREAM = "stream";
