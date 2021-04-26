@@ -12,28 +12,45 @@ package io.pravega.connectors.flink.dynamic.table;
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;
 import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
+import org.apache.flink.table.connector.source.abilities.SupportsReadingMetadata;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-public class FlinkPravegaDynamicTableSource implements ScanTableSource {
+import static org.apache.flink.table.types.utils.TypeConversions.fromDataTypeToLegacyInfo;
+
+public class FlinkPravegaDynamicTableSource implements ScanTableSource, SupportsReadingMetadata {
 
     // Source produced data type
-    private final DataType producedDataType;
+    private DataType producedDataType;
+
+    // Data type to configure the format
+    private final DataType physicalDataType;
+
+    // Metadata that is appended at the end of a physical source row
+    private List<String> metadataKeys;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
@@ -72,7 +89,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
 
     /**
      * Creates a Pravega {@link DynamicTableSource}.
-     * @param producedDataType                source produced data type
+     * @param physicalDataType                source produced data type
      * @param decodingFormat                  scan format for decoding records from Pravega
      * @param readerGroupName                 the reader group name
      * @param pravegaConfig                   Pravega connection configuration
@@ -85,7 +102,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
      * @param isStreamingReader               flag to determine streaming or batch read
      * @param isBounded                       flag to determine if the source stream is bounded
      */
-    public FlinkPravegaDynamicTableSource(DataType producedDataType,
+    public FlinkPravegaDynamicTableSource(DataType physicalDataType,
                                           DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
                                           String readerGroupName,
                                           PravegaConfig pravegaConfig,
@@ -97,10 +114,12 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                                           String uid,
                                           boolean isStreamingReader,
                                           boolean isBounded) {
-        this.producedDataType = Preconditions.checkNotNull(
-                producedDataType, "Produced data type must not be null.");
+        this.physicalDataType = Preconditions.checkNotNull(
+                physicalDataType, "Produced data type must not be null.");
+        this.producedDataType = physicalDataType;
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
+        this.metadataKeys = Collections.emptyList();
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
                 pravegaConfig, "Pravega config must not be null.");
@@ -122,10 +141,19 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
+        FlinkDeserializer<RowData> deserializer = new FlinkDeserializer<>(
+                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
+
+        final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
+                = new FlinkPravegaDynamicDeserializationSchema(
+                (TypeInformation<RowData>) fromDataTypeToLegacyInfo(producedDataType),
+                deserializer,
+                metadataKeys);
+
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType))
+                    .withDeserializationSchema(flinkDeserializer)
                     .withReaderGroupRefreshTime(Time.milliseconds(readerGroupRefreshTimeMillis))
                     .withCheckpointInitiateTimeout(Time.milliseconds(checkpointInitiateTimeoutMillis))
                     .withEventReadTimeout(Time.milliseconds(eventReadTimeoutMillis))
@@ -142,7 +170,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
         } else {
             FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
+                    .withDeserializationSchema(flinkDeserializer);
 
             for (StreamWithBoundaries stream : streams) {
                 inputFormatBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
@@ -190,7 +218,9 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 isStreamingReader == that.isStreamingReader &&
                 isBounded == that.isBounded &&
                 producedDataType.equals(that.producedDataType) &&
+                physicalDataType.equals(that.physicalDataType) &&
                 decodingFormat.equals(that.decodingFormat) &&
+                metadataKeys.equals(that.metadataKeys) &&
                 Objects.equals(readerGroupName, that.readerGroupName) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 streams.equals(that.streams) &&
@@ -201,7 +231,9 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
     public int hashCode() {
         return Objects.hash(
                 producedDataType,
+                physicalDataType,
                 decodingFormat,
+                metadataKeys,
                 readerGroupName,
                 pravegaConfig,
                 streams,
@@ -212,5 +244,52 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
                 uid,
                 isStreamingReader,
                 isBounded);
+    }
+
+    @Override
+    public Map<String, DataType> listReadableMetadata() {
+        final Map<String, DataType> metadataMap = new LinkedHashMap<>();
+        Stream.of(ReadableMetadata.values()).forEachOrdered(m -> metadataMap.put(m.key, m.dataType));
+        return metadataMap;
+    }
+
+    @Override
+    public void applyReadableMetadata(List<String> metadataKeys, DataType producedDataType) {
+        // check if there is unknown metadata keys provided
+        this.metadataKeys = metadataKeys.stream()
+                .map(k -> Stream.of(ReadableMetadata.values())
+                        .filter(rm -> rm.key.equals(k))
+                        .findFirst()
+                        .orElseThrow(IllegalStateException::new))
+                .map(m -> m.key)
+                .collect(Collectors.toList());
+
+        this.producedDataType = producedDataType;
+    }
+
+    enum ReadableMetadata {
+        SCOPE(
+                "scope",
+                DataTypes.STRING().notNull()
+        ),
+
+        STREAM(
+                "stream",
+                DataTypes.STRING().notNull()
+        ),
+
+        EVENT_POINTER(
+                "event-pointer",
+                DataTypes.BYTES().notNull()
+        );
+
+        final String key;
+
+        final DataType dataType;
+
+        ReadableMetadata(String key, DataType dataType) {
+            this.key = key;
+            this.dataType = dataType;
+        }
     }
 }
