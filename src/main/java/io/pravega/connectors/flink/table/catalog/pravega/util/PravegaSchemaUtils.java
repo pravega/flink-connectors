@@ -17,13 +17,14 @@ import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
 import org.apache.avro.Schema;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonRowSchemaConverter;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.table.api.TableSchema;
-import org.apache.flink.types.Row;
+import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.types.utils.DataTypeUtils;
+import org.apache.flink.table.types.utils.TypeConversions;
 
 @Internal
 public class PravegaSchemaUtils {
@@ -36,7 +37,7 @@ public class PravegaSchemaUtils {
 
         SerializationFormat format = schemaInfo.getSerializationFormat();
         String schemaString;
-        TypeInformation<Row> typeInformation = null;
+        DataType dataType;
 
         switch (format) {
             case Json:
@@ -49,20 +50,20 @@ public class PravegaSchemaUtils {
                     throw new RuntimeException("Failed to write message schema.", e);
                 }
 
-                typeInformation = JsonRowSchemaConverter.convert(schemaString);
+                dataType = TypeConversions.fromLegacyInfoToDataType(JsonRowSchemaConverter.convert(schemaString));
                 break;
             case Avro:
                 AvroSchema avroSchema = AvroSchema.from(schemaInfo);
 
                 schemaString = avroSchema.getSchema().toString();
-                typeInformation = AvroSchemaConverter.convertToTypeInfo(schemaString);
+                dataType = TypeConversions.fromLegacyInfoToDataType(AvroSchemaConverter.convertToTypeInfo(schemaString));
                 break;
 
             default:
                 throw new NotImplementedException("Not supporting serialization format");
         }
 
-        return TableSchema.fromTypeInfo(typeInformation);
+        return DataTypeUtils.expandCompositeTypeToSchema(dataType);
     }
 
     public static SchemaInfo tableSchemaToSchemaInfo(TableSchema tableSchema) {

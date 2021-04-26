@@ -8,7 +8,7 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.pravega.connectors.flink.table.catalog.pravega.formats.pravega.registry;
+package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
@@ -144,11 +144,11 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
             return false;
         }
         PravegaRegistryRowDataDeserializationSchema that = (PravegaRegistryRowDataDeserializationSchema) o;
-        return Objects.equals(typeInfo, that.typeInfo) && Objects.equals(genericDeserializer, that.genericDeserializer) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI);
+        return Objects.equals(typeInfo, that.typeInfo) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(typeInfo, genericDeserializer, runtimeConverter);
+        return Objects.hash(typeInfo, namespace, groupId, schemaRegistryURI);
     }
 }

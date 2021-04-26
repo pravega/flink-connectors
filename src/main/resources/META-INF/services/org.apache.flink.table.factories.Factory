@@ -10,4 +10,4 @@
 #
 io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory
 
-io.pravega.connectors.flink.table.catalog.pravega.formats.pravega.registry.PravegaRegistryFormatFactory
+io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory

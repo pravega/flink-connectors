@@ -16,6 +16,8 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory;
 import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
+import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
+import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
@@ -25,7 +27,6 @@ import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.AbstractCatalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
@@ -85,9 +86,13 @@ public class PravegaCatalog extends AbstractCatalog {
                 .schemaRegistryUri(this.schemaRegistryUri).build();
 
         this.properties = new HashMap<>();
-        properties.put("connector", FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put("controller-uri", controllerUri);
-        properties.put("pravega-registry.uri", schemaRegistryUri);
+        properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
+        properties.put(PravegaOptions.CONTROLLER_URL.key(), controllerUri);
+        properties.put(
+                String.format(
+                        "%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URL.key()),
+        schemaRegistryUri);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -258,12 +263,21 @@ public class PravegaCatalog extends AbstractCatalog {
 
         Map<String, String> properties = this.properties;
         properties.put(PravegaOptions.SCOPE.key(), scope);
-        properties.put(PravegaOptions.SCAN_READER_GROUP_NAME.key(), RandomStringUtils.randomAlphanumeric(20));
         properties.put(PravegaOptions.SCAN_STREAMS.key(), stream);
         properties.put(PravegaOptions.SINK_STREAM.key(), stream);
-        properties.put(FactoryUtil.FORMAT.key(), "pravega-registry");
-        properties.put("pravega-registry.namespace", scope);
-        properties.put("pravega-registry.group-id", stream);
+        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
+
+        // schema registry treats Pravega scope as namespace and Pravega stream as group-id
+        properties.put(
+                String.format(
+                        "%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.NAMESPACE.key()),
+                scope);
+        properties.put(
+                String.format(
+                        "%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.GROUP_ID.key()),
+                stream);
 
         return new CatalogTableImpl(tableSchema, properties, "");
     }
@@ -322,7 +336,6 @@ public class PravegaCatalog extends AbstractCatalog {
                 SerializationFormat.Any,
                 Compatibility.allowAny(),
                 true));
-        // Users need to register the schema manually on schema registry before reading from/writing to the table
 
         SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(table.getSchema());
         schemaRegistryClient.addSchema(stream, schemaInfo);

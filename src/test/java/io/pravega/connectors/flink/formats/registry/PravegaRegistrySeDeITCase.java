@@ -8,7 +8,7 @@
  *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
-package io.pravega.connectors.flink.table.catalog.pravega.formats.pravega.registry;
+package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
@@ -45,7 +45,7 @@ import static org.junit.Assert.assertArrayEquals;
 
 /** Intergration Test for Pravega Registry serialization and deserialization schema. */
 @SuppressWarnings("checkstyle:StaticVariableName")
-public class PravegaRegistryRowDataDeSerializationSchameITCase {
+public class PravegaRegistrySeDeITCase {
     private static final String TEST_CATALOG_NAME = "mycatalog";
     private static final String TEST_STREAM = "stream";
     private static Schema schema = null;
@@ -77,7 +77,7 @@ public class PravegaRegistryRowDataDeSerializationSchameITCase {
     }
 
     @Test
-    public void testSerializaDeserialize() throws Exception {
+    public void testSerializeDeserialize() throws Exception {
         final GenericRecord record = new GenericData.Record(schema);
         record.put(0, true);
         record.put(1, (int) Byte.MAX_VALUE);
