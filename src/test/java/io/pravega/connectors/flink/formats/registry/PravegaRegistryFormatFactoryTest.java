@@ -32,9 +32,8 @@ import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.hamcrest.CoreMatchers.instanceOf;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 /** Tests for the {@link PravegaRegistryFormatFactory}. */
 public class PravegaRegistryFormatFactoryTest extends TestLogger {
@@ -61,7 +60,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         final Map<String, String> options = getAllOptions();
 
         final DynamicTableSource actualSource = createTableSource(options);
-        assertThat(actualSource, instanceOf(TestDynamicTableFactory.DynamicTableSourceMock.class));
+        assertTrue(actualSource instanceof TestDynamicTableFactory.DynamicTableSourceMock);
         TestDynamicTableFactory.DynamicTableSourceMock sourceMock =
                 (TestDynamicTableFactory.DynamicTableSourceMock) actualSource;
 
@@ -75,7 +74,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                 new PravegaRegistryRowDataSerializationSchema(ROW_TYPE, SCOPE, STREAM, SCHEMAREGISTRY_URI);
 
         final DynamicTableSink actualSink = createTableSink(options);
-        assertThat(actualSink, instanceOf(TestDynamicTableFactory.DynamicTableSinkMock.class));
+        assertTrue(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock);
         TestDynamicTableFactory.DynamicTableSinkMock sinkMock =
                 (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
 
