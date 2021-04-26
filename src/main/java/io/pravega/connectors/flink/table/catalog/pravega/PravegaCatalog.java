@@ -88,6 +88,7 @@ public class PravegaCatalog extends AbstractCatalog {
         this.properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put(PravegaOptions.CONTROLLER_URL.key(), controllerUri);
+        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
         properties.put(
                 String.format(
                         "%s.%s",
@@ -265,7 +266,6 @@ public class PravegaCatalog extends AbstractCatalog {
         properties.put(PravegaOptions.SCOPE.key(), scope);
         properties.put(PravegaOptions.SCAN_STREAMS.key(), stream);
         properties.put(PravegaOptions.SINK_STREAM.key(), stream);
-        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
 
         // schema registry treats Pravega scope as namespace and Pravega stream as group-id
         properties.put(
