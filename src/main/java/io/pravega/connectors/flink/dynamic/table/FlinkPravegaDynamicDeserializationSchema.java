@@ -11,28 +11,26 @@ package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource.ReadableMetadata;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializationSchema<RowData> {
+    // the produced RowData type, may have metadata keys in it
     private final TypeInformation<RowData> typeInfo;
 
-    // private final DeserializationSchema<RowData> valueDeserialization;
-    private final Serializer<RowData> serializer;
-
-    private final List<String> metadataKeys;
+    // metadata keys that the rowData have and is a subset of ReadableMetadata
+    private final List<ReadableMetadata> metadataKeys;
 
     public FlinkPravegaDynamicDeserializationSchema(
             TypeInformation<RowData> typeInfo,
             Serializer<RowData> serializer,
-            List<String> metadataKeys) {
+            List<ReadableMetadata> metadataKeys) {
         super(typeInfo, serializer);
-        this.serializer = serializer;
         this.typeInfo = typeInfo;
         this.metadataKeys = metadataKeys;
     }
@@ -44,18 +42,22 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
             return rowData;
         }
 
-        final ByteBuffer eventPointer = eventRead.getEventPointer().toBytes();
-        rowData = serializer.deserialize(eventPointer);
-
+        // use GenericRowData to manipulate rowData's field
         final GenericRowData physicalRow = (GenericRowData) rowData;
         final GenericRowData producedRow = new GenericRowData(physicalRow.getRowKind(), typeInfo.getArity());
 
-        for (int dataPos = 0; dataPos < typeInfo.getArity() - metadataKeys.size(); dataPos++) {
-            producedRow.setField(dataPos, physicalRow.getField(dataPos));
+        // set the physical(original) field
+        int pos = 0, physicalArity = typeInfo.getArity() - metadataKeys.size();
+        for (; pos < physicalArity; pos++) {
+            producedRow.setField(pos, physicalRow.getField(pos));
         }
 
-        for (int metadataPos = typeInfo.getArity() - metadataKeys.size(); metadataPos < typeInfo.getArity(); metadataPos++) {
-            producedRow.setField(metadataPos, physicalRow.getField(metadataPos));
+        // set the metadata field, no effect if the key is not supported
+        for (; pos < typeInfo.getArity(); pos++) {
+            ReadableMetadata metadataKey = metadataKeys.get(pos - physicalArity);
+            if (ReadableMetadata.EVENT_POINTER == metadataKey) {
+                producedRow.setField(pos, eventRead.getEventPointer().toBytes());
+            }
         }
 
         return producedRow;

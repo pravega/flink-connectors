@@ -50,7 +50,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     private final DataType physicalDataType;
 
     // Metadata that is appended at the end of a physical source row
-    private List<String> metadataKeys;
+    private List<ReadableMetadata> metadataKeys;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
@@ -141,9 +141,9 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
+        // create a PravegaDeserializationSchema that will expose metadata to the row
         FlinkDeserializer<RowData> deserializer = new FlinkDeserializer<>(
                 decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
-
         final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
                 = new FlinkPravegaDynamicDeserializationSchema(
                 (TypeInformation<RowData>) fromDataTypeToLegacyInfo(producedDataType),
@@ -261,23 +261,12 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                         .filter(rm -> rm.key.equals(k))
                         .findFirst()
                         .orElseThrow(IllegalStateException::new))
-                .map(m -> m.key)
                 .collect(Collectors.toList());
 
         this.producedDataType = producedDataType;
     }
 
     enum ReadableMetadata {
-        SCOPE(
-                "scope",
-                DataTypes.STRING().notNull()
-        ),
-
-        STREAM(
-                "stream",
-                DataTypes.STRING().notNull()
-        ),
-
         EVENT_POINTER(
                 "event-pointer",
                 DataTypes.BYTES().notNull()

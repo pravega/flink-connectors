@@ -146,7 +146,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
-    public void testHavingOptionalReaderGroupName() {
+    public void testStreamingTableSourceHavingOptionalReaderGroupName() {
         // prepare parameters for Pravega table source
         final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
