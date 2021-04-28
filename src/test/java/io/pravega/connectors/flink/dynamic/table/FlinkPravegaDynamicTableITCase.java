@@ -20,6 +20,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
+import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
@@ -32,6 +33,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+
+import static org.junit.Assert.assertEquals;
 
 public class FlinkPravegaDynamicTableITCase extends TestLogger {
     /**
@@ -81,6 +85,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  log_ts timestamp(3),%n" +
                         "  ts as log_ts + INTERVAL '1' SECOND,%n" +
                         "  watermark for ts as ts%n" +
+                        "  event-pointer BYTES METADATA  -- access Pravega 'event-pointer' metadata" +
                         ") with (%n" +
                         "  'connector' = 'pravega',%n" +
                         "  'controller-uri' = '%s',%n" +
@@ -155,31 +160,82 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                     "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
                     "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
 
-            if (expected.equals(TestingSinkFunction.ROWS)) {
+            if (expected.equals(TestingSinkFunction.ROWS.stream().map(Object::toString).collect(Collectors.toList()))) {
                 break;
             }
             // A batch read from Pravega may not return events that were recently written.
             // In this case, we simply retry the read portion of this test.
             log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
         }
+
+        // ---------- Read metadata from Pravega -------------------
+
+        String query = "SELECT * FROM pravega";
+
+        DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
+        TestingSinkFunction sink = new TestingSinkFunction(6, true);
+        result.addSink(sink).setParallelism(1);
+
+        try {
+            env.execute("Job_2");
+        } catch (Exception e) {
+            // we have to use a specific exception to indicate the job is finished,
+            // because the registered Kafka source is infinite.
+            if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                // re-throw
+                throw e;
+            }
+        }
+
+        // test all rows have event pointer field
+        assertEquals(TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 6).count(), 6);
+        // test all rows' event pointer field is correct
+        assertEquals(TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getBoolean(5) == false).count(), 6);
+        // TODO: better to test that the FlinkPravegaDynamicTableSource#metadataKeys only has one EVENT_POINTER element
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
 
         private static final long serialVersionUID = 455430015321124493L;
 
-        private static final List<String> ROWS = new ArrayList<>();
+        private static final List<RowData> ROWS = new ArrayList<>();
 
         private final int expectedSize;
 
+        private final boolean mockMetadata;
+
         private TestingSinkFunction(int expectedSize) {
+            this(expectedSize, false);
+        }
+
+        private TestingSinkFunction(int expectedSize, boolean mockMetadata) {
             this.expectedSize = expectedSize;
+            this.mockMetadata = mockMetadata;
             ROWS.clear();
         }
 
         @Override
         public void invoke(RowData value, Context context) throws Exception {
-            ROWS.add(value.toString());
+            if (mockMetadata){
+                // use GenericRowData to manipulate rowData's field
+                final GenericRowData physicalRow = (GenericRowData) value;
+                final GenericRowData producedRow = new GenericRowData(physicalRow.getRowKind(), value.getArity() + 1);
+
+                // set the physical(original) field
+                int pos = 0, physicalArity = value.getArity();
+                for (; pos < physicalArity; pos++) {
+                    producedRow.setField(pos, physicalRow.getField(pos));
+                }
+
+                // set the metadata field, no effect if the key is not supported
+                for (; pos < value.getArity() + 1; pos++) {
+                    producedRow.setField(pos, false);
+                }
+
+                value = producedRow;
+            }
+
+            ROWS.add(value);
             if (ROWS.size() >= expectedSize) {
                 // job finish
                 throw new SuccessException();
