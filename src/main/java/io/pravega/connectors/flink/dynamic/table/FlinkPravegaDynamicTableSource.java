@@ -44,13 +44,13 @@ import static org.apache.flink.table.types.utils.TypeConversions.fromDataTypeToL
 public class FlinkPravegaDynamicTableSource implements ScanTableSource, SupportsReadingMetadata {
 
     // Source produced data type
-    private DataType producedDataType;
+    protected DataType producedDataType;
 
     // Data type to configure the format
     private final DataType physicalDataType;
 
     // Metadata that is appended at the end of a physical source row
-    private List<ReadableMetadata> metadataKeys;
+    protected List<ReadableMetadata> metadataKeys;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;

@@ -10,6 +10,7 @@
 
 package io.pravega.connectors.flink.dynamic.table;
 
+import io.pravega.client.stream.EventPointer;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -29,6 +30,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -189,20 +191,12 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         final String createTable = String.format(
                 "create table pravega (%n" +
-                        "  `computed-price` as price + 1.0,%n" +
-                        "  price decimal(38, 18),%n" +
-                        "  currency string,%n" +
-                        "  log_date date,%n" +
-                        "  log_time time(3),%n" +
-                        "  log_ts timestamp(3),%n" +
+                        "  physical_1 STRING, %n" +
+                        "  physical_2 INT, %n" +
                         // access Pravega 'event-pointer' metadata
-                        // note that is not placed on the end
-                        // see `KafkaTableITCase#testKafkaSourceSinkWithMetadata`
-                        // > metadata fields are out of order on purpose
-                        // > offset is ignored because it might not be deterministic
-                        "  event_pointer BYTES METADATA VIRTUAL,%n" +
-                        "  ts as log_ts + INTERVAL '1' SECOND,%n" +
-                        "  watermark for ts as ts%n" +
+                        // note that is not placed on the end but will be read on the end
+                        "  event_pointer BYTES METADATA VIRTUAL, %n" +
+                        "  physical_3 BOOLEAN %n" +
                         ") with (%n" +
                         "  'connector' = 'pravega',%n" +
                         "  'controller-uri' = '%s',%n" +
@@ -214,9 +208,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'scan.execution.type' = '%s',%n" +
                         "  'scan.reader-group.name' = '%s',%n" +
                         "  'scan.streams' = '%s',%n" +
-                        "  'sink.stream' = '%s',%n" +
-                        "  'sink.routing-key.field.name' = 'currency',%n" +
-                        "  'format' = 'json'%n" +
+                        "  'sink.stream' = '%s'%n" +
                         ")",
                 SETUP_UTILS.getControllerUri().toString(),
                 SETUP_UTILS.getScope(),
@@ -232,15 +224,10 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         tEnv.executeSql(createTable);
 
         String initialValues = "INSERT INTO pravega\n" +
-                "SELECT CAST(price AS DECIMAL(10, 2)), currency, " +
-                " CAST(d AS DATE), CAST(t AS TIME(0)), CAST(ts AS TIMESTAMP(3))\n" +
-                "FROM (VALUES (2.02,'Euro','2019-12-12', '00:00:01', '2019-12-12 00:00:01.001001'), \n" +
-                "  (1.11,'US Dollar','2019-12-12', '00:00:02', '2019-12-12 00:00:02.002001'), \n" +
-                "  (50,'Yen','2019-12-12', '00:00:03', '2019-12-12 00:00:03.004001'), \n" +
-                "  (3.1,'Euro','2019-12-12', '00:00:04', '2019-12-12 00:00:04.005001'), \n" +
-                "  (5.33,'US Dollar','2019-12-12', '00:00:05', '2019-12-12 00:00:05.006001'), \n" +
-                "  (0,'DUMMY','2019-12-12', '00:00:10', '2019-12-12 00:00:10'))\n" +
-                "  AS orders (price, currency, d, t, ts)";
+                "VALUES \n" +
+                "('data 1', 101, TRUE), \n" +
+                "('data 2', 102, FALSE), \n" +
+                "('data 3', 103, TRUE)";
 
         // Write stream, Block until data is ready or job finished
         tEnv.executeSql(initialValues).await();
@@ -250,7 +237,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         String query = "SELECT * FROM pravega";
 
         DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
-        TestingSinkFunction sink = new TestingSinkFunction(6, true);
+        TestingSinkFunction sink = new TestingSinkFunction(3);
         result.addSink(sink).setParallelism(1);
 
         try {
@@ -265,13 +252,12 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
 
         // test all rows have event pointer field
-        assertEquals(6, TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 9).count());
-        // test all rows' event pointer field is correct
-        assertEquals(6, TestingSinkFunction.ROWS.stream().filter(rowData ->
-                // event_pointer METADATA will be set at the end of the row, even if it is placed at the middle of the table
-                Arrays.equals(rowData.getBinary(8), new byte[]{(byte) 0xAA, (byte) 0xDD})
-        ).count());
-        // TODO: better to test that the FlinkPravegaDynamicTableSource#metadataKeys only has one EVENT_POINTER element
+        assertEquals(3, TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 4).count());
+        // test all rows' event pointer field is a event pointer
+        assertEquals(3, TestingSinkFunction.ROWS.stream().map(rowData ->{
+                // event_pointer METADATA should be set at the end of the row, even if it is placed at the middle of the table
+                return EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(3)));
+            }).count());
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
@@ -282,39 +268,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         private final int expectedSize;
 
-        private final boolean mockMetadata;
-
         private TestingSinkFunction(int expectedSize) {
-            this(expectedSize, false);
-        }
-
-        private TestingSinkFunction(int expectedSize, boolean mockMetadata) {
             this.expectedSize = expectedSize;
-            this.mockMetadata = mockMetadata;
             ROWS.clear();
         }
 
         @Override
         public void invoke(RowData value, Context context) throws Exception {
-            if (mockMetadata){
-                // use GenericRowData to manipulate rowData's field
-                final GenericRowData physicalRow = (GenericRowData) value;
-                final GenericRowData producedRow = new GenericRowData(physicalRow.getRowKind(), value.getArity() + 1);
-
-                // set the physical(original) field
-                int pos = 0, physicalArity = value.getArity();
-                for (; pos < physicalArity; pos++) {
-                    producedRow.setField(pos, physicalRow.getField(pos));
-                }
-
-                // set the metadata field, no effect if the key is not supported
-                for (; pos < value.getArity() + 1; pos++) {
-                    producedRow.setField(pos, new byte[] {(byte) 0xAA, (byte) 0xDD});
-                }
-
-                value = producedRow;
-            }
-
             ROWS.add(value);
             if (ROWS.size() >= expectedSize) {
                 // job finish

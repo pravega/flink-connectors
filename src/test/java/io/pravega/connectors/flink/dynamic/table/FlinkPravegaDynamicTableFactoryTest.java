@@ -55,6 +55,7 @@ import org.junit.rules.ExpectedException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +79,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String NAME = "name";
     private static final String COUNT = "count";
     private static final String TIME = "time";
+    private static final String METADATA = "event_pointer";
     private static final String WATERMARK_EXPRESSION = TIME + " - INTERVAL '5' SECOND";
     private static final DataType WATERMARK_DATATYPE = DataTypes.TIMESTAMP(3);
     private static final String COMPUTED_COLUMN_NAME = "computed-column";
@@ -92,6 +94,15 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final TableSchema SOURCE_SCHEMA = TableSchema.builder()
             .field(NAME, DataTypes.STRING())
             .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .field(TIME, DataTypes.TIMESTAMP(3))
+            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
+            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
+            .build();
+
+    private static final TableSchema SOURCE_SCHEMA_WITH_METADATA = TableSchema.builder()
+            .field(NAME, DataTypes.STRING())
+            .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .field(METADATA, DataTypes.BYTES())
             .field(TIME, DataTypes.TIMESTAMP(3))
             .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
             .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
@@ -142,6 +153,49 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // expect the source to be constructed successfully
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+        assertEquals(actualPravegaSource, expectedPravegaSource);
+    }
+
+    @Test
+    public void testStreamingTableSourceWithMetadata() {
+        // prepare parameters for Pravega table source
+        final DataType producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestFormatFactory.DecodingFormatMock(",", true);
+
+        // Construct table source using options and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
+        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+        actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), SOURCE_SCHEMA_WITH_METADATA.toRowDataType());
+
+        // Test scan source equals
+        final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
+                producedDataType,
+                decodingFormat,
+                null,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                null,
+                true,
+                false);
+        expectedPravegaSource.metadataKeys = Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER);
+        expectedPravegaSource.producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
+
+        // expect the source to be constructed successfully
         assertEquals(actualPravegaSource, expectedPravegaSource);
     }
 
