@@ -27,6 +27,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogTable;
@@ -102,7 +103,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final TableSchema SOURCE_SCHEMA_WITH_METADATA = TableSchema.builder()
             .field(NAME, DataTypes.STRING())
             .field(COUNT, DataTypes.DECIMAL(38, 18))
-            .field(METADATA, DataTypes.BYTES())
+            .add(TableColumn.metadata(METADATA, DataTypes.BYTES(), true))
             .field(TIME, DataTypes.TIMESTAMP(3))
             .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
             .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
@@ -179,8 +180,9 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), SOURCE_SCHEMA_WITH_METADATA.toRowDataType());
 
         // Test scan source equals
+        final DataType physicalDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
