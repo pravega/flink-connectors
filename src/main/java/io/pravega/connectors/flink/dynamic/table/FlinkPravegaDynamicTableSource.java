@@ -141,7 +141,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     /**
      * For the relationships between {@link ScanRuntimeProvider}, {@link FlinkPravegaDynamicTableSource}
-     * and {@link FlinkPravegaDynamicTableFactory}, see below:
+     * and {@link FlinkPravegaDynamicTableFactory}, see below.
      * https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/sourceSinks.html
      */
     @Override
