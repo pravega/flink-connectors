@@ -268,7 +268,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     enum ReadableMetadata {
         EVENT_POINTER(
-                "event-pointer",
+                "event_pointer",
                 DataTypes.BYTES().notNull()
         );
 

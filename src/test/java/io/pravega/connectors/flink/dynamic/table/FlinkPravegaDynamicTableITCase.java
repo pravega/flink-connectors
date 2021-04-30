@@ -85,7 +85,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  log_ts timestamp(3),%n" +
                         "  ts as log_ts + INTERVAL '1' SECOND,%n" +
                         "  watermark for ts as ts%n" +
-                        "  event-pointer BYTES METADATA  -- access Pravega 'event-pointer' metadata" +
                         ") with (%n" +
                         "  'connector' = 'pravega',%n" +
                         "  'controller-uri' = '%s',%n" +
@@ -167,6 +166,84 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
             // In this case, we simply retry the read portion of this test.
             log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
         }
+    }
+
+    @Test
+    public void testPravegaSourceSinkWithMetadata() throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamTableEnvironment tEnv = StreamTableEnvironment.create(
+                env,
+                EnvironmentSettings.newInstance()
+                        // Watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build()
+        );
+        env.getConfig().setRestartStrategy(RestartStrategies.noRestart());
+        // we have to use single parallelism,
+        // because we will count the messages in sink to terminate the job
+        env.setParallelism(1);
+
+        final String stream = RandomStringUtils.randomAlphabetic(20);
+        SETUP_UTILS.createTestStream(stream, 1);
+
+        final String createTable = String.format(
+                "create table pravega (%n" +
+                        "  `computed-price` as price + 1.0,%n" +
+                        "  price decimal(38, 18),%n" +
+                        "  currency string,%n" +
+                        "  log_date date,%n" +
+                        "  log_time time(3),%n" +
+                        "  log_ts timestamp(3),%n" +
+                        // access Pravega 'event-pointer' metadata
+                        // note that is not placed on the end
+                        // see `KafkaTableITCase#testKafkaSourceSinkWithMetadata`
+                        // > metadata fields are out of order on purpose
+                        // > offset is ignored because it might not be deterministic
+                        "  event_pointer BYTES METADATA VIRTUAL,%n" +
+                        "  ts as log_ts + INTERVAL '1' SECOND,%n" +
+                        "  watermark for ts as ts%n" +
+                        ") with (%n" +
+                        "  'connector' = 'pravega',%n" +
+                        "  'controller-uri' = '%s',%n" +
+                        "  'scope' = '%s',%n" +
+                        "  'security.auth-type' = '%s',%n" +
+                        "  'security.auth-token' = '%s',%n" +
+                        "  'security.validate-hostname' = '%s',%n" +
+                        "  'security.trust-store' = '%s',%n" +
+                        "  'scan.execution.type' = '%s',%n" +
+                        "  'scan.reader-group.name' = '%s',%n" +
+                        "  'scan.streams' = '%s',%n" +
+                        "  'sink.stream' = '%s',%n" +
+                        "  'sink.routing-key.field.name' = 'currency',%n" +
+                        "  'format' = 'json'%n" +
+                        ")",
+                SETUP_UTILS.getControllerUri().toString(),
+                SETUP_UTILS.getScope(),
+                SETUP_UTILS.getAuthType(),
+                SETUP_UTILS.getAuthToken(),
+                SETUP_UTILS.isEnableHostNameValidation(),
+                SETUP_UTILS.getPravegaClientTrustStore(),
+                "streaming",
+                "group",
+                stream,
+                stream);
+
+        tEnv.executeSql(createTable);
+
+        String initialValues = "INSERT INTO pravega\n" +
+                "SELECT CAST(price AS DECIMAL(10, 2)), currency, " +
+                " CAST(d AS DATE), CAST(t AS TIME(0)), CAST(ts AS TIMESTAMP(3))\n" +
+                "FROM (VALUES (2.02,'Euro','2019-12-12', '00:00:01', '2019-12-12 00:00:01.001001'), \n" +
+                "  (1.11,'US Dollar','2019-12-12', '00:00:02', '2019-12-12 00:00:02.002001'), \n" +
+                "  (50,'Yen','2019-12-12', '00:00:03', '2019-12-12 00:00:03.004001'), \n" +
+                "  (3.1,'Euro','2019-12-12', '00:00:04', '2019-12-12 00:00:04.005001'), \n" +
+                "  (5.33,'US Dollar','2019-12-12', '00:00:05', '2019-12-12 00:00:05.006001'), \n" +
+                "  (0,'DUMMY','2019-12-12', '00:00:10', '2019-12-12 00:00:10'))\n" +
+                "  AS orders (price, currency, d, t, ts)";
+
+        // Write stream, Block until data is ready or job finished
+        tEnv.executeSql(initialValues).await();
 
         // ---------- Read metadata from Pravega -------------------
 
@@ -188,9 +265,12 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
 
         // test all rows have event pointer field
-        assertEquals(TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 6).count(), 6);
+        assertEquals(6, TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 9).count());
         // test all rows' event pointer field is correct
-        assertEquals(TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getBoolean(5) == false).count(), 6);
+        assertEquals(6, TestingSinkFunction.ROWS.stream().filter(rowData ->
+                // event_pointer METADATA will be set at the end of the row, even if it is placed at the middle of the table
+                Arrays.equals(rowData.getBinary(8), new byte[]{(byte) 0xAA, (byte) 0xDD})
+        ).count());
         // TODO: better to test that the FlinkPravegaDynamicTableSource#metadataKeys only has one EVENT_POINTER element
     }
 
@@ -229,7 +309,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
                 // set the metadata field, no effect if the key is not supported
                 for (; pos < value.getArity() + 1; pos++) {
-                    producedRow.setField(pos, false);
+                    producedRow.setField(pos, new byte[] {(byte) 0xAA, (byte) 0xDD});
                 }
 
                 value = producedRow;
