@@ -21,7 +21,6 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.EnvironmentSettings;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
-import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
@@ -254,10 +253,10 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // test all rows have event pointer field
         assertEquals(3, TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 4).count());
         // test all rows' event pointer field is a event pointer
-        assertEquals(3, TestingSinkFunction.ROWS.stream().map(rowData ->{
-                // event_pointer METADATA should be set at the end of the row, even if it is placed at the middle of the table
-                return EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(3)));
-            }).count());
+        assertEquals(3, TestingSinkFunction.ROWS.stream().map(rowData -> {
+            // event_pointer METADATA should be set at the end of the row, even if it is placed at the middle of the table
+            return EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(3)));
+        }).count());
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {

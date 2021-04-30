@@ -46,11 +46,11 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     // Source produced data type
     protected DataType producedDataType;
 
-    // Data type to configure the format
-    private final DataType physicalDataType;
-
     // Metadata that is appended at the end of a physical source row
     protected List<ReadableMetadata> metadataKeys;
+
+    // Data type to configure the format
+    private final DataType physicalDataType;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
