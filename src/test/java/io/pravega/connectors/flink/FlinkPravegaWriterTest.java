@@ -88,7 +88,7 @@ public class FlinkPravegaWriterTest {
         FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, null, false, PravegaWriterMode.ATLEAST_ONCE);
 
         try {
-            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction)) {
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction.ignoreFailuresAfterTransactionTimeout())) {
                 testHarness.open();
 
                 // verify that exceptions don't interfere with close
