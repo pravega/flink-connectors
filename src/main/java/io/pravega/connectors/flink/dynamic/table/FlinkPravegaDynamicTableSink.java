@@ -26,9 +26,9 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.Objects;
-import java.util.Optional;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
@@ -56,7 +56,8 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
     private final boolean enableWatermarkPropagation;
 
     // Pravega routing key field name
-    private final Optional<String> routingKeyFieldName;
+    @Nullable
+    private final String routingKeyFieldName;
 
     /**
      * Creates a Pravega {@link DynamicTableSink}.
@@ -80,7 +81,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
                                         PravegaWriterMode writerMode,
                                         long txnLeaseRenewalIntervalMillis,
                                         boolean enableWatermarkPropagation,
-                                        Optional<String> routingKeyFieldName) {
+                                        @Nullable String routingKeyFieldName) {
         this.tableSchema = Preconditions.checkNotNull(tableSchema, "Table schema must not be null.");
         this.encodingFormat = Preconditions.checkNotNull(encodingFormat, "Encoding format must not be null.");
         this.pravegaConfig = Preconditions.checkNotNull(pravegaConfig, "Pravega config must not be null.");
@@ -106,9 +107,10 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
                 .enableWatermark(enableWatermarkPropagation)
                 .withTxnLeaseRenewalPeriod(Time.milliseconds(txnLeaseRenewalIntervalMillis));
 
-        routingKeyFieldName.ifPresent(name -> {
-            writerBuilder.withEventRouter(new RowDataBasedRouter(name, tableSchema));
-        });
+        if (routingKeyFieldName != null) {
+            writerBuilder.withEventRouter(new RowDataBasedRouter(routingKeyFieldName, tableSchema));
+        }
+
         return SinkFunctionProvider.of(writerBuilder.build());
     }
 
