@@ -376,6 +376,27 @@ public class FlinkPravegaWriterTest {
         }
     }
 
+
+    /**
+     * Tests the error handling with unknown transaction.
+     */
+    @Test
+    public void testTransactionalWriterCommitWithUnknownId() throws Exception {
+        try (WriterTestContext context = new WriterTestContext(false)) {
+            Transaction<Integer> trans = context.prepareTransaction();
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.open();
+                StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+                testHarness.processElement(e1);
+                testHarness.snapshot(1L, 1L);
+
+                Mockito.when(trans.checkStatus()).thenThrow(new RuntimeException("Unknown transaction: abc"));
+                testHarness.notifyOfCompletedCheckpoint(1L);
+                // RuntimeException with Unknown transaction is caught
+            }
+        }
+    }
+
     /**
      * Tests the error handling.
      */
