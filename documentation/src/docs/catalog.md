@@ -35,6 +35,9 @@ PravegaCatalog catalog = new PravegaCatalog("pravega", DEFAULT_DATABASE, CONTROL
 // Register the catalog
 tableEnv.registerCatalog("pravega", catalog);
 
+// Set the catalog to use
+tableEnv.useCatalog("pravega");
+
 // Create a catalog database
 tableEnv.executeSql("CREATE DATABASE mydb WITH (...)");
 
@@ -237,6 +240,7 @@ Only catalog program APIs are listed here. Users can achieve many of the same fu
 Only database and table operations are supported now, views/partitions/functions/statistics operations are NOT supported in PravegaCatalog
 
 ### Database operations
+#### Java/Scala
 ```java
 // create database
 catalog.createDatabase("mydb", new CatalogDatabaseImpl(...), false);
@@ -253,7 +257,31 @@ catalog.databaseExists("mydb");
 // list databases in a catalog
 catalog.listDatabases();
 ```
+#### Python
+```
+from pyflink.table.catalog import CatalogDatabase
+
+# create database
+catalog_database = CatalogDatabase.create_instance({"k1": "v1"}, None)
+catalog.create_database("mydb", catalog_database, False)
+
+# drop database
+catalog.drop_database("mydb", False)
+
+# alter database
+catalog.alter_database("mydb", catalog_database, False)
+
+# get database
+catalog.get_database("mydb")
+
+# check if a database exist
+catalog.database_exists("mydb")
+
+# list databases in a catalog
+catalog.list_databases()
+```
 ### Table operations
+#### Java/Scala
 ```java
 // create table
 catalog.createTable(new ObjectPath("mydb", "mytable"), new CatalogTableImpl(...), false);
@@ -269,6 +297,45 @@ catalog.tableExists("mytable");
 
 // list tables in a database
 catalog.listTables("mydb");
+```
+#### Python
+```
+from pyflink.table import *
+from pyflink.table.catalog import CatalogBaseTable, ObjectPath
+from pyflink.table.descriptors import Kafka
+
+table_schema = TableSchema.builder() \
+    .field("name", DataTypes.STRING()) \
+    .field("age", DataTypes.INT()) \
+    .build()
+
+table_properties = Kafka() \
+    .version("0.11") \
+    .start_from_earlist() \
+    .to_properties()
+
+catalog_table = CatalogBaseTable.create_table(schema=table_schema, properties=table_properties, comment="my comment")
+
+# create table
+catalog.create_table(ObjectPath("mydb", "mytable"), catalog_table, False)
+
+# drop table
+catalog.drop_table(ObjectPath("mydb", "mytable"), False)
+
+# alter table
+catalog.alter_table(ObjectPath("mydb", "mytable"), catalog_table, False)
+
+# rename table
+catalog.rename_table(ObjectPath("mydb", "mytable"), "my_new_table")
+
+# get table
+catalog.get_table("mytable")
+
+# check if a table exist or not
+catalog.table_exists("mytable")
+
+# list tables in a database
+catalog.list_tables("mydb")
 ```
 
 ## Useful Flink links
