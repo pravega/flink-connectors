@@ -32,8 +32,8 @@ import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.util.TestLogger;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
@@ -57,13 +57,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
-    @Before
-    public void setupPravega() throws Exception {
+    @BeforeClass
+    public static void setupPravega() throws Exception {
         SETUP_UTILS.startAllServices();
     }
 
-    @After
-    public void tearDownPravega() throws Exception {
+    @AfterClass
+    public static void tearDownPravega() throws Exception {
         SETUP_UTILS.stopAllServices();
     }
 
@@ -105,7 +105,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'security.validate-hostname' = '%s',%n" +
                         "  'security.trust-store' = '%s',%n" +
                         "  'scan.execution.type' = '%s',%n" +
-                        "  'scan.reader-group.name' = '%s',%n" +
                         "  'scan.streams' = '%s',%n" +
                         "  'sink.stream' = '%s',%n" +
                         "  'sink.routing-key.field.name' = 'currency',%n" +
@@ -118,7 +117,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 SETUP_UTILS.isEnableHostNameValidation(),
                 SETUP_UTILS.getPravegaClientTrustStore(),
                 "streaming",
-                "group",
                 stream,
                 stream);
 
@@ -214,7 +212,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'security.validate-hostname' = '%s',%n" +
                         "  'security.trust-store' = '%s',%n" +
                         "  'scan.execution.type' = '%s',%n" +
-                        "  'scan.reader-group.name' = '%s',%n" +
                         "  'scan.streams' = '%s',%n" +
                         "  'sink.stream' = '%s',%n" +
                         "  'format' = 'json'%n" +
@@ -226,7 +223,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 SETUP_UTILS.isEnableHostNameValidation(),
                 SETUP_UTILS.getPravegaClientTrustStore(),
                 "streaming",
-                "group",
                 stream,
                 stream);
 
