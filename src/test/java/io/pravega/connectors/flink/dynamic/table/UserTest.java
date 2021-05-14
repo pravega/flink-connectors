@@ -1,3 +1,13 @@
+/**
+ * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ */
+
 package io.pravega.connectors.flink.dynamic.table;
 
 import java.io.Serializable;
@@ -11,6 +21,7 @@ public class UserTest implements Serializable {
     public void setName(String name) {
         this.name = name;
     }
+
     public String getName() {
         return name;
     }
@@ -18,6 +29,7 @@ public class UserTest implements Serializable {
     public void setPhone(int phone) {
         this.phone = phone;
     }
+
     public int getPhone() {
         return phone;
     }
@@ -25,6 +37,7 @@ public class UserTest implements Serializable {
     public void setVip(boolean vip) {
         this.vip = vip;
     }
+
     public boolean getVip() {
         return vip;
     }

@@ -52,7 +52,7 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
             producedRow.setField(pos, physicalRow.getField(pos));
         }
 
-        // set the metadata field, no effect if the key is not supported
+        // set the metadata field after the physical field, no effect if the key is not supported
         for (; pos < typeInfo.getArity(); pos++) {
             ReadableMetadata metadataKey = metadataKeys.get(pos - physicalArity);
             if (ReadableMetadata.EVENT_POINTER == metadataKey) {

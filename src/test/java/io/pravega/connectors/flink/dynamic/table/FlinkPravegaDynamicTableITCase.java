@@ -12,7 +12,6 @@ package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
-import io.pravega.client.segment.impl.NoSuchEventException;
 import io.pravega.client.stream.EventPointer;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
@@ -21,7 +20,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
-import lombok.Cleanup;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -33,7 +31,6 @@ import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
-import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.TestLogger;
 import org.junit.After;
 import org.junit.Before;
@@ -45,7 +42,6 @@ import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -185,8 +181,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
     @Test
     public void testPravegaSourceSinkWithMetadata() throws Exception {
-        final int ROW_LENGTH = 3;
-
         StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(
                 env,
@@ -267,10 +261,10 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
 
         // test all rows have an additional event pointer field
-        assertEquals(ROW_LENGTH, TestingSinkFunction.ROWS.stream()
+        assertEquals(3, TestingSinkFunction.ROWS.stream()
                 .filter(rowData -> rowData.getArity() == 4).count());
         // test all rows' event pointer field is a event pointer
-        assertEquals(ROW_LENGTH, TestingSinkFunction.ROWS.stream()
+        assertEquals(3, TestingSinkFunction.ROWS.stream()
                 .map(rowData -> EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(3))))
                 .count());
 
@@ -280,7 +274,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 GenericRowData.of(StringData.fromString("pony"), 10000, null, true),
                 GenericRowData.of(StringData.fromString("yiming"), 12345678, null, false)
         );
-        for(int i = 0; i < ROW_LENGTH; ++i){
+        for (int i = 0; i < 3; ++i) {
             assertEquals(expected.get(i).getString(0).toString(), TestingSinkFunction.ROWS.get(i).getString(0).toString());
             assertEquals(expected.get(i).getInt(1), TestingSinkFunction.ROWS.get(i).getInt(1));
             assertEquals(expected.get(i).getBoolean(3), TestingSinkFunction.ROWS.get(i).getBoolean(3));
@@ -299,11 +293,11 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 new JsonSerializer<>(UserTest.class),
                 ReaderConfig.builder().build());
         // test that the data read from pravega are the same with the data read from flink
-        for(RowData rowData: TestingSinkFunction.ROWS){
-            UserTest newRowData = consumer.fetchEvent(EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(2))));
-            assertEquals(newRowData.getName(), rowData.getString(0).toString());
-            assertEquals(newRowData.getPhone(), rowData.getInt(1));
-            assertEquals(newRowData.getVip(), rowData.getBoolean(3));
+        for (RowData rowDataFromFlink : TestingSinkFunction.ROWS) {
+            UserTest rowDataFromPravega = consumer.fetchEvent(EventPointer.fromBytes(ByteBuffer.wrap(rowDataFromFlink.getBinary(2))));
+            assertEquals(rowDataFromPravega.getName(), rowDataFromFlink.getString(0).toString());
+            assertEquals(rowDataFromPravega.getPhone(), rowDataFromFlink.getInt(1));
+            assertEquals(rowDataFromPravega.getVip(), rowDataFromFlink.getBoolean(3));
         }
     }
 

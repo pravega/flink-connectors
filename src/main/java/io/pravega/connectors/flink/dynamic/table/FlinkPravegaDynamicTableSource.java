@@ -139,11 +139,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
         return this.decodingFormat.getChangelogMode();
     }
 
-    /**
-     * For the relationships between {@link ScanRuntimeProvider}, {@link FlinkPravegaDynamicTableSource}
-     * and {@link FlinkPravegaDynamicTableFactory}, see below.
-     * https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/sourceSinks.html
-     */
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
         // create a PravegaDeserializationSchema that will expose metadata to the row
