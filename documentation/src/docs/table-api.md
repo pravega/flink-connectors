@@ -46,7 +46,7 @@ Pravega Stream can be used as a table source/sink within a Flink table program.
 The example below shows how to create a table connecting a Pravega stream as both source and sink:
 
 ```sql
-CREATE TABLE pravega (
+CREATE TABLE user_behavior (
     user_id STRING,
     item_id BIGINT,
     category_id BIGINT,
@@ -60,7 +60,6 @@ WITH (
     'controller-uri' = 'tcp://localhost:9090',
     'scope' = 'scope',
     'scan.execution.type' = 'streaming',
-    'scan.reader-group.name' = 'group1',
     'scan.streams' = 'stream',
     'sink.stream' = 'stream',
     'sink.routing-key.field.name' = 'user_id',
@@ -109,34 +108,32 @@ Pravega source supports read from multiple streams, and if read from multiple st
 
 ### Read metadata from pravega
 
-Besides the main payload, users may want to read or write additional information from or to the pravega.
-More information of the metadata used in Flink can be found at [Metadata Columns of the CREATE Statements](https://ci.apache.org/projects/flink/flink-docs-master/docs/dev/table/sql/create/#columns)
+The connector could provide event metadata (e.g. event pointer) for each event.
+This would facilitate the development of jobs that care about the stream position of the event data, e.g. for indexing purposes.
 
-At the moment, the connector can read the `event_pointer` metadata from the pravega.
-This can be done by simply adding the `METADATA VIRTUAL` keyword to the `event_pointer` field.
-
-`event_pointer` can be used as a reference to a row, which can be retrieved via the pravega reader.
+Metadata `event_pointer` is an array of bytes that could be read from the pravega via the connector.
+To read it, simply add the `METADATA VIRTUAL` keyword to the end of the `event_pointer` field.
 
 ```sql
-CREATE TABLE pravega (
-    user_id STRING,
-    item_id BIGINT,
-    category_id BIGINT,
-    behavior STRING,
+CREATE TABLE test (
+    key STRING,
     event_pointer BYTES METADATA VIRTUAL
     )
 WITH (
     'connector' = 'pravega'
     'controller-uri' = 'tcp://localhost:9090',
     'scope' = 'scope',
-    'scan.execution.type' = 'streaming',
-    'scan.reader-group.name' = 'group1',
     'scan.streams' = 'stream',
-    'sink.stream' = 'stream',
-    'sink.routing-key.field.name' = 'user_id',
     'format' = 'json'
     )
 ```
+
+After getting the bytes from the connector, it can be used to retrieve the original data from the pravega.
+
+To get the data:
+1. Convert the `byte[]` to `ByteBuffer`: `ByteBuffer#wrap`
+2. Get the event pointer: `EventPointer#fromBytes`
+3. Get the data: `EventStreamReader#fetchEvent`
 
 ### Changelog Source
 
