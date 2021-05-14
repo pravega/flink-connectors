@@ -177,7 +177,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 Thread.currentThread().getContextClassLoader(),
                 false);
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), SOURCE_SCHEMA_WITH_METADATA.toRowDataType());
+        actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), producedDataType);
 
         // Test scan source equals
         final DataType physicalDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
