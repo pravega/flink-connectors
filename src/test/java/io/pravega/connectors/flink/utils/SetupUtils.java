@@ -16,6 +16,8 @@ import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.impl.DefaultCredentials;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.dynamic.table.UserTest;
+import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
@@ -283,6 +285,26 @@ public final class SetupUtils {
                 readerGroupId,
                 readerGroup,
                 new IntegerSerializer(),
+                ReaderConfig.builder().build());
+    }
+
+    public EventStreamReader<UserTest> getRowDataReader(final String streamName) {
+        Preconditions.checkState(this.started.get(), "Services not yet started");
+        Preconditions.checkNotNull(streamName);
+
+        final String readerGroup = "testReaderGroup" + this.scope + streamName;
+
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig())) {
+            readerGroupManager.createReaderGroup(
+                    readerGroup,
+                    ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
+        }
+
+        final String readerGroupId = UUID.randomUUID().toString();
+        return eventStreamClientFactory.createReader(
+                readerGroupId,
+                readerGroup,
+                new JsonSerializer<>(UserTest.class),
                 ReaderConfig.builder().build());
     }
 

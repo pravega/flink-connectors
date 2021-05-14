@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
 
 public class JsonSerializer<T> implements Serializer<T>, Serializable {
 
@@ -40,6 +41,10 @@ public class JsonSerializer<T> implements Serializer<T>, Serializable {
 
     @Override
     public T deserialize(ByteBuffer serializedValue) {
+
+        byte[] a = serializedValue.array();
+        String b = new String(a, StandardCharsets.UTF_8);
+
         ByteArrayInputStream bin = new ByteArrayInputStream(serializedValue.array(),
                 serializedValue.position(),
                 serializedValue.remaining());

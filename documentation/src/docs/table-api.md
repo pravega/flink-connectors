@@ -46,26 +46,26 @@ Pravega Stream can be used as a table source/sink within a Flink table program.
 The example below shows how to create a table connecting a Pravega stream as both source and sink:
 
 ```sql
-create table pravega (
-	user_id STRING,
+CREATE TABLE pravega (
+    user_id STRING,
     item_id BIGINT,
     category_id BIGINT,
     behavior STRING,
     log_ts TIMESTAMP(3),
-	ts as log_ts + INTERVAL '1' SECOND,
-	watermark for ts as ts
-	)
-with (
-	'connector' = 'pravega'
-	'controller-uri' = 'tcp://localhost:9090',
-	'scope' = 'scope',
-	'scan.execution.type' = 'streaming',
-	'scan.reader-group.name' = 'group1',
-	'scan.streams' = 'stream',
-	'sink.stream' = 'stream',
-	'sink.routing-key.field.name' = 'user_id',
-	'format' = 'json'
-	)
+    ts as log_ts + INTERVAL '1' SECOND,
+    watermark for ts as ts
+    )
+WITH (
+    'connector' = 'pravega'
+    'controller-uri' = 'tcp://localhost:9090',
+    'scope' = 'scope',
+    'scan.execution.type' = 'streaming',
+    'scan.reader-group.name' = 'group1',
+    'scan.streams' = 'stream',
+    'sink.stream' = 'stream',
+    'sink.routing-key.field.name' = 'user_id',
+    'format' = 'json'
+    )
 ```
 
 ## Connector options
@@ -106,6 +106,37 @@ Please see the documentation of [Streaming Connector](streaming.md) and [Batch C
 A `StreamCut` represents a consistent position in the stream, and can be fetched from other applications uses Pravega client through checkpoints or custom defined index. 
 `scan.start-streamcuts` and `scan.end-streamcuts` can be specified to perform bounded read and "start-at-some-point" read for Pravega streams.
 Pravega source supports read from multiple streams, and if read from multiple streams, please make sure the order of the streamcuts keeps the same as the order of the streams.
+
+### Read metadata from pravega
+
+Besides the main payload, users may want to read or write additional information from or to the pravega.
+More information of the metadata used in Flink can be found at [Metadata Columns of the CREATE Statements](https://ci.apache.org/projects/flink/flink-docs-master/docs/dev/table/sql/create/#columns)
+
+At the moment, the connector can read the `event_pointer` metadata from the pravega.
+This can be done by simply adding the `METADATA VIRTUAL` keyword to the `event_pointer` field.
+
+`event_pointer` can be used as a reference to a row, which can be retrieved via the pravega reader.
+
+```sql
+CREATE TABLE pravega (
+    user_id STRING,
+    item_id BIGINT,
+    category_id BIGINT,
+    behavior STRING,
+    event_pointer BYTES METADATA VIRTUAL
+    )
+WITH (
+    'connector' = 'pravega'
+    'controller-uri' = 'tcp://localhost:9090',
+    'scope' = 'scope',
+    'scan.execution.type' = 'streaming',
+    'scan.reader-group.name' = 'group1',
+    'scan.streams' = 'stream',
+    'sink.stream' = 'stream',
+    'sink.routing-key.field.name' = 'user_id',
+    'format' = 'json'
+    )
+```
 
 ### Changelog Source
 
