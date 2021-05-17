@@ -38,6 +38,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -279,14 +280,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                     ReaderGroupConfig.builder().stream(Stream.of(SETUP_UTILS.getScope(), stream)).build());
         }
         final String readerGroupId = UUID.randomUUID().toString();
-        EventStreamReader<UserTest> consumer = EventStreamClientFactory.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig()).createReader(
+        EventStreamReader<TestUser> consumer = EventStreamClientFactory.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig()).createReader(
                 readerGroupId,
                 "group",
-                new JsonSerializer<>(UserTest.class),
+                new JsonSerializer<>(TestUser.class),
                 ReaderConfig.builder().build());
         // test that the data read from pravega are the same with the data read from flink
         for (RowData rowDataFromFlink : TestingSinkFunction.ROWS) {
-            UserTest rowDataFromPravega = consumer.fetchEvent(EventPointer.fromBytes(ByteBuffer.wrap(rowDataFromFlink.getBinary(2))));
+            TestUser rowDataFromPravega = consumer.fetchEvent(EventPointer.fromBytes(ByteBuffer.wrap(rowDataFromFlink.getBinary(2))));
             assertEquals(rowDataFromPravega.getName(), rowDataFromFlink.getString(0).toString());
             assertEquals(rowDataFromPravega.getPhone(), rowDataFromFlink.getInt(1));
             assertEquals(rowDataFromPravega.getVip(), rowDataFromFlink.getBoolean(3));
@@ -316,4 +317,34 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
     }
 
+    private static class TestUser implements Serializable {
+        private static final long serialVersionUID = 8241970228716425282L;
+        private String name;
+        private Integer phone;
+        private Boolean vip;
+
+        public void setName(String name) {
+            this.name = name;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public void setPhone(int phone) {
+            this.phone = phone;
+        }
+
+        public int getPhone() {
+            return phone;
+        }
+
+        public void setVip(boolean vip) {
+            this.vip = vip;
+        }
+
+        public boolean getVip() {
+            return vip;
+        }
+    }
 }
