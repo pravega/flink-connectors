@@ -149,6 +149,11 @@ public class FlinkPravegaWriter<T>
         this.enableWatermark = enableWatermark;
         this.enableMetrics = enableMetrics;
         this.writerIdPrefix = UUID.randomUUID().toString();
+
+        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            super.setTransactionTimeout(txnLeaseRenewalPeriod);
+            super.enableTransactionTimeoutWarnings(0.8);
+        }
     }
 
     /**
@@ -277,8 +282,8 @@ public class FlinkPravegaWriter<T>
                 @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
-                final Transaction.Status status = txn.checkStatus();
                 try {
+                    final Transaction.Status status = txn.checkStatus();
                     if (status == Transaction.Status.OPEN) {
                         if (enableWatermark && transaction.watermark != null) {
                             txn.commit(transaction.watermark);
@@ -291,6 +296,10 @@ public class FlinkPravegaWriter<T>
                     }
                 } catch (TxnFailedException e) {
                     log.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
+                } catch (RuntimeException e) {
+                    if (e.getMessage().contains("Unknown transaction")) {
+                        log.error("{} - Transaction {} not found.", writerId(), txn.getTxnId());
+                    }
                 }
                 break;
             case ATLEAST_ONCE:
@@ -557,6 +566,13 @@ public class FlinkPravegaWriter<T>
         }
 
         @Override
+        public String toString() {
+            return String.format(
+                    "%s [transactionId=%s, watermark=%s]",
+                    this.getClass().getSimpleName(), transactionId, watermark);
+        }
+
+        @Override
         public boolean equals(Object o) {
             if (this == o) {
                 return true;
@@ -682,6 +698,21 @@ public class FlinkPravegaWriter<T>
         }
     }
 
+    /**
+     * Disables the propagation of exceptions thrown when committing presumably timed out Pravega
+     * transactions during recovery of the job. If a Pravega transaction is timed out, a commit will
+     * never be successful. Hence, use this feature to avoid recovery loops of the Job. Exceptions
+     * will still be logged to inform the user that data loss might have occurred.
+     *
+     * <p>Note that we use {@link System#currentTimeMillis()} to track the age of a transaction.
+     * Moreover, only exceptions thrown during the recovery are caught, i.e., the writer will
+     * attempt at least one commit of the transaction before giving up.
+     */
+    @Override
+    public FlinkPravegaWriter<T> ignoreFailuresAfterTransactionTimeout() {
+        super.ignoreFailuresAfterTransactionTimeout();
+        return this;
+    }
 
     // ------------------------------------------------------------------------
     //  builder

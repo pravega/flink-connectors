@@ -89,7 +89,7 @@ public class FlinkPravegaWriterTest {
         FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, null, false, PravegaWriterMode.ATLEAST_ONCE);
 
         try {
-            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction)) {
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction.ignoreFailuresAfterTransactionTimeout())) {
                 testHarness.open();
 
                 // verify that exceptions don't interfere with close
@@ -397,6 +397,27 @@ public class FlinkPravegaWriterTest {
                 Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
                 testHarness.notifyOfCompletedCheckpoint(1L);
                 verify(trans).commit();
+            }
+        }
+    }
+
+
+    /**
+     * Tests the error handling with unknown transaction.
+     */
+    @Test
+    public void testTransactionalWriterCommitWithUnknownId() throws Exception {
+        try (WriterTestContext context = new WriterTestContext(false)) {
+            Transaction<Integer> trans = context.prepareTransaction();
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.open();
+                StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+                testHarness.processElement(e1);
+                testHarness.snapshot(1L, 1L);
+
+                Mockito.when(trans.checkStatus()).thenThrow(new RuntimeException("Unknown transaction: abc"));
+                testHarness.notifyOfCompletedCheckpoint(1L);
+                // RuntimeException with Unknown transaction is caught
             }
         }
     }
