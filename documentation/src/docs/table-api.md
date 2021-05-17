@@ -111,7 +111,7 @@ Pravega source supports read from multiple streams, and if read from multiple st
 The connector could provide event metadata (e.g. event pointer) for each event.
 This would facilitate the development of jobs that care about the stream position of the event data, e.g. for indexing purposes.
 
-Metadata `event_pointer` is an array of bytes that could be read from the pravega via the connector.
+Metadata `event_pointer` is a sequence of bytes that could be read from the pravega via the connector.
 To read it, simply add the `METADATA VIRTUAL` keyword to the end of the `event_pointer` field.
 
 ```sql
