@@ -19,5 +19,6 @@
 
     <!-- test dependencies -->
     <allow pkg="org.mockito"/>
+    <allow pkg="org.hamcrest"/>
     
 </import-control>

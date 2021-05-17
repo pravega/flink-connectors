@@ -22,6 +22,7 @@ import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSinkOperatorTestHarness;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.util.MockSerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,8 +30,8 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -102,6 +103,30 @@ public class FlinkPravegaWriterTest {
         }
 
         verify(clientFactory).close();
+    }
+
+    /**
+     * Tests the open method for serializationSchema.
+     */
+    @Test
+    public void testOpenSerializationSchema() throws Exception {
+        MockSerializationSchema<Integer> schema = new MockSerializationSchema<>();
+
+        ExecutorService executorService = spy(new DirectExecutorService());
+
+        EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
+        EventStreamClientFactory clientFactory = mockClientFactory(pravegaWriter);
+        FlinkPravegaWriter<Integer> sinkFunction = spy(new FlinkPravegaWriter<>(
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), schema,
+                null, PravegaWriterMode.ATLEAST_ONCE, DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS,
+                false, true));
+        Mockito.doReturn(executorService).when(sinkFunction).createExecutorService();
+        Mockito.doReturn(clientFactory).when(sinkFunction).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
+
+        StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction);
+
+        testHarness.open();
+        Assert.assertTrue(schema.isOpenCalled());
     }
 
     // endregion
