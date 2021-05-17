@@ -134,7 +134,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
         );
     }
 
-    // do not call this to initialize, only use it on copy
+    // do not call this to initialize, only use it on copy or test
     FlinkPravegaDynamicTableSource(DataType physicalDataType,
                                    DataType producedDataType,
                                    List<String> metadataKeys,
@@ -155,7 +155,8 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                 producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
-        this.metadataKeys = metadataKeys;
+        this.metadataKeys = Preconditions.checkNotNull(
+                metadataKeys, "Metadata Keys must not be null.");
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
                 pravegaConfig, "Pravega config must not be null.");
