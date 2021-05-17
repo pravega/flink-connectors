@@ -115,7 +115,10 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                                           boolean isBounded) {
         this(
                 physicalDataType,
+                // producedDataType should be the same as physicalDataType on initialization
+                // and will be updated on `applyReadableMetadata`
                 physicalDataType,
+                // metadataKeys will be empty on initialization and will be updated on `applyReadableMetadata`
                 Collections.emptyList(),
                 decodingFormat,
                 readerGroupName,
@@ -132,29 +135,26 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     }
 
     // do not call this to initialize, only use it on copy
-    public FlinkPravegaDynamicTableSource(DataType physicalDataType,
-                                          DataType producedDataType,
-                                          List<String> metadataKeys,
-                                          DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
-                                          String readerGroupName,
-                                          PravegaConfig pravegaConfig,
-                                          List<StreamWithBoundaries> streams,
-                                          long readerGroupRefreshTimeMillis,
-                                          long checkpointInitiateTimeoutMillis,
-                                          long eventReadTimeoutMillis,
-                                          int maxOutstandingCheckpointRequest,
-                                          String uid,
-                                          boolean isStreamingReader,
-                                          boolean isBounded) {
+    FlinkPravegaDynamicTableSource(DataType physicalDataType,
+                                   DataType producedDataType,
+                                   List<String> metadataKeys,
+                                   DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
+                                   String readerGroupName,
+                                   PravegaConfig pravegaConfig,
+                                   List<StreamWithBoundaries> streams,
+                                   long readerGroupRefreshTimeMillis,
+                                   long checkpointInitiateTimeoutMillis,
+                                   long eventReadTimeoutMillis,
+                                   int maxOutstandingCheckpointRequest,
+                                   String uid,
+                                   boolean isStreamingReader,
+                                   boolean isBounded) {
         this.physicalDataType = Preconditions.checkNotNull(
                 physicalDataType, "Physical data type must not be null.");
-        // producedDataType should be the same as physicalDataType on initialization
-        // and will be updated on `applyReadableMetadata`.
         this.producedDataType = Preconditions.checkNotNull(
                 producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
-        // metadataKeys will be empty on initialization and will be updated on `applyReadableMetadata`.
         this.metadataKeys = metadataKeys;
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
