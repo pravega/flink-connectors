@@ -183,6 +183,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         final DataType physicalDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
                 physicalDataType,
+                SOURCE_SCHEMA_WITH_METADATA.toRowDataType(),
+                Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER),
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
@@ -194,8 +196,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 null,
                 true,
                 false);
-        expectedPravegaSource.metadataKeys = Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER);
-        expectedPravegaSource.producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
 
         // expect the source to be constructed successfully
         assertEquals(actualPravegaSource, expectedPravegaSource);

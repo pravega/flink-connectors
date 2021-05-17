@@ -46,11 +46,11 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     // Source produced data type
     protected DataType producedDataType;
 
-    // Metadata that is appended at the end of a physical source row
-    protected List<ReadableMetadata> metadataKeys;
-
     // Data type to configure the format
     private final DataType physicalDataType;
+
+    // Metadata that is appended at the end of a physical source row
+    private List<ReadableMetadata> metadataKeys;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
@@ -114,12 +114,49 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                                           String uid,
                                           boolean isStreamingReader,
                                           boolean isBounded) {
+        this(
+                physicalDataType,
+                physicalDataType,
+                Collections.emptyList(),
+                decodingFormat,
+                readerGroupName,
+                pravegaConfig,
+                streams,
+                readerGroupRefreshTimeMillis,
+                checkpointInitiateTimeoutMillis,
+                eventReadTimeoutMillis,
+                maxOutstandingCheckpointRequest,
+                uid,
+                isStreamingReader,
+                isBounded
+        );
+    }
+
+    // do not call this to initialize, only use it on copy
+    public FlinkPravegaDynamicTableSource(DataType physicalDataType,
+                                          DataType producedDataType,
+                                          List<ReadableMetadata> metadataKeys,
+                                          DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
+                                          String readerGroupName,
+                                          PravegaConfig pravegaConfig,
+                                          List<StreamWithBoundaries> streams,
+                                          long readerGroupRefreshTimeMillis,
+                                          long checkpointInitiateTimeoutMillis,
+                                          long eventReadTimeoutMillis,
+                                          int maxOutstandingCheckpointRequest,
+                                          String uid,
+                                          boolean isStreamingReader,
+                                          boolean isBounded) {
         this.physicalDataType = Preconditions.checkNotNull(
-                physicalDataType, "Produced data type must not be null.");
-        this.producedDataType = physicalDataType;
+                physicalDataType, "Physical data type must not be null.");
+        // producedDataType should be the same as physicalDataType on initialization
+        // and will be updated on `applyReadableMetadata`.
+        this.producedDataType = Preconditions.checkNotNull(
+                producedDataType, "Produced data type must not be null.");
         this.decodingFormat = Preconditions.checkNotNull(
                 decodingFormat, "Decoding format must not be null.");
-        this.metadataKeys = Collections.emptyList();
+        // metadataKeys will be empty on initialization and will be updated on `applyReadableMetadata`.
+        this.metadataKeys = metadataKeys;
         this.readerGroupName = readerGroupName;
         this.pravegaConfig = Preconditions.checkNotNull(
                 pravegaConfig, "Pravega config must not be null.");
@@ -182,9 +219,10 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     @Override
     public DynamicTableSource copy() {
-        FlinkPravegaDynamicTableSource copy =
-                new FlinkPravegaDynamicTableSource(
+        return new FlinkPravegaDynamicTableSource(
                     this.producedDataType,
+                    this.producedDataType,
+                    this.metadataKeys,
                     this.decodingFormat,
                     this.readerGroupName,
                     this.pravegaConfig,
@@ -196,9 +234,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                     this.uid,
                     this.isStreamingReader,
                     this.isBounded);
-        copy.metadataKeys = metadataKeys;
-        copy.producedDataType = producedDataType;
-        return copy;
     }
 
     @Override
