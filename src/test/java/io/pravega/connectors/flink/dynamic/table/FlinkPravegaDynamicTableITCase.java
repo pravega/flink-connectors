@@ -259,10 +259,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // test all rows have an additional event pointer field
         assertEquals(3, TestingSinkFunction.ROWS.stream()
                 .filter(rowData -> rowData.getArity() == 4).count());
-        // test all rows' event pointer field is a event pointer
-        assertEquals(3, TestingSinkFunction.ROWS.stream()
-                .map(rowData -> EventPointer.fromBytes(ByteBuffer.wrap(rowData.getBinary(3))))
-                .count());
 
         // test that all rows returned is what we insert, except for the event pointer field as the value is unknown
         List<GenericRowData> expected = Arrays.asList(
