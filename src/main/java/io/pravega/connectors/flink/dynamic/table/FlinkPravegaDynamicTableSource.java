@@ -36,7 +36,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.apache.flink.table.types.utils.TypeConversions.fromDataTypeToLegacyInfo;
@@ -50,7 +49,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     private final DataType physicalDataType;
 
     // Metadata that is appended at the end of a physical source row
-    private List<ReadableMetadata> metadataKeys;
+    private List<String> metadataKeys;
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
@@ -135,7 +134,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     // do not call this to initialize, only use it on copy
     public FlinkPravegaDynamicTableSource(DataType physicalDataType,
                                           DataType producedDataType,
-                                          List<ReadableMetadata> metadataKeys,
+                                          List<String> metadataKeys,
                                           DecodingFormat<DeserializationSchema<RowData>> decodingFormat,
                                           String readerGroupName,
                                           PravegaConfig pravegaConfig,
@@ -295,12 +294,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public void applyReadableMetadata(List<String> metadataKeys, DataType producedDataType) {
         // check if there is unknown metadata keys provided
-        this.metadataKeys = metadataKeys.stream()
-                .map(k -> Stream.of(ReadableMetadata.values())
-                        .filter(rm -> rm.key.equals(k))
-                        .findFirst()
-                        .orElseThrow(IllegalStateException::new))
-                .collect(Collectors.toList());
+        this.metadataKeys = metadataKeys;
 
         this.producedDataType = producedDataType;
     }

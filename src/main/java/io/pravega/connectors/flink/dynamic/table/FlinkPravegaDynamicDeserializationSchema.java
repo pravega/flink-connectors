@@ -24,12 +24,12 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     private final TypeInformation<RowData> typeInfo;
 
     // metadata keys that the rowData have and is a subset of ReadableMetadata
-    private final List<ReadableMetadata> metadataKeys;
+    private final List<String> metadataKeys;
 
     public FlinkPravegaDynamicDeserializationSchema(
             TypeInformation<RowData> typeInfo,
             Serializer<RowData> serializer,
-            List<ReadableMetadata> metadataKeys) {
+            List<String> metadataKeys) {
         super(typeInfo, serializer);
         this.typeInfo = typeInfo;
         this.metadataKeys = metadataKeys;
@@ -54,8 +54,8 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
 
         // set the metadata field after the physical field, no effect if the key is not supported
         for (; pos < typeInfo.getArity(); pos++) {
-            ReadableMetadata metadataKey = metadataKeys.get(pos - physicalArity);
-            if (ReadableMetadata.EVENT_POINTER == metadataKey) {
+            String metadataKey = metadataKeys.get(pos - physicalArity);
+            if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
                 producedRow.setField(pos, eventRead.getEventPointer().toBytes().array());
             }
         }

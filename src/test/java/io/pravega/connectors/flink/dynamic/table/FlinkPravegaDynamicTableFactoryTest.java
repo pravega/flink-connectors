@@ -184,7 +184,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
                 physicalDataType,
                 SOURCE_SCHEMA_WITH_METADATA.toRowDataType(),
-                Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER),
+                Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER.key),
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
