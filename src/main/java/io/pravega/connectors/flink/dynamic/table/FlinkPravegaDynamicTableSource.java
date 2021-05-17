@@ -293,9 +293,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     @Override
     public void applyReadableMetadata(List<String> metadataKeys, DataType producedDataType) {
-        // check if there is unknown metadata keys provided
         this.metadataKeys = metadataKeys;
-
         this.producedDataType = producedDataType;
     }
 
