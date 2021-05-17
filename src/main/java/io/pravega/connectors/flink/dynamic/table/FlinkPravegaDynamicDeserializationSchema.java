@@ -43,10 +43,10 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
         }
 
         // use GenericRowData to manipulate rowData's field
-        final GenericRowData physicalRow = (GenericRowData) rowData;
-        final GenericRowData producedRow = new GenericRowData(physicalRow.getRowKind(), typeInfo.getArity());
+        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), typeInfo.getArity());
 
         // set the physical(original) field
+        final GenericRowData physicalRow = (GenericRowData) rowData;
         int pos = 0, physicalArity = typeInfo.getArity() - metadataKeys.size();
         for (; pos < physicalArity; pos++) {
             producedRow.setField(pos, physicalRow.getField(pos));
