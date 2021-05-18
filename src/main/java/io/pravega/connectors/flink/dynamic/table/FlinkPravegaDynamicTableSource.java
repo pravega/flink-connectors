@@ -131,7 +131,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
         );
     }
 
-    // do not call this to initialize, only use it on copy or test
     FlinkPravegaDynamicTableSource(DataType physicalDataType,
                                    DataType producedDataType,
                                    List<String> metadataKeys,
