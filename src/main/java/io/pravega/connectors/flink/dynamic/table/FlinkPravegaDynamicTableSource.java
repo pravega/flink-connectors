@@ -218,20 +218,20 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public DynamicTableSource copy() {
         return new FlinkPravegaDynamicTableSource(
-                    this.physicalDataType,
-                    this.producedDataType,
-                    this.metadataKeys,
-                    this.decodingFormat,
-                    this.readerGroupName,
-                    this.pravegaConfig,
-                    this.streams,
-                    this.readerGroupRefreshTimeMillis,
-                    this.checkpointInitiateTimeoutMillis,
-                    this.eventReadTimeoutMillis,
-                    this.maxOutstandingCheckpointRequest,
-                    this.uid,
-                    this.isStreamingReader,
-                    this.isBounded);
+                this.physicalDataType,
+                this.producedDataType,
+                this.metadataKeys,
+                this.decodingFormat,
+                this.readerGroupName,
+                this.pravegaConfig,
+                this.streams,
+                this.readerGroupRefreshTimeMillis,
+                this.checkpointInitiateTimeoutMillis,
+                this.eventReadTimeoutMillis,
+                this.maxOutstandingCheckpointRequest,
+                this.uid,
+                this.isStreamingReader,
+                this.isBounded);
     }
 
     @Override
