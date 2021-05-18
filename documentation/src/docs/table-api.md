@@ -46,26 +46,25 @@ Pravega Stream can be used as a table source/sink within a Flink table program.
 The example below shows how to create a table connecting a Pravega stream as both source and sink:
 
 ```sql
-create table pravega (
-	user_id STRING,
+CREATE TABLE user_behavior (
+    user_id STRING,
     item_id BIGINT,
     category_id BIGINT,
     behavior STRING,
     log_ts TIMESTAMP(3),
-	ts as log_ts + INTERVAL '1' SECOND,
-	watermark for ts as ts
-	)
-with (
-	'connector' = 'pravega'
-	'controller-uri' = 'tcp://localhost:9090',
-	'scope' = 'scope',
-	'scan.execution.type' = 'streaming',
-	'scan.reader-group.name' = 'group1',
-	'scan.streams' = 'stream',
-	'sink.stream' = 'stream',
-	'sink.routing-key.field.name' = 'user_id',
-	'format' = 'json'
-	)
+    ts as log_ts + INTERVAL '1' SECOND,
+    watermark for ts as ts
+    )
+WITH (
+    'connector' = 'pravega'
+    'controller-uri' = 'tcp://localhost:9090',
+    'scope' = 'scope',
+    'scan.execution.type' = 'streaming',
+    'scan.streams' = 'stream',
+    'sink.stream' = 'stream',
+    'sink.routing-key.field.name' = 'user_id',
+    'format' = 'json'
+    )
 ```
 
 ## Connector options
@@ -106,6 +105,35 @@ Please see the documentation of [Streaming Connector](streaming.md) and [Batch C
 A `StreamCut` represents a consistent position in the stream, and can be fetched from other applications uses Pravega client through checkpoints or custom defined index. 
 `scan.start-streamcuts` and `scan.end-streamcuts` can be specified to perform bounded read and "start-at-some-point" read for Pravega streams.
 Pravega source supports read from multiple streams, and if read from multiple streams, please make sure the order of the streamcuts keeps the same as the order of the streams.
+
+### Read metadata from pravega
+
+The connector could provide event metadata (e.g. event pointer) for each event.
+This would facilitate the development of jobs that care about the stream position of the event data, e.g. for indexing purposes.
+
+Metadata `event_pointer` is a sequence of bytes that could be read from the pravega via the connector.
+To read it, simply add the `METADATA VIRTUAL` keyword to the end of the `event_pointer` field.
+
+```sql
+CREATE TABLE test (
+    key STRING,
+    event_pointer BYTES METADATA VIRTUAL
+    )
+WITH (
+    'connector' = 'pravega'
+    'controller-uri' = 'tcp://localhost:9090',
+    'scope' = 'scope',
+    'scan.streams' = 'stream',
+    'format' = 'json'
+    )
+```
+
+After getting the bytes from the connector, it can be used to retrieve the original data from the pravega.
+
+To get the data:
+1. Convert the `byte[]` to `ByteBuffer`: `ByteBuffer#wrap`
+2. Get the event pointer: `EventPointer#fromBytes`
+3. Get the data: `EventStreamReader#fetchEvent`
 
 ### Changelog Source
 
