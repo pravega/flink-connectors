@@ -14,40 +14,70 @@ Flink catalogs provide metadata, such as databases, tables, partitions, views, a
 
 Catalog enables users to reference existing metadata in their data systems, and automatically maps them to Flink’s corresponding metadata. For Pravega, Flink can map Pravega streams as Flink table by treating Pravega scope as database and Pravega stream as table.
 
-With the help of schema registry, the Flink connector library for Pravega provides PravegaCatalog by implementing both the the `Catalog` interface and the `CatalogFactory` interface. It also supports serialization/deserialization in schema registry by implementing the `DeserializationFormatFactory` and `SerializationFormatFactory` interface, which enables us to deal with different data formats(Only support Avro format currently).
+Pravega Schema Registry is the registry service that help store and manage schemas for the unstructured data stored in Pravega streams. The service has built in support for popular serialization formats in Avro, Profobuf and JSON schemas. With the help of Schema Registry, we can implement the `DeserializationFormatFactory` and `SerializationFormatFactory` interface which combines both Pravega Registry (De)Serializer and Flink Converter and, therefore, a byte array can be deserialized by Pravega Registry deserializer and then converted to Flink RowData that can be used in catalog, and vice versa. For serialization we only support Avro now since there are no convenient approaches to configure format prior to creating catalog tables;
 
 The catalog factory defines a set of properties for configuring the catalog when the SQL CLI bootstraps. The set of properties will be passed to a discovery service where the service tries to match the properties to a CatalogFactory and initiate a corresponding catalog instance.
 
 ## How to use PravegaCatalog
 
-### Create and Register Flink tables to PravegaCatalog
+The PravegaCatalog enables users to connect Flink to Pravega streams.
 
-#### Using SQL DDL
-Users can use SQL DDL to create tables in catalogs in both Table API and SQL.
+Currently, PravegaCatalog only support limited Catalog methods include:
 
-##### Java
 ```java
-TableEnvironment tableEnv = ...
+// The supported methods by Pravega Catalog
+PravegaCatalog.listDatabases();
+PravegaCatalog.getDatabase(String databaseName);
+PravegaCatalog.databaseExists(String databaseName);
+PravegaCatalog.createDatabase(String name, CatalogDatabase database, boolean ignoreIfExists);
+PravegaCatalog.dropDatabase(String name, boolean ignoreIfNotExists, boolean cascade);
+PravegaCatalog.listTables(String databaseName);
+PravegaCatalog.getTable(ObjectPath tablePath);
+PravegaCatalog.tableExists(ObjectPath tablePath);
+PravegaCatalog.dropTable(ObjectPath tablePath, boolean ignoreIfNotExists);
+PravegaCatalog.createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists);
+```
+Other Catalog methods are unsupported now.
 
-// Create a PravegaCatalog 
-PravegaCatalog catalog = new PravegaCatalog("pravega", DEFAULT_DATABASE, CONTROLLER_URI, SCHEMAREGISTRY_URI);
+### Usage of PravegaCatalog
+Pravega Catalog supports the following options:
 
-// Register the catalog
+- name: required, name of the catalog
+- type: required, type of the catalog
+- controller-uri: required, uri of the Pravega controller connected to
+- schema-registry-uri: required, uri of the Schema Registry service connected to
+- default-database: required, default database to connect to
+
+#### SQL
+```sql
+CREATE CATALOG pravega WITH(
+    'type' = 'pravega',
+    'default-database' = '...',
+    'controller-uri' = '...',
+    'schema-registry-uri' = '...'
+);
+
+USE CATALOG pravega;
+```
+
+#### Java
+```java
+EnvironmentSettings settings = EnvironmentSettings.newInstance().inStreamingMode().build();
+TableEnvironment tableEnv = TableEnvironment.create(settings);
+
+String name                 = "pravega";
+String defaultDatabase      = "mydb";
+String controllerURI        = "...";
+String schemaRegistryURI    = "...";
+
+PravegaCatalog catalog = new PravegaCatalog(name, defaultDatabase, controllerURI, schemaRegistryURI);
 tableEnv.registerCatalog("pravega", catalog);
 
-// Set the catalog to use
+// set the PravegaCatalog  as the current catalog of the session
 tableEnv.useCatalog("pravega");
-
-// Create a catalog database
-tableEnv.executeSql("CREATE DATABASE mydb WITH (...)");
-
-// Create a catalog table
-tableEnv.executeSql("CREATE TABLE mytable (name STRING, age INT) WITH (...)");
-
-tableEnv.listTables(); // should return the tables in current catalog and database.
 ```
-##### SQL Client
-Start the SQL Client with config yaml
+
+#### YAML
 ```yaml
 execution:
   planner: blink
@@ -57,181 +87,20 @@ execution:
 catalogs:
   - name: pravega
     type: pravega
-    controller-uri: { CONTROLLER_URI }
-    schema-registry-uri: { SCHEMAREGISTRY_URI }
-    default-database: { DEFAULT_DATABASE }
-```
-```shell
-./bin/sql-client.sh embedded -e catalog.yaml
-```
-Inside SQL Client:
-```sql
-// the catalog should have been registered via yaml file
-Flink SQL> CREATE DATABASE mydb WITH (...);
-
-Flink SQL> CREATE TABLE mytable (name STRING, age INT) WITH (...);
-
-// should return the tables in current catalog and database
-Flink SQL> SHOW TABLES;
-```
-#### Using Java
-Users can also use Java to create catalog tables programmatically
-```java
-TableEnvironment tableEnv = ...
-
-// Create a PravegaCatalog
-PravegaCatalog catalog = new PravegaCatalog("pravega", DEFAULT_DATABASE, CONTROLLER_URI, SCHEMAREGISTRY_URI);
-
-// Register the catalog
-tableEnv.registerCatalog("pravega", catalog);
-
-// Create a catalog database
-catalog.createDatabase("mydb", new CatalogDatabaseImpl(...), false);
-
-// Create a catalog table
-TableSchema schema = TableSchema.builder()
-    .field("name", DataTypes.STRING())
-    .field("age", DataTypes.INT())
-    .build();
-
-catalog.createTable(
-        new ObjectPath("mydb", "mytable"),
-        new CatalogTableImpl(
-                schema,
-                Collections.emptyMap(),
-                null),
-        false);
-
-List<String> tables = catalog.listTables("mydb"); // tables should contain "mytable"
+    controller-uri: "..."
+    schema-registry-uri: "..."
+    default-database: "mydb"
 ```
 
-### Example
-We will walk through a simple example here to see how Pravega Catalog works by using Flink SQL Client
+### Pravega Stream Mapping
+Pravega doesn't have concepts like database or table. We need to map Pravega scopes and streams in order to use Pravega Catalog.
+Therefore the metaspace mapping between Flink Catalog and Pravega is as following:
 
-#### 1. Set up Pravega and Schema Registry
-Start your Pravega 0.9 and Schema Registry 0.2.0 with default config.
-
-Inject data into Pravega, we are using Avro format here
-```
-{
-  "type": "record",
-  "namespace": "../../avro.generated",
-  "name": "User",
-  "fields": [
-      {"name": "name", "type": "string"},
-      {"name": "age", "type": "int"},
-      {"name": "info", "type": "string"}
-   ]
-}
-```
-Data will be serialized by Schema Registry serializer and then written into Pravega "testScope/testStream"
-
-#### 2. Configure Flink cluster and SQL Client
-Download Flink 1.12 cluster https://flink.apache.org/downloads.html
-
-Make sure to add below dependencies to Flink `lib/` directory
-- Flink Avro 1.12 https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/connect.html#formats
-- Pravega Flink connector 1.12_2.12
-- Schema Registry v0.2.0 https://github.com/pravega/schema-registry/releases
-
-Then create your pravega catalog yaml file `catalog.yaml`
-```yaml
-execution:
-  planner: blink
-  type: streaming
-  result-mode: table
- 
-catalogs:
-  - name: pravega
-    type: pravega
-    controller-uri: "tcp://localhost:9090"
-    schema-registry-uri: "http://localhost:9092"
-    default-database: "testScope"
-```
-Start Flink cluster
-```shell
-./bin/start-cluster.sh
-```
-
-#### 3. Start SQL Client, query the table
-```shell
-./bin/sql-client.sh embedded -e catalog.yaml
-```
-You should see catalogs and tables created
-```shell
-Flink SQL> show catalogs;
-default_catalog
-pravega
-
-Flink SQL> use catalog pravega;
-
-Flink SQL> show tables;
-testStream
-```
-Run a simple select query
-```shell
-Flink SQL> select * from testStream;
-```
-You should see the result produced by Flink in SQL Client now, as:
-```sql
- name                       age                      info
-   gVh                        28      Jywp2KTiqauzju6LUNfq
-   YQz                        84      0CiFOcOrK0fuzVvP5wmy
-   OEd                        87      zI80NbPSeK9c1bwpTfck
-   JFy                        39      JUZiobRVxgFjSfDfh12V
-   KoJ                        24      CxdrYUOV4SAor6gOkdJG
-   MbV                        45      I5U5zAfeghv1IQjAbBnM
-    .                          .                .
-    .                          .                .
-    .                          .                .
-```
-
-#### 4. Create a table and then query it
-Create a new table and verify its schema
-```shell
-Flink SQL> CREATE TABLE pravega.flinksrtest.testStream2 (
->     name STRING,
->     age INT,
->     info STRING
-> );
-[INFO] Table has been created.
-
-Flink SQL> desc testStream2;
-+------+--------+------+-----+--------+-----------+
-| name |   type | null | key | extras | watermark |
-+------+--------+------+-----+--------+-----------+
-| name | STRING | true |     |        |           |
-|  age |    INT | true |     |        |           |
-| info | STRING | true |     |        |           |
-+------+--------+------+-----+--------+-----------+
-3 rows in set
-
-```
-
-Then we insert data from testStream to testStream2 and then run a simple select query
-```shell
-Flink SQL> INSERT INTO testStream2
-> SELECT * FROM testStream;
-[INFO] Submitting SQL update statement to the cluster...
-[INFO] Table update statement has been successfully submitted to the cluster:
-Job ID: beb2ead7a52f98db1c4d3ad2c7553e1b
-```
-```shell
-Flink SQL> select * from testStream2;
-```
-Query result:
-```sql
- name                       age                      info
-   UnC                        27      SrXBynLOBX1B2sPfZEgX
-   dcX                        32      zLyAxW40E3ZpSRyZJdq2
-   Cfh                        46      70ar7NxJxi5mw1OyWMQV
-   EwB                        29      yMg3bfnsx6AKIqJ0DCG5
-   hui                        97      5meAuFirQDXwQ3VZfMGf
-   dDd                        41      khJAEPo4khL2n2zFkpjn
-    .                          .                .
-    .                          .                .
-    .                          .                .
-```
+| Flink Catalog Metaspace Structure    | Pravega Structure |
+|--------------------------------------|-------------------|
+| catalog name (defined in Flink only) | N/A               |
+| database name                        | scope name        |
+| table name                           | stream name       |
 
 
 ## Catalog API
