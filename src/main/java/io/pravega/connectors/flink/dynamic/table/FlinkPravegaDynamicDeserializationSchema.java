@@ -20,19 +20,25 @@ import org.apache.flink.table.data.RowData;
 import java.util.List;
 
 public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializationSchema<RowData> {
-    // the produced RowData type, may have metadata keys in it
-    private final TypeInformation<RowData> typeInfo;
-
     // metadata keys that the rowData have and is a subset of ReadableMetadata
     private final List<String> metadataKeys;
 
+    // source datatype arity without metadata
+    private final int physicalArity;
+
+    // metadata size
+    private final int virtualArity;
+
     public FlinkPravegaDynamicDeserializationSchema(
-            TypeInformation<RowData> typeInfo,
+            TypeInformation<RowData> typeInfo,  // do not use it, as it has wrong arity
+            int physicalArity,
+            int virtualArity,
             Serializer<RowData> serializer,
             List<String> metadataKeys) {
         super(typeInfo, serializer);
-        this.typeInfo = typeInfo;
         this.metadataKeys = metadataKeys;
+        this.physicalArity = physicalArity;
+        this.virtualArity = virtualArity;
     }
 
     @Override
@@ -43,17 +49,17 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
         }
 
         // use GenericRowData to manipulate rowData's field
-        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), typeInfo.getArity());
+        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + virtualArity);
 
         // set the physical(original) field
         final GenericRowData physicalRow = (GenericRowData) rowData;
-        int pos = 0, physicalArity = typeInfo.getArity() - metadataKeys.size();
+        int pos = 0;
         for (; pos < physicalArity; pos++) {
             producedRow.setField(pos, physicalRow.getField(pos));
         }
 
         // set the metadata field after the physical field, no effect if the key is not supported
-        for (; pos < typeInfo.getArity(); pos++) {
+        for (; pos < physicalArity + virtualArity; pos++) {
             String metadataKey = metadataKeys.get(pos - physicalArity);
             if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
                 producedRow.setField(pos, eventRead.getEventPointer().toBytes().array());

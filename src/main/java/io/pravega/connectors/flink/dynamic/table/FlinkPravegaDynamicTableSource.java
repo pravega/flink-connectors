@@ -16,7 +16,6 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
@@ -37,8 +36,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Stream;
-
-import static org.apache.flink.table.types.utils.TypeConversions.fromDataTypeToLegacyInfo;
 
 public class FlinkPravegaDynamicTableSource implements ScanTableSource, SupportsReadingMetadata {
 
@@ -183,7 +180,9 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                 decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
         final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
                 = new FlinkPravegaDynamicDeserializationSchema(
-                (TypeInformation<RowData>) fromDataTypeToLegacyInfo(producedDataType),
+                runtimeProviderContext.createTypeInformation(producedDataType),
+                producedDataType.getChildren().size() - metadataKeys.size(),
+                metadataKeys.size(),
                 deserializer,
                 metadataKeys);
 
