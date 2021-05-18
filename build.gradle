@@ -125,6 +125,7 @@ dependencies {
     testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
+    testCompile group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
 }
 
 shadowJar {
