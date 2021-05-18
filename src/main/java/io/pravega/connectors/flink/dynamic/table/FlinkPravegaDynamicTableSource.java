@@ -181,7 +181,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                 = new FlinkPravegaDynamicDeserializationSchema(
                 runtimeProviderContext.createTypeInformation(producedDataType),
                 producedDataType.getChildren().size() - metadataKeys.size(),
-                metadataKeys.size(),
                 deserializer,
                 metadataKeys);
 

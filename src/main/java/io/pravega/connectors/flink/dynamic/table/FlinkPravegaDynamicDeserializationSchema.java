@@ -26,19 +26,14 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     // source datatype arity without metadata
     private final int physicalArity;
 
-    // metadata size
-    private final int virtualArity;
-
     public FlinkPravegaDynamicDeserializationSchema(
-            TypeInformation<RowData> typeInfo,  // do not use it, as it has wrong arity
+            TypeInformation<RowData> typeInfo,
             int physicalArity,
-            int virtualArity,
             Serializer<RowData> serializer,
             List<String> metadataKeys) {
         super(typeInfo, serializer);
         this.metadataKeys = metadataKeys;
         this.physicalArity = physicalArity;
-        this.virtualArity = virtualArity;
     }
 
     @Override
@@ -49,7 +44,7 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
         }
 
         // use GenericRowData to manipulate rowData's field
-        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + virtualArity);
+        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + metadataKeys.size());
 
         // set the physical(original) field
         final GenericRowData physicalRow = (GenericRowData) rowData;
@@ -59,7 +54,7 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
         }
 
         // set the metadata field after the physical field, no effect if the key is not supported
-        for (; pos < physicalArity + virtualArity; pos++) {
+        for (; pos < physicalArity + metadataKeys.size(); pos++) {
             String metadataKey = metadataKeys.get(pos - physicalArity);
             if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
                 producedRow.setField(pos, eventRead.getEventPointer().toBytes().array());
