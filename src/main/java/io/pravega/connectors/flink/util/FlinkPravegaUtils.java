@@ -26,6 +26,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -121,7 +122,7 @@ public class FlinkPravegaUtils {
      *
      * @param <T> The type of the event.
      */
-    public static final class FlinkDeserializer<T> implements Serializer<T> {
+    public static final class FlinkDeserializer<T> implements Serializer<T>, Serializable {
 
         private final DeserializationSchema<T> deserializationSchema;
 

@@ -27,6 +27,7 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogTable;
@@ -55,6 +56,7 @@ import org.junit.rules.ExpectedException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -78,6 +80,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String NAME = "name";
     private static final String COUNT = "count";
     private static final String TIME = "time";
+    private static final String METADATA = "event_pointer";
     private static final String WATERMARK_EXPRESSION = TIME + " - INTERVAL '5' SECOND";
     private static final DataType WATERMARK_DATATYPE = DataTypes.TIMESTAMP(3);
     private static final String COMPUTED_COLUMN_NAME = "computed-column";
@@ -97,6 +100,15 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
             .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
             .build();
 
+    private static final TableSchema SOURCE_SCHEMA_WITH_METADATA = TableSchema.builder()
+            .field(NAME, DataTypes.STRING())
+            .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .add(TableColumn.metadata(METADATA, DataTypes.BYTES(), true))
+            .field(TIME, DataTypes.TIMESTAMP(3))
+            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
+            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
+            .build();
+
     private static final TableSchema SINK_SCHEMA = TableSchema.builder()
             .field(NAME, DataTypes.STRING())
             .field(COUNT, DataTypes.DECIMAL(38, 18))
@@ -108,7 +120,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     @Test
     public void testStreamingTableSource() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -127,7 +139,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
@@ -146,9 +158,53 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
-    public void testHavingOptionalReaderGroupName() {
+    public void testStreamingTableSourceWithMetadata() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestFormatFactory.DecodingFormatMock(",", true);
+
+        // Construct table source using options and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
+        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+        actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), producedDataType);
+
+        // Test scan source equals
+        final DataType physicalDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
+        final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
+                physicalDataType,
+                producedDataType,
+                Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER.key),
+                decodingFormat,
+                null,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                null,
+                true,
+                false);
+
+        // expect the source to be constructed successfully
+        assertEquals(actualPravegaSource, expectedPravegaSource);
+    }
+
+    @Test
+    public void testStreamingTableSourceWithOptionalReaderGroupName() {
+        // prepare parameters for Pravega table source
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -170,7 +226,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
@@ -189,12 +245,12 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
     @Test
     public void testStreamingTableSourceProvider() {
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestPravegaDecodingFormat(",", true);
 
         final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
@@ -218,7 +274,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     @Test
     public void testBatchTableSource() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -237,7 +293,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
@@ -256,13 +312,13 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
     @Test
     public void testBatchTableSourceProvider() {
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
 
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestPravegaDecodingFormat(",", true);
 
         final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
