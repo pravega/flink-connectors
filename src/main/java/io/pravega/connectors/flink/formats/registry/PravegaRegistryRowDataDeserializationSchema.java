@@ -11,23 +11,38 @@
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
+import io.pravega.schemaregistry.contract.data.SchemaInfo;
+import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
+import io.pravega.schemaregistry.serializer.shared.impl.AbstractDeserializer;
+import io.pravega.schemaregistry.serializer.shared.impl.EncodingCache;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.AvroToRowDataConverters;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
+import org.apache.flink.formats.json.JsonToRowDataConverters;
+import org.apache.flink.formats.json.TimestampFormat;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonAutoDetect;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.PropertyAccessor;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
+import static org.apache.flink.util.Preconditions.checkNotNull;
 /**
  * Deserialization schema from Pravega Schema Registry to Flink Table/SQL internal data structure {@link RowData}.
  *
@@ -35,8 +50,13 @@ import java.util.Objects;
  *
  * <p>Failures during deserialization are forwarded as wrapped IOExceptions.
  */
-public class PravegaRegistryRowDataDeserializationSchema implements DeserializationSchema<RowData> {
+public class PravegaRegistryRowDataDeserializationSchema<T> implements DeserializationSchema<RowData> {
     private static final long serialVersionUID = 1L;
+
+    /**
+     * Row type to generate the runtime converter.
+     */
+    private final RowType rowType;
 
     /**
      * Type information describing the result type.
@@ -44,55 +64,98 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     private final TypeInformation<RowData> typeInfo;
 
     /**
-     * Deserializer to deserialize <code>byte[]</code> message to {@link Object}.
-     */
-    private transient Serializer<Object> genericDeserializer;
-
-    /**
      * Namespace describing the current scope.
      */
-    private String namespace;
+    private final String namespace;
 
     /**
      * GroupId describing the current stream.
      */
-    private String groupId;
+    private final String groupId;
 
     /**
      * URI of schema registry.
      */
-    private URI schemaRegistryURI;
+    private final URI schemaRegistryURI;
 
     /**
-     * Avro schema for avro generic deserializer.
+     * Serialization format for schema registry.
      */
-    private transient AvroSchema<Object> schema;
+    private SerializationFormat serializationFormat;
 
     /**
-     * Runtime instance that performs the actual work.
+     * Deserializer to deserialize <code>byte[]</code> message.
      */
-    private final AvroToRowDataConverters.AvroToRowDataConverter runtimeConverter;
+    private transient Serializer<T> deserializer;
+
+    // --------------------------------------------------------------------------------------------
+    // Json fields
+    // --------------------------------------------------------------------------------------------
+
+    /** Flag indicating whether to fail if a field is missing. */
+    private final boolean failOnMissingField;
+
+    /** Flag indicating whether to ignore invalid fields/rows (default: throw an exception). */
+    private final boolean ignoreParseErrors;
+
+    /** Timestamp format specification which is used to parse timestamp. */
+    private final TimestampFormat timestampFormat;
 
     public PravegaRegistryRowDataDeserializationSchema(
             RowType rowType,
             TypeInformation<RowData> typeInfo,
             String namespace,
             String groupId,
-            URI schemaRegistryURI) {
+            URI schemaRegistryURI,
+            boolean failOnMissingField,
+            boolean ignoreParseErrors,
+            TimestampFormat timestampFormat
+            ) {
+        this.rowType = rowType;
         this.typeInfo = typeInfo;
-        this.runtimeConverter = AvroToRowDataConverters.createRowConverter(rowType);
-        this.genericDeserializer = null;
         this.namespace = namespace;
         this.groupId = groupId;
         this.schemaRegistryURI = schemaRegistryURI;
-        this.schema = AvroSchema.of(AvroSchemaConverter.convertToSchema(rowType));
+        this.failOnMissingField = failOnMissingField;
+        this.ignoreParseErrors = ignoreParseErrors;
+        this.timestampFormat = timestampFormat;
+    }
+
+    @SuppressWarnings("unchecked")
+    @Override
+    public void open(InitializationContext context) throws Exception {
+        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
+                .schemaRegistryUri(schemaRegistryURI)
+                .build();
+        SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
+                schemaRegistryClientConfig);
+        SerializerConfig config = SerializerConfig.builder()
+                .registryConfig(schemaRegistryClientConfig)
+                .namespace(namespace)
+                .groupId(groupId)
+                .build();
+        serializationFormat = schemaRegistryClient.getGroupProperties(groupId).getSerializationFormat();
+
+        switch (serializationFormat) {
+            case Avro:
+                AvroSchema<Object> schema = AvroSchema.of(AvroSchemaConverter.convertToSchema(rowType));
+                deserializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(config, schema);
+                break;
+            case Json:
+                deserializer = (Serializer<T>) new JsonGenericDeserializer(
+                        groupId,
+                        schemaRegistryClient,
+                        config.getDecoders(),
+                        new EncodingCache(groupId, schemaRegistryClient),
+                        config.isWriteEncodingHeader());
+                break;
+            default:
+                throw new NotImplementedException("Not supporting deserialization format");
+        }
     }
 
     @Override
     public RowData deserialize(@Nullable byte[] message) throws IOException {
-        if (genericDeserializer == null) {
-            initializeGenericDeserializer();
-        }
         if (message == null) {
             return null;
         }
@@ -104,24 +167,42 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     }
 
     public Object deserializeToObject(byte[] message) {
-        return genericDeserializer.deserialize(ByteBuffer.wrap(message));
+        return deserializer.deserialize(ByteBuffer.wrap(message));
     }
 
     public RowData convertToRowData(Object message) {
-        return (RowData) runtimeConverter.convert(message);
+        Object o;
+        switch (serializationFormat) {
+            case Avro:
+                AvroToRowDataConverters.AvroToRowDataConverter avroConverter =
+                        AvroToRowDataConverters.createRowConverter(rowType);
+                o = avroConverter.convert(message);
+                break;
+            case Json:
+                JsonToRowDataConverters.JsonToRowDataConverter jsonConverter =
+                        new JsonToRowDataConverters(failOnMissingField, ignoreParseErrors, timestampFormat)
+                                .createConverter(checkNotNull(rowType));
+                o = jsonConverter.convert((JsonNode) message);
+                break;
+            default:
+                throw new NotImplementedException("Not supporting deserialization format");
+        }
+        return (RowData) o;
     }
 
-    public void initializeGenericDeserializer() {
-        synchronized (this) {
-            SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
-                    .schemaRegistryUri(schemaRegistryURI)
-                    .build();
-            SerializerConfig config = SerializerConfig.builder()
-                    .registryConfig(schemaRegistryClientConfig)
-                    .namespace(namespace)
-                    .groupId(groupId)
-                    .build();
-            genericDeserializer = SerializerFactory.avroGenericDeserializer(config, schema);
+    private static class JsonGenericDeserializer extends AbstractDeserializer<JsonNode> {
+        private final ObjectMapper objectMapper;
+
+        public JsonGenericDeserializer(String groupId, SchemaRegistryClient client,
+                                       SerializerConfig.Decoders decoders, EncodingCache encodingCache, boolean encodeHeader) {
+            super(groupId, client, null, false, decoders, encodingCache, encodeHeader);
+            this.objectMapper = new ObjectMapper();
+            objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+        }
+
+        @Override
+        public final JsonNode deserialize(InputStream inputStream, SchemaInfo writerSchemaInfo, SchemaInfo readerSchemaInfo) throws IOException {
+            return objectMapper.readTree(inputStream);
         }
     }
 
@@ -143,12 +224,12 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        PravegaRegistryRowDataDeserializationSchema that = (PravegaRegistryRowDataDeserializationSchema) o;
-        return Objects.equals(typeInfo, that.typeInfo) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI);
+        PravegaRegistryRowDataDeserializationSchema<?> that = (PravegaRegistryRowDataDeserializationSchema<?>) o;
+        return failOnMissingField == that.failOnMissingField && ignoreParseErrors == that.ignoreParseErrors && Objects.equals(rowType, that.rowType) && Objects.equals(typeInfo, that.typeInfo) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) && serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(typeInfo, namespace, groupId, schemaRegistryURI);
+        return Objects.hash(rowType, typeInfo, namespace, groupId, schemaRegistryURI, serializationFormat, failOnMissingField, ignoreParseErrors, timestampFormat);
     }
 }

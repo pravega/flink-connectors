@@ -15,6 +15,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
+import org.apache.flink.formats.json.TimestampFormat;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -29,7 +30,6 @@ import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 
 import java.net.URI;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -50,6 +50,10 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
         final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URL));
 
+        final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
+        final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
+        TimestampFormat timestampOption = PravegaRegistryOptions.getTimestampFormat(formatOptions);
+
         return new DecodingFormat<DeserializationSchema<RowData>>() {
             @Override
             public DeserializationSchema<RowData> createRuntimeDecoder(
@@ -57,7 +61,15 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                 final RowType rowType = (RowType) producedDatatype.getLogicalType();
                 final TypeInformation<RowData> rowDataTypeInfo =
                         context.createTypeInformation(producedDatatype);
-                return new PravegaRegistryRowDataDeserializationSchema(rowType, rowDataTypeInfo, namespace, groupId, schemaRegistryURI);
+                return new PravegaRegistryRowDataDeserializationSchema(
+                        rowType,
+                        rowDataTypeInfo,
+                        namespace,
+                        groupId,
+                        schemaRegistryURI,
+                        failOnMissingField,
+                        ignoreParseErrors,
+                        timestampOption);
             }
 
             @Override
@@ -107,6 +119,10 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
 
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
-        return Collections.emptySet();
+        Set<ConfigOption<?>> options = new HashSet<>();
+        options.add(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
+        options.add(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
+        options.add(PravegaRegistryOptions.TIMESTAMP_FORMAT);
+        return options;
     }
 }

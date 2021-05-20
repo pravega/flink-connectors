@@ -10,9 +10,10 @@
 package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.EventRead;
-import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource.ReadableMetadata;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
@@ -26,14 +27,24 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     // source datatype arity without metadata
     private final int physicalArity;
 
+    // nested schema
+    private final DeserializationSchema<RowData> nestedSchema;
+
+    @SuppressWarnings("unchecked")
     public FlinkPravegaDynamicDeserializationSchema(
             TypeInformation<RowData> typeInfo,
             int physicalArity,
-            Serializer<RowData> serializer,
-            List<String> metadataKeys) {
-        super(typeInfo, serializer);
+            List<String> metadataKeys,
+            DeserializationSchema<RowData> nestedSchema) {
+        super(typeInfo, new FlinkDeserializer<>(nestedSchema));
         this.metadataKeys = metadataKeys;
         this.physicalArity = physicalArity;
+        this.nestedSchema = nestedSchema;
+    }
+
+    @Override
+    public void open(InitializationContext context) throws Exception {
+        this.nestedSchema.open(context);
     }
 
     @Override

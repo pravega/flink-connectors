@@ -333,7 +333,8 @@ public class PravegaCatalog extends AbstractCatalog {
         streamManager.createStream(scope, stream, StreamConfiguration.builder().build());
         changeRegistryNamespace(scope);
         schemaRegistryClient.addGroup(stream, new GroupProperties(
-                SerializationFormat.Any,
+                // Serialization only support Avro format
+                SerializationFormat.Avro,
                 Compatibility.allowAny(),
                 true));
 

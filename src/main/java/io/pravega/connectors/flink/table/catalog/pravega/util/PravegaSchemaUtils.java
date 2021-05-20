@@ -19,8 +19,6 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonRowSchemaConverter;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonProcessingException;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.utils.DataTypeUtils;
@@ -41,15 +39,8 @@ public class PravegaSchemaUtils {
 
         switch (format) {
             case Json:
-                ObjectMapper objectMapper = new ObjectMapper();
                 JSONSchema jsonSchema = JSONSchema.from(schemaInfo);
-
-                try {
-                    schemaString = objectMapper.writeValueAsString(jsonSchema.getSchema());
-                } catch (JsonProcessingException e) {
-                    throw new RuntimeException("Failed to write message schema.", e);
-                }
-
+                schemaString = jsonSchema.getSchemaString();
                 dataType = TypeConversions.fromLegacyInfoToDataType(JsonRowSchemaConverter.convert(schemaString));
                 break;
             case Avro:

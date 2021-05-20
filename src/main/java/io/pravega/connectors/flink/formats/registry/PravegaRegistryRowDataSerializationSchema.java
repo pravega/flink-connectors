@@ -79,10 +79,21 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     }
 
     @Override
+    public void open(InitializationContext context) throws Exception {
+        schema = AvroSchemaConverter.convertToSchema(rowType);
+        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
+                .schemaRegistryUri(schemaRegistryURI)
+                .build();
+        SerializerConfig config = SerializerConfig.builder()
+                .registryConfig(schemaRegistryClientConfig)
+                .namespace(namespace)
+                .groupId(groupId)
+                .build();
+        serializer = SerializerFactory.avroSerializer(config, AvroSchema.ofRecord(schema));
+    }
+
+    @Override
     public byte[] serialize(RowData row) {
-        if (serializer == null) {
-            initializeSerializer();
-        }
         try {
             return convertToByteArray(serializeToGenericRecord(row));
         } catch (Exception e) {
@@ -96,21 +107,6 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     public byte[] convertToByteArray(GenericRecord message) {
         return serializer.serialize(message).array();
-    }
-
-    public void initializeSerializer() {
-        schema = AvroSchemaConverter.convertToSchema(rowType);
-        synchronized (this) {
-            SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
-                    .schemaRegistryUri(schemaRegistryURI)
-                    .build();
-            SerializerConfig config = SerializerConfig.builder()
-                    .registryConfig(schemaRegistryClientConfig)
-                    .namespace(namespace)
-                    .groupId(groupId)
-                    .build();
-            serializer = SerializerFactory.avroSerializer(config, AvroSchema.ofRecord(schema));
-        }
     }
 
     @Override
