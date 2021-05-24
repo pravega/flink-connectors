@@ -77,7 +77,6 @@ import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.any;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -726,7 +725,7 @@ public class FlinkPravegaReaderTest {
             }
 
             readerGroupManager = mock(ReaderGroupManager.class);
-            doNothing().when(readerGroupManager).createReaderGroup(readerGroupName, readerGroupConfig);
+            readerGroup.resetReaderGroup(readerGroupConfig);
             doReturn(new HashSet<>(Arrays.asList(SAMPLE_COMPLETE_STREAM_NAME))).when(readerGroup).getStreamNames();
             doReturn(readerGroup).when(readerGroupManager).getReaderGroup(readerGroupName);
             return readerGroupManager;
