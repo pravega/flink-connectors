@@ -13,7 +13,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
-import io.pravega.connectors.flink.EventTimeOrderingOperator;
+import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.shared.security.auth.Credentials;
@@ -26,6 +26,7 @@ import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -55,7 +56,10 @@ public class FlinkPravegaUtils {
         Preconditions.checkNotNull(writer.getEventRouter(), "Event router should not be null");
         return stream
                 .keyBy(new PravegaEventRouterKeySelector<>(writer.getEventRouter()))
-                .transform("reorder", stream.getType(), new EventTimeOrderingOperator<>()).setParallelism(parallelism).forward()
+                .process(new EventTimeOrderingFunction<>(stream.getType()))
+                // The next line add `TypeInformation` to the return type of `EventTimeOrderingFunction`.
+                // Because some Lambda functions may erase the type information.
+                .returns(stream.getType())
                 .addSink(writer).setParallelism(parallelism);
     }
 
@@ -118,7 +122,7 @@ public class FlinkPravegaUtils {
      *
      * @param <T> The type of the event.
      */
-    public static final class FlinkDeserializer<T> implements Serializer<T> {
+    public static final class FlinkDeserializer<T> implements Serializer<T>, Serializable {
 
         private final DeserializationSchema<T> deserializationSchema;
 

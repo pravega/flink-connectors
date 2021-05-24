@@ -9,10 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
-import org.apache.flink.util.ExceptionUtils;
-import org.apache.flink.util.Preconditions;
-import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.EventRead;
@@ -21,7 +19,6 @@ import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
@@ -30,6 +27,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -45,12 +43,12 @@ import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
+import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
-import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -347,6 +345,8 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
+        deserializationSchema.open(RuntimeContextInitializationContextAdapters.deserializationAdapter(
+                getRuntimeContext(), metricGroup -> metricGroup.addGroup("user")));
         createEventStreamClientFactory();
         createReaderGroupManager();
         createReaderGroup();
@@ -556,15 +556,12 @@ public class FlinkPravegaReader<T>
             StringBuilder builder = new StringBuilder();
             builder.append("scope=").append(scope).append(", ");
             builder.append("stream=").append(stream).append(", segments={");
-            Map<Stream, StreamCut> streamCuts = readerGroup.getStreamCuts();
-            Optional<Map.Entry<Stream, StreamCut>> optionalStreamCutEntry =
-                    streamCuts.entrySet().stream()
-                            .filter(e -> e.getKey().getStreamName().equals(stream) &&
-                                    e.getKey().getScope().equals(scope))
-                            .findFirst();
-            if (optionalStreamCutEntry.isPresent()) {
-                builder.append(optionalStreamCutEntry.get().getValue().toString());
-            }
+
+            readerGroup.getStreamCuts().entrySet().stream()
+                    .filter(e -> e.getKey().getStreamName().equals(stream) &&
+                            e.getKey().getScope().equals(scope)).findFirst()
+                    .ifPresent(streamStreamCutEntry -> builder.append(streamStreamCutEntry.getValue().toString()));
+
             builder.append("}");
             return builder.toString();
         }
@@ -623,11 +620,8 @@ public class FlinkPravegaReader<T>
 
     /**
      * Create the {@link EventStreamClientFactory} for the current configuration.
-<<<<<<< HEAD
-=======
      *
      * @return An instance of {@link EventStreamClientFactory}
->>>>>>> origin/master
      */
     protected EventStreamClientFactory createEventStreamClientFactory() {
         if (eventStreamClientFactory == null) {

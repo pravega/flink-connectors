@@ -22,6 +22,7 @@ import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSinkOperatorTestHarness;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.util.MockSerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
 import org.junit.Assert;
 import org.junit.Test;
@@ -29,8 +30,8 @@ import org.mockito.Mockito;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.UUID;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -88,7 +89,7 @@ public class FlinkPravegaWriterTest {
         FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(clientFactory, null, false, PravegaWriterMode.ATLEAST_ONCE);
 
         try {
-            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction)) {
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction.ignoreFailuresAfterTransactionTimeout())) {
                 testHarness.open();
 
                 // verify that exceptions don't interfere with close
@@ -102,6 +103,30 @@ public class FlinkPravegaWriterTest {
         }
 
         verify(clientFactory).close();
+    }
+
+    /**
+     * Tests the open method for serializationSchema.
+     */
+    @Test
+    public void testOpenSerializationSchema() throws Exception {
+        MockSerializationSchema<Integer> schema = new MockSerializationSchema<>();
+
+        ExecutorService executorService = spy(new DirectExecutorService());
+
+        EventStreamWriter<Integer> pravegaWriter = mockEventStreamWriter();
+        EventStreamClientFactory clientFactory = mockClientFactory(pravegaWriter);
+        FlinkPravegaWriter<Integer> sinkFunction = spy(new FlinkPravegaWriter<>(
+                MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), schema,
+                null, PravegaWriterMode.ATLEAST_ONCE, DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS,
+                false, true));
+        Mockito.doReturn(executorService).when(sinkFunction).createExecutorService();
+        Mockito.doReturn(clientFactory).when(sinkFunction).createClientFactory(MOCK_SCOPE_NAME, MOCK_CLIENT_CONFIG);
+
+        StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction);
+
+        testHarness.open();
+        Assert.assertTrue(schema.isOpenCalled());
     }
 
     // endregion
@@ -372,6 +397,27 @@ public class FlinkPravegaWriterTest {
                 Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
                 testHarness.notifyOfCompletedCheckpoint(1L);
                 verify(trans).commit();
+            }
+        }
+    }
+
+
+    /**
+     * Tests the error handling with unknown transaction.
+     */
+    @Test
+    public void testTransactionalWriterCommitWithUnknownId() throws Exception {
+        try (WriterTestContext context = new WriterTestContext(false)) {
+            Transaction<Integer> trans = context.prepareTransaction();
+            try (StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(context.txnSinkFunction)) {
+                testHarness.open();
+                StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+                testHarness.processElement(e1);
+                testHarness.snapshot(1L, 1L);
+
+                Mockito.when(trans.checkStatus()).thenThrow(new RuntimeException("Unknown transaction: abc"));
+                testHarness.notifyOfCompletedCheckpoint(1L);
+                // RuntimeException with Unknown transaction is caught
             }
         }
     }
