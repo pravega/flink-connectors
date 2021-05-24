@@ -20,6 +20,7 @@ import io.pravega.client.stream.Position;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ReaderGroupNotFoundException;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
@@ -76,6 +77,7 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
+import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
@@ -727,7 +729,9 @@ public class FlinkPravegaReaderTest {
             readerGroupManager = mock(ReaderGroupManager.class);
             readerGroup.resetReaderGroup(readerGroupConfig);
             doReturn(new HashSet<>(Arrays.asList(SAMPLE_COMPLETE_STREAM_NAME))).when(readerGroup).getStreamNames();
-            doReturn(readerGroup).when(readerGroupManager).getReaderGroup(readerGroupName);
+            when(readerGroupManager.getReaderGroup(anyString()))
+                    .thenThrow(new ReaderGroupNotFoundException("Reader group not found"))
+                    .thenReturn(readerGroup);
             return readerGroupManager;
         }
 
