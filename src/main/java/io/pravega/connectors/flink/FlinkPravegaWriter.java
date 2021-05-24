@@ -323,8 +323,8 @@ public class FlinkPravegaWriter<T>
     @Override
     protected void abort(PravegaTransactionState transaction) {
         switch (writerMode) {
-            // This may come from a job recovery from a non-transactional writer.
             case EXACTLY_ONCE:
+                // This may come from a job recovery from a non-transactional writer.
                 if (transaction.transactionId == null) {
                     break;
                 }
