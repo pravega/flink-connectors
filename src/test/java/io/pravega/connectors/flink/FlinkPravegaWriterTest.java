@@ -403,7 +403,6 @@ public class FlinkPravegaWriterTest {
         }
     }
 
-
     /**
      * Tests the error handling with unknown transaction.
      */
