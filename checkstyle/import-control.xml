@@ -12,6 +12,7 @@
     <allow pkg="org.slf4j"/>
     <allow pkg="org.junit"/>
     <allow pkg="com.google"/>
+    <allow pkg="io.grpc"/>
     <allow pkg="io.pravega"/>
     <allow pkg="lombok"/>
     <allow pkg="org.apache"/>
