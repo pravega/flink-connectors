@@ -85,6 +85,14 @@
     <module name="ImportControl">
       <property name="file" value="${importControlFile}"/>
     </module>
+    <module name="CustomImportOrder">
+      <property name="sortImportsInGroupAlphabetically" value="true"/>
+      <property name="customImportOrderRules"
+                value="THIRD_PARTY_PACKAGE###SPECIAL_IMPORTS###STANDARD_JAVA_PACKAGE###STATIC"/>
+      <property name="specialImportsRegExp" value="^javax\."/>
+      <property name="standardPackageRegExp" value="^java\."/>
+      <property name="separateLineBetweenGroups" value="false"/>
+    </module>
 
     <!-- whitespace -->
     <module name="GenericWhitespace"/>

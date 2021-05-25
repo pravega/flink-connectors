@@ -84,7 +84,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-
 /**
  * Unit tests for {@link FlinkPravegaReader} and its builder.
  */
