@@ -16,7 +16,6 @@ import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Preconditions;
 
-import javax.annotation.Nullable;
 import java.io.Serializable;
 import java.net.URI;
 import java.util.Collections;
@@ -24,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import javax.annotation.Nullable;
 
 /**
  * The Pravega client configuration.

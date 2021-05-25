@@ -10,8 +10,6 @@
 
 package io.pravega.connectors.flink.utils;
 
-import javax.annotation.Nonnull;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,6 +22,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import javax.annotation.Nonnull;
 
 /* This code is originally from the Apache Flink project. */
 /** The direct executor service directly executes the runnables and the callables in the calling thread. */
