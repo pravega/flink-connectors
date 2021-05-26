@@ -10,6 +10,8 @@
 package io.pravega.connectors.flink;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -296,8 +298,8 @@ public class FlinkPravegaWriter<T>
                     }
                 } catch (TxnFailedException e) {
                     log.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
-                } catch (RuntimeException e) {
-                    if (e.getMessage().contains("Unknown transaction")) {
+                } catch (StatusRuntimeException e) {
+                    if (e.getStatus() == Status.NOT_FOUND) {
                         log.error("{} - Transaction {} not found.", writerId(), txn.getTxnId());
                     }
                 }

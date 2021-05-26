@@ -9,14 +9,14 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.client.batch.SegmentRange;
 import org.junit.Before;
 import org.junit.Test;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.assertFalse;
-
-import io.pravega.client.batch.SegmentRange;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class PravegaInputSplitTest {
 
