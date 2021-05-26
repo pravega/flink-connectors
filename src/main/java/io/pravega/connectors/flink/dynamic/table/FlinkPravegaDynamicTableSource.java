@@ -12,7 +12,6 @@ package io.pravega.connectors.flink.dynamic.table;
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;
 import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -175,14 +174,12 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
         // create a PravegaDeserializationSchema that will expose metadata to the row
-        FlinkDeserializer<RowData> deserializer = new FlinkDeserializer<>(
-                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
         final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
                 = new FlinkPravegaDynamicDeserializationSchema(
                 runtimeProviderContext.createTypeInformation(producedDataType),
                 producedDataType.getChildren().size() - metadataKeys.size(),
-                deserializer,
-                metadataKeys);
+                metadataKeys,
+                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
 
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
