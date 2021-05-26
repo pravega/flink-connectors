@@ -129,9 +129,11 @@ public class PravegaRegistrySeDeITCase {
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(rowType, SETUP_UTILS.getScope(),
                         TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+        serializationSchema.open(null);
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(rowType, typeInfo, SETUP_UTILS.getScope(),
                         TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+        deserializationSchema.open(null);
 
         SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri())
