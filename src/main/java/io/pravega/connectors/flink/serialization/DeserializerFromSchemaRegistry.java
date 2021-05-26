@@ -60,8 +60,7 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
 
             try (SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(
                     pravegaConfig.getDefaultScope(), schemaRegistryClientConfig)) {
-                format = schemaRegistryClient.getLatestSchemaVersion(group, null)
-                        .getSchemaInfo().getSerializationFormat();
+                format = schemaRegistryClient.getGroupProperties(group).getSerializationFormat();
             } catch (Exception e) {
                 log.error("Error while closing the schema registry client", e);
                 throw new FlinkRuntimeException(e);
