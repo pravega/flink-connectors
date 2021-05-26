@@ -10,18 +10,15 @@
 
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import org.apache.flink.util.Preconditions;
-
-import io.pravega.client.ClientConfig;
 import io.pravega.client.BatchClientFactory;
+import io.pravega.client.ClientConfig;
 import io.pravega.client.batch.SegmentIterator;
 import io.pravega.client.batch.SegmentRange;
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -29,9 +26,10 @@ import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.io.RichInputFormat;
 import org.apache.flink.api.common.io.statistics.BaseStatistics;
-import org.apache.flink.configuration.Configuration;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplitAssigner;
+import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 import java.util.ArrayList;
