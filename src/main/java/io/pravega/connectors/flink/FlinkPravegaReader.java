@@ -27,7 +27,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -345,8 +344,7 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
-        deserializationSchema.open(RuntimeContextInitializationContextAdapters.deserializationAdapter(
-                getRuntimeContext(), metricGroup -> metricGroup.addGroup("user")));
+        this.deserializationSchema.open(() -> getRuntimeContext().getMetricGroup().addGroup("user"));
         createEventStreamClientFactory();
         createReaderGroupManager();
         createReaderGroup();

@@ -22,7 +22,6 @@ import io.pravega.client.stream.TxnFailedException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
-import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeutils.SimpleTypeSerializerSnapshot;
 import org.apache.flink.api.common.typeutils.TypeSerializerSnapshot;
@@ -183,8 +182,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     public void open(Configuration configuration) throws Exception {
-        serializationSchema.open(RuntimeContextInitializationContextAdapters.serializationAdapter(
-                getRuntimeContext(), metricGroup -> metricGroup.addGroup("user")));
+        this.serializationSchema.open(() -> getRuntimeContext().getMetricGroup().addGroup("user"));
         initializeInternalWriter();
         log.info("Initialized Pravega writer {} for stream: {} with controller URI: {}", writerId(), stream, clientConfig.getControllerURI());
         if (enableMetrics) {
