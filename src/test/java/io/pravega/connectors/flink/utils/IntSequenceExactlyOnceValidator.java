@@ -10,11 +10,9 @@
 package io.pravega.connectors.flink.utils;
 
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-
 import org.junit.Assert;
 
 import java.util.BitSet;
