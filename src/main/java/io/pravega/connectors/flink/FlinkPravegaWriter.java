@@ -281,6 +281,10 @@ public class FlinkPravegaWriter<T>
     protected void commit(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                // This may come from a job recovery from a non-transactional writer.
+                if (transaction.transactionId == null) {
+                    break;
+                }
                 @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
@@ -322,6 +326,10 @@ public class FlinkPravegaWriter<T>
     protected void abort(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                // This may come from a job recovery from a non-transactional writer.
+                if (transaction.transactionId == null) {
+                    break;
+                }
                 @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
