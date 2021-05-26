@@ -75,7 +75,6 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
         SETUP_UTILS.stopAllServices();
     }
 
-    @Ignore("Test failed due to https://issues.apache.org/jira/browse/FLINK-21178")
     @Test
     public void testReaderState() throws Exception {
 
