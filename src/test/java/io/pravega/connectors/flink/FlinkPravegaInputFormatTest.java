@@ -18,8 +18,8 @@ import io.pravega.client.batch.StreamSegmentsIterator;
 import io.pravega.client.stream.Stream;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.io.InputFormat;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.junit.Test;
 
 import java.net.URI;

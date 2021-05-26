@@ -10,11 +10,11 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.table.descriptors.Pravega;
 import org.apache.flink.api.common.JobExecutionResult;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.dag.Transformation;
 import org.apache.flink.api.java.DataSet;
-import io.pravega.connectors.flink.table.descriptors.Pravega;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
