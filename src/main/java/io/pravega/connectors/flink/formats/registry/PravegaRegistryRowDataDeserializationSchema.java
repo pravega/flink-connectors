@@ -162,7 +162,7 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
         try {
             return convertToRowData(deserializeToObject(message));
         } catch (Exception e) {
-            throw new IOException("Failed to deserialize Avro record.", e);
+            throw new IOException("Failed to deserialize byte array.", e);
         }
     }
 

@@ -19,6 +19,13 @@ public class PravegaCatalogValidator extends CatalogDescriptorValidator {
     public static final String CATALOG_CONTROLLER_URI = "controller-uri";
     public static final String CATALOG_SCHEMA_REGISTRY_URI = "schema-registry-uri";
 
+    public static final String CATALOG_SERIALIZATION_FORMAT = "serialization-format";
+    public static final String CATALOG_JSON_FAIL_ON_MISSING_FIELD = "json.fail-on-missing-field";
+    public static final String CATALOG_JSON_IGNORE_PARSE_ERRORS = "json.ignore-parse-errors";
+    public static final String CATALOG_JSON_TIMESTAMP_FORMAT = "json.timestamp-format.standard";
+    public static final String CATALOG_JSON_MAP_NULL_KEY_MODE = "json.map-null-key.mode";
+    public static final String CATALOG_JSON_MAP_NULL_KEY_LITERAL = "json.map-null-key.literal";
+
     @Override
     public void validate(DescriptorProperties properties) {
         super.validate(properties);
@@ -27,5 +34,12 @@ public class PravegaCatalogValidator extends CatalogDescriptorValidator {
         properties.validateString(CATALOG_CONTROLLER_URI, false, 1);
         properties.validateString(CATALOG_SCHEMA_REGISTRY_URI, false, 1);
         properties.validateString(CATALOG_DEFAULT_DATABASE, false, 1);
+
+        properties.validateString(CATALOG_SERIALIZATION_FORMAT, true, 1);
+        properties.validateString(CATALOG_JSON_FAIL_ON_MISSING_FIELD, true, 1);
+        properties.validateString(CATALOG_JSON_IGNORE_PARSE_ERRORS, true, 1);
+        properties.validateString(CATALOG_JSON_TIMESTAMP_FORMAT, true, 1);
+        properties.validateString(CATALOG_JSON_MAP_NULL_KEY_MODE, true, 1);
+        properties.validateString(CATALOG_JSON_MAP_NULL_KEY_LITERAL, true, 1);
     }
 }

@@ -12,17 +12,14 @@ package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
+import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
-import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import io.pravega.schemaregistry.serializer.shared.codec.Encoder;
-import io.pravega.schemaregistry.serializer.shared.impl.AbstractSerializer;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.avro.Schema;
@@ -31,9 +28,10 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.TimestampFormat;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonAutoDetect;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.PropertyAccessor;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ArrayNode;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.util.DataFormatConverters;
 import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
@@ -44,10 +42,14 @@ import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-import java.io.IOException;
-import java.io.OutputStream;
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -72,6 +74,7 @@ import static org.apache.flink.table.api.DataTypes.SMALLINT;
 import static org.apache.flink.table.api.DataTypes.STRING;
 import static org.apache.flink.table.api.DataTypes.TIME;
 import static org.apache.flink.table.api.DataTypes.TIMESTAMP;
+import static org.apache.flink.table.api.DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE;
 import static org.apache.flink.table.api.DataTypes.TINYINT;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
@@ -79,7 +82,8 @@ import static org.junit.Assert.assertEquals;
 /** Intergration Test for Pravega Registry serialization and deserialization schema. */
 @SuppressWarnings("checkstyle:StaticVariableName")
 public class PravegaRegistrySeDeITCase {
-    private static final String TEST_CATALOG_NAME = "mycatalog";
+    private static final String TEST_AVRO_CATALOG_NAME = "mycatalog1";
+    private static final String TEST_JSON_CATALOG_NAME = "mycatalog2";
 
     /** Avro fields */
     private static final String AVRO_TEST_STREAM = "stream1";
@@ -89,42 +93,47 @@ public class PravegaRegistrySeDeITCase {
 
     /** Json fields */
     private static final String JSON_TEST_STREAM = "stream2";
-    private static JSONSchema<JsonTest> jsonSchema = null;
+    private static JSONSchema<JsonNode> jsonSchema = null;
     private static RowType jsonRowType = null;
     private static TypeInformation<RowData> jsonTypeInfo = null;
     private static DataType jsonDataType = null;
 
     private static final boolean FAIL_ON_MISSING_FIELD = false;
     private static final boolean IGNORE_PARSE_ERRORS = false;
-    private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
+    private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.ISO_8601;
+    private static final PravegaRegistryOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            PravegaRegistryOptions.MapNullKeyMode.FAIL;
+    private static final String MAP_NULL_KEY_LITERAL = "null";
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
     private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static PravegaCatalog CATALOG = null;
+    private static PravegaCatalog AVROCATALOG = null;
+    private static PravegaCatalog JSONCATALOG = null;
 
     @BeforeClass
     public static void setupPravega() throws Exception {
         SETUP_UTILS.startAllServices();
         SCHEMA_REGISTRY_UTILS.setupServices();
-        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        initAvro();
-        initJson();
-        CATALOG.open();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        CATALOG.close();
         SETUP_UTILS.stopAllServices();
         SCHEMA_REGISTRY_UTILS.tearDownServices();
     }
 
     @Test
     public void testAvroSerializeDeserialize() throws Exception {
+        AVROCATALOG = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
+                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
+                "Avro", null, null,
+                null, null, null);
+        initAvro();
+        AVROCATALOG.open();
+
         final GenericRecord record = new GenericData.Record(avroSchema);
         record.put(0, true);
         record.put(1, (int) Byte.MAX_VALUE);
@@ -175,7 +184,8 @@ public class PravegaRegistrySeDeITCase {
 
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(avroRowType, SETUP_UTILS.getScope(),
-                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(), SerializationFormat.Avro,
+                        TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL);
         serializationSchema.open(null);
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo, SETUP_UTILS.getScope(),
@@ -198,10 +208,19 @@ public class PravegaRegistrySeDeITCase {
         byte[] output = serializationSchema.serialize(rowData);
 
         assertArrayEquals(input, output);
+
+        AVROCATALOG.close();
     }
 
     @Test
     public void testJsonDeserialize() throws Exception {
+        JSONCATALOG = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
+                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
+                "Json", null, null,
+                null, null, null);
+        initJson();
+        JSONCATALOG.open();
+
         byte tinyint = 'c';
         short smallint = 128;
         int intValue = 45536;
@@ -212,6 +231,14 @@ public class PravegaRegistrySeDeITCase {
         ThreadLocalRandom.current().nextBytes(bytes);
         BigDecimal decimal = new BigDecimal("123.456789");
         Double[] doubles = new Double[] {1.1, 2.2, 3.3};
+        LocalDate date = LocalDate.parse("1990-10-14");
+        LocalTime time = LocalTime.parse("12:12:43");
+        Timestamp timestamp3 = Timestamp.valueOf("1990-10-14 12:12:43.123");
+        Timestamp timestamp9 = Timestamp.valueOf("1990-10-14 12:12:43.123456789");
+        Instant timestampWithLocalZone =
+                LocalDateTime.of(1990, 10, 14, 12, 12, 43, 123456789)
+                        .atOffset(ZoneOffset.of("Z"))
+                        .toInstant();
 
         Map<String, Long> map = new HashMap<>();
         map.put("flink", 123L);
@@ -219,8 +246,34 @@ public class PravegaRegistrySeDeITCase {
         Map<String, Integer> multiSet = new HashMap<>();
         multiSet.put("blink", 2);
 
-        JsonTest jsonTest = new JsonTest(true, tinyint, smallint, intValue, bigint, floatValue, name, bytes,
-                decimal, doubles, map, multiSet);
+        Map<String, Map<String, Integer>> nestedMap = new HashMap<>();
+        Map<String, Integer> innerMap = new HashMap<>();
+        innerMap.put("key", 234);
+        nestedMap.put("inner_map", innerMap);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        ArrayNode doubleNode = objectMapper.createArrayNode().add(1.1D).add(2.2D).add(3.3D);
+
+        // Root
+        ObjectNode root = objectMapper.createObjectNode();
+        root.put("bool", true);
+        root.put("tinyint", tinyint);
+        root.put("smallint", smallint);
+        root.put("int", intValue);
+        root.put("bigint", bigint);
+        root.put("float", floatValue);
+        root.put("name", name);
+        root.put("bytes", bytes);
+        root.put("decimal", decimal);
+        root.set("doubles", doubleNode);
+        root.put("date", "1990-10-14");
+        root.put("time", "12:12:43");
+        root.put("timestamp3", "1990-10-14T12:12:43.123");
+        root.put("timestamp9", "1990-10-14T12:12:43.123456789");
+        root.put("timestampWithLocalZone", "1990-10-14T12:12:43.123456789Z");
+        root.putObject("map").put("flink", 123);
+        root.putObject("multiSet").put("blink", 2);
+        root.putObject("map2map").putObject("inner_map").put("key", 234);
 
         SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri())
@@ -230,7 +283,7 @@ public class PravegaRegistrySeDeITCase {
                 .namespace(SETUP_UTILS.getScope())
                 .groupId(JSON_TEST_STREAM)
                 .build();
-        Serializer<JsonTest> serializer = new JsonSerializer(
+        Serializer<JsonNode> serializer = new PravegaRegistryRowDataSerializationSchema.JsonSerializer(
                 JSON_TEST_STREAM,
                 SchemaRegistryClientFactory.withNamespace(SETUP_UTILS.getScope(), schemaRegistryClientConfig),
                 jsonSchema,
@@ -238,8 +291,9 @@ public class PravegaRegistrySeDeITCase {
                 serializerConfig.isRegisterSchema(),
                 serializerConfig.isWriteEncodingHeader());
 
-        byte[] serializedJson = serializer.serialize(jsonTest).array();
+        byte[] serializedJson = serializer.serialize(root).array();
 
+        // test deserialization
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(
                         jsonRowType, jsonTypeInfo, SETUP_UTILS.getScope(), JSON_TEST_STREAM,
@@ -247,7 +301,7 @@ public class PravegaRegistrySeDeITCase {
                         FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT);
         deserializationSchema.open(null);
 
-        Row expected = new Row(12);
+        Row expected = new Row(18);
         expected.setField(0, true);
         expected.setField(1, tinyint);
         expected.setField(2, smallint);
@@ -258,12 +312,30 @@ public class PravegaRegistrySeDeITCase {
         expected.setField(7, bytes);
         expected.setField(8, decimal);
         expected.setField(9, doubles);
-        expected.setField(10, map);
-        expected.setField(11, multiSet);
+        expected.setField(10, date);
+        expected.setField(11, time);
+        expected.setField(12, timestamp3.toLocalDateTime());
+        expected.setField(13, timestamp9.toLocalDateTime());
+        expected.setField(14, timestampWithLocalZone);
+        expected.setField(15, map);
+        expected.setField(16, multiSet);
+        expected.setField(17, nestedMap);
 
         RowData rowData = deserializationSchema.deserialize(serializedJson);
         Row actual = convertToExternal(rowData, jsonDataType);
         assertEquals(expected, actual);
+
+        // test serialization
+        PravegaRegistryRowDataSerializationSchema serializationSchema =
+                new PravegaRegistryRowDataSerializationSchema(
+                        jsonRowType, SETUP_UTILS.getScope(), JSON_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
+                        SerializationFormat.Json, TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL);
+        serializationSchema.open(null);
+
+        byte[] actualBytes = serializationSchema.serialize(rowData);
+        assertEquals(new String(serializedJson), new String(actualBytes));
+
+        JSONCATALOG.close();
     }
 
     private static void initAvro() throws Exception {
@@ -298,73 +370,31 @@ public class PravegaRegistrySeDeITCase {
     private static void initJson() throws Exception {
         jsonDataType =
                 ROW(
-                        FIELD("boolVal", BOOLEAN()),
-                        FIELD("tinyintVal", TINYINT()),
-                        FIELD("smallintVal", SMALLINT()),
-                        FIELD("intVal", INT()),
-                        FIELD("bigintVal", BIGINT()),
-                        FIELD("floatVal", FLOAT()),
-                        FIELD("nameVal", STRING()),
-                        FIELD("bytesVal", BYTES()),
-                        FIELD("decimalVal", DECIMAL(9, 6)),
-                        FIELD("doublesVal", ARRAY(DOUBLE())),
-                        FIELD("mapVal", MAP(STRING(), BIGINT())),
-                        FIELD("multiSetVal", MULTISET(STRING())));
+                        FIELD("bool", BOOLEAN()),
+                        FIELD("tinyint", TINYINT()),
+                        FIELD("smallint", SMALLINT()),
+                        FIELD("int", INT()),
+                        FIELD("bigint", BIGINT()),
+                        FIELD("float", FLOAT()),
+                        FIELD("name", STRING()),
+                        FIELD("bytes", BYTES()),
+                        FIELD("decimal", DECIMAL(9, 6)),
+                        FIELD("doubles", ARRAY(DOUBLE())),
+                        FIELD("date", DATE()),
+                        FIELD("time", TIME(0)),
+                        FIELD("timestamp3", TIMESTAMP(3)),
+                        FIELD("timestamp9", TIMESTAMP(9)),
+                        FIELD("timestampWithLocalZone", TIMESTAMP_WITH_LOCAL_TIME_ZONE(9)),
+                        FIELD("map", MAP(STRING(), BIGINT())),
+                        FIELD("multiSet", MULTISET(STRING())),
+                        FIELD("map2map", MAP(STRING(), MAP(STRING(), INT()))));
         jsonRowType = (RowType) jsonDataType.getLogicalType();
         jsonTypeInfo = InternalTypeInfo.of(jsonRowType);
 
-        jsonSchema = JSONSchema.of(JsonTest.class);
+        String schemaString = PravegaSchemaUtils.convertToJsonSchemaString(jsonRowType);
+        jsonSchema = JSONSchema.of("", schemaString, JsonNode.class);
         SCHEMA_REGISTRY_UTILS.registerSchema(JSON_TEST_STREAM, jsonSchema, SerializationFormat.Json);
         SETUP_UTILS.createTestStream(JSON_TEST_STREAM, 3);
-    }
-
-    private static class JsonTest {
-        public Boolean boolVal;
-        public Byte tinyintVal;
-        public Short smallintVal;
-        public Integer intVal;
-        public Long bigintVal;
-        public Float floatVal;
-        public String nameVal;
-        public byte[] bytesVal;
-        public BigDecimal decimalVal;
-        public Double[] doublesVal;
-        public Map<String, Long> mapVal;
-        public Map<String, Integer> multiSetVal;
-
-        JsonTest(Boolean v1, Byte v2, Short v3, Integer v4, Long v5, Float v6,
-                 String v7, byte[] v8, BigDecimal v9, Double[] v10,
-                 Map<String, Long> v11, Map<String, Integer> v12) {
-            this.boolVal = v1;
-            this.tinyintVal = v2;
-            this.smallintVal = v3;
-            this.intVal = v4;
-            this.bigintVal = v5;
-            this.floatVal = v6;
-            this.nameVal = v7;
-            this.bytesVal = v8;
-            this.decimalVal = v9;
-            this.doublesVal = v10;
-            this.mapVal = v11;
-            this.multiSetVal = v12;
-        }
-    }
-
-    private static class JsonSerializer<T> extends AbstractSerializer<T> {
-        private final ObjectMapper objectMapper;
-
-        public JsonSerializer(String groupId, SchemaRegistryClient client, JSONSchema<T> schema,
-                              Encoder encoder, boolean registerSchema, boolean encodeHeader) {
-            super(groupId, client, schema, encoder, registerSchema, encodeHeader);
-            objectMapper = new ObjectMapper();
-            objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        }
-
-        @Override
-        protected void serialize(T var, SchemaInfo schemaInfo, OutputStream outputStream) throws IOException {
-            objectMapper.writeValue(outputStream, var);
-            outputStream.flush();
-        }
     }
 
     @SuppressWarnings("unchecked")
