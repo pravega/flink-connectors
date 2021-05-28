@@ -13,7 +13,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.table.descriptors.Pravega;
 import io.pravega.connectors.flink.utils.SetupUtils;
-
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -53,8 +52,8 @@ import org.junit.rules.Timeout;
 import java.io.Serializable;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 

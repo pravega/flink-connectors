@@ -10,6 +10,8 @@
 package io.pravega.connectors.flink;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -279,6 +281,10 @@ public class FlinkPravegaWriter<T>
     protected void commit(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                // This may come from a job recovery from a non-transactional writer.
+                if (transaction.transactionId == null) {
+                    break;
+                }
                 @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));
@@ -296,8 +302,8 @@ public class FlinkPravegaWriter<T>
                     }
                 } catch (TxnFailedException e) {
                     log.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
-                } catch (RuntimeException e) {
-                    if (e.getMessage().contains("Unknown transaction")) {
+                } catch (StatusRuntimeException e) {
+                    if (e.getStatus() == Status.NOT_FOUND) {
                         log.error("{} - Transaction {} not found.", writerId(), txn.getTxnId());
                     }
                 }
@@ -320,6 +326,10 @@ public class FlinkPravegaWriter<T>
     protected void abort(PravegaTransactionState transaction) {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                // This may come from a job recovery from a non-transactional writer.
+                if (transaction.transactionId == null) {
+                    break;
+                }
                 @SuppressWarnings("unchecked")
                 final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
                         transactionalWriter.getTxn(UUID.fromString(transaction.transactionId));

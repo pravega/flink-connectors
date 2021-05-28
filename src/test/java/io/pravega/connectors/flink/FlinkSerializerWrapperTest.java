@@ -10,11 +10,9 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Serializer;
-
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-
 import org.junit.Test;
 
 import java.io.IOException;

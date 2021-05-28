@@ -30,7 +30,6 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     // nested schema
     private final DeserializationSchema<RowData> nestedSchema;
 
-    @SuppressWarnings("unchecked")
     public FlinkPravegaDynamicDeserializationSchema(
             TypeInformation<RowData> typeInfo,
             int physicalArity,

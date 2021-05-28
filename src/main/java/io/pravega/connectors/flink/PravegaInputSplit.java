@@ -10,9 +10,9 @@
 
 package io.pravega.connectors.flink;
 
-import org.apache.flink.util.Preconditions;
 import io.pravega.client.batch.SegmentRange;
 import org.apache.flink.core.io.InputSplit;
+import org.apache.flink.util.Preconditions;
 
 /**
  * A {@link PravegaInputSplit} corresponds to a Pravega {@link SegmentRange}.

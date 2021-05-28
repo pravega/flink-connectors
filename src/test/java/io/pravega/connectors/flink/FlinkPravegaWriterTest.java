@@ -9,6 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -401,7 +403,6 @@ public class FlinkPravegaWriterTest {
         }
     }
 
-
     /**
      * Tests the error handling with unknown transaction.
      */
@@ -415,9 +416,9 @@ public class FlinkPravegaWriterTest {
                 testHarness.processElement(e1);
                 testHarness.snapshot(1L, 1L);
 
-                Mockito.when(trans.checkStatus()).thenThrow(new RuntimeException("Unknown transaction: abc"));
+                Mockito.when(trans.checkStatus()).thenThrow(new StatusRuntimeException(Status.NOT_FOUND));
                 testHarness.notifyOfCompletedCheckpoint(1L);
-                // RuntimeException with Unknown transaction is caught
+                // StatusRuntimeException with Unknown transaction is caught
             }
         }
     }
