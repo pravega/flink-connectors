@@ -66,8 +66,7 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
         if (failOnMissingField != null) {
             properties.putString(CATALOG_JSON_FAIL_ON_MISSING_FIELD, failOnMissingField);
         }
-        if (ignoreParseErrors != null)
-        {
+        if (ignoreParseErrors != null) {
             properties.putString(CATALOG_JSON_IGNORE_PARSE_ERRORS, ignoreParseErrors);
         }
         if (timestampFormat != null) {
