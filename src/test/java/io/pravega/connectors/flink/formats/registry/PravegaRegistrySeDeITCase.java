@@ -110,9 +110,6 @@ public class PravegaRegistrySeDeITCase {
     private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static PravegaCatalog AVROCATALOG = null;
-    private static PravegaCatalog JSONCATALOG = null;
-
     @BeforeClass
     public static void setupPravega() throws Exception {
         SETUP_UTILS.startAllServices();
@@ -127,12 +124,12 @@ public class PravegaRegistrySeDeITCase {
 
     @Test
     public void testAvroSerializeDeserialize() throws Exception {
-        AVROCATALOG = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
+        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 "Avro", null, null,
                 null, null, null);
         initAvro();
-        AVROCATALOG.open();
+        avroCatalog.open();
 
         final GenericRecord record = new GenericData.Record(avroSchema);
         record.put(0, true);
@@ -209,17 +206,17 @@ public class PravegaRegistrySeDeITCase {
 
         assertArrayEquals(input, output);
 
-        AVROCATALOG.close();
+        avroCatalog.close();
     }
 
     @Test
     public void testJsonDeserialize() throws Exception {
-        JSONCATALOG = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
+        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 "Json", null, null,
                 null, null, null);
         initJson();
-        JSONCATALOG.open();
+        jsonCatalog.open();
 
         byte tinyint = 'c';
         short smallint = 128;
@@ -335,7 +332,7 @@ public class PravegaRegistrySeDeITCase {
         byte[] actualBytes = serializationSchema.serialize(rowData);
         assertEquals(new String(serializedJson), new String(actualBytes));
 
-        JSONCATALOG.close();
+        jsonCatalog.close();
     }
 
     private static void initAvro() throws Exception {
