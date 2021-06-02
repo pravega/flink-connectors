@@ -18,7 +18,6 @@ buildscript {
         }
     }
     dependencies {
-        classpath group: 'com.github.jengelman.gradle.plugins', name:'shadow', version: shadowGradlePlugin
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
@@ -78,8 +77,6 @@ configurations.all {
 }
 
 configurations {
-    shadowOnly {
-    }
     testCompile.extendsFrom(compileOnly)
     testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
     testCompile.exclude group: 'log4j', module: 'log4j'
@@ -88,8 +85,8 @@ configurations {
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
 
-    compile(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
-        exclude group:  'org.slf4j', module: 'slf4j-api'
+    implementation(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
     }
 
     // provided by application if needed
@@ -128,26 +125,10 @@ dependencies {
     testCompile group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
 }
 
-shadowJar {
-    // relocate pravega client's dependencies to minimize conflicts
-    relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
-    relocate "com.google", "io.pravega.shaded.com.google"
-    relocate "io.grpc", "io.pravega.shaded.io.grpc"
-    relocate "com.squareup.okhttp", "io.pravega.shaded.com.squareup.okhttp"
-    relocate "okio", "io.pravega.shaded.okio"
-    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
-    relocate "io.netty", "io.pravega.shaded.io.netty"
-    relocate 'META-INF/native/libnetty', 'META-INF/native/libio_pravega_shaded_netty'
-    relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
-
-    classifier = null
-    mergeServiceFiles()
-}
-
 javadoc {
     title = "Pravega Flink Connector"
     failOnError = false
-    exclude "**/impl/**";
+    exclude "**/impl/**"
 }
 
 def getProjectVersion() {
@@ -162,33 +143,38 @@ def getProjectVersion() {
 }
 
 distributions {
-    release {
+    main {
         contents {
-            from shadowJar
-            from(project.configurations.shadow)
+            from jar
             from javadocJar
             from sourceJar
         }
     }
-    workspace {
-        contents {
-            from ('.') {
-                exclude "build"
-                exclude ".gradle"
-                exclude ".idea"
-                exclude "out"
-                exclude "pravega/*"
-            }
-        }
-    }
+    // release {
+    //     contents {
+    //         from jar
+    //         from javadocJar
+    //         from sourceJar
+    //     }
+    // }
+    // workspace {
+    //     contents {
+    //         from ('.') {
+    //             exclude "build"
+    //             exclude ".gradle"
+    //             exclude ".idea"
+    //             exclude "out"
+    //         }
+    //     }
+    // }
 }
 
-task distribution(type: Copy, dependsOn: [installReleaseDist, installWorkspaceDist, assembleWorkspaceDist]) {
+task distribution(type: Copy) {
     from ("$buildDir/install/flink-connectors-release")
     into ("$buildDir/distributions")
 }
 
-//allow system properties to be passed to the test program
+// allow system properties to be passed to the test program
 // for e.g., to use standalone Pravega for running the system test "./gradlew clean build -Dpravega.uri=tcp://localhost:9090"
 test {
     systemProperties = System.properties

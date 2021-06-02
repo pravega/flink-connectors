@@ -11,7 +11,6 @@
 
 apply plugin: 'java'
 apply plugin: 'distribution'
-apply plugin: 'com.github.johnrengelman.shadow'
 
 compileJava {
     options.compilerArgs.addAll([
@@ -33,21 +32,22 @@ def getFlinkMajorMinorVersion() {
 
 archivesBaseName = "pravega-connectors-flink-" + getFlinkMajorMinorVersion() + '_' + flinkScalaVersion
 
-assemble.dependsOn(shadowJar)
-
 task sourceJar(type: Jar) {
+    baseName = 'sources'
     classifier = 'sources'
     from sourceSets.main.java
 }
-artifacts { shadow sourceJar }
+artifacts { sourceJar }
 
 task javadocJar(type: Jar) {
+    baseName = 'javadoc'
     classifier = 'javadoc'
     from javadoc
 }
-artifacts { shadow javadocJar }
+artifacts { javadocJar }
 
 task testJar(type: Jar) {
+    baseName = 'tests'
     classifier = 'tests'
     from sourceSets.test.output
 }
