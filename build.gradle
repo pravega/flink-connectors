@@ -93,7 +93,7 @@ dependencies {
     compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
-    compile group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
+    implementation group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
     annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
@@ -150,28 +150,6 @@ distributions {
             from sourceJar
         }
     }
-    // release {
-    //     contents {
-    //         from jar
-    //         from javadocJar
-    //         from sourceJar
-    //     }
-    // }
-    // workspace {
-    //     contents {
-    //         from ('.') {
-    //             exclude "build"
-    //             exclude ".gradle"
-    //             exclude ".idea"
-    //             exclude "out"
-    //         }
-    //     }
-    // }
-}
-
-task distribution(type: Copy) {
-    from ("$buildDir/install/flink-connectors-release")
-    into ("$buildDir/distributions")
 }
 
 // allow system properties to be passed to the test program

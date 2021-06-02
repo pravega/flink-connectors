@@ -33,21 +33,18 @@ def getFlinkMajorMinorVersion() {
 archivesBaseName = "pravega-connectors-flink-" + getFlinkMajorMinorVersion() + '_' + flinkScalaVersion
 
 task sourceJar(type: Jar) {
-    baseName = 'sources'
     classifier = 'sources'
     from sourceSets.main.java
 }
 artifacts { sourceJar }
 
 task javadocJar(type: Jar) {
-    baseName = 'javadoc'
     classifier = 'javadoc'
     from javadoc
 }
 artifacts { javadocJar }
 
 task testJar(type: Jar) {
-    baseName = 'tests'
     classifier = 'tests'
     from sourceSets.test.output
 }

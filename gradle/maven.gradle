@@ -69,6 +69,7 @@ publishing {
         mavenJava(MavenPublication) {
             artifactId = archivesBaseName
 
+            // the jars you want to include
             from components.java
             artifact sourceJar
             artifact javadocJar
@@ -95,8 +96,8 @@ publishing {
                         name = 'Flavio Junqueira'
                     }
                     developer {
-                        id = 'eronwright'
-                        name = 'Eron Wright'
+                        id = 'crazyzhou'
+                        name = 'Yumin Zhou'
                     }
                 }
             }
