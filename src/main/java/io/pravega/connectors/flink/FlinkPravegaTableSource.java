@@ -40,7 +40,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * A {@link TableSource} to read Pravega streams using the Flink Table API.
  *
  * Supports both stream and batch environments.
- * @deprecated Please use the new Table API {@link io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource}
+ * @deprecated Upgrade Flink to 1.11 or greater and use `FlinkPravegaDynamicTableFactory` instead.
  */
 @Deprecated
 public class FlinkPravegaTableSource implements StreamTableSource<Row>, BatchTableSource<Row>,

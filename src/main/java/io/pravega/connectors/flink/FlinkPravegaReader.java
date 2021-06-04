@@ -18,6 +18,7 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ReaderGroupNotFoundException;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TruncatedDataException;
@@ -604,7 +605,12 @@ public class FlinkPravegaReader<T>
      */
     private ReaderGroup createReaderGroup() {
         readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-        readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
+        try {
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        } catch (ReaderGroupNotFoundException e) {
+            readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        }
         return readerGroup;
     }
 

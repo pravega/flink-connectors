@@ -14,6 +14,7 @@ import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ReaderGroupNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -82,8 +83,13 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     // ------------------------------------------------------------------------
     protected void initializeReaderGroup(String readerGroupName, String readerGroupScope, ClientConfig clientConfig) {
         readerGroupManager = ReaderGroupManager.withScope(readerGroupScope, clientConfig);
-        readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
-        readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        try {
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        } catch (ReaderGroupNotFoundException e) {
+            readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        }
     }
 
     @Override
