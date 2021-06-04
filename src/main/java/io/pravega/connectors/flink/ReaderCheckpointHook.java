@@ -85,7 +85,6 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         readerGroupManager = ReaderGroupManager.withScope(readerGroupScope, clientConfig);
         try {
             readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
-            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
         } catch (ReaderGroupNotFoundException e) {
             readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
             readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
