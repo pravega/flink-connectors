@@ -10,6 +10,8 @@
 package io.pravega.connectors.flink;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -18,6 +20,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
+import io.pravega.client.stream.TxnFailedException;
 import io.pravega.common.Exceptions;
 import lombok.Getter;
 import lombok.Setter;
@@ -584,12 +587,20 @@ public class FlinkPravegaWriter<T>
 
                 // TODO: currently, if this fails, there is actually data loss
                 // see https://github.com/pravega/flink-connectors/issues/5
-                if (txn.watermark() != null) {
-                    txn.transaction().commit(txn.watermark());
-                    log.debug("{} - committed checkpoint transaction {} at watermark {}", writerId(), txn.transaction().getTxnId(), txn.watermark());
-                } else {
-                    txn.transaction().commit();
-                    log.debug("{} - committed checkpoint transaction {}", writerId(), txn.transaction().getTxnId());
+                try {
+                    if (txn.watermark() != null) {
+                        txn.transaction().commit(txn.watermark());
+                        log.debug("{} - committed checkpoint transaction {} at watermark {}", writerId(), txn.transaction().getTxnId(), txn.watermark());
+                    } else {
+                        txn.transaction().commit();
+                        log.debug("{} - committed checkpoint transaction {}", writerId(), txn.transaction().getTxnId());
+                    }
+                } catch (TxnFailedException e) {
+                    log.error("{} - Transaction {} commit failed.", writerId(), txn.transaction().getTxnId());
+                } catch (StatusRuntimeException e) {
+                    if (e.getStatus() == Status.NOT_FOUND) {
+                        log.error("{} - Transaction {} not found.", writerId(), txn.transaction().getTxnId());
+                    }
                 }
             }
         }
