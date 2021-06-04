@@ -604,7 +604,6 @@ public class FlinkPravegaReader<T>
      * Create the {@link ReaderGroup} for the current configuration.
      */
     private ReaderGroup createReaderGroup() {
-        readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
         try {
             readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
         } catch (ReaderGroupNotFoundException e) {
