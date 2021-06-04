@@ -77,15 +77,15 @@ configurations.all {
 }
 
 configurations {
-    testCompile.extendsFrom(compileOnly)
-    testCompile.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-    testCompile.exclude group: 'log4j', module: 'log4j'
+    testImplementation.extendsFrom(compileOnly)
+    testImplementation.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+    testImplementation.exclude group: 'log4j', module: 'log4j'
 }
 
 dependencies {
     compileOnly group: 'com.github.spotbugs', name: 'spotbugs-annotations', version: spotbugsAnnotationsVersion
 
-    implementation(group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
+    api (group: 'io.pravega', name: 'pravega-client', version: pravegaVersion) {
         exclude group: 'org.slf4j', module: 'slf4j-api'
     }
 
@@ -93,7 +93,6 @@ dependencies {
     compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
-    implementation group: 'org.apache.commons', name: 'commons-lang3', version: apacheCommonsVersion
     compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
     annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
@@ -106,23 +105,23 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 
     testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
-    testCompile (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
+    testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
         exclude group:  'ch.qos.logback', module: 'logback-classic'
     }
-    testCompile (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
+    testImplementation (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
     }
-    testCompile group: 'org.mockito', name: 'mockito-core', version: mockitoVersion
-    testCompile group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
-    testCompile group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
-    testCompile group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
+    testImplementation group: 'org.mockito', name: 'mockito-core', version: mockitoVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
+    testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
 }
 
 javadoc {

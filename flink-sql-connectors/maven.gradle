@@ -1,0 +1,114 @@
+/**
+ * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ */
+
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+
+if (project.hasProperty("doSigning")) {
+    // Default the secretKeyRingFile to the current user's home
+    def secretKeyPath = project.file("${System.getProperty("user.home")}/.gnupg/secring.gpg").absolutePath
+    project.setProperty("signing.secretKeyRingFile", secretKeyPath)
+
+    signing {
+        sign publishing.publications.mavenSql
+    }
+}
+
+publishing {
+    repositories {
+        // Only configure publishing if a URL was provided
+        if (project.hasProperty("publishUrl")) {
+            if (publishUrl == "mavenCentral") {
+                maven {
+                    credentials {
+                        username = publishUsername
+                        password = publishPassword
+                    }
+                    if (project.version.endsWith("-SNAPSHOT")) {
+                        url = "https://oss.sonatype.org/content/repositories/snapshots/"
+                    } else {
+                        url = "https://oss.sonatype.org/service/local/staging/deploy/maven2/"
+                    }
+                }
+            }
+            else if (publishUrl == "jcenterSnapshot") {
+                maven {
+                    url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/"
+                    if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                        credentials {
+                            username = publishUsername
+                            password = publishPassword
+                        }
+                    }
+                }
+            }
+            else {
+                maven {
+                    url = publishUrl
+                    // Only configure credentials if they are provided (allows publishing to the filesystem)
+                    if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
+                        credentials {
+                            username = publishUsername
+                            password = publishPassword
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    publications {
+        mavenSql(MavenPublication) {
+            artifactId = archivesBaseName
+
+            // the jars you want to include
+            artifact(shadowJar) {
+                classifier = 'sql'
+            }
+            artifact(sourceJar) {
+                classifier = 'sql-source'
+            }
+
+            pom {
+                name = "Pravega Flink Connectors"
+                url = "http://pravega.io"
+                description = "Streaming Storage Platform"
+                scm {
+                    url = 'https://github.com/pravega/flink-connectors/tree/master'
+                    connection = 'scm:git:git://github.com/pravega/flink-connectors.git'
+                    developerConnection = 'scm:git:https://github.com/pravega/flink-connectors.git'
+                }
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'fpj'
+                        name = 'Flavio Junqueira'
+                    }
+                    developer {
+                        id = 'crazyzhou'
+                        name = 'Yumin Zhou'
+                    }
+                }
+            }
+        }
+    }
+}
+
+// disable gradle module metadata file
+// https://docs.gradle.org/current/userguide/publishing_gradle_module_metadata.html#sub:disabling-gmm-publication 
+tasks.withType(GenerateModuleMetadata) {
+    enabled = false
+}

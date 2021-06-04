@@ -19,3 +19,4 @@ pluginManagement {
 }
 
 rootProject.name='flink-connectors'
+include 'flink-sql-connectors'
