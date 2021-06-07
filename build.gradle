@@ -26,6 +26,7 @@ buildscript {
 }
 plugins {
     id "com.github.spotbugs"
+    id 'com.github.johnrengelman.shadow' version '7.0.0'
 }
 apply plugin: 'eclipse'
 apply plugin: 'org.ajoberstar.grgit'
