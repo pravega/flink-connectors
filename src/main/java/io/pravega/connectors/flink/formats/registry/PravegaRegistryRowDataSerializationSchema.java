@@ -99,7 +99,7 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
     private final TimestampFormat timestampFormat;
 
     /** The handling mode when serializing null keys for map data. */
-    private final PravegaRegistryOptions.MapNullKeyMode mapNullKeyMode;
+    private final JsonOptions.MapNullKeyMode mapNullKeyMode;
 
     /** The string literal when handling mode for map null key LITERAL. is */
     private final String mapNullKeyLiteral;
@@ -111,7 +111,7 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
             URI schemaRegistryURI,
             SerializationFormat serializationFormat,
             TimestampFormat timestampOption,
-            PravegaRegistryOptions.MapNullKeyMode mapNullKeyMode,
+            JsonOptions.MapNullKeyMode mapNullKeyMode,
             String mapNullKeyLiteral) {
         this.rowType = rowType;
         this.serializer = null;
@@ -183,7 +183,7 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
 
     public JsonNode serializaToJsonNode(RowData row) {
         RowDataToJsonConverters.RowDataToJsonConverter runtimeConverter = new RowDataToJsonConverters(
-                timestampFormat, JsonOptions.MapNullKeyMode.valueOf(mapNullKeyMode.name()), mapNullKeyLiteral)
+                timestampFormat, mapNullKeyMode, mapNullKeyLiteral)
                 .createConverter(rowType);
         ObjectMapper mapper = new ObjectMapper();
         ObjectNode node = mapper.createObjectNode();

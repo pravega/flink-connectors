@@ -27,6 +27,7 @@ import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
+import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.formats.json.TimestampFormat;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -101,8 +102,8 @@ public class PravegaRegistrySeDeITCase {
     private static final boolean FAIL_ON_MISSING_FIELD = false;
     private static final boolean IGNORE_PARSE_ERRORS = false;
     private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.ISO_8601;
-    private static final PravegaRegistryOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
-            PravegaRegistryOptions.MapNullKeyMode.FAIL;
+    private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            JsonOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
 
     /** Setup utility */
