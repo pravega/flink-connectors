@@ -144,7 +144,8 @@ def getProjectVersion() {
 distributions {
     main {
         contents {
-            from jar
+            // from jar
+            from shadowJar
             from javadocJar
             from sourceJar
         }

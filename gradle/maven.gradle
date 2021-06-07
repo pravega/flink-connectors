@@ -18,7 +18,7 @@ if (project.hasProperty("doSigning")) {
     project.setProperty("signing.secretKeyRingFile", secretKeyPath)
 
     signing {
-        sign publishing.publications.mavenJava
+        sign publishing.publications
     }
 }
 
@@ -70,10 +70,12 @@ publishing {
             artifactId = archivesBaseName
 
             // the jars you want to include
-            from components.java
+            // uncomment this line if you want to include the original, unshaded jar
+            // from components.java
+            artifact shadowJar
             artifact sourceJar
             artifact javadocJar
-            artifact testJar
+            // artifact testJar
 
             pom {
                 name = "Pravega Flink Connectors"

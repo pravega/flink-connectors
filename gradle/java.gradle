@@ -32,7 +32,27 @@ def getFlinkMajorMinorVersion() {
 
 archivesBaseName = "pravega-connectors-flink-" + getFlinkMajorMinorVersion() + '_' + flinkScalaVersion
 
+shadowJar {
+    // relocate pravega client's dependencies to minimize conflicts
+    relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+    relocate "com.google", "io.pravega.shaded.com.google"
+    relocate "io.grpc", "io.pravega.shaded.io.grpc"
+    relocate "com.squareup.okhttp", "io.pravega.shaded.com.squareup.okhttp"
+    relocate "okio", "io.pravega.shaded.okio"
+    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
+    relocate "io.netty", "io.pravega.shaded.io.netty"
+    relocate 'META-INF/native/libnetty', 'META-INF/native/libio_pravega_shaded_netty'
+    relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
+
+    // the default classifier will be `all`, which need to be removed for compatibility
+    classifier = null
+
+    // remove all classes of dependencies that are not used by the project
+    minimize()
+}
+
 jar {
+    classifier = 'original'
     from (['LICENSE', 'NOTICE']) {
         into 'META-INF'
     }
