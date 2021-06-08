@@ -49,7 +49,7 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     @Override
     public RowData extractEvent(EventRead<RowData> eventRead) {
         RowData rowData = eventRead.getEvent();
-        if (metadataKeys.size() == 0) {
+        if (metadataKeys.size() == 0 || rowData == null) {
             return rowData;
         }
 

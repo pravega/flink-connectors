@@ -47,8 +47,8 @@ shadowJar {
     // the default classifier will be `all`, which need to be removed for compatibility
     classifier = null
 
-    // remove all classes of dependencies that are not used by the project
-    minimize()
+    // update package name in META-INF/services to correspond to the shaded path
+    mergeServiceFiles()
 }
 
 jar {
