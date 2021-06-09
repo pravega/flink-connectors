@@ -11,6 +11,7 @@
 
 apply plugin: 'java-library'
 apply plugin: 'distribution'
+apply plugin: 'com.github.johnrengelman.shadow'
 
 compileJava {
     options.compilerArgs.addAll([
