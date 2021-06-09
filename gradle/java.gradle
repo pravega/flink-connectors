@@ -9,7 +9,7 @@
  *
  */
 
-apply plugin: 'java'
+apply plugin: 'java-library'
 apply plugin: 'distribution'
 apply plugin: 'com.github.johnrengelman.shadow'
 
@@ -33,25 +33,49 @@ def getFlinkMajorMinorVersion() {
 
 archivesBaseName = "pravega-connectors-flink-" + getFlinkMajorMinorVersion() + '_' + flinkScalaVersion
 
-assemble.dependsOn(shadowJar)
+shadowJar {
+    // relocate pravega client's dependencies to minimize conflicts
+    relocate "org.apache.commons", "io.pravega.shaded.org.apache.commons"
+    relocate "com.google", "io.pravega.shaded.com.google"
+    relocate "io.grpc", "io.pravega.shaded.io.grpc"
+    relocate "com.squareup.okhttp", "io.pravega.shaded.com.squareup.okhttp"
+    relocate "okio", "io.pravega.shaded.okio"
+    relocate "io.opencensus", "io.pravega.shaded.io.opencensus"
+    relocate "io.netty", "io.pravega.shaded.io.netty"
+    relocate 'META-INF/native/libnetty', 'META-INF/native/libio_pravega_shaded_netty'
+    relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
+
+    // the default classifier will be `all`, which need to be removed for compatibility
+    classifier = null
+
+    // update package name in META-INF/services to correspond to the shaded path
+    mergeServiceFiles()
+}
+
+jar {
+    classifier = 'original'
+    from (['LICENSE', 'NOTICE']) {
+        into 'META-INF'
+    }
+}
 
 task sourceJar(type: Jar) {
     classifier = 'sources'
     from sourceSets.main.java
 }
-artifacts { shadow sourceJar }
+artifacts { sourceJar }
 
 task javadocJar(type: Jar) {
     classifier = 'javadoc'
     from javadoc
 }
-artifacts { shadow javadocJar }
+artifacts { javadocJar }
 
 task testJar(type: Jar) {
     classifier = 'tests'
     from sourceSets.test.output
 }
-artifacts { testRuntime testJar }
+// artifacts { testRuntime testJar }
 
 tasks.withType(Test) {
     systemProperties 'logback.configurationFile' : new File(buildDir,'resources/test/logback.xml').absolutePath
