@@ -281,7 +281,7 @@ public class PravegaRegistrySeDeITCase {
                 .namespace(SETUP_UTILS.getScope())
                 .groupId(JSON_TEST_STREAM)
                 .build();
-        Serializer<JsonNode> serializer = new PravegaRegistryRowDataSerializationSchema.JsonSerializer(
+        Serializer<JsonNode> serializer = new PravegaRegistryRowDataSerializationSchema.FlinkJsonSerializer(
                 JSON_TEST_STREAM,
                 SchemaRegistryClientFactory.withNamespace(SETUP_UTILS.getScope(), schemaRegistryClientConfig),
                 jsonSchema,

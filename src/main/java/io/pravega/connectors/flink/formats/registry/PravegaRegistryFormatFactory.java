@@ -52,8 +52,8 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
         final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URL));
 
-        final boolean failOnMissingField = formatOptions.get(JsonOptions.FAIL_ON_MISSING_FIELD);
-        final boolean ignoreParseErrors = formatOptions.get(JsonOptions.IGNORE_PARSE_ERRORS);
+        final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
+        final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
         TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
@@ -95,7 +95,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
         final JsonOptions.MapNullKeyMode mapNullKeyMode =
                 JsonOptions.getMapNullKeyMode(formatOptions);
-        final String mapNullKeyLiteral = formatOptions.get(JsonOptions.MAP_NULL_KEY_LITERAL);
+        final String mapNullKeyLiteral = formatOptions.get(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
 
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
@@ -138,11 +138,11 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
         Set<ConfigOption<?>> options = new HashSet<>();
-        options.add(JsonOptions.FAIL_ON_MISSING_FIELD);
-        options.add(JsonOptions.IGNORE_PARSE_ERRORS);
-        options.add(JsonOptions.TIMESTAMP_FORMAT);
-        options.add(JsonOptions.MAP_NULL_KEY_MODE);
-        options.add(JsonOptions.MAP_NULL_KEY_LITERAL);
+        options.add(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
+        options.add(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
+        options.add(PravegaRegistryOptions.TIMESTAMP_FORMAT);
+        options.add(PravegaRegistryOptions.MAP_NULL_KEY_MODE);
+        options.add(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
         return options;
     }
 }

@@ -28,12 +28,13 @@ import org.apache.flink.formats.avro.AvroToRowDataConverters;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonToRowDataConverters;
 import org.apache.flink.formats.json.TimestampFormat;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonAutoDetect;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.PropertyAccessor;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.RowType;
+import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -50,7 +51,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  *
  * <p>Failures during deserialization are forwarded as wrapped IOExceptions.
  */
-public class PravegaRegistryRowDataDeserializationSchema<T> implements DeserializationSchema<RowData> {
+public class PravegaRegistryRowDataDeserializationSchema implements DeserializationSchema<RowData> {
     private static final long serialVersionUID = 1L;
 
     /**
@@ -86,7 +87,7 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
     /**
      * Deserializer to deserialize <code>byte[]</code> message.
      */
-    private transient Serializer<T> deserializer;
+    private transient Serializer deserializer;
 
     // --------------------------------------------------------------------------------------------
     // Json fields
@@ -111,8 +112,12 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
             boolean ignoreParseErrors,
             TimestampFormat timestampFormat
             ) {
+        if (ignoreParseErrors && failOnMissingField) {
+            throw new IllegalArgumentException(
+                    "JSON format doesn't support failOnMissingField and ignoreParseErrors are both enabled.");
+        }
         this.rowType = rowType;
-        this.typeInfo = typeInfo;
+        this.typeInfo = checkNotNull(typeInfo);
         this.namespace = namespace;
         this.groupId = groupId;
         this.schemaRegistryURI = schemaRegistryURI;
@@ -139,15 +144,22 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
         switch (serializationFormat) {
             case Avro:
                 AvroSchema<Object> schema = AvroSchema.of(AvroSchemaConverter.convertToSchema(rowType));
-                deserializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(config, schema);
+                deserializer = SerializerFactory.avroGenericDeserializer(config, schema);
                 break;
             case Json:
-                deserializer = (Serializer<T>) new JsonGenericDeserializer(
+                ObjectMapper objectMapper = new ObjectMapper();
+                boolean hasDecimalType =
+                        LogicalTypeChecks.hasNested(rowType, t -> t instanceof DecimalType);
+                if (hasDecimalType) {
+                    objectMapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
+                }
+                deserializer = new FlinkJsonGenericDeserializer(
                         groupId,
                         schemaRegistryClient,
                         config.getDecoders(),
                         new EncodingCache(groupId, schemaRegistryClient),
-                        config.isWriteEncodingHeader());
+                        config.isWriteEncodingHeader(),
+                        objectMapper);
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");
@@ -162,6 +174,9 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
         try {
             return convertToRowData(deserializeToObject(message));
         } catch (Exception e) {
+            if (ignoreParseErrors) {
+                return null;
+            }
             throw new IOException("Failed to deserialize byte array.", e);
         }
     }
@@ -190,14 +205,14 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
         return (RowData) o;
     }
 
-    private static class JsonGenericDeserializer extends AbstractDeserializer<JsonNode> {
+    private static class FlinkJsonGenericDeserializer extends AbstractDeserializer<JsonNode> {
         private final ObjectMapper objectMapper;
 
-        public JsonGenericDeserializer(String groupId, SchemaRegistryClient client,
-                                       SerializerConfig.Decoders decoders, EncodingCache encodingCache, boolean encodeHeader) {
+        public FlinkJsonGenericDeserializer(String groupId, SchemaRegistryClient client,
+                                            SerializerConfig.Decoders decoders, EncodingCache encodingCache,
+                                            boolean encodeHeader, ObjectMapper objectMapper) {
             super(groupId, client, null, false, decoders, encodingCache, encodeHeader);
-            this.objectMapper = new ObjectMapper();
-            objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
+            this.objectMapper = objectMapper;
         }
 
         @Override
@@ -224,12 +239,17 @@ public class PravegaRegistryRowDataDeserializationSchema<T> implements Deseriali
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        PravegaRegistryRowDataDeserializationSchema<?> that = (PravegaRegistryRowDataDeserializationSchema<?>) o;
-        return failOnMissingField == that.failOnMissingField && ignoreParseErrors == that.ignoreParseErrors && Objects.equals(rowType, that.rowType) && Objects.equals(typeInfo, that.typeInfo) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) && serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat;
+        PravegaRegistryRowDataDeserializationSchema that = (PravegaRegistryRowDataDeserializationSchema) o;
+        return failOnMissingField == that.failOnMissingField && ignoreParseErrors == that.ignoreParseErrors &&
+                Objects.equals(rowType, that.rowType) && Objects.equals(typeInfo, that.typeInfo) &&
+                Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) &&
+                Objects.equals(schemaRegistryURI, that.schemaRegistryURI) && serializationFormat == that.serializationFormat &&
+                timestampFormat == that.timestampFormat;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, typeInfo, namespace, groupId, schemaRegistryURI, serializationFormat, failOnMissingField, ignoreParseErrors, timestampFormat);
+        return Objects.hash(rowType, typeInfo, namespace, groupId, schemaRegistryURI,
+                serializationFormat, failOnMissingField, ignoreParseErrors, timestampFormat);
     }
 }

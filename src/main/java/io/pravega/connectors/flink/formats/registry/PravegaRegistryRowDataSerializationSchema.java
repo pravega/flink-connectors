@@ -33,8 +33,6 @@ import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.formats.json.RowDataToJsonConverters;
 import org.apache.flink.formats.json.TimestampFormat;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonAutoDetect;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.PropertyAccessor;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
@@ -55,14 +53,14 @@ import java.util.Objects;
  * <p>Result <code>byte[]</code> messages can be deserialized using {@link
  * PravegaRegistryRowDataDeserializationSchema}.
  */
-public class PravegaRegistryRowDataSerializationSchema<T> implements SerializationSchema<RowData> {
+public class PravegaRegistryRowDataSerializationSchema implements SerializationSchema<RowData> {
     private static final long serialVersionUID = 1L;
 
     /** RowType to generate the runtime converter. */
     private final RowType rowType;
 
-    /** Serializer to serialize {@link T} to <code>byte[]</code>. */
-    private transient Serializer<T> serializer;
+    /** Serializer to serialize to <code>byte[]</code>. */
+    private transient Serializer serializer;
 
     /**
      * Namespace describing the current scope.
@@ -141,11 +139,11 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
         switch (serializationFormat) {
             case Avro:
                 avroSchema = AvroSchemaConverter.convertToSchema(rowType);
-                serializer = (Serializer<T>) SerializerFactory.avroSerializer(config, AvroSchema.ofRecord(avroSchema));
+                serializer = SerializerFactory.avroSerializer(config, AvroSchema.ofRecord(avroSchema));
                 break;
             case Json:
                 String jsonSchemaString = PravegaSchemaUtils.convertToJsonSchemaString(rowType);
-                serializer = (Serializer<T>) new JsonSerializer(
+                serializer = new FlinkJsonSerializer(
                         groupId,
                         schemaRegistryClient,
                         JSONSchema.of("", jsonSchemaString, JsonNode.class),
@@ -164,9 +162,9 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
         try {
             switch (serializationFormat) {
                 case Avro:
-                    return convertToByteArray((T) serializeToGenericRecord(row));
+                    return convertToByteArray(serializeToGenericRecord(row));
                 case Json:
-                    return convertToByteArray((T) serializaToJsonNode(row));
+                    return convertToByteArray(serializaToJsonNode(row));
                 default:
                     throw new NotImplementedException("Not supporting deserialization format");
             }
@@ -190,18 +188,18 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
         return runtimeConverter.convert(mapper, node, row);
     }
 
-    public byte[] convertToByteArray(T message) {
+    @SuppressWarnings("unchecked")
+    public byte[] convertToByteArray(Object message) {
         return serializer.serialize(message).array();
     }
 
     @VisibleForTesting
-    protected static class JsonSerializer extends AbstractSerializer<JsonNode> {
+    protected static class FlinkJsonSerializer extends AbstractSerializer<JsonNode> {
         private final ObjectMapper objectMapper;
-        public JsonSerializer(String groupId, SchemaRegistryClient client, JSONSchema schema,
-                              Encoder encoder, boolean registerSchema, boolean encodeHeader) {
+        public FlinkJsonSerializer(String groupId, SchemaRegistryClient client, JSONSchema schema,
+                                   Encoder encoder, boolean registerSchema, boolean encodeHeader) {
             super(groupId, client, schema, encoder, registerSchema, encodeHeader);
             objectMapper = new ObjectMapper();
-            objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
         }
 
         @Override
@@ -219,12 +217,16 @@ public class PravegaRegistryRowDataSerializationSchema<T> implements Serializati
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        PravegaRegistryRowDataSerializationSchema<?> that = (PravegaRegistryRowDataSerializationSchema<?>) o;
-        return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) && serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat && mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral);
+        PravegaRegistryRowDataSerializationSchema that = (PravegaRegistryRowDataSerializationSchema) o;
+        return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) &&
+                Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
+                serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat &&
+                mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, namespace, groupId, schemaRegistryURI, serializationFormat, timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
+        return Objects.hash(rowType, namespace, groupId, schemaRegistryURI, serializationFormat,
+                timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
     }
 }

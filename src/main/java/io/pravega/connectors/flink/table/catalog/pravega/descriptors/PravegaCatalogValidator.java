@@ -19,7 +19,7 @@ public class PravegaCatalogValidator extends CatalogDescriptorValidator {
     public static final String CATALOG_CONTROLLER_URI = "controller-uri";
     public static final String CATALOG_SCHEMA_REGISTRY_URI = "schema-registry-uri";
 
-    public static final String CATALOG_SERIALIZATION_FORMAT = "serialization-format";
+    public static final String CATALOG_SERIALIZATION_FORMAT = "serialization.format";
     public static final String CATALOG_JSON_FAIL_ON_MISSING_FIELD = "json.fail-on-missing-field";
     public static final String CATALOG_JSON_IGNORE_PARSE_ERRORS = "json.ignore-parse-errors";
     public static final String CATALOG_JSON_TIMESTAMP_FORMAT = "json.timestamp-format.standard";
