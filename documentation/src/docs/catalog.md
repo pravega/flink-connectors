@@ -14,7 +14,7 @@ Flink catalogs provide metadata, such as databases, tables, partitions, views, a
 
 Catalog enables users to reference existing metadata in their data systems, and automatically maps them to Flink’s corresponding metadata. For Pravega, Flink can map Pravega streams as Flink table by treating Pravega scope as database and Pravega stream as table.
 
-Pravega Schema Registry is the registry service that help store and manage schemas for the unstructured data stored in Pravega streams. The service has built in support for popular serialization formats in Avro, Profobuf and JSON schemas. With the help of Schema Registry, we can implement the `DeserializationFormatFactory` and `SerializationFormatFactory` interface which combines both Pravega Registry (De)Serializer and Flink Converter and, therefore, a byte array can be deserialized by Pravega Registry deserializer and then converted to Flink RowData that can be used in catalog, and vice versa. For serialization we only support Avro now since there are no convenient approaches to configure format prior to creating catalog tables;
+Pravega Schema Registry is the registry service that help store and manage schemas for the unstructured data stored in Pravega streams. The service has built in support for popular serialization formats in Avro, Profobuf and JSON schemas. With the help of Schema Registry, we can implement the `DeserializationFormatFactory` and `SerializationFormatFactory` interface which combines both Pravega Registry (De)Serializer and Flink Converter and, therefore, a byte array can be deserialized by Pravega Registry deserializer and then converted to Flink RowData that can be used in catalog, and vice versa. For serialization format we support Avro and Json now;
 
 The catalog factory defines a set of properties for configuring the catalog when the SQL CLI bootstraps. The set of properties will be passed to a discovery service where the service tries to match the properties to a CatalogFactory and initiate a corresponding catalog instance.
 
@@ -47,6 +47,7 @@ Pravega Catalog supports the following options:
 - controller-uri: required, uri of the Pravega controller connected to
 - schema-registry-uri: required, uri of the Schema Registry service connected to
 - default-database: required, default database to connect to
+- serialization.format: optional, serialization format for the catalog, use Avro format as default
 
 #### SQL
 ```sql
