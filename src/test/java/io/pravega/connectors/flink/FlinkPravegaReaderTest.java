@@ -17,15 +17,16 @@ import io.pravega.client.stream.EventPointer;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.Position;
+import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ReaderGroupNotFoundException;
+import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.TimeWindow;
-import io.pravega.client.stream.Serializer;
-import io.pravega.client.stream.ReaderConfig;
-import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.TruncatedDataException;
+import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
@@ -47,6 +48,7 @@ import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
+import org.apache.flink.streaming.util.MockDeserializationSchema;
 import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Assert;
@@ -75,14 +77,13 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
-import static org.mockito.Mockito.doNothing;
+import static org.mockito.Matchers.anyString;
+import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.any;
-
 
 /**
  * Unit tests for {@link FlinkPravegaReader} and its builder.
@@ -120,6 +121,26 @@ public class FlinkPravegaReaderTest {
         assertNotNull(reader.eventStreamClientFactory);
         assertNotNull(reader.readerGroupManager);
         verify(reader.readerGroupManager).createReaderGroup(GROUP_NAME, reader.readerGroupConfig);
+    }
+
+    /**
+     * Tests the open method for deserializationSchema.
+     */
+    @Test
+    public void testOpenDeserializationSchema() throws Exception {
+        MockDeserializationSchema<Integer> schema = new MockDeserializationSchema<>();
+
+        ClientConfig clientConfig = ClientConfig.builder().build();
+        ReaderGroupConfig rgConfig = ReaderGroupConfig.builder().stream(SAMPLE_STREAM).build();
+        boolean enableMetrics = true;
+        TestableFlinkPravegaReader<Integer> reader = new TestableFlinkPravegaReader<>(
+                "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, schema,
+                null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
+        StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
+                createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime);
+
+        testHarness.open();
+        Assert.assertTrue(schema.isOpenCalled());
     }
 
     /**
@@ -705,9 +726,11 @@ public class FlinkPravegaReaderTest {
             }
 
             readerGroupManager = mock(ReaderGroupManager.class);
-            doNothing().when(readerGroupManager).createReaderGroup(readerGroupName, readerGroupConfig);
+            readerGroup.resetReaderGroup(readerGroupConfig);
             doReturn(new HashSet<>(Arrays.asList(SAMPLE_COMPLETE_STREAM_NAME))).when(readerGroup).getStreamNames();
-            doReturn(readerGroup).when(readerGroupManager).getReaderGroup(readerGroupName);
+            when(readerGroupManager.getReaderGroup(anyString()))
+                    .thenThrow(new ReaderGroupNotFoundException("Reader group not found"))
+                    .thenReturn(readerGroup);
             return readerGroupManager;
         }
 

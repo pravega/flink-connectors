@@ -18,12 +18,11 @@ import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
-
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;

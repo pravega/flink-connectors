@@ -9,8 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.FlinkPravegaTableSourceTest.TestTableDescriptor;
 import io.pravega.connectors.flink.table.descriptors.Pravega;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.NoMatchingTableFactoryException;

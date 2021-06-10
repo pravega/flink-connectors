@@ -13,22 +13,23 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.admin.StreamManager;
-import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.impl.DefaultCredentials;
-import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.local.InProcPravegaCluster;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ScalingPolicy;
+import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
-import org.apache.flink.util.Preconditions;
+import io.pravega.client.stream.impl.DefaultCredentials;
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.local.InProcPravegaCluster;
 import lombok.Cleanup;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.flink.util.Preconditions;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.io.IOException;
@@ -41,7 +42,6 @@ import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
-import org.apache.commons.lang3.RandomStringUtils;
 
 /**
  * Utility functions for creating the test setup.
