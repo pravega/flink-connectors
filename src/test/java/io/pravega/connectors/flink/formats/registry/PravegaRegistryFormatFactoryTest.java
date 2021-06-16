@@ -10,9 +10,12 @@
 
 package io.pravega.connectors.flink.formats.registry;
 
+import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.TimestampFormat;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.CatalogTableImpl;
@@ -51,11 +54,26 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
     private static final String STREAM = "test-stream";
     private static final URI SCHEMAREGISTRY_URI = URI.create("http://localhost:10092");
 
+    private static final SerializationFormat SERIALIZATIONFORMAT = SerializationFormat.Avro;
+    private static final boolean FAIL_ON_MISSING_FIELD = false;
+    private static final boolean IGNORE_PARSE_ERRORS = false;
+    private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
+    private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            JsonOptions.MapNullKeyMode.FAIL;
+    private static final String MAP_NULL_KEY_LITERAL = "null";
+
     @Test
     public void testSeDeSchema() {
         final PravegaRegistryRowDataDeserializationSchema expectedDeser =
-                new PravegaRegistryRowDataDeserializationSchema(ROW_TYPE, InternalTypeInfo.of(ROW_TYPE),
-                        SCOPE, STREAM, SCHEMAREGISTRY_URI);
+                new PravegaRegistryRowDataDeserializationSchema(
+                        ROW_TYPE,
+                        InternalTypeInfo.of(ROW_TYPE),
+                        SCOPE,
+                        STREAM,
+                        SCHEMAREGISTRY_URI,
+                        FAIL_ON_MISSING_FIELD,
+                        IGNORE_PARSE_ERRORS,
+                        TIMESTAMP_FORMAT);
 
         final Map<String, String> options = getAllOptions();
 
@@ -71,7 +89,15 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         assertEquals(expectedDeser, actualDeser);
 
         final PravegaRegistryRowDataSerializationSchema expectedSer =
-                new PravegaRegistryRowDataSerializationSchema(ROW_TYPE, SCOPE, STREAM, SCHEMAREGISTRY_URI);
+                new PravegaRegistryRowDataSerializationSchema(
+                        ROW_TYPE,
+                        SCOPE,
+                        STREAM,
+                        SCHEMAREGISTRY_URI,
+                        SERIALIZATIONFORMAT,
+                        TIMESTAMP_FORMAT,
+                        MAP_NULL_KEY_MODE,
+                        MAP_NULL_KEY_LITERAL);
 
         final DynamicTableSink actualSink = createTableSink(options);
         assertTrue(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock);
@@ -97,6 +123,12 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         options.put("pravega-registry.uri", "http://localhost:10092");
         options.put("pravega-registry.namespace", SCOPE);
         options.put("pravega-registry.group-id", STREAM);
+        options.put("pravega-registry.format", SERIALIZATIONFORMAT.name());
+        options.put("pravega-registry.fail-on-missing-field", "false");
+        options.put("pravega-registry.ignore-parse-errors", "false");
+        options.put("pravega-registry.timestamp-format.standard", "SQL");
+        options.put("pravega-registry.map-null-key.mode", "FAIL");
+        options.put("pravega-registry.map-null-key.literal", "null");
         return options;
     }
 

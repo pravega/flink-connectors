@@ -12,6 +12,7 @@ package io.pravega.connectors.flink.formats.registry;
 
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
+import org.apache.flink.formats.json.JsonOptions;
 
 public class PravegaRegistryOptions {
 
@@ -32,4 +33,20 @@ public class PravegaRegistryOptions {
             .stringType()
             .noDefaultValue()
             .withDescription("Required groupID");
+
+    public static final ConfigOption<String> FORMAT = ConfigOptions
+            .key("format")
+            .stringType()
+            .defaultValue("Avro")
+            .withDescription("Optional flag to set serialization format");
+
+    // --------------------------------------------------------------------------------------------
+    // Json Options
+    // --------------------------------------------------------------------------------------------
+
+    public static final ConfigOption<Boolean> FAIL_ON_MISSING_FIELD = JsonOptions.FAIL_ON_MISSING_FIELD;
+    public static final ConfigOption<Boolean> IGNORE_PARSE_ERRORS = JsonOptions.IGNORE_PARSE_ERRORS;
+    public static final ConfigOption<String> TIMESTAMP_FORMAT = JsonOptions.TIMESTAMP_FORMAT;
+    public static final ConfigOption<String> MAP_NULL_KEY_MODE = JsonOptions.MAP_NULL_KEY_MODE;
+    public static final ConfigOption<String> MAP_NULL_KEY_LITERAL = JsonOptions.MAP_NULL_KEY_LITERAL;
 }

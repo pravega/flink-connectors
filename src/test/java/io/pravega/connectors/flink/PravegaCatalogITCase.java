@@ -128,7 +128,9 @@ public class PravegaCatalogITCase {
         final CatalogDescriptor catalogDescriptor = new PravegaCatalogDescriptor(
                 SETUP_UTILS.getControllerUri().toString(),
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                SETUP_UTILS.getScope());
+                SETUP_UTILS.getScope(),
+                null, null, null,
+                null, null, null);
         final Map<String, String> properties = catalogDescriptor.toProperties();
 
         final Catalog actualCatalog = TableFactoryService.find(CatalogFactory.class, properties)
@@ -288,7 +290,9 @@ public class PravegaCatalogITCase {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
         CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
+                null, null, null,
+                null, null, null);
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();
