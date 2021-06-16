@@ -38,7 +38,7 @@ public class PravegaOptions {
     // Connection specific options
     // --------------------------------------------------------------------------------------------
 
-    public static final ConfigOption<String> CONTROLLER_URL = ConfigOptions
+    public static final ConfigOption<String> CONTROLLER_URI = ConfigOptions
             .key("controller-uri")
             .stringType()
             .noDefaultValue()
@@ -284,7 +284,7 @@ public class PravegaOptions {
 
     public static PravegaConfig getPravegaConfig(ReadableConfig tableOptions) {
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(URI.create(tableOptions.get(CONTROLLER_URL)))
+                .withControllerURI(URI.create(tableOptions.get(CONTROLLER_URI)))
                 .withDefaultScope(tableOptions.get(SCOPE))
                 .withHostnameValidation(tableOptions.get(SECURITY_VALIDATE_HOSTNAME))
                 .withTrustStore(tableOptions.get(SECURITY_TRUST_STORE));

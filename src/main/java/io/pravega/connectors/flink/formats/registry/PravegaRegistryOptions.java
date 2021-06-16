@@ -16,29 +16,29 @@ import org.apache.flink.formats.json.JsonOptions;
 
 public class PravegaRegistryOptions {
 
-    public static final ConfigOption<String> URL = ConfigOptions
+    public static final ConfigOption<String> URI = ConfigOptions
             .key("uri")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required schema registry URI");
+            .withDescription("Required flag for URI of Pravega schema registry");
 
     public static final ConfigOption<String> NAMESPACE = ConfigOptions
             .key("namespace")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required namespace");
+            .withDescription("Required flag to set Pravega schema registry's namespace");
 
     public static final ConfigOption<String> GROUP_ID = ConfigOptions
             .key("group-id")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required groupID");
+            .withDescription("Required flag to set Pravega schema registry's groupID");
 
     public static final ConfigOption<String> FORMAT = ConfigOptions
             .key("format")
             .stringType()
             .defaultValue("Avro")
-            .withDescription("Optional flag to set serialization format");
+            .withDescription("Optional flag to set serialization format. Valid enumerations are ['Avro'(default), 'Json']");
 
     // --------------------------------------------------------------------------------------------
     // Json Options
