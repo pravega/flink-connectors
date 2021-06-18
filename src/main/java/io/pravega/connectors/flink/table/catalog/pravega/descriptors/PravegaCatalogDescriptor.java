@@ -57,24 +57,37 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
     protected Map<String, String> toCatalogProperties() {
         final DescriptorProperties properties = new DescriptorProperties();
 
+        // Pravega controller URI
         properties.putString(CATALOG_CONTROLLER_URI, controllerUri);
+        // URI of Pravega schema registry
         properties.putString(CATALOG_SCHEMA_REGISTRY_URI, schemaRegistryUri);
 
+        // Serialization format for Pravega catalog
         if (serializationFormat != null) {
             properties.putString(CATALOG_SERIALIZATION_FORMAT, serializationFormat);
         }
+
+        // --------------------------------------------------------------------------------------------
+        // Properties if using Json serialization format
+        // --------------------------------------------------------------------------------------------
+
+        // Optional flag to specify whether to fail if a field is missing or not.
         if (failOnMissingField != null) {
             properties.putString(CATALOG_JSON_FAIL_ON_MISSING_FIELD, failOnMissingField);
         }
+        // Optional flag to skip fields and rows with parse errors instead of failing, fields are set to null in case of errors
         if (ignoreParseErrors != null) {
             properties.putString(CATALOG_JSON_IGNORE_PARSE_ERRORS, ignoreParseErrors);
         }
+        // Optional flag to specify timestamp format
         if (timestampFormat != null) {
             properties.putString(CATALOG_JSON_TIMESTAMP_FORMAT, timestampFormat);
         }
+        // Optional flag to control the handling mode when serializing null key for map data
         if (mapNullKeyMode != null) {
             properties.putString(CATALOG_JSON_MAP_NULL_KEY_MODE, mapNullKeyMode);
         }
+        // Optional flag to specify string literal for null keys when mapNullKeyMode is LITERAL
         if (mapNullKeyLiteral != null) {
             properties.putString(CATALOG_JSON_MAP_NULL_KEY_LITERAL, mapNullKeyLiteral);
         }
