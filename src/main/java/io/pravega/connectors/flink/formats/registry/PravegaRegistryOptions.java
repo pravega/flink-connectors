@@ -26,13 +26,13 @@ public class PravegaRegistryOptions {
             .key("namespace")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required Pravega schema registry's namespace");
+            .withDescription("Required Pravega schema registry's namespace, should be the same as the Pravega scope name");
 
     public static final ConfigOption<String> GROUP_ID = ConfigOptions
             .key("group-id")
             .stringType()
             .noDefaultValue()
-            .withDescription("Required Pravega schema registry's groupID");
+            .withDescription("Required Pravega schema registry's groupID, should be the same as the Pravega stream name");
 
     public static final ConfigOption<String> FORMAT = ConfigOptions
             .key("format")
