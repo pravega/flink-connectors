@@ -93,12 +93,12 @@ public class PravegaCatalog extends AbstractCatalog {
 
         this.properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put(PravegaOptions.CONTROLLER_URL.key(), controllerUri);
+        properties.put(PravegaOptions.CONTROLLER_URI.key(), controllerUri);
         properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
         properties.put(
                 String.format(
                         "%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URL.key()),
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
         schemaRegistryUri);
 
         properties.put(String.format("%s.%s",
