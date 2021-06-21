@@ -50,7 +50,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
 
         final String namespace = formatOptions.get(PravegaRegistryOptions.NAMESPACE);
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
-        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URL));
+        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URI));
 
         final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
         final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
@@ -88,7 +88,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
 
         final String namespace = formatOptions.get(PravegaRegistryOptions.NAMESPACE);
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
-        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URL));
+        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URI));
         final SerializationFormat serializationFormat = SerializationFormat.valueOf(
                 formatOptions.get(PravegaRegistryOptions.FORMAT));
 
@@ -128,7 +128,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
     @Override
     public Set<ConfigOption<?>> requiredOptions() {
         Set<ConfigOption<?>> options = new HashSet<>();
-        options.add(PravegaRegistryOptions.URL);
+        options.add(PravegaRegistryOptions.URI);
         options.add(PravegaRegistryOptions.NAMESPACE);
         options.add(PravegaRegistryOptions.GROUP_ID);
         options.add(PravegaRegistryOptions.FORMAT);
