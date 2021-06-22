@@ -31,8 +31,11 @@ import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
+import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
+import io.pravega.connectors.flink.utils.IntegerWithEventPointerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
@@ -50,6 +53,7 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockDeserializationSchema;
 import org.apache.flink.streaming.util.TestHarnessUtil;
+import org.apache.flink.util.Collector;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Assert;
 import org.junit.Test;
@@ -60,6 +64,7 @@ import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -103,6 +108,7 @@ public class FlinkPravegaReaderTest {
     private static final Time GROUP_REFRESH_TIME = Time.seconds(10);
     private static final String GROUP_NAME = "group";
 
+    private static final IntegerSerializationSchema SERIALIZATION_SCHEMA = new IntegerSerializationSchema();
     private static final IntegerDeserializationSchema DESERIALIZATION_SCHEMA = new TestDeserializationSchema();
     private static final Time READER_TIMEOUT = Time.seconds(1);
     private static final Time CHKPT_TIMEOUT = Time.seconds(1);
@@ -170,6 +176,9 @@ public class FlinkPravegaReaderTest {
             // verify that the event stream was read until the end of stream
             verify(reader.eventStreamReader, times(6)).readNextEvent(anyLong());
             Queue<Object> actual = testHarness.getOutput();
+            // for (int i = 0; i < actual.size(); i++) {
+            //     actual.offer(DESERIALIZATION_SCHEMA.deserialize((byte[]) actual.poll()));
+            // }
             Queue<Object> expected = new ConcurrentLinkedQueue<>();
             expected.add(record(1));
             expected.add(record(2));
@@ -328,15 +337,15 @@ public class FlinkPravegaReaderTest {
             // prepare a sequence of events with processing time progress
             TestEventGenerator<Integer> evts = new TestEventGenerator<>();
             when(reader.eventStreamReader.readNextEvent(anyLong()))
-                    .thenAnswer((Answer<EventRead<Integer>>) invocation -> {
+                    .thenAnswer((Answer<EventRead<ByteBuffer>>) invocation -> {
                         testHarness.setProcessingTime(1);
                         return evts.event(1);
                     })
-                    .thenAnswer((Answer<EventRead<Integer>>) invocation -> {
+                    .thenAnswer((Answer<EventRead<ByteBuffer>>) invocation -> {
                         testHarness.setProcessingTime(51);
                         return evts.event(2);
                     })
-                    .thenAnswer((Answer<EventRead<Integer>>) invocation -> {
+                    .thenAnswer((Answer<EventRead<ByteBuffer>>) invocation -> {
                         testHarness.setProcessingTime(101);
                         return evts.event(TestDeserializationSchema.END_OF_STREAM);
                     });
@@ -613,6 +622,7 @@ public class FlinkPravegaReaderTest {
      * Generates a sequence of {@link EventRead} instances, including events, checkpoints, and idleness.
      */
     private static class TestEventGenerator<T> {
+        Class<Integer> type = Integer.class;
 
         private String buildEventPointerString(long offset) {
             StringBuilder sb = new StringBuilder();
@@ -628,20 +638,26 @@ public class FlinkPravegaReaderTest {
             return EventPointerImpl.fromString(buildEventPointerString(offset));
         }
 
-        public EventRead<T> event(T evt) {
-            return new EventReadImpl<>(evt, mock(Position.class), mock(EventPointer.class), null);
+        public EventRead<ByteBuffer> event(T evt) {
+            byte[] buf = type.isInstance(evt) ?
+                    SERIALIZATION_SCHEMA.serialize((Integer) evt) :
+                    new IntegerWithEventPointerSerializationSchema().serialize((IntegerWithEventPointer) evt);
+            return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), mock(EventPointer.class), null);
         }
 
-        public EventRead<T> event(T evt, long offset) {
-            return new EventReadImpl<>(evt, mock(Position.class), getEventPointer(offset), null);
+        public EventRead<ByteBuffer> event(T evt, long offset) {
+            byte[] buf = type.isInstance(evt) ?
+                    SERIALIZATION_SCHEMA.serialize((Integer) evt) :
+                    new IntegerWithEventPointerSerializationSchema().serialize((IntegerWithEventPointer) evt);
+            return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), getEventPointer(offset), null);
         }
 
-        public EventRead<T> idle() {
-            return event(null);
+        public EventRead<ByteBuffer> idle() {
+            return new EventReadImpl<>(null, mock(Position.class), mock(EventPointer.class), null);
         }
 
         @SuppressWarnings("unchecked")
-        public EventRead<T> checkpoint(long checkpointId) {
+        public EventRead<ByteBuffer> checkpoint(long checkpointId) {
             String checkpointName = ReaderCheckpointHook.createCheckpointName(checkpointId);
             return new EventReadImpl<>(null, mock(Position.class), mock(EventPointer.class), checkpointName);
         }
@@ -661,8 +677,10 @@ public class FlinkPravegaReaderTest {
     /**
      * A test JSON format deserialization schema with metadata.
      */
-    private static class TestMetadataDeserializationSchema extends PravegaDeserializationSchema<IntegerWithEventPointer> {
-        private boolean includeMetadata;
+    private static class TestMetadataDeserializationSchema
+            extends PravegaDeserializationSchema<IntegerWithEventPointer>
+            implements SupportsReadingMetadata<IntegerWithEventPointer> {
+        private final boolean includeMetadata;
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {
             super(IntegerWithEventPointer.class, new JsonSerializer<>(IntegerWithEventPointer.class));
@@ -670,14 +688,23 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        public IntegerWithEventPointer extractEvent(EventRead<IntegerWithEventPointer> eventRead) {
+        public void deserialize(byte[] message,
+                                EventRead<ByteBuffer> eventReadByteBuffer,
+                                Collector<IntegerWithEventPointer> out) throws IOException {
+            super.deserialize(message, out);
+
             if (!includeMetadata) {
-                return super.extractEvent(eventRead);
+                return;
             }
 
-            IntegerWithEventPointer event = eventRead.getEvent();
-            event.setEventPointer(eventRead.getEventPointer());
-            return event;
+            PravegaCollector<IntegerWithEventPointer> pravegaCollector = (PravegaCollector<IntegerWithEventPointer>) out;
+            Queue<IntegerWithEventPointer> temp = new LinkedList<>();
+            IntegerWithEventPointer event;
+            while ((event = pravegaCollector.getRecords().poll()) != null) {
+                event.setEventPointer(eventReadByteBuffer.getEventPointer());
+                temp.offer(event);
+            }
+            temp.forEach(out::collect);
         }
 
         @Override
@@ -695,7 +722,7 @@ public class FlinkPravegaReaderTest {
         final ReaderGroup readerGroup = mock(ReaderGroup.class);
 
         @SuppressWarnings("unchecked")
-        final EventStreamReader<T> eventStreamReader = mock(EventStreamReader.class);
+        final EventStreamReader<ByteBuffer> eventStreamReader = mock(EventStreamReader.class);
 
         protected TestableFlinkPravegaReader(String hookUid, ClientConfig clientConfig,
                                              ReaderGroupConfig readerGroupConfig, String readerGroupScope,
@@ -735,7 +762,7 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        protected EventStreamReader<T> createEventStreamReader(String readerId) {
+        protected EventStreamReader<ByteBuffer> createEventStreamReader(String readerId) {
             return eventStreamReader;
         }
 

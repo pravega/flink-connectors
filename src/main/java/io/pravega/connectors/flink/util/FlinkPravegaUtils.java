@@ -13,6 +13,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.impl.ByteBufferSerializer;
 import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
@@ -100,7 +101,7 @@ public class FlinkPravegaUtils {
      * @param <T> The type of the event.
      * @return the create Pravega reader.
      */
-    public static <T> EventStreamReader<T> createPravegaReader(
+    public static <T> EventStreamReader<ByteBuffer> createPravegaReader(
             String readerId,
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
@@ -113,7 +114,7 @@ public class FlinkPravegaUtils {
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
                 : new FlinkDeserializer<>(deserializationSchema);
 
-        return eventStreamClientFactory.createReader(readerId, readerGroupName, deserializer, readerConfig);
+        return eventStreamClientFactory.createReader(readerId, readerGroupName, new ByteBufferSerializer(), readerConfig);
     }
 
     /**
