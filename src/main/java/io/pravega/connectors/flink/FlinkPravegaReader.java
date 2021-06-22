@@ -662,7 +662,6 @@ public class FlinkPravegaReader<T>
         return createPravegaReader(
                 readerId,
                 this.readerGroupName,
-                this.deserializationSchema,
                 ReaderConfig.builder().build(),
                 eventStreamClientFactory);
     }

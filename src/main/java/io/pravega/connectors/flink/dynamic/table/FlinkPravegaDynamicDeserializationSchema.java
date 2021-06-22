@@ -10,8 +10,6 @@
 package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.EventRead;
-import io.pravega.connectors.flink.FlinkPravegaReader;
-import io.pravega.connectors.flink.PravegaCollector;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource.ReadableMetadata;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
@@ -23,22 +21,18 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Collector;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
 
 public class FlinkPravegaDynamicDeserializationSchema
         extends PravegaDeserializationSchema<RowData>
         implements SupportsReadingMetadata<RowData> {
-    // metadata keys that the rowData have and is a subset of ReadableMetadata
-    private final List<String> metadataKeys;
-
-    // source datatype arity without metadata
-    private final int physicalArity;
-
     // nested schema
     private final DeserializationSchema<RowData> nestedSchema;
+
+    // the custom collector that adds metadata to the row
+    private final OutputCollector outputCollector;
 
     public FlinkPravegaDynamicDeserializationSchema(
             TypeInformation<RowData> typeInfo,
@@ -46,9 +40,8 @@ public class FlinkPravegaDynamicDeserializationSchema
             List<String> metadataKeys,
             DeserializationSchema<RowData> nestedSchema) {
         super(typeInfo, new FlinkDeserializer<>(nestedSchema));
-        this.metadataKeys = metadataKeys;
-        this.physicalArity = physicalArity;
         this.nestedSchema = nestedSchema;
+        this.outputCollector = new OutputCollector(metadataKeys, physicalArity);
     }
 
     @Override
@@ -60,44 +53,67 @@ public class FlinkPravegaDynamicDeserializationSchema
     public void deserialize(byte[] message,
                             EventRead<ByteBuffer> eventReadByteBuffer,
                             Collector<RowData> out) throws IOException {
-        this.deserialize(message, out);
+        this.outputCollector.eventReadByteBuffer = eventReadByteBuffer;
+        this.outputCollector.out = out;
 
-        if (metadataKeys.size() == 0) {
-            return;
-        }
-
-        PravegaCollector<RowData> pravegaCollector = (PravegaCollector<RowData>) out;
-        Queue<RowData> temp = new LinkedList<>();
-        RowData rowData;
-        while ((rowData = (RowData) pravegaCollector.getRecords().poll()) != null) {
-            temp.offer(enrichWithMetadata(rowData, eventReadByteBuffer));
-        }
-        temp.forEach(out::collect);
+        this.deserialize(message, this.outputCollector);
     }
 
-    public RowData enrichWithMetadata(RowData rowData, EventRead<ByteBuffer> eventReadByteBuffer) {
-        if (rowData == null) {
-            return null;
+
+    private static final class OutputCollector implements Collector<RowData>, Serializable {
+        private static final long serialVersionUID = 1L;
+
+        // the original collector which need both original and metadata keys
+        public Collector<RowData> out;
+
+        // where we get event pointer from
+        public EventRead<ByteBuffer> eventReadByteBuffer;
+
+        // metadata keys that the rowData have and is a subset of ReadableMetadata
+        private final List<String> metadataKeys;
+
+        // source datatype arity without metadata
+        private final int physicalArity;
+
+        private OutputCollector(List<String> metadataKeys, int physicalArity) {
+            this.metadataKeys = metadataKeys;
+            this.physicalArity = physicalArity;
         }
 
-        // use GenericRowData to manipulate rowData's field
-        final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + metadataKeys.size());
-
-        // set the physical(original) field
-        final GenericRowData physicalRow = (GenericRowData) rowData;
-        int pos = 0;
-        for (; pos < physicalArity; pos++) {
-            producedRow.setField(pos, physicalRow.getField(pos));
-        }
-
-        // set the virtual(metadata) field after the physical field, no effect if the key is not supported
-        for (; pos < physicalArity + metadataKeys.size(); pos++) {
-            String metadataKey = metadataKeys.get(pos - physicalArity);
-            if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
-                producedRow.setField(pos, eventReadByteBuffer.getEventPointer().toBytes().array());
+        @Override
+        public void collect(RowData record) {
+            if (this.metadataKeys.size() == 0 || record != null) {
+                record = enrichWithMetadata(record, eventReadByteBuffer);
             }
+
+            out.collect(record);
         }
 
-        return producedRow;
+        @Override
+        public void close() {
+            // nothing to do
+        }
+
+        public RowData enrichWithMetadata(RowData rowData, EventRead<ByteBuffer> eventReadByteBuffer) {
+            // use GenericRowData to manipulate rowData's field
+            final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + metadataKeys.size());
+
+            // set the physical(original) field
+            final GenericRowData physicalRow = (GenericRowData) rowData;
+            int pos = 0;
+            for (; pos < physicalArity; pos++) {
+                producedRow.setField(pos, physicalRow.getField(pos));
+            }
+
+            // set the virtual(metadata) field after the physical field, no effect if the key is not supported
+            for (; pos < physicalArity + metadataKeys.size(); pos++) {
+                String metadataKey = metadataKeys.get(pos - physicalArity);
+                if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
+                    producedRow.setField(pos, eventReadByteBuffer.getEventPointer().toBytes().array());
+                }
+            }
+
+            return producedRow;
+        }
     }
 }

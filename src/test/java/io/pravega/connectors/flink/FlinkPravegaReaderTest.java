@@ -641,14 +641,14 @@ public class FlinkPravegaReaderTest {
         public EventRead<ByteBuffer> event(T evt) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    new IntegerWithEventPointerSerializationSchema().serialize((IntegerWithEventPointer) evt);
+                    new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt).array();
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), mock(EventPointer.class), null);
         }
 
         public EventRead<ByteBuffer> event(T evt, long offset) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    new IntegerWithEventPointerSerializationSchema().serialize((IntegerWithEventPointer) evt);
+                    new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt).array();
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), getEventPointer(offset), null);
         }
 

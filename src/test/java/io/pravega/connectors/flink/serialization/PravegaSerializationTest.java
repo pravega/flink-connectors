@@ -11,6 +11,7 @@ package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.impl.JavaSerializer;
+import io.pravega.connectors.flink.PravegaCollector;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.junit.Test;
 
@@ -32,7 +33,12 @@ public class PravegaSerializationTest {
 
         String input = "Testing input";
         byte[] serialized = serializer.serialize(input);
-        assertEquals(input, deserializer.deserialize(serialized));
+
+        PravegaCollector<String> pravegaCollector = new PravegaCollector<>(deserializer);
+        deserializer.deserialize(serialized, pravegaCollector);
+        String deserialized = pravegaCollector.getRecords().poll();
+
+        assertEquals(input, deserialized);
     }
 
     @Test

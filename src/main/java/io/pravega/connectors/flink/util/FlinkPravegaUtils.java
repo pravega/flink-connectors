@@ -16,7 +16,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.impl.ByteBufferSerializer;
 import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
-import io.pravega.connectors.flink.serialization.WrappingSerializer;
+import io.pravega.connectors.flink.PravegaCollector;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -95,7 +95,6 @@ public class FlinkPravegaUtils {
      *
      * @param readerId The id of the Pravega reader.
      * @param readerGroupName The reader group name.
-     * @param deserializationSchema The implementation to deserialize events from pravega streams.
      * @param readerConfig The reader configuration.
      * @param eventStreamClientFactory The eventStreamClientFactory used to create the EventStreamReader
      * @param <T> The type of the event.
@@ -104,16 +103,8 @@ public class FlinkPravegaUtils {
     public static <T> EventStreamReader<ByteBuffer> createPravegaReader(
             String readerId,
             String readerGroupName,
-            DeserializationSchema<T> deserializationSchema,
             ReaderConfig readerConfig,
             EventStreamClientFactory eventStreamClientFactory) {
-
-        // create the adapter between Pravega's serializers and Flink's serializers
-        @SuppressWarnings("unchecked")
-        final Serializer<T> deserializer = deserializationSchema instanceof WrappingSerializer
-                ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
-                : new FlinkDeserializer<>(deserializationSchema);
-
         return eventStreamClientFactory.createReader(readerId, readerGroupName, new ByteBufferSerializer(), readerConfig);
     }
 
@@ -126,8 +117,11 @@ public class FlinkPravegaUtils {
 
         private final DeserializationSchema<T> deserializationSchema;
 
+        private final PravegaCollector<T> pravegaCollector;
+
         public FlinkDeserializer(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
+            this.pravegaCollector = new PravegaCollector<>(deserializationSchema);
         }
 
         @Override
@@ -146,7 +140,8 @@ public class FlinkPravegaUtils {
                 buffer.get(array);
             }
 
-            return deserializationSchema.deserialize(array);
+            deserializationSchema.deserialize(array, pravegaCollector);
+            return pravegaCollector.getRecords().poll();
         }
     }
 
