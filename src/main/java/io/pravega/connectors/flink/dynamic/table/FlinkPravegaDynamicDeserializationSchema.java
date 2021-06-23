@@ -11,9 +11,7 @@ package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource.ReadableMetadata;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
-import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.data.GenericRowData;
@@ -26,9 +24,9 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FlinkPravegaDynamicDeserializationSchema
-        extends PravegaDeserializationSchema<RowData>
-        implements SupportsReadingMetadata<RowData> {
-    // nested schema
+        implements DeserializationSchema<RowData>, SupportsReadingMetadata<RowData> {
+    private final TypeInformation<RowData> typeInfo;
+
     private final DeserializationSchema<RowData> nestedSchema;
 
     // the custom collector that adds metadata to the row
@@ -39,7 +37,7 @@ public class FlinkPravegaDynamicDeserializationSchema
             int physicalArity,
             List<String> metadataKeys,
             DeserializationSchema<RowData> nestedSchema) {
-        super(typeInfo, new FlinkDeserializer<>(nestedSchema));
+        this.typeInfo = typeInfo;
         this.nestedSchema = nestedSchema;
         this.outputCollector = new OutputCollector(metadataKeys, physicalArity);
     }
@@ -47,6 +45,11 @@ public class FlinkPravegaDynamicDeserializationSchema
     @Override
     public void open(InitializationContext context) throws Exception {
         this.nestedSchema.open(context);
+    }
+
+    @Override
+    public RowData deserialize(byte[] message) throws IOException {
+        throw new IllegalStateException("A collector is required for deserializing.");
     }
 
     @Override
@@ -59,15 +62,24 @@ public class FlinkPravegaDynamicDeserializationSchema
         this.deserialize(message, this.outputCollector);
     }
 
+    @Override
+    public boolean isEndOfStream(RowData nextElement) {
+        return false;
+    }
+
+    @Override
+    public TypeInformation<RowData> getProducedType() {
+        return this.typeInfo;
+    }
 
     private static final class OutputCollector implements Collector<RowData>, Serializable {
         private static final long serialVersionUID = 1L;
 
         // the original collector which need both original and metadata keys
-        public Collector<RowData> out;
+        public transient Collector<RowData> out;
 
         // where we get event pointer from
-        public EventRead<ByteBuffer> eventReadByteBuffer;
+        public transient EventRead<ByteBuffer> eventReadByteBuffer;
 
         // metadata keys that the rowData have and is a subset of ReadableMetadata
         private final List<String> metadataKeys;
