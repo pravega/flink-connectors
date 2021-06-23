@@ -49,7 +49,13 @@ public class FlinkPravegaDynamicDeserializationSchema
 
     @Override
     public RowData deserialize(byte[] message) throws IOException {
-        throw new IllegalStateException("A collector is required for deserializing.");
+        return this.nestedSchema.deserialize(message);
+    }
+
+    @Override
+    public void deserialize(byte[] message,
+                            Collector<RowData> out) throws IOException {
+        this.nestedSchema.deserialize(message, out);
     }
 
     @Override
