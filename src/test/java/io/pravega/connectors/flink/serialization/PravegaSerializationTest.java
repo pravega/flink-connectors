@@ -33,11 +33,22 @@ public class PravegaSerializationTest {
 
         String input = "Testing input";
         byte[] serialized = serializer.serialize(input);
+        assertEquals(input, deserializer.deserialize(serialized));
+    }
+
+    @Test
+    public void testCollectorSerialization() throws IOException {
+        PravegaSerializationSchema<String> serializer = new PravegaSerializationSchema<>(new JavaSerializer<>());
+        PravegaDeserializationSchema<String> deserializer = new PravegaDeserializationSchema<>(String.class, new JavaSerializer<>());
+
+        String input = "Testing input";
+        byte[] serialized = serializer.serialize(input);
 
         PravegaCollector<String> pravegaCollector = new PravegaCollector<>(deserializer);
         deserializer.deserialize(serialized, pravegaCollector);
-        String deserialized = pravegaCollector.getRecords().poll();
+        assertEquals(1, pravegaCollector.getRecords().size());
 
+        String deserialized = pravegaCollector.getRecords().poll();
         assertEquals(input, deserialized);
     }
 
