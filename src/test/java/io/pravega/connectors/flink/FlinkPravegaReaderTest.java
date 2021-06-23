@@ -31,7 +31,7 @@ import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
+import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
@@ -678,7 +678,7 @@ public class FlinkPravegaReaderTest {
      */
     private static class TestMetadataDeserializationSchema
             extends PravegaDeserializationSchema<IntegerWithEventPointer>
-            implements SupportsReadingMetadata<IntegerWithEventPointer> {
+            implements SupportsPravegaMetadata<IntegerWithEventPointer> {
         private final boolean includeMetadata;
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {

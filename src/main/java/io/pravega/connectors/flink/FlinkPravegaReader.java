@@ -23,7 +23,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
+import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -294,7 +294,6 @@ public class FlinkPravegaReader<T>
 
             // main work loop, which this task is running
             while (this.running) {
-
                 EventRead<ByteBuffer> eventReadByteBuffer;
                 try {
                     eventReadByteBuffer = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
@@ -312,8 +311,8 @@ public class FlinkPravegaReader<T>
                 }
 
                 byte[] eventBytes = eventReadByteBuffer.getEvent().array();
-                if (deserializationSchema instanceof SupportsReadingMetadata) {
-                    ((SupportsReadingMetadata) this.deserializationSchema).deserialize(eventBytes, eventReadByteBuffer, pravegaCollector);
+                if (deserializationSchema instanceof SupportsPravegaMetadata) {
+                    ((SupportsPravegaMetadata) this.deserializationSchema).deserialize(eventBytes, eventReadByteBuffer, pravegaCollector);
                 } else {
                     this.deserializationSchema.deserialize(eventBytes, pravegaCollector);
                 }

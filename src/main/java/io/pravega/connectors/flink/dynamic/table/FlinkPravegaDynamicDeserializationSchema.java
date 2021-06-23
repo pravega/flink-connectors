@@ -11,7 +11,7 @@ package io.pravega.connectors.flink.dynamic.table;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource.ReadableMetadata;
-import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
+import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.table.data.GenericRowData;
@@ -24,7 +24,7 @@ import java.nio.ByteBuffer;
 import java.util.List;
 
 public class FlinkPravegaDynamicDeserializationSchema
-        implements DeserializationSchema<RowData>, SupportsReadingMetadata<RowData> {
+        implements DeserializationSchema<RowData>, SupportsPravegaMetadata<RowData> {
     private final TypeInformation<RowData> typeInfo;
 
     private final DeserializationSchema<RowData> nestedSchema;
