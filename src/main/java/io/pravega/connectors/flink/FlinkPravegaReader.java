@@ -320,14 +320,6 @@ public class FlinkPravegaReader<T>
 
                 T event;
                 while ((event = pravegaCollector.getRecords().poll()) != null) {
-                    if (pravegaCollector.isEndOfStreamSignalled()) {
-                        // Found stream end marker.
-                        // TODO: Handle scenario when reading from multiple segments. This will be cleaned up as part of:
-                        //       https://github.com/pravega/pravega/issues/551.
-                        log.info("Reached end of stream for reader: {}", readerId);
-                        return;
-                    }
-
                     synchronized (ctx.getCheckpointLock()) {
                         if (isEventTimeMode()) {
                             long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
@@ -340,6 +332,10 @@ public class FlinkPravegaReader<T>
                 }
 
                 if (pravegaCollector.isEndOfStreamSignalled()) {
+                    // Found stream end marker.
+                    // TODO: Handle scenario when reading from multiple segments. This will be cleaned up as part of:
+                    //       https://github.com/pravega/pravega/issues/551.
+                    log.info("Reached end of stream for reader: {}", readerId);
                     return;
                 }
             }
