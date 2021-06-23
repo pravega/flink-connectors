@@ -35,7 +35,6 @@ import io.pravega.connectors.flink.serialization.SupportsReadingMetadata;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
-import io.pravega.connectors.flink.utils.IntegerWithEventPointerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSourceOperatorTestHarness;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
