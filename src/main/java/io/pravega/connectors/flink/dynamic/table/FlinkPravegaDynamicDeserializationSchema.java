@@ -23,6 +23,8 @@ import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.List;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
+
 public class FlinkPravegaDynamicDeserializationSchema
         implements DeserializationSchema<RowData>, SupportsPravegaMetadata<RowData> {
     private final TypeInformation<RowData> typeInfo;
@@ -84,7 +86,7 @@ public class FlinkPravegaDynamicDeserializationSchema
         // the original collector which need both original and metadata keys
         public transient Collector<RowData> out;
 
-        // where we get event pointer from
+        // where we get the event pointer from
         public transient EventRead<ByteBuffer> eventReadByteBuffer;
 
         // metadata keys that the rowData have and is a subset of ReadableMetadata
@@ -127,7 +129,7 @@ public class FlinkPravegaDynamicDeserializationSchema
             for (; pos < physicalArity + metadataKeys.size(); pos++) {
                 String metadataKey = metadataKeys.get(pos - physicalArity);
                 if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
-                    producedRow.setField(pos, eventReadByteBuffer.getEventPointer().toBytes().array());
+                    producedRow.setField(pos, byteBufferToArray(eventReadByteBuffer.getEventPointer().toBytes()));
                 }
             }
 

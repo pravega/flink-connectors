@@ -73,6 +73,7 @@ import static io.pravega.connectors.flink.FlinkPravegaReader.PRAVEGA_READER_METR
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_METRICS_GROUP;
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_NAME_METRICS_GAUGE;
 import static io.pravega.connectors.flink.FlinkPravegaReader.UNREAD_BYTES_METRICS_GAUGE;
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
@@ -175,9 +176,6 @@ public class FlinkPravegaReaderTest {
             // verify that the event stream was read until the end of stream
             verify(reader.eventStreamReader, times(6)).readNextEvent(anyLong());
             Queue<Object> actual = testHarness.getOutput();
-            // for (int i = 0; i < actual.size(); i++) {
-            //     actual.offer(DESERIALIZATION_SCHEMA.deserialize((byte[]) actual.poll()));
-            // }
             Queue<Object> expected = new ConcurrentLinkedQueue<>();
             expected.add(record(1));
             expected.add(record(2));
@@ -640,14 +638,14 @@ public class FlinkPravegaReaderTest {
         public EventRead<ByteBuffer> event(T evt) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt).array();
+                    byteBufferToArray(new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt));
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), mock(EventPointer.class), null);
         }
 
         public EventRead<ByteBuffer> event(T evt, long offset) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt).array();
+                    byteBufferToArray(new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt));
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), getEventPointer(offset), null);
         }
 

@@ -17,6 +17,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
 import static org.junit.Assert.assertEquals;
 
 public class FlinkSerializerWrapperTest {
@@ -58,7 +59,7 @@ public class FlinkSerializerWrapperTest {
             buffer.putLong(value);
             buffer.flip();
 
-            long deserialized = deserializationSchema.deserialize(buffer.array());
+            long deserialized = deserializationSchema.deserialize(byteBufferToArray(buffer));
             assertEquals(value, deserialized);
         }
     }

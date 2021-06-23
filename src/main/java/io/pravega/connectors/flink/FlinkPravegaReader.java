@@ -55,6 +55,7 @@ import java.nio.ByteBuffer;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.getReaderName;
 
@@ -310,7 +311,7 @@ public class FlinkPravegaReader<T>
                     continue;
                 }
 
-                byte[] eventBytes = eventReadByteBuffer.getEvent().array();
+                byte[] eventBytes = byteBufferToArray(eventReadByteBuffer.getEvent());
                 if (deserializationSchema instanceof SupportsPravegaMetadata) {
                     ((SupportsPravegaMetadata) this.deserializationSchema).deserialize(eventBytes, eventReadByteBuffer, pravegaCollector);
                 } else {

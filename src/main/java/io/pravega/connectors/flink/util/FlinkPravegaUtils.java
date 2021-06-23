@@ -145,4 +145,14 @@ public class FlinkPravegaUtils {
         return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
                 System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
     }
+
+    public static byte[] byteBufferToArray(ByteBuffer buf) {
+        if (buf.hasArray() && buf.arrayOffset() == 0 && buf.position() == 0 && buf.limit() == buf.capacity()) {
+            return buf.array();
+        } else {
+            byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            return bytes;
+        }
+    }
 }

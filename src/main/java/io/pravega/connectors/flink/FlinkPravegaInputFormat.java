@@ -35,6 +35,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
+
 /**
  * A Flink {@link InputFormat} that can be added as a source to read from Pravega in a Flink batch job.
  */
@@ -158,7 +160,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public T nextRecord(T t) throws IOException {
         PravegaCollector<T> pravegaCollector = new PravegaCollector<>(deserializationSchema);
-        deserializationSchema.deserialize(this.segmentIterator.next().array(), pravegaCollector);
+        deserializationSchema.deserialize(byteBufferToArray(this.segmentIterator.next()), pravegaCollector);
         return pravegaCollector.getRecords().poll();
     }
 
