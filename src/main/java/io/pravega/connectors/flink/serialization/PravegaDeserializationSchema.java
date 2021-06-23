@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink.serialization;
 
+import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -120,6 +121,10 @@ public class PravegaDeserializationSchema<T>
         if (record != null) {
             out.collect(record);
         }
+    }
+
+    public T deserialize(T event, EventRead<T> eventRead) {
+        return event;
     }
 
     @Override
