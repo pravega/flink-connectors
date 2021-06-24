@@ -147,7 +147,7 @@ public class FlinkPravegaReader<T>
     private transient ReaderGroup readerGroup = null;
 
     // A collector to emit records in batch (bundle)
-    private final PravegaCollector pravegaCollector;
+    private final PravegaCollector<T> pravegaCollector;
 
     // ------------------------------------------------------------------------
 
@@ -190,7 +190,7 @@ public class FlinkPravegaReader<T>
         this.checkpointInitiateTimeout = Preconditions.checkNotNull(checkpointInitiateTimeout, "checkpointInitiateTimeout");
         this.enableMetrics = enableMetrics;
         this.assignerWithTimeWindows = assignerWithTimeWindows;
-        this.pravegaCollector = new PravegaCollector(deserializationSchema);
+        this.pravegaCollector = new PravegaCollector<T>(deserializationSchema);
     }
 
     /**
@@ -290,8 +290,6 @@ public class FlinkPravegaReader<T>
                         autoWatermarkInterval());
                 periodicEmitter.start();
             }
-
-            PravegaCollector<T> pravegaCollector = new PravegaCollector<>(deserializationSchema);
 
             // main work loop, which this task is running
             while (this.running) {

@@ -31,7 +31,7 @@ public class FlinkPravegaDynamicDeserializationSchema
 
     private final DeserializationSchema<RowData> nestedSchema;
 
-    // the custom collector that adds metadata to the row
+    // the custom collector that adds metadata to the rows
     private final OutputCollector outputCollector;
 
     public FlinkPravegaDynamicDeserializationSchema(
