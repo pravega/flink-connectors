@@ -9,6 +9,7 @@
  */
 package io.pravega.connectors.flink.serialization;
 
+import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
 import org.apache.flink.api.common.functions.InvalidTypesException;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -126,6 +127,18 @@ public class PravegaDeserializationSchema<T>
     @Override
     public Serializer<T> getWrappedSerializer() {
         return serializer;
+    }
+
+    /**
+     * An method for applying the metadata in deserialization.
+     * Override it in the custom extended {@link PravegaDeserializationSchema} if the Pravega metadata is needed.
+     *
+     * @param eventRead The EventRead structure the client returns which contains metadata
+     *
+     * @return the deserialized event with metadata
+     */
+    public T extractEvent(EventRead<T> eventRead) {
+        return eventRead.getEvent();
     }
 
     // ------------------------------------------------------------------------

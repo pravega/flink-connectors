@@ -675,8 +675,7 @@ public class FlinkPravegaReaderTest {
      * A test JSON format deserialization schema with metadata.
      */
     private static class TestMetadataDeserializationSchema
-            extends PravegaDeserializationSchema<IntegerWithEventPointer>
-            implements SupportsPravegaMetadata<IntegerWithEventPointer> {
+            extends PravegaDeserializationSchema<IntegerWithEventPointer>{
         private final boolean includeMetadata;
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {
@@ -685,23 +684,14 @@ public class FlinkPravegaReaderTest {
         }
 
         @Override
-        public void deserialize(byte[] message,
-                                EventRead<ByteBuffer> eventReadByteBuffer,
-                                Collector<IntegerWithEventPointer> out) throws IOException {
-            super.deserialize(message, out);
-
+        public IntegerWithEventPointer extractEvent(EventRead<IntegerWithEventPointer> eventRead) {
             if (!includeMetadata) {
-                return;
+                return super.extractEvent(eventRead);
             }
 
-            PravegaCollector<IntegerWithEventPointer> pravegaCollector = (PravegaCollector<IntegerWithEventPointer>) out;
-            Queue<IntegerWithEventPointer> temp = new LinkedList<>();
-            IntegerWithEventPointer event;
-            while ((event = pravegaCollector.getRecords().poll()) != null) {
-                event.setEventPointer(eventReadByteBuffer.getEventPointer());
-                temp.offer(event);
-            }
-            temp.forEach(out::collect);
+            IntegerWithEventPointer event = eventRead.getEvent();
+            event.setEventPointer(eventRead.getEventPointer());
+            return event;
         }
 
         @Override
