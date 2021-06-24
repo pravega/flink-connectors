@@ -12,16 +12,20 @@ package io.pravega.connectors.flink.util;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
+import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.impl.ByteBufferSerializer;
 import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.shared.security.auth.Credentials;
+import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.util.Preconditions;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -101,6 +105,39 @@ public class FlinkPravegaUtils {
             ReaderConfig readerConfig,
             EventStreamClientFactory eventStreamClientFactory) {
         return eventStreamClientFactory.createReader(readerId, readerGroupName, new ByteBufferSerializer(), readerConfig);
+    }
+
+    /**
+     * A Pravega {@link Serializer} that wraps around a Flink {@link DeserializationSchema}.
+     *
+     * @param <T> The type of the event.
+     */
+    public static final class FlinkDeserializer<T> implements Serializer<T>, Serializable {
+
+        private final DeserializationSchema<T> deserializationSchema;
+
+        public FlinkDeserializer(DeserializationSchema<T> deserializationSchema) {
+            this.deserializationSchema = deserializationSchema;
+        }
+
+        @Override
+        public ByteBuffer serialize(T value) {
+            throw new IllegalStateException("serialize() called within a deserializer");
+        }
+
+        @Override
+        @SneakyThrows
+        public T deserialize(ByteBuffer buffer) {
+            byte[] array;
+            if (buffer.hasArray() && buffer.arrayOffset() == 0 && buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
+                array = buffer.array();
+            } else {
+                array = new byte[buffer.remaining()];
+                buffer.get(array);
+            }
+
+            return deserializationSchema.deserialize(array);
+        }
     }
 
     public static final class SimpleCredentials implements Credentials {
