@@ -16,6 +16,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 public interface SupportsPravegaMetadata<T> {
-    void deserialize(byte[] message, EventRead<ByteBuffer> eventReadByteBuffer, Collector<T> out) throws IOException;
+    void deserialize(byte[] message, EventRead<ByteBuffer> eventRead, Collector<T> out) throws IOException;
 
 }

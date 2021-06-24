@@ -293,25 +293,25 @@ public class FlinkPravegaReader<T>
 
             // main work loop, which this task is running
             while (this.running) {
-                EventRead<ByteBuffer> eventReadByteBuffer;
+                EventRead<ByteBuffer> eventRead;
                 try {
-                    eventReadByteBuffer = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
+                    eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
                 } catch (TruncatedDataException e) {
                     // Data is truncated, Force the reader going forward to the next available event
                     continue;
                 }
 
-                if (eventReadByteBuffer.getEvent() == null) {
+                if (eventRead.getEvent() == null) {
                     // if the read marks a checkpoint, trigger the checkpoint
-                    if (eventReadByteBuffer.isCheckpoint()) {
-                        triggerCheckpoint(eventReadByteBuffer.getCheckpointName());
+                    if (eventRead.isCheckpoint()) {
+                        triggerCheckpoint(eventRead.getCheckpointName());
                     }
                     continue;
                 }
 
-                byte[] eventBytes = byteBufferToArray(eventReadByteBuffer.getEvent());
+                byte[] eventBytes = byteBufferToArray(eventRead.getEvent());
                 if (deserializationSchema instanceof SupportsPravegaMetadata) {
-                    ((SupportsPravegaMetadata) this.deserializationSchema).deserialize(eventBytes, eventReadByteBuffer, pravegaCollector);
+                    ((SupportsPravegaMetadata) this.deserializationSchema).deserialize(eventBytes, eventRead, pravegaCollector);
                 } else {
                     this.deserializationSchema.deserialize(eventBytes, pravegaCollector);
                 }

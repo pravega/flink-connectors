@@ -62,9 +62,9 @@ public class FlinkPravegaDynamicDeserializationSchema
 
     @Override
     public void deserialize(byte[] message,
-                            EventRead<ByteBuffer> eventReadByteBuffer,
+                            EventRead<ByteBuffer> eventRead,
                             Collector<RowData> out) throws IOException {
-        this.outputCollector.eventReadByteBuffer = eventReadByteBuffer;
+        this.outputCollector.eventRead = eventRead;
         this.outputCollector.out = out;
 
         this.deserialize(message, this.outputCollector);
@@ -87,7 +87,7 @@ public class FlinkPravegaDynamicDeserializationSchema
         public transient Collector<RowData> out;
 
         // where we get the event pointer from
-        public transient EventRead<ByteBuffer> eventReadByteBuffer;
+        public transient EventRead<ByteBuffer> eventRead;
 
         // metadata keys that the rowData have and is a subset of ReadableMetadata
         private final List<String> metadataKeys;
@@ -103,7 +103,7 @@ public class FlinkPravegaDynamicDeserializationSchema
         @Override
         public void collect(RowData record) {
             if (this.metadataKeys.size() == 0 || record != null) {
-                record = enrichWithMetadata(record, eventReadByteBuffer);
+                record = enrichWithMetadata(record, eventRead);
             }
 
             out.collect(record);
@@ -114,7 +114,7 @@ public class FlinkPravegaDynamicDeserializationSchema
             // nothing to do
         }
 
-        public RowData enrichWithMetadata(RowData rowData, EventRead<ByteBuffer> eventReadByteBuffer) {
+        public RowData enrichWithMetadata(RowData rowData, EventRead<ByteBuffer> eventRead) {
             // use GenericRowData to manipulate rowData's field
             final GenericRowData producedRow = new GenericRowData(rowData.getRowKind(), physicalArity + metadataKeys.size());
 
@@ -129,7 +129,7 @@ public class FlinkPravegaDynamicDeserializationSchema
             for (; pos < physicalArity + metadataKeys.size(); pos++) {
                 String metadataKey = metadataKeys.get(pos - physicalArity);
                 if (ReadableMetadata.EVENT_POINTER.key.equals(metadataKey)) {
-                    producedRow.setField(pos, byteBufferToArray(eventReadByteBuffer.getEventPointer().toBytes()));
+                    producedRow.setField(pos, byteBufferToArray(eventRead.getEventPointer().toBytes()));
                 }
             }
 

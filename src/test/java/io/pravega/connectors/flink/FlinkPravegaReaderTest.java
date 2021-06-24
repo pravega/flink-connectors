@@ -687,9 +687,9 @@ public class FlinkPravegaReaderTest {
 
         @Override
         public void deserialize(byte[] message,
-                                EventRead<ByteBuffer> eventReadByteBuffer,
+                                EventRead<ByteBuffer> eventRead,
                                 Collector<IntegerWithEventPointer> out) throws IOException {
-            this.outputCollector.eventReadByteBuffer = eventReadByteBuffer;
+            this.outputCollector.eventRead = eventRead;
             this.outputCollector.out = out;
 
             this.deserialize(message, this.outputCollector);
@@ -707,7 +707,7 @@ public class FlinkPravegaReaderTest {
             public transient Collector<IntegerWithEventPointer> out;
 
             // where we get the event pointer from
-            public transient EventRead<ByteBuffer> eventReadByteBuffer;
+            public transient EventRead<ByteBuffer> eventRead;
 
             private final boolean includeMetadata;
 
@@ -718,7 +718,7 @@ public class FlinkPravegaReaderTest {
             @Override
             public void collect(IntegerWithEventPointer integerWithEventPointer) {
                 if (includeMetadata) {
-                    integerWithEventPointer.setEventPointer(eventReadByteBuffer.getEventPointer());
+                    integerWithEventPointer.setEventPointer(eventRead.getEventPointer());
                 }
                 out.collect(integerWithEventPointer);
             }
