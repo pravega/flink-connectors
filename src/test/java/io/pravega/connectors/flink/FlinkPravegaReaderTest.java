@@ -29,6 +29,7 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableSource;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
@@ -52,6 +53,8 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockDeserializationSchema;
 import org.apache.flink.streaming.util.TestHarnessUtil;
+import org.apache.flink.table.data.GenericRowData;
+import org.apache.flink.table.data.RowData;
 import org.apache.flink.util.Collector;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Assert;
@@ -59,11 +62,13 @@ import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -675,28 +680,58 @@ public class FlinkPravegaReaderTest {
      * A test JSON format deserialization schema with metadata.
      */
     private static class TestMetadataDeserializationSchema
-            extends PravegaDeserializationSchema<IntegerWithEventPointer> {
-        private final boolean includeMetadata;
+            extends PravegaDeserializationSchema<IntegerWithEventPointer>
+            implements SupportsPravegaMetadata<IntegerWithEventPointer> {
+
+        private final OutputCollector outputCollector;
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {
             super(IntegerWithEventPointer.class, new JsonSerializer<>(IntegerWithEventPointer.class));
-            this.includeMetadata = includeMetadata;
+            this.outputCollector = new OutputCollector(includeMetadata);
         }
 
         @Override
-        public IntegerWithEventPointer extractEvent(EventRead<IntegerWithEventPointer> eventRead) {
-            if (!includeMetadata) {
-                return super.extractEvent(eventRead);
-            }
+        public void deserialize(byte[] message,
+                                EventRead<ByteBuffer> eventReadByteBuffer,
+                                Collector<IntegerWithEventPointer> out) throws IOException {
+            this.outputCollector.eventReadByteBuffer = eventReadByteBuffer;
+            this.outputCollector.out = out;
 
-            IntegerWithEventPointer event = eventRead.getEvent();
-            event.setEventPointer(eventRead.getEventPointer());
-            return event;
+            this.deserialize(message, this.outputCollector);
         }
 
         @Override
         public boolean isEndOfStream(IntegerWithEventPointer nextElement) {
             return nextElement.isEndOfStream();
+        }
+
+        private static final class OutputCollector implements Collector<IntegerWithEventPointer>, Serializable {
+            private static final long serialVersionUID = 1L;
+
+            // the original collector which need both original and metadata keys
+            public transient Collector<IntegerWithEventPointer> out;
+
+            // where we get the event pointer from
+            public transient EventRead<ByteBuffer> eventReadByteBuffer;
+
+            private final boolean includeMetadata;
+
+            private OutputCollector(boolean includeMetadata) {
+                this.includeMetadata = includeMetadata;
+            }
+
+            @Override
+            public void collect(IntegerWithEventPointer integerWithEventPointer) {
+                if (includeMetadata) {
+                    integerWithEventPointer.setEventPointer(eventReadByteBuffer.getEventPointer());
+                }
+                out.collect(integerWithEventPointer);
+            }
+
+            @Override
+            public void close() {
+                // nothing to do
+            }
         }
     }
 
