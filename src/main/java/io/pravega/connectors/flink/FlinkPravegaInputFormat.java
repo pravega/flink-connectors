@@ -146,7 +146,8 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     // ------------------------------------------------------------------------
 
     @Override
-    public void open(PravegaInputSplit split) throws IOException {        // create the adapter between Pravega's serializers and Flink's serializers
+    public void open(PravegaInputSplit split) throws IOException {
+        // create the adapter between Pravega's serializers and Flink's serializers
         @SuppressWarnings("unchecked")
         final Serializer<T> deserializer = deserializationSchema instanceof WrappingSerializer
                 ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()

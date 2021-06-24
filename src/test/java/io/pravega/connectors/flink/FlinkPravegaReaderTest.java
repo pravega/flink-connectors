@@ -675,7 +675,7 @@ public class FlinkPravegaReaderTest {
      * A test JSON format deserialization schema with metadata.
      */
     private static class TestMetadataDeserializationSchema
-            extends PravegaDeserializationSchema<IntegerWithEventPointer>{
+            extends PravegaDeserializationSchema<IntegerWithEventPointer> {
         private final boolean includeMetadata;
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {
