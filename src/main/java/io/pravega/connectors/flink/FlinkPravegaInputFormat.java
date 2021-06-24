@@ -63,7 +63,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     private transient BatchClientFactory batchClientFactory;
 
     // The iterator for the currently read input split (i.e. a Pravega segment).
-    private transient SegmentIterator<ByteBuffer> segmentIterator;
+    private transient SegmentIterator<T> segmentIterator;
 
     /**
      * Creates a new Flink Pravega {@link InputFormat} which can be added as a source to a Flink batch job.
@@ -149,7 +149,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public void open(PravegaInputSplit split) throws IOException {
         // build a new iterator for each input split. Note that the endOffset parameter is not used by the Batch API at the moment.
-        this.segmentIterator = batchClientFactory.readSegment(split.getSegmentRange(), new ByteBufferSerializer());
+        this.segmentIterator = (SegmentIterator<T>) batchClientFactory.readSegment(split.getSegmentRange(), new ByteBufferSerializer());
     }
 
     @Override
@@ -159,9 +159,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     @Override
     public T nextRecord(T t) throws IOException {
-        PravegaCollector<T> pravegaCollector = new PravegaCollector<>(deserializationSchema);
-        deserializationSchema.deserialize(byteBufferToArray(this.segmentIterator.next()), pravegaCollector);
-        return pravegaCollector.getRecords().poll();
+        return this.segmentIterator.next();
     }
 
     @Override
