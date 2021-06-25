@@ -697,7 +697,7 @@ public class FlinkPravegaReaderTest {
 
         @Override
         public TypeInformation<IntegerWithEventPointer> getProducedType() {
-            return null;
+            return TypeInformation.of(IntegerWithEventPointer.class);
         }
     }
 

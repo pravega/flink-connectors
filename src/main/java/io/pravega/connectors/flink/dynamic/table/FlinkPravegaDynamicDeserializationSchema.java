@@ -23,6 +23,7 @@ import java.util.List;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
 
+/** A specific {@link PravegaDeserializationSchemaWithMetadata} for {@link FlinkPravegaDynamicTableSource} */
 public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializationSchemaWithMetadata<RowData> {
     private final TypeInformation<RowData> typeInfo;
 
@@ -53,9 +54,12 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
     @Override
     public RowData deserialize(byte[] message, EventRead<ByteBuffer> eventRead) throws IOException {
         RowData rowData = this.nestedSchema.deserialize(message);
+
+        // check if we have to expose the metadata
         if (rowData != null && metadataKeys.size() > 0) {
             rowData = enrichWithMetadata(rowData, eventRead);
         }
+
         return rowData;
     }
 

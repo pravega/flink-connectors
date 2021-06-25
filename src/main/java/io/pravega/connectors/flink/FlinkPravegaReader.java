@@ -147,7 +147,7 @@ public class FlinkPravegaReader<T>
     // Pravega reader group
     private transient ReaderGroup readerGroup = null;
 
-    // A collector to emit records in batch (bundle)
+    // A collector that emits records in batch (bundle)
     private final PravegaCollector<T> pravegaCollector;
 
     // ------------------------------------------------------------------------
@@ -325,6 +325,7 @@ public class FlinkPravegaReader<T>
         }
     }
 
+    /** Deserialize and collect the event. */
     private void emitEvent(EventRead<ByteBuffer> eventRead,
                            SourceContext<T> ctx,
                            long previousTimestamp,

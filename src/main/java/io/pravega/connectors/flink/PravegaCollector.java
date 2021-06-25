@@ -16,14 +16,18 @@ import java.io.Serializable;
 import java.util.ArrayDeque;
 import java.util.Queue;
 
+/**
+ * A Pravega collector that supports deserializing bytes to several events.
+ */
 public class PravegaCollector<T> implements Collector<T>, Serializable {
     private static final long serialVersionUID = 1L;
 
     private final DeserializationSchema<T> deserializationSchema;
 
-    private final Queue<T> records = new ArrayDeque<>();
-
     private boolean endOfStreamSignalled = false;
+
+    // internal buffer
+    private final Queue<T> records = new ArrayDeque<>();
 
     public PravegaCollector(DeserializationSchema<T> deserializationSchema) {
         this.deserializationSchema = deserializationSchema;
@@ -48,5 +52,7 @@ public class PravegaCollector<T> implements Collector<T>, Serializable {
     }
 
     @Override
-    public void close() {}
+    public void close() {
+        // do nothing here
+    }
 }
