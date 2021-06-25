@@ -23,7 +23,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -50,6 +50,7 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Set;
@@ -309,30 +310,10 @@ public class FlinkPravegaReader<T>
                     continue;
                 }
 
-                byte[] eventBytes = byteBufferToArray(eventRead.getEvent());
-                if (deserializationSchema instanceof SupportsPravegaMetadata) {
-                    ((SupportsPravegaMetadata) this.deserializationSchema).deserialize(eventBytes, eventRead, pravegaCollector);
-                } else {
-                    this.deserializationSchema.deserialize(eventBytes, pravegaCollector);
-                }
-
-                T event;
-                while ((event = pravegaCollector.getRecords().poll()) != null) {
-                    synchronized (ctx.getCheckpointLock()) {
-                        if (isEventTimeMode()) {
-                            long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
-                            ctx.collectWithTimestamp(event, currentTimestamp);
-                            previousTimestamp = currentTimestamp;
-                        } else {
-                            ctx.collect(event);
-                        }
-                    }
-                }
+                emitEvent(eventRead, ctx, previousTimestamp, assigner);
 
                 if (pravegaCollector.isEndOfStreamSignalled()) {
                     // Found stream end marker.
-                    // TODO: Handle scenario when reading from multiple segments. This will be cleaned up as part of:
-                    //       https://github.com/pravega/pravega/issues/551.
                     log.info("Reached end of stream for reader: {}", readerId);
                     return;
                 }
@@ -342,6 +323,32 @@ public class FlinkPravegaReader<T>
             log.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
             throw e;
         }
+    }
+
+    private void emitEvent(EventRead<ByteBuffer> eventRead,
+                           SourceContext<T> ctx,
+                           long previousTimestamp,
+                           @Nullable AssignerWithTimeWindows<T> assigner) throws IOException {
+        byte[] eventBytes = byteBufferToArray(eventRead.getEvent());
+        if (deserializationSchema instanceof PravegaDeserializationSchemaWithMetadata) {
+            ((PravegaDeserializationSchemaWithMetadata<T>) this.deserializationSchema).deserialize(eventBytes, eventRead, pravegaCollector);
+        } else {
+            this.deserializationSchema.deserialize(eventBytes, pravegaCollector);
+        }
+
+        T event;
+        while ((event = pravegaCollector.getRecords().poll()) != null) {
+            synchronized (ctx.getCheckpointLock()) {
+                if (isEventTimeMode()) {
+                    long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
+                    ctx.collectWithTimestamp(event, currentTimestamp);
+                    previousTimestamp = currentTimestamp;
+                } else {
+                    ctx.collect(event);
+                }
+            }
+        }
+
     }
 
     @Override

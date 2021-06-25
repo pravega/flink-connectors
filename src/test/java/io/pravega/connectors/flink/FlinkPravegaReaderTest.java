@@ -30,8 +30,7 @@ import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.connectors.flink.serialization.SupportsPravegaMetadata;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.IntegerWithEventPointer;
@@ -42,6 +41,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.metrics.MetricGroup;
@@ -52,14 +52,12 @@ import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockDeserializationSchema;
 import org.apache.flink.streaming.util.TestHarnessUtil;
-import org.apache.flink.util.Collector;
 import org.apache.flink.util.SerializedValue;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Collections;
@@ -675,24 +673,21 @@ public class FlinkPravegaReaderTest {
      * A test JSON format deserialization schema with metadata.
      */
     private static class TestMetadataDeserializationSchema
-            extends PravegaDeserializationSchema<IntegerWithEventPointer>
-            implements SupportsPravegaMetadata<IntegerWithEventPointer> {
+            extends PravegaDeserializationSchemaWithMetadata<IntegerWithEventPointer> {
+        private final boolean includeMetadata;
 
-        private final OutputCollector outputCollector;
+        private final Serializer<IntegerWithEventPointer> serializer = new JsonSerializer<>(IntegerWithEventPointer.class);
 
         public TestMetadataDeserializationSchema(boolean includeMetadata) {
-            super(IntegerWithEventPointer.class, new JsonSerializer<>(IntegerWithEventPointer.class));
-            this.outputCollector = new OutputCollector(includeMetadata);
+            this.includeMetadata = includeMetadata;
         }
 
-        @Override
-        public void deserialize(byte[] message,
-                                EventRead<ByteBuffer> eventRead,
-                                Collector<IntegerWithEventPointer> out) throws IOException {
-            this.outputCollector.eventRead = eventRead;
-            this.outputCollector.out = out;
-
-            this.deserialize(message, this.outputCollector);
+        public IntegerWithEventPointer deserialize(byte[] message, EventRead<ByteBuffer> eventRead) throws IOException {
+            IntegerWithEventPointer integerWithEventPointer = this.serializer.deserialize(ByteBuffer.wrap(message));
+            if (includeMetadata) {
+                integerWithEventPointer.setEventPointer(eventRead.getEventPointer());
+            }
+            return integerWithEventPointer;
         }
 
         @Override
@@ -700,33 +695,9 @@ public class FlinkPravegaReaderTest {
             return nextElement.isEndOfStream();
         }
 
-        private static final class OutputCollector implements Collector<IntegerWithEventPointer>, Serializable {
-            private static final long serialVersionUID = 1L;
-
-            // the original collector which need both original and metadata keys
-            public transient Collector<IntegerWithEventPointer> out;
-
-            // where we get the event pointer from
-            public transient EventRead<ByteBuffer> eventRead;
-
-            private final boolean includeMetadata;
-
-            private OutputCollector(boolean includeMetadata) {
-                this.includeMetadata = includeMetadata;
-            }
-
-            @Override
-            public void collect(IntegerWithEventPointer integerWithEventPointer) {
-                if (includeMetadata) {
-                    integerWithEventPointer.setEventPointer(eventRead.getEventPointer());
-                }
-                out.collect(integerWithEventPointer);
-            }
-
-            @Override
-            public void close() {
-                // nothing to do
-            }
+        @Override
+        public TypeInformation<IntegerWithEventPointer> getProducedType() {
+            return null;
         }
     }
 
