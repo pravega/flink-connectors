@@ -619,6 +619,8 @@ public class FlinkPravegaReaderTest {
     private static class TestEventGenerator<T> {
         Class<Integer> type = Integer.class;
 
+        private JsonSerializer<IntegerWithEventPointer> serializer = new JsonSerializer<>(IntegerWithEventPointer.class);
+
         private String buildEventPointerString(long offset) {
             StringBuilder sb = new StringBuilder();
             sb.append(SAMPLE_SEGMENT.getScopedName());
@@ -636,14 +638,14 @@ public class FlinkPravegaReaderTest {
         public EventRead<ByteBuffer> event(T evt) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    byteBufferToArray(new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt));
+                    byteBufferToArray(serializer.serialize((IntegerWithEventPointer) evt));
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), mock(EventPointer.class), null);
         }
 
         public EventRead<ByteBuffer> event(T evt, long offset) {
             byte[] buf = type.isInstance(evt) ?
                     SERIALIZATION_SCHEMA.serialize((Integer) evt) :
-                    byteBufferToArray(new JsonSerializer<>(IntegerWithEventPointer.class).serialize((IntegerWithEventPointer) evt));
+                    byteBufferToArray(serializer.serialize((IntegerWithEventPointer) evt));
             return new EventReadImpl<>(ByteBuffer.wrap(buf), mock(Position.class), getEventPointer(offset), null);
         }
 

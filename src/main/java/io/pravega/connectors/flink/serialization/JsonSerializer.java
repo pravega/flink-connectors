@@ -10,7 +10,6 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Serializer;
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.ByteArrayInputStream;
@@ -26,7 +25,6 @@ public class JsonSerializer<T> implements Serializer<T>, Serializable {
 
     public JsonSerializer(Class<T> valueType) {
         this.valueType = valueType;
-        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
     @Override

@@ -17,7 +17,7 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A Pravega DeserializationSchema that makes altering event possible. <p/>
+ * A Pravega DeserializationSchema that makes altering event possible. <p>
  *
  * To add the metadata to the row, simply overwrite the {@link #deserialize(byte[], EventRead)} method.
  */
