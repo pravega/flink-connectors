@@ -101,28 +101,28 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         SETUP_UTILS.createTestStream(stream, 1);
 
         final String createTable = String.format(
-                "CREATE TABLE pravega (%n" +
-                        "  `computed-price` as price + 1.0,%n" +
-                        "  price decimal(38, 18),%n" +
-                        "  currency string,%n" +
-                        "  log_date date,%n" +
-                        "  log_time time(3),%n" +
-                        "  log_ts timestamp(3),%n" +
-                        "  ts as log_ts + INTERVAL '1' SECOND,%n" +
-                        "  watermark for ts as ts%n" +
-                        ") WITH (%n" +
-                        "  'connector' = 'pravega',%n" +
-                        "  'controller-uri' = '%s',%n" +
-                        "  'scope' = '%s',%n" +
-                        "  'security.auth-type' = '%s',%n" +
-                        "  'security.auth-token' = '%s',%n" +
-                        "  'security.validate-hostname' = '%s',%n" +
-                        "  'security.trust-store' = '%s',%n" +
-                        "  'scan.execution.type' = '%s',%n" +
-                        "  'scan.streams' = '%s',%n" +
-                        "  'sink.stream' = '%s',%n" +
-                        "  'sink.routing-key.field.name' = 'currency',%n" +
-                        "  'format' = 'json'%n" +
+                "CREATE TABLE pravega (" +
+                        "  `computed-price` as price + 1.0," +
+                        "  price decimal(38, 18)," +
+                        "  currency string," +
+                        "  log_date date," +
+                        "  log_time time(3)," +
+                        "  log_ts timestamp(3)," +
+                        "  ts as log_ts + INTERVAL '1' SECOND," +
+                        "  watermark for ts as ts" +
+                        ") WITH (" +
+                        "  'connector' = 'pravega'," +
+                        "  'controller-uri' = '%s'," +
+                        "  'scope' = '%s'," +
+                        "  'security.auth-type' = '%s'," +
+                        "  'security.auth-token' = '%s'," +
+                        "  'security.validate-hostname' = '%s'," +
+                        "  'security.trust-store' = '%s'," +
+                        "  'scan.execution.type' = '%s'," +
+                        "  'scan.streams' = '%s'," +
+                        "  'sink.stream' = '%s'," +
+                        "  'sink.routing-key.field.name' = 'currency'," +
+                        "  'format' = 'json'" +
                         ")",
                 SETUP_UTILS.getControllerUri().toString(),
                 SETUP_UTILS.getScope(),
@@ -136,15 +136,15 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         tEnv.executeSql(createTable);
 
-        String initialValues = "INSERT INTO pravega\n" +
+        String initialValues = "INSERT INTO pravega " +
                 "SELECT CAST(price AS DECIMAL(10, 2)), currency, " +
-                " CAST(d AS DATE), CAST(t AS TIME(0)), CAST(ts AS TIMESTAMP(3))\n" +
-                "FROM (VALUES (2.02,'Euro','2019-12-12', '00:00:01', '2019-12-12 00:00:01.001001'), \n" +
-                "  (1.11,'US Dollar','2019-12-12', '00:00:02', '2019-12-12 00:00:02.002001'), \n" +
-                "  (50,'Yen','2019-12-12', '00:00:03', '2019-12-12 00:00:03.004001'), \n" +
-                "  (3.1,'Euro','2019-12-12', '00:00:04', '2019-12-12 00:00:04.005001'), \n" +
-                "  (5.33,'US Dollar','2019-12-12', '00:00:05', '2019-12-12 00:00:05.006001'), \n" +
-                "  (0,'DUMMY','2019-12-12', '00:00:10', '2019-12-12 00:00:10'))\n" +
+                " CAST(d AS DATE), CAST(t AS TIME(0)), CAST(ts AS TIMESTAMP(3)) " +
+                "FROM (VALUES (2.02,'Euro','2019-12-12', '00:00:01', '2019-12-12 00:00:01.001001')," +
+                "  (1.11,'US Dollar','2019-12-12', '00:00:02', '2019-12-12 00:00:02.002001')," +
+                "  (50,'Yen','2019-12-12', '00:00:03', '2019-12-12 00:00:03.004001')," +
+                "  (3.1,'Euro','2019-12-12', '00:00:04', '2019-12-12 00:00:04.005001')," +
+                "  (5.33,'US Dollar','2019-12-12', '00:00:05', '2019-12-12 00:00:05.006001')," +
+                "  (0,'DUMMY','2019-12-12', '00:00:10', '2019-12-12 00:00:10'))" +
                 "  AS orders (price, currency, d, t, ts)";
 
         // Write stream, Block until data is ready or job finished
@@ -153,14 +153,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // ---------- Read stream from Pravega -------------------
 
         for (;;) {
-            String query = "SELECT\n" +
-                    "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR),\n" +
-                    "  CAST(MAX(log_date) AS VARCHAR),\n" +
-                    "  CAST(MAX(log_time) AS VARCHAR),\n" +
-                    "  CAST(MAX(ts) AS VARCHAR),\n" +
-                    "  COUNT(*),\n" +
-                    "  CAST(MAX(price) AS DECIMAL(10, 2))\n" +
-                    "FROM pravega\n" +
+            String query = "SELECT" +
+                    "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR)," +
+                    "  CAST(MAX(log_date) AS VARCHAR)," +
+                    "  CAST(MAX(log_time) AS VARCHAR)," +
+                    "  CAST(MAX(ts) AS VARCHAR)," +
+                    "  COUNT(*)," +
+                    "  CAST(MAX(price) AS DECIMAL(10, 2)) " +
+                    "FROM pravega " +
                     "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
 
             DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
@@ -211,24 +211,24 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         SETUP_UTILS.createTestStream(stream, 1);
 
         final String createTable = String.format(
-                "CREATE TABLE users (%n" +
-                        "  name STRING, %n" +
-                        "  phone INT, %n" +
+                "CREATE TABLE users (" +
+                        "  name STRING," +
+                        "  phone INT," +
                         // access Pravega's `event-pointer` metadata
-                        "  event_pointer BYTES METADATA VIRTUAL, %n" +
-                        "  vip BOOLEAN %n" +
-                        ") WITH (%n" +
-                        "  'connector' = 'pravega',%n" +
-                        "  'controller-uri' = '%s',%n" +
-                        "  'scope' = '%s',%n" +
-                        "  'security.auth-type' = '%s',%n" +
-                        "  'security.auth-token' = '%s',%n" +
-                        "  'security.validate-hostname' = '%s',%n" +
-                        "  'security.trust-store' = '%s',%n" +
-                        "  'scan.execution.type' = '%s',%n" +
-                        "  'scan.streams' = '%s',%n" +
-                        "  'sink.stream' = '%s',%n" +
-                        "  'format' = 'json'%n" +
+                        "  event_pointer BYTES METADATA VIRTUAL," +
+                        "  vip BOOLEAN" +
+                        ") WITH (" +
+                        "  'connector' = 'pravega'," +
+                        "  'controller-uri' = '%s'," +
+                        "  'scope' = '%s'," +
+                        "  'security.auth-type' = '%s'," +
+                        "  'security.auth-token' = '%s'," +
+                        "  'security.validate-hostname' = '%s'," +
+                        "  'security.trust-store' = '%s'," +
+                        "  'scan.execution.type' = '%s'," +
+                        "  'scan.streams' = '%s'," +
+                        "  'sink.stream' = '%s'," +
+                        "  'format' = 'json'" +
                         ")",
                 SETUP_UTILS.getControllerUri().toString(),
                 SETUP_UTILS.getScope(),
@@ -242,10 +242,9 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         tEnv.executeSql(createTable);
 
-        String initialValues = "INSERT INTO users\n" +
-                "VALUES \n" +
-                "('jack', 888888, FALSE), \n" +
-                "('pony', 10000, TRUE), \n" +
+        String initialValues = "INSERT INTO users VALUES" +
+                "('jack', 888888, FALSE)," +
+                "('pony', 10000, TRUE)," +
                 "('yiming', 12345678, FALSE)";
 
         // Write stream, Block until data is ready or job finished
@@ -319,7 +318,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         .build()
         );
         env.getConfig().setRestartStrategy(RestartStrategies.noRestart());
-        tEnv.getConfig().getConfiguration();
         // we have to use single parallelism,
         // because we will count the messages in sink to terminate the job
         env.setParallelism(1);
@@ -345,24 +343,28 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // ---------- Produce an event time stream into Pravega -------------------
         String sourceDDL =
                 String.format(
-                        "CREATE TABLE debezium_source ("
-                                + " id INT NOT NULL,"
-                                + " name STRING,"
-                                + " description STRING,"
-                                + " weight DECIMAL(10,3)"
-                                + ") WITH ("
-                                + "'connector' = 'pravega'," +
-                                "  'controller-uri' = '%s',%n" +
-                                "  'scope' = '%s',%n" +
-                                "  'security.auth-type' = '%s',%n" +
-                                "  'security.auth-token' = '%s',%n" +
-                                "  'security.validate-hostname' = '%s',%n" +
-                                "  'security.trust-store' = '%s',%n" +
-                                "  'scan.execution.type' = '%s',%n" +
-                                "  'scan.streams' = '%s',%n" +
-                                "  'sink.stream' = '%s',%n" +
-                                "  'format' = 'debezium-json'"
-                                + ")",
+                        "CREATE TABLE debezium_source (" +
+                                // test format metadata
+
+                                // + " origin_ts TIMESTAMP(3) METADATA FROM 'value.ingestion-timestamp' VIRTUAL," // unused
+                                // + " origin_table STRING METADATA FROM 'value.source.table' VIRTUAL,"
+                                "  id INT NOT NULL," +
+                                "  name STRING," +
+                                "  description STRING," +
+                                "  weight DECIMAL(10,3)" +
+                                ") WITH (" +
+                                "  'connector' = 'pravega'," +
+                                "  'controller-uri' = '%s'," +
+                                "  'scope' = '%s'," +
+                                "  'security.auth-type' = '%s'," +
+                                "  'security.auth-token' = '%s'," +
+                                "  'security.validate-hostname' = '%s'," +
+                                "  'security.trust-store' = '%s'," +
+                                "  'scan.execution.type' = '%s'," +
+                                "  'scan.streams' = '%s'," +
+                                "  'sink.stream' = '%s'," +
+                                "  'format' = 'debezium-json'" +
+                                ")",
                         SETUP_UTILS.getControllerUri().toString(),
                         SETUP_UTILS.getScope(),
                         SETUP_UTILS.getAuthType(),
@@ -373,14 +375,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         stream,
                         stream);
         String sinkDDL =
-                "CREATE TABLE sink ("
-                        + " name STRING,"
-                        + " weightSum DECIMAL(10,3),"
-                        + " PRIMARY KEY (name) NOT ENFORCED"
-                        + ") WITH ("
-                        + " 'connector' = 'values',"
-                        + " 'sink-insert-only' = 'false'"
-                        + ")";
+                "CREATE TABLE sink (" +
+                        "  name STRING," +
+                        "  weightSum DECIMAL(10,3)," +
+                        "  PRIMARY KEY (name) NOT ENFORCED" +
+                        ") WITH (" +
+                        "  'connector' = 'values'," +
+                        "  'sink-insert-only' = 'false'" +
+                        ")";
         tEnv.executeSql(sourceDDL);
         tEnv.executeSql(sinkDDL);
 
@@ -399,9 +401,9 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         for (;;) {
             try {
                 tableResult = tEnv.executeSql(
-                        "INSERT INTO sink "
-                                + "SELECT name, SUM(weight) "
-                                + "FROM debezium_source GROUP BY name");
+                        "INSERT INTO sink " +
+                                "SELECT name, SUM(weight) " +
+                                "FROM debezium_source GROUP BY name");
             } catch (Exception e) {
                 // we have to use a specific exception to indicate the job is finished,
                 // because the registered Kafka source is infinite.
