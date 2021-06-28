@@ -17,20 +17,27 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.FlinkPravegaWriter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.api.common.serialization.SerializationSchema;
+import org.apache.flink.api.common.serialization.SimpleStringSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.table.api.EnvironmentSettings;
+import org.apache.flink.table.api.TableResult;
 import org.apache.flink.table.api.bridge.java.StreamTableEnvironment;
 import org.apache.flink.table.data.GenericRowData;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
+import org.apache.flink.table.planner.factories.TestValuesTableFactory;
 import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -38,10 +45,16 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
+import java.net.URL;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -294,6 +307,125 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
     }
 
+    @Test
+    public void testPravegaDebeziumChangelogSourceSink() throws Exception {
+        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
+        StreamTableEnvironment tEnv = StreamTableEnvironment.create(
+                env,
+                EnvironmentSettings.newInstance()
+                        // Watermark is only supported in blink planner
+                        .useBlinkPlanner()
+                        .inStreamingMode()
+                        .build()
+        );
+        env.getConfig().setRestartStrategy(RestartStrategies.noRestart());
+        tEnv.getConfig().getConfiguration();
+        // we have to use single parallelism,
+        // because we will count the messages in sink to terminate the job
+        env.setParallelism(1);
+
+        final String stream = RandomStringUtils.randomAlphabetic(20);
+        SETUP_UTILS.createTestStream(stream, 1);
+
+        // ---------- Write the Debezium json into Pravega -------------------
+        List<String> lines = readLines("debezium-data-schema-exclude.txt");
+        DataStreamSource<String> content = env.fromCollection(lines);
+        SerializationSchema<String> serSchema = new SimpleStringSchema();
+
+        FlinkPravegaWriter<String> pravegaSink = FlinkPravegaWriter.<String>builder()
+                .forStream(stream)
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withSerializationSchema(serSchema)
+                .withEventRouter(event -> "fixedkey")
+                .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
+                .build();
+        content.addSink(pravegaSink).setParallelism(1);
+        env.execute();
+
+        // ---------- Produce an event time stream into Pravega -------------------
+        String sourceDDL =
+                String.format(
+                        "CREATE TABLE debezium_source ("
+                                + " id INT NOT NULL,"
+                                + " name STRING,"
+                                + " description STRING,"
+                                + " weight DECIMAL(10,3)"
+                                + ") WITH ("
+                                + "'connector' = 'pravega'," +
+                                "  'controller-uri' = '%s',%n" +
+                                "  'scope' = '%s',%n" +
+                                "  'security.auth-type' = '%s',%n" +
+                                "  'security.auth-token' = '%s',%n" +
+                                "  'security.validate-hostname' = '%s',%n" +
+                                "  'security.trust-store' = '%s',%n" +
+                                "  'scan.execution.type' = '%s',%n" +
+                                "  'scan.streams' = '%s',%n" +
+                                "  'sink.stream' = '%s',%n" +
+                                "  'format' = 'debezium-json'"
+                                + ")",
+                        SETUP_UTILS.getControllerUri().toString(),
+                        SETUP_UTILS.getScope(),
+                        SETUP_UTILS.getAuthType(),
+                        SETUP_UTILS.getAuthToken(),
+                        SETUP_UTILS.isEnableHostNameValidation(),
+                        SETUP_UTILS.getPravegaClientTrustStore(),
+                        "streaming",
+                        stream,
+                        stream);
+        String sinkDDL =
+                "CREATE TABLE sink ("
+                        + " name STRING,"
+                        + " weightSum DECIMAL(10,3),"
+                        + " PRIMARY KEY (name) NOT ENFORCED"
+                        + ") WITH ("
+                        + " 'connector' = 'values',"
+                        + " 'sink-insert-only' = 'false'"
+                        + ")";
+        tEnv.executeSql(sourceDDL);
+        tEnv.executeSql(sinkDDL);
+
+        List<String> expected =
+                Arrays.asList(
+                        "scooter,3.140",
+                        "car battery,8.100",
+                        "12-pack drill bits,0.800",
+                        "hammer,2.625",
+                        "rocks,5.100",
+                        "jacket,0.600",
+                        "spare tire,22.200");
+        Collections.sort(expected);
+
+        TableResult tableResult = null;
+        for (;;) {
+            try {
+                tableResult = tEnv.executeSql(
+                        "INSERT INTO sink "
+                                + "SELECT name, SUM(weight) "
+                                + "FROM debezium_source GROUP BY name");
+            } catch (Exception e) {
+                // we have to use a specific exception to indicate the job is finished,
+                // because the registered Kafka source is infinite.
+                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                    // re-throw
+                    throw e;
+                }
+            }
+
+            List<String> actual = TestValuesTableFactory.getResults("sink");
+            Collections.sort(actual);
+
+            if (expected.equals(actual)) {
+                break;
+            }
+            // A batch read from Pravega may not return events that were recently written.
+            // In this case, we simply retry the read portion of this test.
+            log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
+        }
+
+        // ------------- cleanup -------------------
+        tableResult.getJobClient().get().cancel().get(); // stop the job
+    }
+
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
 
         private static final long serialVersionUID = 455430015321124493L;
@@ -346,5 +478,12 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         public boolean getVip() {
             return vip;
         }
+    }
+
+    public static List<String> readLines(String resource) throws IOException {
+        final URL url = FlinkPravegaDynamicTableITCase.class.getClassLoader().getResource(resource);
+        assert url != null;
+        Path path = new File(url.getFile()).toPath();
+        return Files.readAllLines(path);
     }
 }
