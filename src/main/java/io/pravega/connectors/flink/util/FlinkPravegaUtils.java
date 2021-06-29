@@ -16,6 +16,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.impl.ByteBufferSerializer;
 import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -90,7 +91,12 @@ public class FlinkPravegaUtils {
     }
 
     /**
-     * Creates a Pravga {@link EventStreamReader}.
+     * Creates a Pravga {@link EventStreamReader}. <p>
+     *
+     * Instead of directly returns T, it returns ByteBuffer so that the
+     * additional information can be extracted from the event.
+     * To manipulate metadata, overwrite the
+     * {@link PravegaDeserializationSchemaWithMetadata}.
      *
      * @param readerId The id of the Pravega reader.
      * @param readerGroupName The reader group name.

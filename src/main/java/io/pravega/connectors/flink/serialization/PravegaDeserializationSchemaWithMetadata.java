@@ -10,6 +10,7 @@
 package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.EventRead;
+import io.pravega.connectors.flink.FlinkPravegaReader;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.Collector;
 
@@ -17,9 +18,15 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
- * A Pravega DeserializationSchema that makes altering event possible. <p>
+ * A Pravega DeserializationSchema that enables deserializing events together with
+ * the Pravega {@link EventRead} metadata, this can be used for recording and indexing use cases. <p>
  *
- * To add the metadata to the row, simply overwrite the {@link #deserialize(byte[], EventRead)} method.
+ * This deserialization schema disables the
+ * {@link PravegaDeserializationSchemaWithMetadata#deserialize(byte[])} method and
+ * delegates the deserialization to
+ * {@link PravegaDeserializationSchemaWithMetadata#deserialize(byte[], EventRead)}.
+ * {@link FlinkPravegaReader} will distinguish this from a normal deserialization schema and
+ * call {@link PravegaDeserializationSchemaWithMetadata#deserialize(byte[], EventRead)} when it is reading events.
  */
 public abstract class PravegaDeserializationSchemaWithMetadata<T> implements DeserializationSchema<T> {
     public abstract T deserialize(byte[] message, EventRead<ByteBuffer> eventRead) throws IOException;
@@ -32,6 +39,6 @@ public abstract class PravegaDeserializationSchemaWithMetadata<T> implements Des
     }
 
     public T deserialize(byte[] message) throws IOException {
-        throw new IllegalStateException("A collector is required for deserializing.");
+        throw new IllegalStateException("Should never be called.");
     }
 }

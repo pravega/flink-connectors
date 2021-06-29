@@ -51,6 +51,7 @@ public class TestUtils {
      *
      * @param resource file name, in the resources directory
      * @return the content of the file
+     * @throws IOException exception
      */
     public static List<String> readLines(String resource) throws IOException {
         final URL url = FlinkPravegaDynamicTableITCase.class.getClassLoader().getResource(resource);

@@ -29,8 +29,7 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * exposes the produced type (TypeInformation) to allow Flink to configure its internal
  * serialization and persistence stack.
  *
- * <p>An additional method {@link PravegaDeserializationSchemaWithMetadata} is provided for
- * applying the metadata in the deserialization. This method can be overriden in the extended class. </p>
+ * <p>To deserialize metadata, use {@link PravegaDeserializationSchemaWithMetadata} instead.
  */
 public class PravegaDeserializationSchema<T> 
         implements DeserializationSchema<T>, WrappingSerializer<T> {
