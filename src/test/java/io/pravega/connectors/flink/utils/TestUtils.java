@@ -9,8 +9,15 @@
  */
 package io.pravega.connectors.flink.utils;
 
+import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableITCase;
+
+import java.io.File;
 import java.io.IOException;
 import java.net.ServerSocket;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class TestUtils {
@@ -37,5 +44,18 @@ public class TestUtils {
         }
         throw new IllegalStateException(
                 String.format("Could not assign port in range %d - %d", BASE_PORT, MAX_PORT_COUNT + BASE_PORT));
+    }
+
+    /**
+     * A helper method reading the content from a resource file.
+     *
+     * @param resource file name, in the resources directory
+     * @return the content of the file
+     */
+    public static List<String> readLines(String resource) throws IOException {
+        final URL url = FlinkPravegaDynamicTableITCase.class.getClassLoader().getResource(resource);
+        assert url != null;
+        Path path = new File(url.getFile()).toPath();
+        return Files.readAllLines(path);
     }
 }

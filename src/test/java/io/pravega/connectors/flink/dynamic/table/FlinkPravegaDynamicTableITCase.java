@@ -45,13 +45,9 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
-import java.io.File;
-import java.io.IOException;
 import java.io.Serializable;
-import java.net.URL;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -60,6 +56,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import static io.pravega.connectors.flink.utils.TestUtils.readLines;
 import static org.junit.Assert.assertEquals;
 
 public class FlinkPravegaDynamicTableITCase extends TestLogger {
@@ -152,43 +149,21 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         // ---------- Read stream from Pravega -------------------
 
-        for (;;) {
-            String query = "SELECT" +
-                    "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR)," +
-                    "  CAST(MAX(log_date) AS VARCHAR)," +
-                    "  CAST(MAX(log_time) AS VARCHAR)," +
-                    "  CAST(MAX(ts) AS VARCHAR)," +
-                    "  COUNT(*)," +
-                    "  CAST(MAX(price) AS DECIMAL(10, 2)) " +
-                    "FROM pravega " +
-                    "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
+        String query = "SELECT" +
+                "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR)," +
+                "  CAST(MAX(log_date) AS VARCHAR)," +
+                "  CAST(MAX(log_time) AS VARCHAR)," +
+                "  CAST(MAX(ts) AS VARCHAR)," +
+                "  COUNT(*)," +
+                "  CAST(MAX(price) AS DECIMAL(10, 2)) " +
+                "FROM pravega " +
+                "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
 
-            DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
-            TestingSinkFunction sink = new TestingSinkFunction(2);
-            result.addSink(sink).setParallelism(1);
+        List<String> expected = Arrays.asList(
+                "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
+                "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
 
-            try {
-                env.execute("Job_2");
-            } catch (Exception e) {
-                // we have to use a specific exception to indicate the job is finished,
-                // because the registered Kafka source is infinite.
-                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    // re-throw
-                    throw e;
-                }
-            }
-
-            List<String> expected = Arrays.asList(
-                    "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
-                    "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
-
-            if (expected.equals(TestingSinkFunction.ROWS.stream().map(Object::toString).collect(Collectors.toList()))) {
-                break;
-            }
-            // A batch read from Pravega may not return events that were recently written.
-            // In this case, we simply retry the read portion of this test.
-            log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
-        }
+        waitingExpectedResults(query, tEnv, env, expected, false, Duration.ofSeconds(10));
     }
 
     @Test
@@ -254,20 +229,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         String query = "SELECT * FROM users";
 
-        DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
-        TestingSinkFunction sink = new TestingSinkFunction(3);
-        result.addSink(sink).setParallelism(1);
-
+        List<String> expectedNull = Arrays.asList("", "", "");
         try {
-            env.execute("Job_2");
-        } catch (Exception e) {
-            // we have to use a specific exception to indicate the job is finished,
-            // because the registered Kafka source is infinite.
-            if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                // re-throw
-                throw e;
-            }
+            waitingExpectedResults(query, tEnv, env, expectedNull, false, Duration.ofSeconds(10));
+        } catch (AssertionError ignored) {
+            // assert the data later, since it contains random event pointer
         }
+
+        // ---------- Assert everything is what we expected -------------------
 
         // test all rows have an additional event pointer field
         assertEquals(3, TestingSinkFunction.ROWS.stream()
@@ -386,6 +355,56 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         tEnv.executeSql(sourceDDL);
         tEnv.executeSql(sinkDDL);
 
+        String query = "INSERT INTO sink " +
+                "SELECT name, SUM(weight) " +
+                "FROM debezium_source GROUP BY name";
+        /*
+         * Debezium captures change data on the `products` table:
+         *
+         * <pre>
+         * CREATE TABLE products (
+         *  id INTEGER NOT NULL AUTO_INCREMENT PRIMARY KEY,
+         *  name VARCHAR(255),
+         *  description VARCHAR(512),
+         *  weight FLOAT
+         * );
+         * ALTER TABLE products AUTO_INCREMENT = 101;
+         *
+         * INSERT INTO products
+         * VALUES (default,"scooter","Small 2-wheel scooter",3.14),
+         *        (default,"car battery","12V car battery",8.1),
+         *        (default,"12-pack drill bits","12-pack of drill bits with sizes ranging from #40 to #3",0.8),
+         *        (default,"hammer","12oz carpenter's hammer",0.75),
+         *        (default,"hammer","14oz carpenter's hammer",0.875),
+         *        (default,"hammer","16oz carpenter's hammer",1.0),
+         *        (default,"rocks","box of assorted rocks",5.3),
+         *        (default,"jacket","water resistent black wind breaker",0.1),
+         *        (default,"spare tire","24 inch spare tire",22.2);
+         * UPDATE products SET description='18oz carpenter hammer' WHERE id=106;
+         * UPDATE products SET weight='5.1' WHERE id=107;
+         * INSERT INTO products VALUES (default,"jacket","water resistent white wind breaker",0.2);
+         * INSERT INTO products VALUES (default,"scooter","Big 2-wheel scooter ",5.18);
+         * UPDATE products SET description='new water resistent white wind breaker', weight='0.5' WHERE id=110;
+         * UPDATE products SET weight='5.17' WHERE id=111;
+         * DELETE FROM products WHERE id=111;
+         *
+         * > SELECT * FROM products;
+         * +-----+--------------------+---------------------------------------------------------+--------+
+         * | id  | name               | description                                             | weight |
+         * +-----+--------------------+---------------------------------------------------------+--------+
+         * | 101 | scooter            | Small 2-wheel scooter                                   |   3.14 |
+         * | 102 | car battery        | 12V car battery                                         |    8.1 |
+         * | 103 | 12-pack drill bits | 12-pack of drill bits with sizes ranging from #40 to #3 |    0.8 |
+         * | 104 | hammer             | 12oz carpenter's hammer                                 |   0.75 |
+         * | 105 | hammer             | 14oz carpenter's hammer                                 |  0.875 |
+         * | 106 | hammer             | 18oz carpenter hammer                                   |      1 |
+         * | 107 | rocks              | box of assorted rocks                                   |    5.1 |
+         * | 108 | jacket             | water resistent black wind breaker                      |    0.1 |
+         * | 109 | spare tire         | 24 inch spare tire                                      |   22.2 |
+         * | 110 | jacket             | new water resistent white wind breaker                  |    0.5 |
+         * +-----+--------------------+---------------------------------------------------------+--------+
+         * </pre>
+         */
         List<String> expected =
                 Arrays.asList(
                         "scooter,3.140",
@@ -395,15 +414,34 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "rocks,5.100",
                         "jacket,0.600",
                         "spare tire,22.200");
-        Collections.sort(expected);
 
+        TableResult tableResult = waitingExpectedResults(query, tEnv, env, expected, true, Duration.ofSeconds(10));
+
+        // ------------- cleanup -------------------
+        tableResult.getJobClient().get().cancel().get(); // stop the job
+    }
+
+    public static TableResult waitingExpectedResults(String query,
+                                                     StreamTableEnvironment tEnv,
+                                                     StreamExecutionEnvironment env,
+                                                     List<String> expected,
+                                                     boolean testValues,
+                                                     Duration timeout) throws Exception {
+        long now = System.currentTimeMillis();
+        long stop = now + timeout.toMillis();
+        Collections.sort(expected);
         TableResult tableResult = null;
-        for (;;) {
+
+        while (System.currentTimeMillis() < stop) {
             try {
-                tableResult = tEnv.executeSql(
-                        "INSERT INTO sink " +
-                                "SELECT name, SUM(weight) " +
-                                "FROM debezium_source GROUP BY name");
+                if (testValues) {
+                    tableResult = tEnv.executeSql(query);
+                } else {
+                    DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
+                    TestingSinkFunction sink = new TestingSinkFunction(expected.size());
+                    result.addSink(sink).setParallelism(1);
+                    env.execute("Job_2");
+                }
             } catch (Exception e) {
                 // we have to use a specific exception to indicate the job is finished,
                 // because the registered Kafka source is infinite.
@@ -413,19 +451,31 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 }
             }
 
-            List<String> actual = TestValuesTableFactory.getResults("sink");
-            Collections.sort(actual);
+            List<String> actual;
+            if (testValues) {
+                actual = TestValuesTableFactory.getResults("sink");
+                Collections.sort(actual);
+            } else {
+                actual = TestingSinkFunction.ROWS.stream().map(Object::toString).sorted().collect(Collectors.toList());
+            }
 
             if (expected.equals(actual)) {
-                break;
+                return tableResult;
             }
+
             // A batch read from Pravega may not return events that were recently written.
             // In this case, we simply retry the read portion of this test.
-            log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
+            Thread.sleep(100);
         }
 
-        // ------------- cleanup -------------------
-        tableResult.getJobClient().get().cancel().get(); // stop the job
+        if (testValues) {
+            // timeout, assert again
+            List<String> actual = TestValuesTableFactory.getResults("sink");
+            Collections.sort(actual);
+            assertEquals(expected, actual);
+        }
+
+        return tableResult;
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
@@ -482,10 +532,4 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
     }
 
-    public static List<String> readLines(String resource) throws IOException {
-        final URL url = FlinkPravegaDynamicTableITCase.class.getClassLoader().getResource(resource);
-        assert url != null;
-        Path path = new File(url.getFile()).toPath();
-        return Files.readAllLines(path);
-    }
 }
