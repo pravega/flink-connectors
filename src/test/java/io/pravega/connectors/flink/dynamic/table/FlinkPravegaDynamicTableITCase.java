@@ -344,8 +344,8 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         String sourceDDL =
                 String.format(
                         "CREATE TABLE debezium_source (" +
-                                // test format metadata
-
+                                // TODO: Support format metadata
+                                // https://github.com/pravega/flink-connectors/issues/534
                                 // + " origin_ts TIMESTAMP(3) METADATA FROM 'value.ingestion-timestamp' VIRTUAL," // unused
                                 // + " origin_table STRING METADATA FROM 'value.source.table' VIRTUAL,"
                                 "  id INT NOT NULL," +
