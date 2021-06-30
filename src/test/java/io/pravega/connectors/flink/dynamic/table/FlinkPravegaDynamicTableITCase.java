@@ -149,21 +149,51 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         // ---------- Read stream from Pravega -------------------
 
-        String query = "SELECT \n" +
-                "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR), \n" +
-                "  CAST(MAX(log_date) AS VARCHAR), \n" +
-                "  CAST(MAX(log_time) AS VARCHAR), \n" +
-                "  CAST(MAX(ts) AS VARCHAR), \n" +
-                "  COUNT(*), \n" +
-                "  CAST(MAX(price) AS DECIMAL(10, 2)) \n" +
-                "FROM pravega \n" +
-                "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND) \n";
+        for (;;) {
+            String query = "SELECT\n" +
+                    "  CAST(TUMBLE_END(ts, INTERVAL '5' SECOND) AS VARCHAR),\n" +
+                    "  CAST(MAX(log_date) AS VARCHAR),\n" +
+                    "  CAST(MAX(log_time) AS VARCHAR),\n" +
+                    "  CAST(MAX(ts) AS VARCHAR),\n" +
+                    "  COUNT(*),\n" +
+                    "  CAST(MAX(price) AS DECIMAL(10, 2))\n" +
+                    "FROM pravega\n" +
+                    "GROUP BY TUMBLE(ts, INTERVAL '5' SECOND)";
 
-        List<String> expected = Arrays.asList(
-                "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
-                "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
+            DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
+            TestingSinkFunction sink = new TestingSinkFunction(2);
+            result.addSink(sink).setParallelism(1);
 
-        waitingExpectedResults(query, tEnv, env, expected, false, Duration.ofSeconds(10));
+            try {
+                env.execute("Job_2");
+            } catch (Exception e) {
+                // we have to use a specific exception to indicate the job is finished,
+                // because the registered Kafka source is infinite.
+                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                    // re-throw
+                    throw e;
+                }
+            }
+
+            List<String> expected = Arrays.asList(
+                    "+I(2019-12-12 00:00:05.000,2019-12-12,00:00:03,2019-12-12 00:00:04.004,3,50.00)",
+                    "+I(2019-12-12 00:00:10.000,2019-12-12,00:00:05,2019-12-12 00:00:06.006,2,5.33)");
+
+            if (checkActualOutput(expected)) {
+                break;
+            }
+            // A batch read from Pravega may not return events that were recently written.
+            // In this case, we simply retry the read portion of this test.
+            log.info("Retrying read query. expected={}, actual={}", expected, TestingSinkFunction.ROWS);
+        }
+    }
+
+    static boolean checkActualOutput(List<String> expected) {
+        return expected
+                .equals(TestingSinkFunction.ROWS
+                        .stream()
+                        .map(Object::toString)
+                        .collect(Collectors.toList()));
     }
 
     @Test
@@ -229,11 +259,19 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         String query = "SELECT * FROM users";
 
-        List<String> expectedNull = Arrays.asList("", "", "");
+        DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
+        TestingSinkFunction sink = new TestingSinkFunction(3);
+        result.addSink(sink).setParallelism(1);
+
         try {
-            waitingExpectedResults(query, tEnv, env, expectedNull, false, Duration.ofSeconds(10));
-        } catch (AssertionError ignored) {
-            // assert the data later, since it contains random event pointer
+            env.execute("Job_2");
+        } catch (Exception e) {
+            // we have to use a specific exception to indicate the job is finished,
+            // because the registered Kafka source is infinite.
+            if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
+                // re-throw
+                throw e;
+            }
         }
 
         // ---------- Assert everything is what we expected -------------------
@@ -355,9 +393,11 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         tEnv.executeSql(sourceDDL);
         tEnv.executeSql(sinkDDL);
 
-        String query = "INSERT INTO sink \n" +
-                "SELECT name, SUM(weight) \n" +
-                "FROM debezium_source GROUP BY name";
+        TableResult tableResult =
+                tEnv.executeSql(
+                        "INSERT INTO sink "
+                                + "SELECT name, SUM(weight) "
+                                + "FROM debezium_source GROUP BY name");
         /*
          * Debezium captures change data on the `products` table:
          *
@@ -415,67 +455,30 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "jacket,0.600",
                         "spare tire,22.200");
 
-        TableResult tableResult = waitingExpectedResults(query, tEnv, env, expected, true, Duration.ofSeconds(10));
+        waitingExpectedResults("sink", expected, Duration.ofSeconds(10));
 
         // ------------- cleanup -------------------
         tableResult.getJobClient().get().cancel().get(); // stop the job
     }
 
-    public static TableResult waitingExpectedResults(String query,
-                                                     StreamTableEnvironment tEnv,
-                                                     StreamExecutionEnvironment env,
-                                                     List<String> expected,
-                                                     boolean testValues,
-                                                     Duration timeout) throws Exception {
+    public static void waitingExpectedResults(
+            String sinkName, List<String> expected, Duration timeout) throws InterruptedException {
         long now = System.currentTimeMillis();
         long stop = now + timeout.toMillis();
         Collections.sort(expected);
-        TableResult tableResult = null;
-
         while (System.currentTimeMillis() < stop) {
-            try {
-                if (testValues) {
-                    tableResult = tEnv.executeSql(query);
-                } else {
-                    DataStream<RowData> result = tEnv.toAppendStream(tEnv.sqlQuery(query), RowData.class);
-                    TestingSinkFunction sink = new TestingSinkFunction(expected.size());
-                    result.addSink(sink).setParallelism(1);
-                    env.execute("Job_2");
-                }
-            } catch (Exception e) {
-                // we have to use a specific exception to indicate the job is finished,
-                // because the registered Kafka source is infinite.
-                if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    // re-throw
-                    throw e;
-                }
-            }
-
-            List<String> actual;
-            if (testValues) {
-                actual = TestValuesTableFactory.getResults("sink");
-                Collections.sort(actual);
-            } else {
-                actual = TestingSinkFunction.ROWS.stream().map(Object::toString).sorted().collect(Collectors.toList());
-            }
-
+            List<String> actual = TestValuesTableFactory.getResults(sinkName);
+            Collections.sort(actual);
             if (expected.equals(actual)) {
-                return tableResult;
+                return;
             }
-
-            // A batch read from Pravega may not return events that were recently written.
-            // In this case, we simply retry the read portion of this test.
             Thread.sleep(100);
         }
 
-        if (testValues) {
-            // timeout, assert again
-            List<String> actual = TestValuesTableFactory.getResults("sink");
-            Collections.sort(actual);
-            assertEquals(expected, actual);
-        }
-
-        return tableResult;
+        // timeout, assert again
+        List<String> actual = TestValuesTableFactory.getResults(sinkName);
+        Collections.sort(actual);
+        assertEquals(expected, actual);
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {
