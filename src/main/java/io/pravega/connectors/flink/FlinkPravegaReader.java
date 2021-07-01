@@ -341,6 +341,7 @@ public class FlinkPravegaReader<T>
         while ((event = pravegaCollector.getRecords().poll()) != null) {
             synchronized (ctx.getCheckpointLock()) {
                 if (isEventTimeMode()) {
+                    assert assigner != null;  // assigner won't be null in event time mode
                     long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
                     ctx.collectWithTimestamp(event, currentTimestamp);
                     previousTimestamp = currentTimestamp;

@@ -91,7 +91,7 @@ public class FlinkPravegaUtils {
     }
 
     /**
-     * Creates a Pravga {@link EventStreamReader}. <p>
+     * Creates a Pravega {@link EventStreamReader}. <p>
      *
      * Instead of directly returns T, it returns ByteBuffer so that the
      * additional information can be extracted from the event.

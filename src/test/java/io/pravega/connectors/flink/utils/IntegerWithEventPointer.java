@@ -41,11 +41,4 @@ public class IntegerWithEventPointer implements Serializable {
     public boolean isEndOfStream() {
         return value == END_OF_STREAM;
     }
-
-    public int getEndOfStream() {
-        return IntegerWithEventPointer.END_OF_STREAM;
-    }
-
-    public void setEndOfStream(int endOfStream) {
-    }
 }
