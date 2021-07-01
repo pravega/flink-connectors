@@ -12,21 +12,21 @@ You may obtain a copy of the License at
 
 ## General Catalog Introduction
 
-[Flink Catalogs](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/table/catalogs/) provide metadata, such as databases, tables, partitions, views, functions and information needed to access data stored in a database or other external systems. It provide a unified API for managing metadata and making it accessible from the Table API and SQL Queries.
+[Flink Catalogs](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/table/catalogs/) provide metadata such as databases, tables, partitions, views, functions and information needed to access data stored in a database or other external systems. It provides a unified API for managing metadata and making it accessible from the Table API and SQL Queries.
 
-A Catalog enables users to reference existing metadata in their data systems, and automatically maps them to Flink’s corresponding metadata. For example, Flink can map JDBC tables to Flink table automatically, and users don’t have to manually re-writing DDLs in Flink. Catalog greatly simplifies steps required to get started with Flink with users' existing system, and greatly enhanced user experiences.
+A Catalog enables users to reference existing metadata in their data systems and automatically maps them to Flink's corresponding metadata. For example, Flink can map JDBC tables to Flink tables automatically and users don’t have to manually re-writing DDLs in Flink. A catalog simplifies steps required to get started with connecting Flink and user's existing systems, improving the user experience.
 
 ## Basic ideas and building blocks of Pravega Catalog
 
-Pravega itself has terms of *streams* and *scopes* which manage the streaming data, but it does not have the concept of tables and databases. However, these terms are close, for example, if a Pravega stream contains semi-structured data like JSON format, it is feasible to map Pravega streams to Flink tables with the help of a schema registry service. 
+Pravega uses terms such as *streams* and *scopes* for managing streaming data, but it does not have the concepts of tables and databases. These terms however can be thought of as similar. For example, if a Pravega stream contains semi-structured data such as JSON format, it is feasible to map Pravega streams to Flink tables with the help of a schema registry service. 
 
-[Pravega Schema Registry](https://github.com/pravega/schema-registry) is built for such purpose. It is the registry service built on Pravega that helps store and manage schemas for data stored in Pravega streams, and it also provides a factory of methods to standardize the serialization with built-in support for popular serialization formats in Avro, Protobuf, JSON schemas, as well as custom serialization.
+[Pravega Schema Registry](https://github.com/pravega/schema-registry) is built for such a purpose. It is the registry service built on Pravega that helps store and manage schemas for data stored in Pravega streams. It also provides a factory of methods to standardize the serialization with built-in support for popular serialization formats in Avro, Protobuf, JSON schemas, as well as custom serialization.
 
 ### `PravegaRegistryFormatFactory`
 
-The serialization specialized in the schema registry involves some extra control bits compared to a standard (de)serialization, so a new table format named `pravega-registry` is developed in the connector to define how to map binary data onto table columns on top of it.
+When using Schema Registry serialization, further information is required in order to describe how to map binary data onto table columns.  A new table format named `pravega-registry` has been added to define this mapping.
 
-**Note:** It should only be used internally in the context of `PravegaCatalog` unless you understand what you are doing. Currently, it only supports Json and avro format without any additional encryption and compression codecs.
+**Note:** The `pravega-registry` format factory should ONLY be used with the `PravegaCatalog`. Currently it supports only Json and Avro formats without any additional encryption and compression codecs.
 
 It has following options:
 
@@ -39,12 +39,12 @@ It has following options:
 | pravega-registry.format     | optional            | Avro          | String       | Default format for serialization in table sink, Valid values are 'Json' and 'Avro'  |
 | pravega-registry.json.*     | optional            | (none)        | -            | Specification for json format, completely inherited from official Flink Json format factory, refer to this [doc](https://ci.apache.org/projects/flink/flink-docs-stable/docs/connectors/table/formats/json/#format-options) for details                                  |
 
-Based on Pravega, its schema registry and this table format, a `PravegaCatalog` is built to manage Pravega streams as Flink tables.
-It can map all the streams with its Json/Avro schema registered, and users can directly read from/write to the stream without establishing connection with extra SQL DDL.
+A `PravegaCatalog` is built to manage Pravega streams as Flink tables based on it's schema registry and this table format.
+It can map all the streams with its Json/Avro schema registered and users can directly read from/write to the stream without establishing connection with extra SQL DDL.
 
 ## Pravega as a Catalog
 
-The `PravegaCatalog` enables users to connect Flink to Pravega streams. The concept mapping between Flink Catalog and Pravega is as following:
+The `PravegaCatalog` enables users to connect Flink to Pravega streams. The following table shows the mapping between Flink Catalog and Pravega terms:
 
 | Flink Catalog terms                  | Pravega terms     |
 |--------------------------------------|-------------------|
@@ -53,7 +53,7 @@ The `PravegaCatalog` enables users to connect Flink to Pravega streams. The conc
 | table name                           | stream name       |
 
 
-Currently, `PravegaCatalog` only supports limited `Catalog` methods include:
+Currently `PravegaCatalog` only supports a limited set of `Catalog` methods:
 
 ```java
 // The supported methods by Pravega Catalog
@@ -68,7 +68,7 @@ PravegaCatalog.tableExists(ObjectPath tablePath);
 PravegaCatalog.dropTable(ObjectPath tablePath, boolean ignoreIfNotExists);
 PravegaCatalog.createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists);
 ```
-Only these database and table operations are supported now, views/partitions/functions/statistics operations are NOT supported in `PravegaCatalog`.
+Only these database and table operations are currently supported. Views/partitions/functions/statistics operations are NOT supported in `PravegaCatalog`.
 
 ### Catalog options
 Pravega Catalog supports the following options:
@@ -158,4 +158,4 @@ INSERT INTO test_table SELECT * FROM mytable;
 ```
 
 ## Useful Flink links
-Users can check [Flink Table catalogs docs](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/catalogs.html) to learn more about the general idea of catalog and detailed operations.
+See [Flink Table catalogs docs](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/catalogs.html) for more information on the general Catalog concepts and more detailed operations.
