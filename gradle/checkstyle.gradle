@@ -14,6 +14,6 @@ apply plugin: 'checkstyle'
 checkstyle {
     toolVersion = checkstyleToolVersion
 
-    configDir = new File(rootDir, "checkstyle")
+    configDirectory = new File(rootDir, "checkstyle")
     configProperties = [importControlFile: "$rootDir/checkstyle/import-control.xml"]
 }

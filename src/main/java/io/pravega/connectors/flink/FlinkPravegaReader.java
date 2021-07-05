@@ -9,10 +9,8 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.client.EventStreamClientFactory;
-import org.apache.flink.util.ExceptionUtils;
-import org.apache.flink.util.Preconditions;
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.EventRead;
@@ -20,6 +18,7 @@ import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
+import io.pravega.client.stream.ReaderGroupNotFoundException;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
@@ -29,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -44,7 +44,9 @@ import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeCallback;
 import org.apache.flink.streaming.runtime.tasks.ProcessingTimeService;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
+import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
 import java.io.IOException;
@@ -344,6 +346,8 @@ public class FlinkPravegaReader<T>
 
     @Override
     public void open(Configuration parameters) throws Exception {
+        deserializationSchema.open(RuntimeContextInitializationContextAdapters.deserializationAdapter(
+                getRuntimeContext(), metricGroup -> metricGroup.addGroup("user")));
         createEventStreamClientFactory();
         createReaderGroupManager();
         createReaderGroup();
@@ -597,8 +601,12 @@ public class FlinkPravegaReader<T>
      * Create the {@link ReaderGroup} for the current configuration.
      */
     private ReaderGroup createReaderGroup() {
-        readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-        readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
+        try {
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        } catch (ReaderGroupNotFoundException e) {
+            readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+            readerGroup = readerGroupManager.getReaderGroup(readerGroupName);
+        }
         return readerGroup;
     }
 

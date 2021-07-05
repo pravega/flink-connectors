@@ -121,7 +121,7 @@ jobs:
           key: ${{ github.run_id }}
 
       - name: Publish to repo
-        run: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
+        run: ./gradlew publish -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
 
   snapshot_with_scala_211:
     name: Publish snapshot with Scala 2.11
@@ -151,4 +151,4 @@ jobs:
           key: scala211-${{ github.run_id }}
 
       - name: Publish to repo with Scala 2.11
-        run: ./gradlew publishToRepo -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY -PflinkScalaVersion=2.11
+        run: ./gradlew publish -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY -PflinkScalaVersion=2.11

@@ -23,14 +23,16 @@ import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
+import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
-import org.apache.flink.table.catalog.Column;
-import org.apache.flink.table.catalog.ResolvedSchema;
-import org.apache.flink.table.catalog.WatermarkSpec;
+import org.apache.flink.table.catalog.CatalogTable;
+import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.ObjectIdentifier;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -40,11 +42,12 @@ import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.expressions.utils.ResolvedExpressionMock;
+import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.TestFormatFactory;
 import org.apache.flink.table.runtime.connector.sink.SinkRuntimeProviderContext;
 import org.apache.flink.table.runtime.connector.source.ScanRuntimeProviderContext;
 import org.apache.flink.table.types.DataType;
+import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.TestLogger;
 import org.junit.Rule;
 import org.junit.Test;
@@ -60,8 +63,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 
 import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
-import static org.apache.flink.table.factories.utils.FactoryMocks.createTableSink;
-import static org.apache.flink.table.factories.utils.FactoryMocks.createTableSource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -79,6 +80,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String NAME = "name";
     private static final String COUNT = "count";
     private static final String TIME = "time";
+    private static final String METADATA = "event_pointer";
     private static final String WATERMARK_EXPRESSION = TIME + " - INTERVAL '5' SECOND";
     private static final DataType WATERMARK_DATATYPE = DataTypes.TIMESTAMP(3);
     private static final String COMPUTED_COLUMN_NAME = "computed-column";
@@ -90,47 +92,54 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final long TIMEOUT_MILLIS = 2000L;
     private static final long LEASE_MILLIS = 60000L;
 
-    private static final ResolvedSchema SOURCE_SCHEMA =
-            new ResolvedSchema(
-                    Arrays.asList(
-                            Column.physical(NAME, DataTypes.STRING().notNull()),
-                            Column.physical(COUNT, DataTypes.DECIMAL(38, 18)),
-                            Column.physical(TIME, DataTypes.TIMESTAMP(3)),
-                            Column.computed(
-                                    COMPUTED_COLUMN_NAME,
-                                    ResolvedExpressionMock.of(
-                                            COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION))),
-                    Collections.singletonList(
-                            WatermarkSpec.of(
-                                    TIME,
-                                    ResolvedExpressionMock.of(
-                                            WATERMARK_DATATYPE, WATERMARK_EXPRESSION))),
-                    null);
+    private static final TableSchema SOURCE_SCHEMA = TableSchema.builder()
+            .field(NAME, DataTypes.STRING())
+            .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .field(TIME, DataTypes.TIMESTAMP(3))
+            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
+            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
+            .build();
 
-    private static final ResolvedSchema SINK_SCHEMA =
-            new ResolvedSchema(
-                    Arrays.asList(
-                            Column.physical(NAME, DataTypes.STRING().notNull()),
-                            Column.physical(COUNT, DataTypes.DECIMAL(38, 18)),
-                            Column.physical(TIME, DataTypes.TIMESTAMP(3))),
-                    Collections.emptyList(),
-                    null);
+    private static final TableSchema SOURCE_SCHEMA_WITH_METADATA = TableSchema.builder()
+            .field(NAME, DataTypes.STRING())
+            .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .add(TableColumn.metadata(METADATA, DataTypes.BYTES(), true))
+            .field(TIME, DataTypes.TIMESTAMP(3))
+            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
+            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
+            .build();
 
+    private static final TableSchema SINK_SCHEMA = TableSchema.builder()
+            .field(NAME, DataTypes.STRING())
+            .field(COUNT, DataTypes.DECIMAL(38, 18))
+            .field(TIME, DataTypes.TIMESTAMP(3))
+            .build();
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
     @Test
     public void testStreamingTableSource() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
-        final DynamicTableSource actualSource = createTableSource(SOURCE_SCHEMA, getFullStreamingSourceOptions());
+        // Construct table source using options and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
@@ -149,20 +158,75 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     @Test
-    public void testHavingOptionalReaderGroupName() {
+    public void testStreamingTableSourceWithMetadata() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
+        // Construct table source using options and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
+        final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
+        actualPravegaSource.applyReadableMetadata(Collections.singletonList("event_pointer"), producedDataType);
+
+        // Test scan source equals
+        final DataType physicalDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
+        final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
+                physicalDataType,
+                producedDataType,
+                Collections.singletonList(FlinkPravegaDynamicTableSource.ReadableMetadata.EVENT_POINTER.key),
+                decodingFormat,
+                null,
+                getTestPravegaConfig(),
+                getTestScanStreamList(),
+                3000L,
+                5000L,
+                TIMEOUT_MILLIS,
+                3,
+                null,
+                true,
+                false);
+
+        // expect the source to be constructed successfully
+        assertEquals(actualPravegaSource, expectedPravegaSource);
+    }
+
+    @Test
+    public void testStreamingTableSourceWithOptionalReaderGroupName() {
+        // prepare parameters for Pravega table source
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
+                new TestFormatFactory.DecodingFormatMock(",", true);
+
+        // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> options.put("scan.reader-group.name", READER_GROUP));
-        final DynamicTableSource actualSource = createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
@@ -181,12 +245,12 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
     @Test
     public void testStreamingTableSourceProvider() {
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestPravegaDecodingFormat(",", true);
 
         final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
@@ -210,16 +274,26 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     @Test
     public void testBatchTableSource() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
         // Construct table source using options and table source factory
-        final DynamicTableSource actualSource = createTableSource(SOURCE_SCHEMA, getFullBatchSourceOptions());
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
+        CatalogTable catalogTable = createPravegaBatchSourceCatalogTable();
+        final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         // Test scan source equals
         final FlinkPravegaDynamicTableSource expectedPravegaSource = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 null,
                 getTestPravegaConfig(),
@@ -238,13 +312,13 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
     @Test
     public void testBatchTableSourceProvider() {
-        final DataType producedDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
+        final DataType physicalDataType = SOURCE_SCHEMA.toPhysicalRowDataType();
 
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestPravegaDecodingFormat(",", true);
 
         final FlinkPravegaDynamicTableSource source = new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 READER_GROUP,
                 getTestPravegaConfig(),
@@ -272,10 +346,21 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 new TestFormatFactory.EncodingFormatMock(",");
 
         // Construct table sink using options and table sink factory.
-        final DynamicTableSink actualSink = createTableSink(SINK_SCHEMA, getFullSinkOptions());
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "sinkTable");
+        final CatalogTable sinkTable = createPravegaSinkCatalogTable();
+        final DynamicTableSink actualSink = FactoryUtil.createTableSink(
+                null,
+                objectIdentifier,
+                sinkTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
 
         final FlinkPravegaDynamicTableSink expectedSink = new FlinkPravegaDynamicTableSink(
-                TableSchema.fromResolvedSchema(SINK_SCHEMA),
+                TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
                 encodingFormat,
                 getTestPravegaConfig(),
                 Stream.of(SCOPE, STREAM3),
@@ -289,7 +374,34 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
     @Test
     public void testTableSinkProvider() {
-        final DynamicTableSink sink = createTableSink(SINK_SCHEMA, getFullSinkOptions());
+        final DataType consumedDataType = SINK_SCHEMA.toPhysicalRowDataType();
+        EncodingFormat<SerializationSchema<RowData>> encodingFormat =
+                new TestPravegaEncodingFormat(",");
+
+        // Construct table sink using options and table sink factory.
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "sinkTable");
+        final CatalogTable sinkTable = createPravegaSinkCatalogTable();
+        final DynamicTableSink actualSink = FactoryUtil.createTableSink(
+                null,
+                objectIdentifier,
+                sinkTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
+
+        final FlinkPravegaDynamicTableSink sink = new FlinkPravegaDynamicTableSink(
+                TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
+                encodingFormat,
+                getTestPravegaConfig(),
+                Stream.of(SCOPE, STREAM3),
+                PravegaWriterMode.EXACTLY_ONCE,
+                LEASE_MILLIS,
+                false,
+                NAME
+        );
 
         DynamicTableSink.SinkRuntimeProvider provider =
                 sink.getSinkRuntimeProvider(new SinkRuntimeProviderContext(false));
@@ -305,111 +417,201 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     @Test
     public void testInvalidScanExecutionType() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> {
                     options.put("scan.execution.type", "abc");
                 });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'scan.execution.type'. "
                 + "Supported values are ['streaming', 'batch'].")));
-        createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testNegativeMaxCheckpointRequest() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> {
                     options.put("scan.reader-group.max-outstanding-checkpoint-request", "-1");
                 });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'scan.reader-group.max-outstanding-checkpoint-request'" +
                 " requires a positive integer, received -1")));
-        createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testMissingSourceStream() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> {
                     options.remove("scan.streams");
                 });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'scan.streams' is required but missing")));
-        createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testInvalidStartStreamCuts() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> {
                     options.put("scan.start-streamcuts", "abc");
                     options.put("scan.end-streamcuts", "abc;def");
                 });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Start stream cuts are not matching the number of streams," +
                 " having 1, expected 2")));
-        createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testInvalidEndStreamCuts() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "scanTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullStreamingSourceOptions(),
                 options -> {
                     options.put("scan.start-streamcuts", "abc;def");
                     options.put("scan.end-streamcuts", "abc");
                 });
+        CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("End stream cuts are not matching the number of streams," +
                 " having 1, expected 2")));
-        createTableSource(SOURCE_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSource(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testInvalidSinkSemantic() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "sinkTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullSinkOptions(),
                 options -> {
                     options.put("sink.semantic", "abc");
                 });
+        CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'sink.semantic'. "
                 + "Supported values are ['at-least-once', 'exactly-once', 'best-effort'].")));
-        createTableSink(SINK_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSink(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     @Test
     public void testMissingSinkStream() {
         // Construct table source using DDL and table source factory
+        ObjectIdentifier objectIdentifier = ObjectIdentifier.of(
+                "default",
+                "default",
+                "sinkTable");
         final Map<String, String> modifiedOptions = getModifiedOptions(
                 getFullSinkOptions(),
                 options -> {
                     options.remove("sink.stream");
                 });
+        CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'sink.stream' is required but missing")));
-        createTableSink(SINK_SCHEMA, modifiedOptions);
+        FactoryUtil.createTableSink(null,
+                objectIdentifier,
+                catalogTable,
+                new Configuration(),
+                Thread.currentThread().getContextClassLoader(),
+                false);
     }
 
     // --------------------------------------------------------------------------------------------
     // Utilities
     // --------------------------------------------------------------------------------------------
+
+    private CatalogTable createPravegaStreamingSourceCatalogTable() {
+        return createPravegaSourceCatalogTable(getFullStreamingSourceOptions());
+    }
+
+    private CatalogTable createPravegaBatchSourceCatalogTable() {
+        return createPravegaSourceCatalogTable(getFullBatchSourceOptions());
+    }
+
+    private CatalogTable createPravegaSourceCatalogTable(Map<String, String> options) {
+        return new CatalogTableImpl(SOURCE_SCHEMA, options, "scanTable");
+    }
+
+    private CatalogTable createPravegaSinkCatalogTable() {
+        return createPravegaSinkCatalogTable(getFullSinkOptions());
+    }
+
+    private CatalogTable createPravegaSinkCatalogTable(Map<String, String> options) {
+        return new CatalogTableImpl(SINK_SCHEMA, options, "sinkTable");
+    }
 
     private static Map<String, String> getModifiedOptions(
             Map<String, String> options,

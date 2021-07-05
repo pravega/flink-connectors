@@ -11,15 +11,14 @@ package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.Serializer;
+import org.apache.flink.api.common.functions.InvalidTypesException;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
+import org.apache.flink.api.common.typeinfo.TypeHint;
+import org.apache.flink.api.common.typeinfo.TypeInformation;
 
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
-
-import org.apache.flink.api.common.functions.InvalidTypesException;
-import org.apache.flink.api.common.typeinfo.TypeHint;
-import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
