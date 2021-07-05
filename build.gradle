@@ -51,7 +51,11 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        url "https://oss.jfrog.org/jfrog-dependencies"
+        url "https://maven.pkg.github.com/pravega/pravega"
+        credentials {
+            username = "pravega-public"
+            password = "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"
+        }
     }
     if (findProperty("repositoryUrl")) {
         maven {
