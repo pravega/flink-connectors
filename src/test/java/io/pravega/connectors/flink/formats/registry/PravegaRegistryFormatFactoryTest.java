@@ -14,12 +14,16 @@ import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonOptions;
-import org.apache.flink.formats.json.TimestampFormat;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ObjectIdentifier;
+import org.apache.flink.table.catalog.ResolvedCatalogTable;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.data.RowData;
@@ -41,14 +45,13 @@ import static org.junit.Assert.assertTrue;
 /** Tests for the {@link PravegaRegistryFormatFactory}. */
 public class PravegaRegistryFormatFactoryTest extends TestLogger {
 
-    private static final TableSchema SCHEMA =
-            TableSchema.builder()
-                    .field("a", DataTypes.STRING())
-                    .field("b", DataTypes.INT())
-                    .field("c", DataTypes.BOOLEAN())
-                    .build();
+    private static final ResolvedSchema RESOLVED_SCHEMA =
+            ResolvedSchema.of(
+                    Column.physical("a", DataTypes.STRING()),
+                    Column.physical("b", DataTypes.INT()),
+                    Column.physical("c", DataTypes.BOOLEAN()));
 
-    private static final RowType ROW_TYPE = (RowType) SCHEMA.toRowDataType().getLogicalType();
+    private static final RowType ROW_TYPE = (RowType) RESOLVED_SCHEMA.toPhysicalRowDataType().getLogicalType();
 
     private static final String SCOPE = "test-scope";
     private static final String STREAM = "test-stream";
@@ -84,7 +87,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
 
         DeserializationSchema<RowData> actualDeser =
                 sourceMock.valueFormat.createRuntimeDecoder(
-                        ScanRuntimeProviderContext.INSTANCE, SCHEMA.toRowDataType());
+                        ScanRuntimeProviderContext.INSTANCE, RESOLVED_SCHEMA.toPhysicalRowDataType());
 
         assertEquals(expectedDeser, actualDeser);
 
@@ -105,7 +108,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                 (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
 
         SerializationSchema<RowData> actualSer =
-                sinkMock.valueFormat.createRuntimeEncoder(null, SCHEMA.toRowDataType());
+                sinkMock.valueFormat.createRuntimeEncoder(null, RESOLVED_SCHEMA.toPhysicalRowDataType());
 
         assertEquals(expectedSer, actualSer);
     }
@@ -133,20 +136,22 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
     }
 
     private static DynamicTableSource createTableSource(Map<String, String> options) {
+        CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options, "scanTable");
         return FactoryUtil.createTableSource(
                 null,
                 ObjectIdentifier.of("default", "default", "scanTable"),
-                new CatalogTableImpl(SCHEMA, options, "scanTable"),
+                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
     }
 
     private static DynamicTableSink createTableSink(Map<String, String> options) {
+        CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options, "scanTable");
         return FactoryUtil.createTableSink(
                 null,
                 ObjectIdentifier.of("default", "default", "scanTable"),
-                new CatalogTableImpl(SCHEMA, options, "scanTable"),
+                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);

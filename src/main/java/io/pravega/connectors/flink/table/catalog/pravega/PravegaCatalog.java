@@ -38,6 +38,7 @@ import org.apache.flink.table.catalog.CatalogPartition;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
 import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
@@ -296,7 +297,7 @@ public class PravegaCatalog extends AbstractCatalog {
         String stream = tablePath.getObjectName();
         changeRegistryNamespace(scope);
         SchemaInfo schemaInfo = schemaRegistryClient.getLatestSchemaVersion(stream, null).getSchemaInfo();
-        TableSchema tableSchema = PravegaSchemaUtils.schemaInfoToTableSchema(schemaInfo);
+        ResolvedSchema resolvedSchema = PravegaSchemaUtils.schemaInfoToResolvedSchema(schemaInfo);
 
         Map<String, String> properties = this.properties;
         properties.put(PravegaOptions.SCOPE.key(), scope);
@@ -315,7 +316,7 @@ public class PravegaCatalog extends AbstractCatalog {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.GROUP_ID.key()),
                 stream);
 
-        return new CatalogTableImpl(tableSchema, properties, "");
+        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
     }
 
     @Override
