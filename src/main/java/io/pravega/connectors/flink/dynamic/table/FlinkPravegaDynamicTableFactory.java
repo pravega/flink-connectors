@@ -19,7 +19,6 @@ import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.data.RowData;
-
 import org.apache.flink.table.factories.DeserializationFormatFactory;
 import org.apache.flink.table.factories.DynamicTableSinkFactory;
 import org.apache.flink.table.factories.DynamicTableSourceFactory;
@@ -106,7 +105,7 @@ public class FlinkPravegaDynamicTableFactory implements
     public Set<ConfigOption<?>> requiredOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
         options.add(FactoryUtil.FORMAT);
-        options.add(CONTROLLER_URL);
+        options.add(CONTROLLER_URI);
         options.add(SCOPE);
         return options;
     }

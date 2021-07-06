@@ -12,7 +12,6 @@ package io.pravega.connectors.flink.dynamic.table;
 import io.pravega.connectors.flink.FlinkPravegaInputFormat;
 import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.util.FlinkPravegaUtils.FlinkDeserializer;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -21,10 +20,10 @@ import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.source.DynamicTableSource;
 import org.apache.flink.table.connector.source.InputFormatProvider;
+import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.connector.source.abilities.SupportsReadingMetadata;
 import org.apache.flink.table.data.RowData;
-import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.util.Preconditions;
 
@@ -175,14 +174,12 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
         // create a PravegaDeserializationSchema that will expose metadata to the row
-        FlinkDeserializer<RowData> deserializer = new FlinkDeserializer<>(
-                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
         final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
                 = new FlinkPravegaDynamicDeserializationSchema(
                 runtimeProviderContext.createTypeInformation(producedDataType),
                 producedDataType.getChildren().size() - metadataKeys.size(),
-                deserializer,
-                metadataKeys);
+                metadataKeys,
+                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
 
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()

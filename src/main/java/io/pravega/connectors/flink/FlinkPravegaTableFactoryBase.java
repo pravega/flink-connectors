@@ -34,8 +34,8 @@ import java.util.Map;
 import java.util.Optional;
 
 import static io.pravega.connectors.flink.table.descriptors.Pravega.*;
-import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_PROPERTY_VERSION;
+import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_TYPE;
 import static org.apache.flink.table.descriptors.ConnectorDescriptorValidator.CONNECTOR_VERSION;
 import static org.apache.flink.table.descriptors.DescriptorProperties.EXPR;
 import static org.apache.flink.table.descriptors.DescriptorProperties.WATERMARK;
@@ -52,11 +52,11 @@ import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_DELA
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_SERIALIZED;
 import static org.apache.flink.table.descriptors.Rowtime.ROWTIME_WATERMARKS_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA;
+import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_FROM;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_NAME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_PROCTIME;
 import static org.apache.flink.table.descriptors.Schema.SCHEMA_TYPE;
-import static org.apache.flink.table.descriptors.Schema.SCHEMA_DATA_TYPE;
 
 /**
  * Base class for Pravega table factory.
