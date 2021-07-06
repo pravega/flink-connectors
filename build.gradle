@@ -98,7 +98,7 @@ dependencies {
     annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
 
-    compile group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application

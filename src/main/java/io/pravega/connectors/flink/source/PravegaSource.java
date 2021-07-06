@@ -12,10 +12,10 @@ package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
-import io.pravega.client.stream.*;
+import io.pravega.client.stream.Checkpoint;
+import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
 import io.pravega.connectors.flink.CheckpointSerializer;
-import io.pravega.connectors.flink.FlinkPravegaReader;
 import io.pravega.connectors.flink.source.enumerator.PravegaSplitEnumerator;
 import io.pravega.connectors.flink.source.reader.PravegaRecordEmitter;
 import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
@@ -29,7 +29,12 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.connector.source.*;
+import org.apache.flink.api.connector.source.Boundedness;
+import org.apache.flink.api.connector.source.Source;
+import org.apache.flink.api.connector.source.SourceReader;
+import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.api.connector.source.SplitEnumerator;
+import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
@@ -40,12 +45,31 @@ import org.apache.flink.util.SerializedValue;
 import java.io.IOException;
 import java.util.function.Supplier;
 
+/**
+ * The Source implementation of Pravega. Please use a {@link Builder} to construct a {@link
+ *  PravegaSource}. The following example shows how to create a PravegaSource emitting records of <code>
+ *  Integer</code> type.
+ *
+ * <pre>{@code
+ * PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
+ *                     .forStream(streamName)
+ *                     .enableMetrics(false)
+ *                     .withPravegaConfig(PRAVEGA_CONFIG)
+ *                     .withReaderGroupName("flink-reader")
+ *                     .withDeserializationSchema(new IntegerDeserializationSchema())
+ *                     .build();
+ * }</pre>
+ *
+ * @param <T> the output type of the source.
+ */
 @Slf4j
 @PublicEvolving
 public class PravegaSource<T>
         implements Source<T, PravegaSplit, Checkpoint>, ResultTypeQueryable<T> {
 
+    // The Pravega client config.
     final ClientConfig clientConfig;
+
     // The Pravega reader group config.
     final ReaderGroupConfig readerGroupConfig;
 
@@ -206,7 +230,7 @@ public class PravegaSource<T>
         }
 
         /**
-         * Builds a {@link FlinkPravegaReader} based on the configuration.
+         * Builds a {@link PravegaSource} based on the configuration.
          * @throws IllegalStateException if the configuration is invalid.
          */
         public PravegaSource<T> build() {

@@ -18,7 +18,6 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
@@ -27,24 +26,55 @@ import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
-@Slf4j
+/**
+ * A {@link SplitReader} implementation that reads records from Pravega.
+ *
+ * <p>The returned type are in the format of {@code EventRead(record)}.
+ *
+ * @param <T> the type of the record to be emitted from the Source.
+ */
 public class PravegaSplitReader<T>
         implements SplitReader<EventRead<T>, PravegaSplit> {
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaSplitReader.class);
+
+    /**
+     * Reader that reads event from Pravega stream.
+     */
     private EventStreamReader<T> pravegaReader;
 
+    /**
+     * Split that PravegaSplitReader reads.
+     */
     public PravegaSplit split;
 
+    /**
+     * Flink config options.
+     */
     private final Configuration options;
 
+    /**
+     * Subtask ID of current Source Reader.
+     */
     private final int subtaskId;
 
+    /**
+     * Readergroup name of current source.
+     */
     private final String readerGroupName;
 
+    /**
+     * The supplied event deserializer.
+     */
     private final DeserializationSchema<T> deserializationSchema;
 
+    /**
+     * The supplied event stream client factory from Source Reader.
+     */
     private final EventStreamClientFactory eventStreamClientFactory;
 
     public PravegaSplitReader(
@@ -52,7 +82,6 @@ public class PravegaSplitReader<T>
             String readerGroupName,
             DeserializationSchema<T> deserializationSchema,
             int subtaskId) {
-        log.info("Initiated split reader {}", subtaskId);
         this.subtaskId = subtaskId;
         this.options = new Configuration();
         this.readerGroupName = readerGroupName;
@@ -68,16 +97,21 @@ public class PravegaSplitReader<T>
 
     @Override
     public RecordsWithSplitIds<EventRead<T>> fetch() throws IOException {
-        log.info("Call fetch");
+        LOG.info("Call fetch");
         RecordsBySplits.Builder<EventRead<T>> records = new RecordsBySplits.Builder<>();
         EventRead<T> eventRead = null;
         do {
             try {
                 eventRead = pravegaReader.readNextEvent(
                         options.getLong(PravegaSourceOptions.READER_TIMEOUT_MS));
-                log.info("read event: {} on reader {}", eventRead.getEvent(), subtaskId);
+                LOG.debug("read event: {} on reader {}", eventRead.getEvent(), subtaskId);
             } catch (TruncatedDataException e) {
                 continue;
+            } catch (IllegalStateException e) {
+                // When catching an IllegalStateException means pravegaReader is closed,
+                // indicating that wakeUp() was invoked upon a partial failure which we don't need
+                // so that we return an empty RecordsBySplits to stop fetching and not break the recovering.
+                return new RecordsBySplits.Builder<EventRead<T>>().build();
             }
             records.add(split, eventRead);
         } while (eventRead != null && !eventRead.isCheckpoint() && eventRead.getEvent() != null);
@@ -86,7 +120,7 @@ public class PravegaSplitReader<T>
 
     @Override
     public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
-        log.info("Call handleSplitsChanges");
+        LOG.info("Call handleSplitsChanges");
         if (splitsChange instanceof SplitsAddition) {
             // One reader for one split
             Preconditions.checkArgument(splitsChange.splits().size() == 1);
@@ -96,7 +130,7 @@ public class PravegaSplitReader<T>
 
     @Override
     public void wakeUp() {
-        log.info("Call wakeup");
+        LOG.info("Call wakeup");
         if (this.pravegaReader != null) {
             this.pravegaReader.close();
         }
@@ -110,7 +144,7 @@ public class PravegaSplitReader<T>
 
     @Override
     public void close() {
-        log.info("Call close");
+        LOG.info("Call close");
         pravegaReader.close();
     }
 }

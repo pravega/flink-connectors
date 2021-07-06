@@ -15,36 +15,56 @@ import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
-import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.api.connector.source.SourceEvent;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.connector.source.SplitsAssignment;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
-import javax.annotation.concurrent.GuardedBy;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
-@Slf4j
+/** The enumerator class for Pravega source. */
 public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Checkpoint> {
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaSplitEnumerator.class);
     private final SplitEnumeratorContext<PravegaSplit> enumContext;
+
+    // The readergroup to coordinate readers.
     private ReaderGroup readerGroup;
+
+    // The readergroup manager to manager reader groups.
     private ReaderGroupManager readerGroupManager;
+
+    // The Pravega client config
     private final ClientConfig clientConfig;
+
+    // The Pravega reader group config.
     private final ReaderGroupConfig readerGroupConfig;
+
+    // The scope name of the reader group.
     private final String scope;
+
+    // The readergroup name to coordinate the parallel readers.
     private final String readerGroupName;
+
+    // Pravega splits list.
     private final List<PravegaSplit> splits;
+
+    // Pravega checkpoint for enymerator.
     private Checkpoint checkpoint;
-    private long checkpointId;
+
+    // Flag to indicate whether it's already in the recovering process
+    // so that we don't throw multiple redundant exceptions.
     private boolean isRecovered;
 
     /** Default thread pool size of the checkpoint scheduler */
@@ -70,29 +90,22 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
             splits.add(new PravegaSplit(readerGroupName, i));
         }
         this.checkpoint = checkpoint;
-        if (checkpoint != null) {
-            this.checkpointId = getCheckpointId(checkpoint.getName());
-        }
         this.scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
 
     @Override
     public void start() {
-
-        log.info("Creating reader group: {}/{}.", this.scope, this.readerGroupName);
+        LOG.info("Starting the PravegaSplitEnumerator for reader group: {}/{}.", this.scope, this.readerGroupName);
 
         if (this.readerGroupManager == null) {
             this.readerGroupManager = ReaderGroupManager.withScope(scope, clientConfig);
         }
-
         if (this.readerGroup == null) {
-            readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-            this.readerGroup = readerGroupManager.getReaderGroup(this.readerGroupName);
+            this.readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
+            this.readerGroup = this.readerGroupManager.getReaderGroup(this.readerGroupName);
         }
-
         if (this.checkpoint != null) {
-            log.info("Recover from checkpoint: {}", checkpoint.getName());
-
+            LOG.info("Recover from checkpoint: {}", checkpoint.getName());
             this.readerGroup.resetReaderGroup(ReaderGroupConfig
                     .builder()
                     .maxOutstandingCheckpointRequest(this.readerGroupConfig.getMaxOutstandingCheckpointRequest())
@@ -105,16 +118,16 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
-
-    }
-
-    @Override
-    public void handleSourceEvent(int subtaskId, SourceEvent sourceEvent) {
+        // the Pravega source pushes splits eagerly, rather than act upon split requests
     }
 
     @Override
     public void addReader(int subtaskId) {
         if (enumContext.registeredReaders().size() == enumContext.currentParallelism() && splits.size() > 0) {
+            LOG.debug("Adding reader {} to PravegaSplitEnumerator for reader group: {}/{}.",
+                    subtaskId,
+                    scope,
+                    readerGroupName);
             int numReaders = enumContext.registeredReaders().size();
             Map<Integer, List<PravegaSplit>> assignment = new HashMap<>();
             for (int i = 0; i < numReaders; i++) {
@@ -126,22 +139,17 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     }
 
     @Override
-    public Checkpoint snapshotState() throws Exception {
-        checkpointId++;
-        final String checkpointName = createCheckpointName(checkpointId);
+    public Checkpoint snapshotState(long chkPtID) throws Exception {
+        final String checkpointName = createCheckpointName(chkPtID);
 
-        log.info("Initiate checkpoint {}", checkpointName);
+        LOG.info("Initiate checkpoint {}", checkpointName);
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
         try {
             this.checkpoint = checkpointResult.get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
-            log.error("Pravega checkpoint met error.", e);
+            LOG.error("Pravega checkpoint met error.", e);
             this.checkpoint = null;
-        }
-
-        for (int i = 0; i < enumContext.currentParallelism(); i++) {
-            enumContext.sendEventToSourceReader(i, new CheckpointEvent(checkpointId));
         }
 
         return checkpoint;
@@ -154,48 +162,20 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     }
 
     @Override
-    public void notifyCheckpointComplete(long checkpointId) throws Exception {
-        log.info("complete checkpoint {}", checkpointId);
-        this.checkpointId = checkpointId;
-    }
-
-    @Override
-    public void notifyCheckpointAborted(long checkpointId) throws Exception {
-
-    }
-
-    @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
-        log.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
+        LOG.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
+
+        // Trigger a global failure to restore from instead of a partial failure
+        // since Pravega doesn't have a mechanism to recover from partial failure
         if (!isRecovered) {
             isRecovered = true;
-            throw new RuntimeException("hahaha");
-        } else {
-            log.info("huhuhu");
+            throw new RuntimeException("triggering global failure");
         }
     }
-
 
     // -------------
 
-
     static String createCheckpointName(long checkpointId) {
         return "PVG-CHK-" + checkpointId;
-    }
-
-    public static long getCheckpointId(String checkpointName) {
-        return Long.parseLong(checkpointName.substring(8));
-    }
-
-    public static class CheckpointEvent implements SourceEvent {
-        private final long checkpointId;
-
-        private CheckpointEvent(long checkpointId) {
-            this.checkpointId = checkpointId;
-        }
-
-        public long getCheckpointId() {
-            return checkpointId;
-        }
     }
 }
