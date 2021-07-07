@@ -94,7 +94,7 @@ jobs:
           bash <(curl -s https://codecov.io/bash) -t 9c42ff48-d98f-4444-af05-cf734aa1dbd0
 
   snapshot:
-    name: Publish snapshot
+    name: Publish snapshot to Github Packages
     needs: [build]
     runs-on: ubuntu-latest
     # only publish the snapshot when it is a push on the master or the release branch (starts with r0.x or r1.x)
@@ -120,11 +120,11 @@ jobs:
           path: ./*
           key: ${{ github.run_id }}
 
-      - name: Publish to repo
-        run: ./gradlew publish -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY
+      - name: Publish to Github Packages
+        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.PUBLISH_TOKEN}}
 
   snapshot_with_scala_211:
-    name: Publish snapshot with Scala 2.11
+    name: Publish snapshot to Github Packages with Scala 2.11
     needs: [build_with_scala_211]
     runs-on: ubuntu-latest
     # only publish the snapshot when it is a push on the master or the release branch (starts with r0.x or r1.x)
@@ -150,5 +150,5 @@ jobs:
           path: ./*
           key: scala211-${{ github.run_id }}
 
-      - name: Publish to repo with Scala 2.11
-        run: ./gradlew publish -PpublishUrl=jcenterSnapshot -PpublishUsername=$BINTRAY_USER -PpublishPassword=$BINTRAY_KEY -PflinkScalaVersion=2.11
+      - name: Publish to Github Packages with Scala 2.11
+        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.PUBLISH_TOKEN}} -PflinkScalaVersion=2.11
