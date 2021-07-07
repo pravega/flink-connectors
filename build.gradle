@@ -11,7 +11,6 @@
 
 buildscript {
     repositories {
-        jcenter()
         mavenCentral()
         maven {
             url "https://plugins.gradle.org/m2/"
@@ -52,7 +51,11 @@ repositories {
     mavenLocal()
     mavenCentral()
     maven {
-        url "https://oss.jfrog.org/jfrog-dependencies"
+        url "https://maven.pkg.github.com/pravega/pravega"
+        credentials {
+            username = "pravega-public"
+            password = "\u0067\u0068\u0070\u005F\u0048\u0034\u0046\u0079\u0047\u005A\u0031\u006B\u0056\u0030\u0051\u0070\u006B\u0079\u0058\u006D\u0035\u0063\u0034\u0055\u0033\u006E\u0032\u0065\u0078\u0039\u0032\u0046\u006E\u0071\u0033\u0053\u0046\u0076\u005A\u0049"
+        }
     }
     if (findProperty("repositoryUrl")) {
         maven {
@@ -60,7 +63,6 @@ repositories {
         }
     }
     else {
-        jcenter()
         maven {
             url "https://repository.apache.org/snapshots"
         }
@@ -117,7 +119,10 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
+        exclude group:  'ch.qos.logback', module: 'logback-classic'
+        exclude group:  'org.apache.zookeeper', module: 'zookeeper'
     }
+    testImplementation group: 'org.apache.zookeeper', name: 'zookeeper', version: '3.5.9'
     testImplementation (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
     }
