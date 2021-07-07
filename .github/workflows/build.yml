@@ -121,7 +121,7 @@ jobs:
           key: ${{ github.run_id }}
 
       - name: Publish to Github Packages
-        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.GITHUB_TOKEN}}
+        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.PUBLISH_TOKEN}}
 
   snapshot_with_scala_211:
     name: Publish snapshot to Github Packages with Scala 2.11
@@ -151,4 +151,4 @@ jobs:
           key: scala211-${{ github.run_id }}
 
       - name: Publish to Github Packages with Scala 2.11
-        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.GITHUB_TOKEN}} -PflinkScalaVersion=2.11
+        run: ./gradlew publish -PpublishUrl=https://maven.pkg.github.com/${{github.repository}} -PpublishUsername=${{github.actor}} -PpublishPassword=${{secrets.PUBLISH_TOKEN}} -PflinkScalaVersion=2.11
