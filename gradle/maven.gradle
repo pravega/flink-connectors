@@ -39,17 +39,6 @@ publishing {
                     }
                 }
             }
-            else if (publishUrl == "jcenterSnapshot") {
-                maven {
-                    url = "https://oss.jfrog.org/artifactory/oss-snapshot-local/"
-                    if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
-                        credentials {
-                            username = publishUsername
-                            password = publishPassword
-                        }
-                    }
-                }
-            }
             else {
                 maven {
                     url = publishUrl
