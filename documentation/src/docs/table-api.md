@@ -158,5 +158,5 @@ By default, a Pravega sink ingests data with at-least-once guarantees if the que
 Users can try with Pravega table APIs quickly though Flink SQL client. Here is some tutorial to setup the environment.
 https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/sqlClient.html
 
-The usage and definition of time attribute and WATERMARK schema can be referred in:
-https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/streaming/time_attributes.html
+The usage and definition Flink SQL can be referred in:
+https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/table/sql/overview/
