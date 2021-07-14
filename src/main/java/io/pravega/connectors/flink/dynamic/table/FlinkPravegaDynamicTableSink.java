@@ -191,10 +191,5 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
         public String getRoutingKey(RowData event) {
             return event.getString(keyIndex).toString();
         }
-
-        private boolean isStringType(DataType type) {
-            LogicalTypeRoot typeRoot = type.getLogicalType().getTypeRoot();
-            return typeRoot == LogicalTypeRoot.CHAR || typeRoot == LogicalTypeRoot.VARCHAR;
-        }
     }
 }
