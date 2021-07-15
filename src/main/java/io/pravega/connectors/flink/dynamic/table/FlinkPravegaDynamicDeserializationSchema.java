@@ -61,7 +61,7 @@ public class FlinkPravegaDynamicDeserializationSchema extends PravegaDeserializa
 
     @Override
     public RowData deserialize(byte[] message, EventRead<ByteBuffer> eventRead) throws IOException {
-        throw new IllegalStateException("To add metadata, use OutputCollector");
+        throw new IllegalStateException("Please invoke FlinkPravegaDynamicDeserializationSchema#deserialize(byte[], EventRead<ByteBuffer>, Collector<RowData>) instead.");
     }
 
     @Override
