@@ -174,7 +174,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public ScanRuntimeProvider getScanRuntimeProvider(ScanContext runtimeProviderContext) {
         // create a PravegaDeserializationSchema that will expose metadata to the row
-        final FlinkPravegaDynamicDeserializationSchema flinkDeserializer
+        final FlinkPravegaDynamicDeserializationSchema deserializationSchema
                 = new FlinkPravegaDynamicDeserializationSchema(
                 runtimeProviderContext.createTypeInformation(producedDataType),
                 producedDataType.getChildren().size() - metadataKeys.size(),
@@ -184,7 +184,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withDeserializationSchema(flinkDeserializer)
+                    .withDeserializationSchema(deserializationSchema)
                     .withReaderGroupRefreshTime(Time.milliseconds(readerGroupRefreshTimeMillis))
                     .withCheckpointInitiateTimeout(Time.milliseconds(checkpointInitiateTimeoutMillis))
                     .withEventReadTimeout(Time.milliseconds(eventReadTimeoutMillis))
@@ -201,7 +201,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
         } else {
             FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
-                    .withDeserializationSchema(flinkDeserializer);
+                    .withDeserializationSchema(deserializationSchema);
 
             for (StreamWithBoundaries stream : streams) {
                 inputFormatBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
