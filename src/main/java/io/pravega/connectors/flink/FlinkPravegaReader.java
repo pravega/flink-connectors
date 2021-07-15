@@ -23,6 +23,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -49,11 +50,13 @@ import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.createPravegaReader;
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.getReaderName;
 
@@ -144,6 +147,9 @@ public class FlinkPravegaReader<T>
     // Pravega reader group
     private transient ReaderGroup readerGroup = null;
 
+    // A collector that emits records in batch (bundle)
+    private final PravegaCollector<T> pravegaCollector;
+
     // ------------------------------------------------------------------------
 
     /**
@@ -185,6 +191,7 @@ public class FlinkPravegaReader<T>
         this.checkpointInitiateTimeout = Preconditions.checkNotNull(checkpointInitiateTimeout, "checkpointInitiateTimeout");
         this.enableMetrics = enableMetrics;
         this.assignerWithTimeWindows = assignerWithTimeWindows;
+        this.pravegaCollector = new PravegaCollector<T>(deserializationSchema);
     }
 
     /**
@@ -265,7 +272,7 @@ public class FlinkPravegaReader<T>
         log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
                 runtimeContext.getTaskNameWithSubtasks(), readerId, this.clientConfig.getControllerURI());
 
-        try (EventStreamReader<T> pravegaReader = createEventStreamReader(readerId)) {
+        try (EventStreamReader<ByteBuffer> pravegaReader = createEventStreamReader(readerId)) {
 
             log.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.clientConfig.getControllerURI());
 
@@ -285,46 +292,30 @@ public class FlinkPravegaReader<T>
                 periodicEmitter.start();
             }
 
-            final Function<EventRead<T>, T> deserFunc = this.deserializationSchema instanceof PravegaDeserializationSchema ?
-                    ((PravegaDeserializationSchema<T>) deserializationSchema)::extractEvent :
-                    (eventRead) -> eventRead.getEvent();
-
             // main work loop, which this task is running
             while (this.running) {
-
-                EventRead<T> eventRead;
+                EventRead<ByteBuffer> eventRead;
                 try {
                     eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMilliseconds());
                 } catch (TruncatedDataException e) {
                     // Data is truncated, Force the reader going forward to the next available event
                     continue;
                 }
-                final T event = deserFunc.apply(eventRead);
 
-                // emit the event, if one was carried
-                if (event != null) {
-                    if (this.deserializationSchema.isEndOfStream(event)) {
-                        // Found stream end marker.
-                        // TODO: Handle scenario when reading from multiple segments. This will be cleaned up as part of:
-                        //       https://github.com/pravega/pravega/issues/551.
-                        log.info("Reached end of stream for reader: {}", readerId);
-                        return;
+                if (eventRead.getEvent() == null) {
+                    // if the read marks a checkpoint, trigger the checkpoint
+                    if (eventRead.isCheckpoint()) {
+                        triggerCheckpoint(eventRead.getCheckpointName());
                     }
-
-                    synchronized (ctx.getCheckpointLock()) {
-                        if (isEventTimeMode()) {
-                            long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
-                            ctx.collectWithTimestamp(event, currentTimestamp);
-                            previousTimestamp = currentTimestamp;
-                        } else {
-                            ctx.collect(event);
-                        }
-                    }
+                    continue;
                 }
 
-                // if the read marks a checkpoint, trigger the checkpoint
-                if (eventRead.isCheckpoint()) {
-                    triggerCheckpoint(eventRead.getCheckpointName());
+                emitEvent(eventRead, ctx, previousTimestamp, assigner);
+
+                if (pravegaCollector.isEndOfStreamSignalled()) {
+                    // Found stream end marker.
+                    log.info("Reached end of stream for reader: {}", readerId);
+                    return;
                 }
             }
         }
@@ -332,6 +323,34 @@ public class FlinkPravegaReader<T>
             log.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
             throw e;
         }
+    }
+
+    /** Deserialize and collect the event. */
+    private void emitEvent(EventRead<ByteBuffer> eventRead,
+                           SourceContext<T> ctx,
+                           long previousTimestamp,
+                           @Nullable AssignerWithTimeWindows<T> assigner) throws IOException {
+        byte[] eventBytes = byteBufferToArray(eventRead.getEvent());
+        if (deserializationSchema instanceof PravegaDeserializationSchemaWithMetadata) {
+            ((PravegaDeserializationSchemaWithMetadata<T>) this.deserializationSchema).deserialize(eventBytes, eventRead, pravegaCollector);
+        } else {
+            this.deserializationSchema.deserialize(eventBytes, pravegaCollector);
+        }
+
+        T event;
+        while ((event = pravegaCollector.getRecords().poll()) != null) {
+            synchronized (ctx.getCheckpointLock()) {
+                if (isEventTimeMode()) {
+                    assert assigner != null;  // assigner won't be null in event time mode
+                    long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
+                    ctx.collectWithTimestamp(event, currentTimestamp);
+                    previousTimestamp = currentTimestamp;
+                } else {
+                    ctx.collect(event);
+                }
+            }
+        }
+
     }
 
     @Override
@@ -637,16 +656,19 @@ public class FlinkPravegaReader<T>
     }
 
     /**
-     * Create the {@link EventStreamReader} for the current configuration.
+     * Create the {@link EventStreamReader} for the current configuration. <p/>
+     *
+     * The reader will output raw ByteBuffer rather than the deserialized T.
+     * See {@link emitEvent} for the decoding process.
+     * To customize the process, overwrite {@link PravegaDeserializationSchemaWithMetadata}.
      *
      * @param readerId the readerID to use.
      * @return An instance of {@link EventStreamReader}
      */
-    protected EventStreamReader<T> createEventStreamReader(String readerId) {
+    protected EventStreamReader<ByteBuffer> createEventStreamReader(String readerId) {
         return createPravegaReader(
                 readerId,
                 this.readerGroupName,
-                this.deserializationSchema,
                 ReaderConfig.builder().build(),
                 eventStreamClientFactory);
     }
