@@ -38,6 +38,7 @@ import org.apache.flink.table.catalog.CatalogPartition;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
 import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
@@ -79,7 +80,7 @@ public class PravegaCatalog extends AbstractCatalog {
     private SerializationFormat serializationFormat;
 
     public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
-                          String serializationFormat, String failOnMissingField, String ignoreParseErrors,
+                          String serializationFormat, Boolean failOnMissingField, Boolean ignoreParseErrors,
                           String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
 
         super(catalogName, defaultDatabase);
@@ -108,12 +109,12 @@ public class PravegaCatalog extends AbstractCatalog {
         if (failOnMissingField != null) {
             properties.put(String.format("%s.%s",
                     PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
-                    failOnMissingField);
+                    failOnMissingField.toString());
         }
         if (ignoreParseErrors != null) {
             properties.put(String.format("%s.%s",
                     PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
-                    ignoreParseErrors);
+                    ignoreParseErrors.toString());
         }
         if (timestampFormat != null) {
             properties.put(String.format("%s.%s",
@@ -296,7 +297,7 @@ public class PravegaCatalog extends AbstractCatalog {
         String stream = tablePath.getObjectName();
         changeRegistryNamespace(scope);
         SchemaInfo schemaInfo = schemaRegistryClient.getLatestSchemaVersion(stream, null).getSchemaInfo();
-        TableSchema tableSchema = PravegaSchemaUtils.schemaInfoToTableSchema(schemaInfo);
+        ResolvedSchema resolvedSchema = PravegaSchemaUtils.schemaInfoToResolvedSchema(schemaInfo);
 
         Map<String, String> properties = this.properties;
         properties.put(PravegaOptions.SCOPE.key(), scope);
@@ -315,7 +316,7 @@ public class PravegaCatalog extends AbstractCatalog {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.GROUP_ID.key()),
                 stream);
 
-        return new CatalogTableImpl(tableSchema, properties, "");
+        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
     }
 
     @Override
