@@ -12,6 +12,7 @@ package io.pravega.connectors.flink.table.catalog.pravega.factories;
 
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
+import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.table.catalog.CommonCatalogOptions;
 
 /** {@link ConfigOption}s for {@link PravegaCatalogFactory}. */
@@ -31,20 +32,12 @@ public class PravegaCatalogFactoryOptions {
     public static final ConfigOption<String> SERIALIZATION_FORMAT =
             ConfigOptions.key("serialization.format").stringType().noDefaultValue();
 
-    public static final ConfigOption<String> JSON_FAIL_ON_MISSING_FIELD =
-            ConfigOptions.key("json.fail-on-missing-field").stringType().noDefaultValue();
-
-    public static final ConfigOption<String> JSON_IGNORE_PARSE_ERRORS =
-            ConfigOptions.key("json.ignore-parse-errors").stringType().noDefaultValue();
-
-    public static final ConfigOption<String> JSON_TIMESTAMP_FORMAT =
-            ConfigOptions.key("json.timestamp-format.standard").stringType().noDefaultValue();
-
-    public static final ConfigOption<String> JSON_MAP_NULL_KEY_MODE =
-            ConfigOptions.key("json.map-null-key.mode").stringType().noDefaultValue();
-
-    public static final ConfigOption<String> JSON_MAP_NULL_KEY_LITERAL =
-            ConfigOptions.key("json.map-null-key.literal").stringType().noDefaultValue();
+    // Json related options
+    public static final ConfigOption<Boolean> JSON_FAIL_ON_MISSING_FIELD = JsonOptions.FAIL_ON_MISSING_FIELD;
+    public static final ConfigOption<Boolean> JSON_IGNORE_PARSE_ERRORS = JsonOptions.IGNORE_PARSE_ERRORS;
+    public static final ConfigOption<String> JSON_TIMESTAMP_FORMAT = JsonOptions.TIMESTAMP_FORMAT;
+    public static final ConfigOption<String> JSON_MAP_NULL_KEY_MODE = JsonOptions.MAP_NULL_KEY_MODE;
+    public static final ConfigOption<String> JSON_MAP_NULL_KEY_LITERAL = JsonOptions.MAP_NULL_KEY_LITERAL;
 
     private PravegaCatalogFactoryOptions() {}
 }

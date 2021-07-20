@@ -80,7 +80,7 @@ public class PravegaCatalog extends AbstractCatalog {
     private SerializationFormat serializationFormat;
 
     public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
-                          String serializationFormat, String failOnMissingField, String ignoreParseErrors,
+                          String serializationFormat, Boolean failOnMissingField, Boolean ignoreParseErrors,
                           String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
 
         super(catalogName, defaultDatabase);
@@ -109,12 +109,12 @@ public class PravegaCatalog extends AbstractCatalog {
         if (failOnMissingField != null) {
             properties.put(String.format("%s.%s",
                     PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
-                    failOnMissingField);
+                    failOnMissingField.toString());
         }
         if (ignoreParseErrors != null) {
             properties.put(String.format("%s.%s",
                     PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
-                    ignoreParseErrors);
+                    ignoreParseErrors.toString());
         }
         if (timestampFormat != null) {
             properties.put(String.format("%s.%s",
