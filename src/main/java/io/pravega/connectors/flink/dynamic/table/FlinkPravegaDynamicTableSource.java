@@ -25,11 +25,6 @@ import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.connector.source.abilities.SupportsReadingMetadata;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.types.FieldsDataType;
-import org.apache.flink.table.types.logical.LogicalType;
-import org.apache.flink.table.types.logical.LogicalTypeRoot;
-import org.apache.flink.table.types.logical.RowType;
-import org.apache.flink.table.types.logical.utils.LogicalTypeUtils;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
@@ -42,9 +37,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import static org.apache.flink.table.types.logical.utils.LogicalTypeChecks.hasRoot;
-
 public class FlinkPravegaDynamicTableSource implements ScanTableSource, SupportsReadingMetadata {
+
+    private static final String FORMAT_METADATA_PREFIX = "from_format.";
 
     // Source produced data type
     protected DataType producedDataType;
@@ -57,8 +52,6 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
     // Scan format for decoding records from Pravega
     private final DecodingFormat<DeserializationSchema<RowData>> decodingFormat;
-
-    private static final String FORMAT_METADATA_PREFIX = "from_format.";
 
     // The reader group name to coordinate the parallel readers. This should be unique for a Flink job.
     @Nullable
