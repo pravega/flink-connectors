@@ -656,7 +656,7 @@ public class FlinkPravegaReader<T>
     }
 
     /**
-     * Create the {@link EventStreamReader} for the current configuration. <p/>
+     * Create the {@link EventStreamReader} for the current configuration. <p>
      *
      * The reader will output raw ByteBuffer rather than the deserialized T.
      * See {@link emitEvent} for the decoding process.

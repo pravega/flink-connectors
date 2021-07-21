@@ -351,10 +351,9 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         String sourceDDL =
                 String.format(
                         "CREATE TABLE debezium_source ( %n" +
-                                // TODO: Support format metadata
-                                // https://github.com/pravega/flink-connectors/issues/534
-                                // + " origin_ts TIMESTAMP(3) METADATA FROM 'value.ingestion-timestamp' VIRTUAL, %n" // unused
-                                // + " origin_table STRING METADATA FROM 'value.source.table' VIRTUAL, %n"
+                                // test format metadata
+                                "  origin_ts TIMESTAMP(3) METADATA FROM 'from_format.ingestion-timestamp' VIRTUAL, %n" +  // unused
+                                "  origin_table STRING METADATA FROM 'from_format.source.table' VIRTUAL, %n" +
                                 "  id INT NOT NULL, %n" +
                                 "  name STRING, %n" +
                                 "  description STRING, %n" +
@@ -383,6 +382,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         stream);
         String sinkDDL =
                 "CREATE TABLE sink ( \n" +
+                        "  origin_table STRING, \n" +
                         "  name STRING, \n" +
                         "  weightSum DECIMAL(10,3), \n" +
                         "  PRIMARY KEY (name) NOT ENFORCED \n" +
@@ -396,7 +396,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         TableResult tableResult =
                 tEnv.executeSql(
                         "INSERT INTO sink "
-                                + "SELECT name, SUM(weight) "
+                                + "SELECT FIRST_VALUE(origin_table), name, SUM(weight) "
                                 + "FROM debezium_source GROUP BY name");
         /*
          * Debezium captures change data on the `products` table:
@@ -447,13 +447,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
          */
         List<String> expected =
                 Arrays.asList(
-                        "+I[scooter, 3.140]",
-                        "+I[car battery, 8.100]",
-                        "+I[12-pack drill bits, 0.800]",
-                        "+I[hammer, 2.625]",
-                        "+I[rocks, 5.100]",
-                        "+I[jacket, 0.600]",
-                        "+I[spare tire, 22.200]");
+                        "products,scooter,3.140",
+                        "products,car battery,8.100",
+                        "products,12-pack drill bits,0.800",
+                        "products,hammer,2.625",
+                        "products,rocks,5.100",
+                        "products,jacket,0.600",
+                        "products,spare tire,22.200");
 
         waitingExpectedResults("sink", expected, Duration.ofSeconds(10));
 
