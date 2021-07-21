@@ -10,6 +10,7 @@
 
 package io.pravega.connectors.flink.table.catalog.pravega.factories;
 
+import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.formats.json.JsonOptions;
@@ -23,8 +24,7 @@ public class PravegaCatalogFactoryOptions {
     public static final ConfigOption<String> DEFAULT_DATABASE =
             ConfigOptions.key(CommonCatalogOptions.DEFAULT_DATABASE_KEY).stringType().noDefaultValue();
 
-    public static final ConfigOption<String> CONTROLLER_URI =
-            ConfigOptions.key("controller-uri").stringType().noDefaultValue();
+    public static final ConfigOption<String> CONTROLLER_URI = PravegaOptions.CONTROLLER_URI;
 
     public static final ConfigOption<String> SCHEMA_REGISTRY_URI =
             ConfigOptions.key("schema-registry-uri").stringType().noDefaultValue();
