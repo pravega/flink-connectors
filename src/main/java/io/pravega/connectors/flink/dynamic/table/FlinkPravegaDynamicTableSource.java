@@ -34,9 +34,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class FlinkPravegaDynamicTableSource implements ScanTableSource, SupportsReadingMetadata {
+
+    private static final String FORMAT_METADATA_PREFIX = "from_format.";
 
     // Source produced data type
     protected DataType producedDataType;
@@ -179,7 +182,7 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
                 runtimeProviderContext.createTypeInformation(producedDataType),
                 producedDataType.getChildren().size() - metadataKeys.size(),
                 metadataKeys,
-                decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
+                decodingFormat.createRuntimeDecoder(runtimeProviderContext, physicalDataType));
 
         if (isStreamingReader) {
             FlinkPravegaReader.Builder<RowData> readerBuilder = FlinkPravegaReader.<RowData>builder()
@@ -282,13 +285,41 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
     @Override
     public Map<String, DataType> listReadableMetadata() {
         final Map<String, DataType> metadataMap = new LinkedHashMap<>();
-        Stream.of(ReadableMetadata.values()).forEachOrdered(m -> metadataMap.put(m.key, m.dataType));
+
+        // according to convention, the order of the final row must be
+        // PHYSICAL + FORMAT METADATA + CONNECTOR METADATA
+        // where the format metadata has highest precedence
+
+        // add value format metadata with prefix
+        this.decodingFormat
+                .listReadableMetadata()
+                .forEach((key, value) -> metadataMap.put(FORMAT_METADATA_PREFIX + key, value));
+
+        // add connector metadata
+        Stream.of(ReadableMetadata.values())
+                .forEachOrdered(m -> metadataMap.put(m.key, m.dataType));
+
         return metadataMap;
     }
 
     @Override
     public void applyReadableMetadata(List<String> metadataKeys, DataType producedDataType) {
-        this.metadataKeys = metadataKeys;
+        // separate connector and format metadata
+        Map<Boolean, List<String>> partitions = metadataKeys
+                .stream()
+                .collect(Collectors.partitioningBy(key -> key.startsWith(FORMAT_METADATA_PREFIX)));
+
+        // push down format metadata
+        final Map<String, DataType> formatMetadata = this.decodingFormat.listReadableMetadata();
+        if (formatMetadata.size() > 0) {
+            this.decodingFormat
+                    .applyReadableMetadata(partitions.get(true)
+                            .stream()
+                            .map(k -> k.substring(FORMAT_METADATA_PREFIX.length()))
+                            .collect(Collectors.toList()));
+        }
+
+        this.metadataKeys = partitions.get(false);
         this.producedDataType = producedDataType;
     }
 
