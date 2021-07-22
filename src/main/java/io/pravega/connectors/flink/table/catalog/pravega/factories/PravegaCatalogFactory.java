@@ -26,6 +26,8 @@ import java.util.Set;
 
 /** Factory for {@link PravegaCatalog}. */
 public class PravegaCatalogFactory implements CatalogFactory {
+    // the prefix of checkpoint names json related options
+    private static final String JSON_PREFIX = "json";
 
     private static final Logger LOG = LoggerFactory.getLogger(PravegaCatalogFactory.class);
 
@@ -62,22 +64,22 @@ public class PravegaCatalogFactory implements CatalogFactory {
         // skip validating the options that have 'json' prefix since ConfigOptions in
         // PravegaCatalogFactoryOptions don't have 'json' prefix.
         // will validate these options later in PravegaRegistryFormatFactory
-        helper.validateExcept("json");
+        helper.validateExcept(JSON_PREFIX);
         // all catalog options
         ReadableConfig configOptions = helper.getOptions();
         // options that separate "json" prefix and the configuration
-        ReadableConfig delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, "json");
+        ReadableConfig delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
 
         return new PravegaCatalog(
                 context.getName(),
                 configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
                 configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI),
                 configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI),
-                configOptions.getOptional(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT).orElse(null),
-                delegatingConfiguration.getOptional(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD).orElse(null),
-                delegatingConfiguration.getOptional(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).orElse(null),
-                delegatingConfiguration.getOptional(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT).orElse(null),
-                delegatingConfiguration.getOptional(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE).orElse(null),
-                delegatingConfiguration.getOptional(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL).orElse(null));
+                configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD).toString(),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).toString(),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL));
     }
 }

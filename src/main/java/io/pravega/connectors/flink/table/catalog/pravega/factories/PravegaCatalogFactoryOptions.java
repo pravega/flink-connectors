@@ -22,15 +22,18 @@ public class PravegaCatalogFactoryOptions {
     public static final String IDENTIFIER = "pravega";
 
     public static final ConfigOption<String> DEFAULT_DATABASE =
-            ConfigOptions.key(CommonCatalogOptions.DEFAULT_DATABASE_KEY).stringType().noDefaultValue();
+            ConfigOptions.key(CommonCatalogOptions.DEFAULT_DATABASE_KEY).stringType().noDefaultValue()
+                    .withDescription("Required default database");
 
+    // required Pravega controller URI
     public static final ConfigOption<String> CONTROLLER_URI = PravegaOptions.CONTROLLER_URI;
 
     public static final ConfigOption<String> SCHEMA_REGISTRY_URI =
-            ConfigOptions.key("schema-registry-uri").stringType().noDefaultValue();
+            ConfigOptions.key("schema-registry-uri").stringType().noDefaultValue().withDescription("Required Schema Registry URI");
 
     public static final ConfigOption<String> SERIALIZATION_FORMAT =
-            ConfigOptions.key("serialization.format").stringType().noDefaultValue();
+            ConfigOptions.key("serialization.format").stringType().defaultValue("Avro")
+                    .withDescription("Optional serialization format for Pravega catalog. Valid enumerations are ['Avro'(default), 'Json']");
 
     // Json related options
     public static final ConfigOption<Boolean> JSON_FAIL_ON_MISSING_FIELD = JsonOptions.FAIL_ON_MISSING_FIELD;
