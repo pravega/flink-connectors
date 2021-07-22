@@ -38,7 +38,7 @@ public class PravegaRegistryOptions {
             .key("format")
             .stringType()
             .defaultValue("Avro")
-            .withDescription("Required serialization format for Pravega catalog. Valid enumerations are ['Avro'(default), 'Json']");
+            .withDescription("Optional serialization format for Pravega catalog. Valid enumerations are ['Avro'(default), 'Json']");
 
     // --------------------------------------------------------------------------------------------
     // Json Options
