@@ -214,8 +214,8 @@ public class PravegaRegistrySeDeITCase {
     public void testJsonDeserialize() throws Exception {
         final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Json", null, null,
-                null, null, null);
+                "Json", "false", "false",
+                "SQL", "FAIL", "null");
         initJson();
         jsonCatalog.open();
 

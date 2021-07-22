@@ -80,7 +80,7 @@ public class PravegaCatalog extends AbstractCatalog {
     private SerializationFormat serializationFormat;
 
     public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
-                          String serializationFormat, Boolean failOnMissingField, Boolean ignoreParseErrors,
+                          String serializationFormat, String failOnMissingField, String ignoreParseErrors,
                           String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
 
         super(catalogName, defaultDatabase);
@@ -106,31 +106,7 @@ public class PravegaCatalog extends AbstractCatalog {
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 this.serializationFormat.name());
 
-        if (failOnMissingField != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
-                    failOnMissingField.toString());
-        }
-        if (ignoreParseErrors != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
-                    ignoreParseErrors.toString());
-        }
-        if (timestampFormat != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.TIMESTAMP_FORMAT.key()),
-                    timestampFormat);
-        }
-        if (mapNullKeyMode != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_MODE.key()),
-                    mapNullKeyMode);
-        }
-        if (mapNullKeyLiteral != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_LITERAL.key()),
-                    mapNullKeyLiteral);
-        }
+        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -503,5 +479,35 @@ public class PravegaCatalog extends AbstractCatalog {
             throw new CatalogException("Fail to close connection to Pravega Schema registry", e);
         }
         schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace, config);
+    }
+
+    // put Json related options to properties
+    private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors,
+                                      String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
+        if (failOnMissingField != null) {
+            properties.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
+                    failOnMissingField);
+        }
+        if (ignoreParseErrors != null) {
+            properties.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
+                    ignoreParseErrors);
+        }
+        if (timestampFormat != null) {
+            properties.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.TIMESTAMP_FORMAT.key()),
+                    timestampFormat);
+        }
+        if (mapNullKeyMode != null) {
+            properties.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_MODE.key()),
+                    mapNullKeyMode);
+        }
+        if (mapNullKeyLiteral != null) {
+            properties.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_LITERAL.key()),
+                    mapNullKeyLiteral);
+        }
     }
 }
