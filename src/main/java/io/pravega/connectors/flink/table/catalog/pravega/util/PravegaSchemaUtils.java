@@ -22,6 +22,7 @@ import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.json.JsonRowSchemaConverter;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.LogicalType;
 import org.apache.flink.table.types.logical.RowType;
@@ -38,7 +39,7 @@ public class PravegaSchemaUtils {
         // private
     }
 
-    public static TableSchema schemaInfoToTableSchema(SchemaInfo schemaInfo) {
+    public static ResolvedSchema schemaInfoToResolvedSchema(SchemaInfo schemaInfo) {
 
         SerializationFormat format = schemaInfo.getSerializationFormat();
         String schemaString;

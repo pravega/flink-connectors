@@ -12,7 +12,7 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
-import io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogDescriptor;
+import io.pravega.connectors.flink.table.catalog.pravega.factories.PravegaCatalogFactoryOptions;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
@@ -33,15 +33,14 @@ import org.apache.flink.table.catalog.CatalogDatabaseImpl;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.CatalogTestUtil;
+import org.apache.flink.table.catalog.CommonCatalogOptions;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 import org.apache.flink.table.catalog.exceptions.TableAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.TableNotExistException;
-import org.apache.flink.table.descriptors.CatalogDescriptor;
-import org.apache.flink.table.factories.CatalogFactory;
-import org.apache.flink.table.factories.TableFactoryService;
+import org.apache.flink.table.factories.FactoryUtil;
 import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -51,6 +50,7 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -124,17 +124,13 @@ public class PravegaCatalogITCase {
 
     @Test
     public void testCreateCatalogFromFactory() {
+        final Map<String, String> options = new HashMap<>();
+        options.put(CommonCatalogOptions.CATALOG_TYPE.key(), PravegaCatalogFactoryOptions.IDENTIFIER);
+        options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SETUP_UTILS.getScope());
+        options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
+        options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
 
-        final CatalogDescriptor catalogDescriptor = new PravegaCatalogDescriptor(
-                SETUP_UTILS.getControllerUri().toString(),
-                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                SETUP_UTILS.getScope(),
-                null, null, null,
-                null, null, null);
-        final Map<String, String> properties = catalogDescriptor.toProperties();
-
-        final Catalog actualCatalog = TableFactoryService.find(CatalogFactory.class, properties)
-                .createCatalog(TEST_CATALOG_NAME, properties);
+        final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
         assertTrue(actualCatalog instanceof PravegaCatalog);
         assertEquals(((PravegaCatalog) actualCatalog).getName(), CATALOG.getName());
@@ -291,8 +287,8 @@ public class PravegaCatalogITCase {
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
         CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                null, null, null,
-                null, null, null);
+                "Avro", "false", "false",
+                "SQL", "FAIL", "null");
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();
