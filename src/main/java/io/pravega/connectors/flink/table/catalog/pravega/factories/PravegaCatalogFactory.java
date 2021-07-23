@@ -12,6 +12,9 @@ package io.pravega.connectors.flink.table.catalog.pravega.factories;
 
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import org.apache.flink.configuration.ConfigOption;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.configuration.DelegatingConfiguration;
+import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.factories.CatalogFactory;
 import org.apache.flink.table.factories.FactoryUtil;
@@ -23,6 +26,8 @@ import java.util.Set;
 
 /** Factory for {@link PravegaCatalog}. */
 public class PravegaCatalogFactory implements CatalogFactory {
+    // the prefix of checkpoint names json related options
+    private static final String JSON_PREFIX = "json";
 
     private static final Logger LOG = LoggerFactory.getLogger(PravegaCatalogFactory.class);
 
@@ -56,18 +61,25 @@ public class PravegaCatalogFactory implements CatalogFactory {
     public Catalog createCatalog(Context context) {
         final FactoryUtil.CatalogFactoryHelper helper =
                 FactoryUtil.createCatalogFactoryHelper(this, context);
-        helper.validate();
+        // skip validating the options that have 'json' prefix since ConfigOptions in
+        // PravegaCatalogFactoryOptions don't have 'json' prefix.
+        // will validate these options later in PravegaRegistryFormatFactory
+        helper.validateExcept(JSON_PREFIX);
+        // all catalog options
+        ReadableConfig configOptions = helper.getOptions();
+        // options that separate "json" prefix and the configuration
+        ReadableConfig delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
 
         return new PravegaCatalog(
                 context.getName(),
-                helper.getOptions().get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
-                helper.getOptions().get(PravegaCatalogFactoryOptions.CONTROLLER_URI),
-                helper.getOptions().get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT).orElse(null),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD).orElse(null),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).orElse(null),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT).orElse(null),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE).orElse(null),
-                helper.getOptions().getOptional(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL).orElse(null));
+                configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
+                configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI),
+                configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI),
+                configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD).toString(),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).toString(),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL));
     }
 }

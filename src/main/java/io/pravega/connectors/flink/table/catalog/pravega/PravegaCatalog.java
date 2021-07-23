@@ -27,7 +27,6 @@ import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.AbstractCatalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
@@ -89,8 +88,7 @@ public class PravegaCatalog extends AbstractCatalog {
         this.schemaRegistryUri = URI.create(schemaRegistryUri);
         this.config = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(this.schemaRegistryUri).build();
-        this.serializationFormat = serializationFormat == null ?
-                SerializationFormat.Avro : SerializationFormat.valueOf(serializationFormat);
+        this.serializationFormat = SerializationFormat.valueOf(serializationFormat);
 
         this.properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
@@ -106,31 +104,7 @@ public class PravegaCatalog extends AbstractCatalog {
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 this.serializationFormat.name());
 
-        if (failOnMissingField != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
-                    failOnMissingField);
-        }
-        if (ignoreParseErrors != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
-                    ignoreParseErrors);
-        }
-        if (timestampFormat != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.TIMESTAMP_FORMAT.key()),
-                    timestampFormat);
-        }
-        if (mapNullKeyMode != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_MODE.key()),
-                    mapNullKeyMode);
-        }
-        if (mapNullKeyLiteral != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_LITERAL.key()),
-                    mapNullKeyLiteral);
-        }
+        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -503,5 +477,26 @@ public class PravegaCatalog extends AbstractCatalog {
             throw new CatalogException("Fail to close connection to Pravega Schema registry", e);
         }
         schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace, config);
+    }
+
+    // put Json related options to properties
+    private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors, String timestampFormat,
+                                      String mapNullKeyMode, String mapNullKeyLiteral) {
+
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
+                failOnMissingField);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.IGNORE_PARSE_ERRORS.key()),
+                ignoreParseErrors);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.TIMESTAMP_FORMAT.key()),
+                timestampFormat);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_MODE.key()),
+                mapNullKeyMode);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
+                mapNullKeyLiteral);
     }
 }

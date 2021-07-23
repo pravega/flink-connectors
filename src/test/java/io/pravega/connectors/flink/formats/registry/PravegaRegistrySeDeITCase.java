@@ -127,8 +127,8 @@ public class PravegaRegistrySeDeITCase {
     public void testAvroSerializeDeserialize() throws Exception {
         final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Avro", null, null,
-                null, null, null);
+                "Avro", "false", "false",
+                "SQL", "FAIL", "null");
         initAvro();
         avroCatalog.open();
 
@@ -214,8 +214,8 @@ public class PravegaRegistrySeDeITCase {
     public void testJsonDeserialize() throws Exception {
         final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Json", null, null,
-                null, null, null);
+                "Json", "false", "false",
+                "SQL", "FAIL", "null");
         initJson();
         jsonCatalog.open();
 
