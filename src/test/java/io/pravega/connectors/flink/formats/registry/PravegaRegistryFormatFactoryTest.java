@@ -64,6 +64,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
     private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
             JsonOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
+    private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
     @Test
     public void testSeDeSchema() {
@@ -100,7 +101,8 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                         SERIALIZATIONFORMAT,
                         TIMESTAMP_FORMAT,
                         MAP_NULL_KEY_MODE,
-                        MAP_NULL_KEY_LITERAL);
+                        MAP_NULL_KEY_LITERAL,
+                        ENCODE_DECIMAL_AS_PLAIN_NUMBER);
 
         final DynamicTableSink actualSink = createTableSink(options);
         assertTrue(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock);

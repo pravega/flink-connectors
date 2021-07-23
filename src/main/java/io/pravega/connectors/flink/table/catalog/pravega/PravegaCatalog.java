@@ -80,7 +80,8 @@ public class PravegaCatalog extends AbstractCatalog {
 
     public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
                           String serializationFormat, String failOnMissingField, String ignoreParseErrors,
-                          String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
+                          String timestampFormat, String mapNullKeyMode,
+                          String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
 
         super(catalogName, defaultDatabase);
 
@@ -104,7 +105,8 @@ public class PravegaCatalog extends AbstractCatalog {
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 this.serializationFormat.name());
 
-        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
+        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat,
+                mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -481,7 +483,7 @@ public class PravegaCatalog extends AbstractCatalog {
 
     // put Json related options to properties
     private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors, String timestampFormat,
-                                      String mapNullKeyMode, String mapNullKeyLiteral) {
+                                      String mapNullKeyMode, String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
 
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
@@ -498,5 +500,8 @@ public class PravegaCatalog extends AbstractCatalog {
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
                 mapNullKeyLiteral);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER.key()),
+                encodeDecimalAsPlainNumber);
     }
 }
