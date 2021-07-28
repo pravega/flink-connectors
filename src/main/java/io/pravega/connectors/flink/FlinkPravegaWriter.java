@@ -448,6 +448,7 @@ public class FlinkPravegaWriter<T>
                 this.wait();
             }
         }
+
         checkWriteError();
     }
 

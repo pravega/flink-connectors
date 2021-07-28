@@ -124,7 +124,6 @@ public abstract class FlinkPravegaTableFactoryBase {
         properties.add(SCHEMA + ".#." + SCHEMA_DATA_TYPE);
         properties.add(SCHEMA + ".#." + SCHEMA_NAME);
         properties.add(SCHEMA + ".#." + SCHEMA_FROM);
-
         // computed column
         properties.add(SCHEMA + ".#." + EXPR);
 
