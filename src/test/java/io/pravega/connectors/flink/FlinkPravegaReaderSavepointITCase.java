@@ -46,6 +46,7 @@ import static org.junit.Assert.assertNotNull;
 /**
  * Integration tests for {@link FlinkPravegaReader} focused on savepoint integration.
  */
+@SuppressWarnings("checkstyle:StaticVariableName")
 @Slf4j
 public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
@@ -66,7 +67,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     //Ensure each test completes within 120 seconds.
     @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @Rule
     public final TemporaryFolder tmpFolder = new TemporaryFolder();

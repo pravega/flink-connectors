@@ -114,14 +114,14 @@ public class PravegaSource<T>
     @Override
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
         EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
-        Supplier<PravegaSplitReader<T>> splitReaderSupplier =
+        Supplier<PravegaSplitReader> splitReaderSupplier =
                 () ->
-                        new PravegaSplitReader<>(clientFactory,
-                                readerGroupName, deserializationSchema, readerContext.getIndexOfSubtask());
+                        new PravegaSplitReader(clientFactory,
+                                readerGroupName, readerContext.getIndexOfSubtask());
 
-        return new PravegaSourceReader<T>(
+        return new PravegaSourceReader<>(
                 splitReaderSupplier,
-                new PravegaRecordEmitter<>(),
+                new PravegaRecordEmitter<>(deserializationSchema),
                 new Configuration(),
                 readerContext);
     }

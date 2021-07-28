@@ -1,4 +1,4 @@
-/*
+/**
  * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink.source.split;
 
-import io.pravega.connectors.flink.source.split.PravegaSplit;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.InstantiationUtil;

@@ -18,7 +18,6 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
@@ -30,27 +29,27 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.ByteBuffer;
 
 /**
  * A {@link SplitReader} implementation that reads records from Pravega.
  *
  * <p>The returned type are in the format of {@code EventRead(record)}.
  *
- * @param <T> the type of the record to be emitted from the Source.
  */
-public class PravegaSplitReader<T>
-        implements SplitReader<EventRead<T>, PravegaSplit> {
+public class PravegaSplitReader
+        implements SplitReader<EventRead<ByteBuffer>, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSplitReader.class);
 
     /**
      * Reader that reads event from Pravega stream.
      */
-    private EventStreamReader<T> pravegaReader;
+    private EventStreamReader<ByteBuffer> pravegaReader;
 
     /**
      * Split that PravegaSplitReader reads.
      */
-    public PravegaSplit split;
+    private PravegaSplit split;
 
     /**
      * Flink config options.
@@ -68,11 +67,6 @@ public class PravegaSplitReader<T>
     private final String readerGroupName;
 
     /**
-     * The supplied event deserializer.
-     */
-    private final DeserializationSchema<T> deserializationSchema;
-
-    /**
      * The supplied event stream client factory from Source Reader.
      */
     private final EventStreamClientFactory eventStreamClientFactory;
@@ -80,26 +74,23 @@ public class PravegaSplitReader<T>
     public PravegaSplitReader(
             EventStreamClientFactory eventStreamClientFactory,
             String readerGroupName,
-            DeserializationSchema<T> deserializationSchema,
             int subtaskId) {
         this.subtaskId = subtaskId;
         this.options = new Configuration();
         this.readerGroupName = readerGroupName;
-        this.deserializationSchema = deserializationSchema;
         this.eventStreamClientFactory = eventStreamClientFactory;
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
-                deserializationSchema,
                 ReaderConfig.builder().build(),
                 eventStreamClientFactory);
     }
 
     @Override
-    public RecordsWithSplitIds<EventRead<T>> fetch() throws IOException {
+    public RecordsWithSplitIds<EventRead<ByteBuffer>> fetch() throws IOException {
         LOG.info("Call fetch");
-        RecordsBySplits.Builder<EventRead<T>> records = new RecordsBySplits.Builder<>();
-        EventRead<T> eventRead = null;
+        RecordsBySplits.Builder<EventRead<ByteBuffer>> records = new RecordsBySplits.Builder<>();
+        EventRead<ByteBuffer> eventRead = null;
         do {
             try {
                 eventRead = pravegaReader.readNextEvent(
@@ -111,7 +102,7 @@ public class PravegaSplitReader<T>
                 // When catching an IllegalStateException means pravegaReader is closed,
                 // indicating that wakeUp() was invoked upon a partial failure which we don't need
                 // so that we return an empty RecordsBySplits to stop fetching and not break the recovering.
-                return new RecordsBySplits.Builder<EventRead<T>>().build();
+                return new RecordsBySplits.Builder<EventRead<ByteBuffer>>().build();
             }
             records.add(split, eventRead);
         } while (eventRead != null && !eventRead.isCheckpoint() && eventRead.getEvent() != null);
@@ -137,7 +128,6 @@ public class PravegaSplitReader<T>
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
-                deserializationSchema,
                 ReaderConfig.builder().build(),
                 eventStreamClientFactory);
     }

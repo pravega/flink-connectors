@@ -36,6 +36,9 @@ import java.util.concurrent.TimeUnit;
 
 /** The enumerator class for Pravega source. */
 public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Checkpoint> {
+    /** Default thread pool size of the checkpoint scheduler */
+    private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
+
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSplitEnumerator.class);
     private final SplitEnumeratorContext<PravegaSplit> enumContext;
 
@@ -66,9 +69,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // Flag to indicate whether it's already in the recovering process
     // so that we don't throw multiple redundant exceptions.
     private boolean isRecovered;
-
-    /** Default thread pool size of the checkpoint scheduler */
-    private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
 
     // A long-lived thread pool for scheduling all checkpoint tasks
     private ScheduledExecutorService scheduledExecutorService;

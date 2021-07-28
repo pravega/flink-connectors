@@ -10,7 +10,6 @@
 
 package io.pravega.connectors.flink.source.split;
 
-import io.pravega.connectors.flink.source.split.PravegaSplit;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.InstantiationUtil;
 

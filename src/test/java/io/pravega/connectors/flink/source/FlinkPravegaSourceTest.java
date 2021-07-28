@@ -11,7 +11,13 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.stream.EventStreamWriter;
-import io.pravega.connectors.flink.utils.*;
+import io.pravega.connectors.flink.utils.FailingMapper;
+import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
+import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.NotifyingMapper;
+import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.SuccessException;
+import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
@@ -48,7 +54,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
 
     @Test
     public void testSource() throws Exception {
-        runTest(2,4,10000);
+        runTest(2, 4, 10000);
     }
 
     private static void runTest(

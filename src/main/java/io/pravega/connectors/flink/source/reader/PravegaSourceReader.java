@@ -26,26 +26,27 @@ import org.apache.flink.core.io.InputStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.ByteBuffer;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
 
 /**
- * An Pravega implementation of {@link SourceReader}
+ * An Pravega implementation of {@link SourceReader}.
  *
  * @param <T> The final element type to emit.
  */
-public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<T>, T, PravegaSplit, PravegaSplit>
+public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<ByteBuffer>, T, PravegaSplit, PravegaSplit>
         implements ExternallyInducedSourceReader<T, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSourceReader.class);
 
     private Optional<Long> checkpointId;
 
     private PravegaSourceReader(
-            FutureCompletingBlockingQueue<RecordsWithSplitIds<EventRead<T>>> elementsQueue,
-            Supplier<PravegaSplitReader<T>> splitReaderSupplier,
-            RecordEmitter<EventRead<T>, T, PravegaSplit> recordEmitter,
+            FutureCompletingBlockingQueue<RecordsWithSplitIds<EventRead<ByteBuffer>>> elementsQueue,
+            Supplier<PravegaSplitReader> splitReaderSupplier,
+            RecordEmitter<EventRead<ByteBuffer>, T, PravegaSplit> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
         super(elementsQueue, new PravegaFetcherManager<>(elementsQueue, splitReaderSupplier::get), recordEmitter, config, context);
@@ -53,8 +54,8 @@ public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<T>, T, Pr
     }
 
     public PravegaSourceReader(
-            Supplier<PravegaSplitReader<T>> splitReaderSupplier,
-            RecordEmitter<EventRead<T>, T, PravegaSplit> recordEmitter,
+            Supplier<PravegaSplitReader> splitReaderSupplier,
+            RecordEmitter<EventRead<ByteBuffer>, T, PravegaSplit> recordEmitter,
             Configuration config,
             SourceReaderContext context) {
         this(new FutureCompletingBlockingQueue<>(config.getInteger(SourceReaderOptions.ELEMENT_QUEUE_CAPACITY)),

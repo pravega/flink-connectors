@@ -208,7 +208,6 @@ public final class SetupUtils {
     }
 
     /**
->>>>>>> origin/master
      * Create the test stream.
      *
      * @param streamName     Name of the test stream.
