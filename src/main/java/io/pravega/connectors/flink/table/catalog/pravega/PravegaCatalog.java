@@ -27,7 +27,6 @@ import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.AbstractCatalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
@@ -38,6 +37,7 @@ import org.apache.flink.table.catalog.CatalogPartition;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
 import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ObjectPath;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.catalog.exceptions.CatalogException;
 import org.apache.flink.table.catalog.exceptions.DatabaseAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.DatabaseNotEmptyException;
@@ -88,8 +88,7 @@ public class PravegaCatalog extends AbstractCatalog {
         this.schemaRegistryUri = URI.create(schemaRegistryUri);
         this.config = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(this.schemaRegistryUri).build();
-        this.serializationFormat = serializationFormat == null ?
-                SerializationFormat.Avro : SerializationFormat.valueOf(serializationFormat);
+        this.serializationFormat = SerializationFormat.valueOf(serializationFormat);
 
         this.properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
@@ -272,7 +271,7 @@ public class PravegaCatalog extends AbstractCatalog {
         String stream = tablePath.getObjectName();
         changeRegistryNamespace(scope);
         SchemaInfo schemaInfo = schemaRegistryClient.getLatestSchemaVersion(stream, null).getSchemaInfo();
-        TableSchema tableSchema = PravegaSchemaUtils.schemaInfoToTableSchema(schemaInfo);
+        ResolvedSchema resolvedSchema = PravegaSchemaUtils.schemaInfoToResolvedSchema(schemaInfo);
 
         Map<String, String> properties = this.properties;
         properties.put(PravegaOptions.SCOPE.key(), scope);
@@ -291,7 +290,7 @@ public class PravegaCatalog extends AbstractCatalog {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.GROUP_ID.key()),
                 stream);
 
-        return new CatalogTableImpl(tableSchema, properties, "");
+        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
     }
 
     @Override
@@ -481,32 +480,23 @@ public class PravegaCatalog extends AbstractCatalog {
     }
 
     // put Json related options to properties
-    private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors,
-                                      String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
-        if (failOnMissingField != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
-                    failOnMissingField);
-        }
-        if (ignoreParseErrors != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
-                    ignoreParseErrors);
-        }
-        if (timestampFormat != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.TIMESTAMP_FORMAT.key()),
-                    timestampFormat);
-        }
-        if (mapNullKeyMode != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_MODE.key()),
-                    mapNullKeyMode);
-        }
-        if (mapNullKeyLiteral != null) {
-            properties.put(String.format("%s.%s",
-                    PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_LITERAL.key()),
-                    mapNullKeyLiteral);
-        }
+    private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors, String timestampFormat,
+                                      String mapNullKeyMode, String mapNullKeyLiteral) {
+
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
+                failOnMissingField);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.IGNORE_PARSE_ERRORS.key()),
+                ignoreParseErrors);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.TIMESTAMP_FORMAT.key()),
+                timestampFormat);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_MODE.key()),
+                mapNullKeyMode);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
+                mapNullKeyLiteral);
     }
 }

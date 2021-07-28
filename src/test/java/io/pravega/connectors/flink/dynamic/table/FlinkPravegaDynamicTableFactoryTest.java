@@ -27,12 +27,15 @@ import org.apache.flink.configuration.Configuration;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.table.api.DataTypes;
-import org.apache.flink.table.api.TableColumn;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.CatalogTableImpl;
+import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.catalog.ObjectIdentifier;
+import org.apache.flink.table.catalog.ResolvedCatalogTable;
+import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.catalog.WatermarkSpec;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -42,6 +45,7 @@ import org.apache.flink.table.connector.source.InputFormatProvider;
 import org.apache.flink.table.connector.source.ScanTableSource;
 import org.apache.flink.table.connector.source.SourceFunctionProvider;
 import org.apache.flink.table.data.RowData;
+import org.apache.flink.table.expressions.utils.ResolvedExpressionMock;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.TestFormatFactory;
 import org.apache.flink.table.runtime.connector.sink.SinkRuntimeProviderContext;
@@ -92,28 +96,47 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final long TIMEOUT_MILLIS = 2000L;
     private static final long LEASE_MILLIS = 60000L;
 
-    private static final TableSchema SOURCE_SCHEMA = TableSchema.builder()
-            .field(NAME, DataTypes.STRING())
-            .field(COUNT, DataTypes.DECIMAL(38, 18))
-            .field(TIME, DataTypes.TIMESTAMP(3))
-            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
-            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
-            .build();
+    private static final ResolvedSchema SOURCE_SCHEMA = new ResolvedSchema(
+            Arrays.asList(
+                    Column.physical(NAME, DataTypes.STRING()),
+                    Column.physical(COUNT, DataTypes.DECIMAL(38, 18)),
+                    Column.physical(TIME, DataTypes.TIMESTAMP(3)),
+                    Column.computed(
+                            COMPUTED_COLUMN_NAME,
+                            ResolvedExpressionMock.of(
+                                    COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION))),
+            Collections.singletonList(
+                    WatermarkSpec.of(
+                            TIME,
+                            ResolvedExpressionMock.of(
+                                    WATERMARK_DATATYPE, WATERMARK_EXPRESSION))),
+            null);
 
-    private static final TableSchema SOURCE_SCHEMA_WITH_METADATA = TableSchema.builder()
-            .field(NAME, DataTypes.STRING())
-            .field(COUNT, DataTypes.DECIMAL(38, 18))
-            .add(TableColumn.metadata(METADATA, DataTypes.BYTES(), true))
-            .field(TIME, DataTypes.TIMESTAMP(3))
-            .field(COMPUTED_COLUMN_NAME, COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION)
-            .watermark(TIME, WATERMARK_EXPRESSION, WATERMARK_DATATYPE)
-            .build();
+    private static final ResolvedSchema SOURCE_SCHEMA_WITH_METADATA = new ResolvedSchema(
+            Arrays.asList(
+                    Column.physical(NAME, DataTypes.STRING()),
+                    Column.physical(COUNT, DataTypes.DECIMAL(38, 18)),
+                    Column.physical(TIME, DataTypes.TIMESTAMP(3)),
+                    Column.metadata(METADATA, DataTypes.BYTES(), null, true),
+                    Column.computed(
+                            COMPUTED_COLUMN_NAME,
+                            ResolvedExpressionMock.of(
+                                    COMPUTED_COLUMN_DATATYPE, COMPUTED_COLUMN_EXPRESSION))),
+            Collections.singletonList(
+                    WatermarkSpec.of(
+                            TIME,
+                            ResolvedExpressionMock.of(
+                                    WATERMARK_DATATYPE, WATERMARK_EXPRESSION))),
+            null);
 
-    private static final TableSchema SINK_SCHEMA = TableSchema.builder()
-            .field(NAME, DataTypes.STRING())
-            .field(COUNT, DataTypes.DECIMAL(38, 18))
-            .field(TIME, DataTypes.TIMESTAMP(3))
-            .build();
+    private static final ResolvedSchema SINK_SCHEMA = new ResolvedSchema(
+            Arrays.asList(
+                    Column.physical(NAME, DataTypes.STRING()),
+                    Column.physical(COUNT, DataTypes.DECIMAL(38, 18)),
+                    Column.physical(TIME, DataTypes.TIMESTAMP(3))),
+            Collections.emptyList(),
+            null);
+
     @Rule
     public ExpectedException thrown = ExpectedException.none();
 
@@ -130,9 +153,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "default",
                 "scanTable");
         CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
         final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -160,7 +184,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     @Test
     public void testStreamingTableSourceWithMetadata() {
         // prepare parameters for Pravega table source
-        final DataType producedDataType = SOURCE_SCHEMA_WITH_METADATA.toRowDataType();
+        final DataType producedDataType = SOURCE_SCHEMA_WITH_METADATA.toPhysicalRowDataType();
         DecodingFormat<DeserializationSchema<RowData>> decodingFormat =
                 new TestFormatFactory.DecodingFormatMock(",", true);
 
@@ -170,9 +194,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "default",
                 "scanTable");
         CatalogTable catalogTable = createPravegaStreamingSourceCatalogTable();
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA_WITH_METADATA);
         final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -217,9 +242,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 getFullStreamingSourceOptions(),
                 options -> options.put("scan.reader-group.name", READER_GROUP));
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
         final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -284,9 +310,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "default",
                 "scanTable");
         CatalogTable catalogTable = createPravegaBatchSourceCatalogTable();
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
         final DynamicTableSource actualSource = FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -351,16 +378,17 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "default",
                 "sinkTable");
         final CatalogTable sinkTable = createPravegaSinkCatalogTable();
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(sinkTable, SINK_SCHEMA);
         final DynamicTableSink actualSink = FactoryUtil.createTableSink(
                 null,
                 objectIdentifier,
-                sinkTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
 
         final FlinkPravegaDynamicTableSink expectedSink = new FlinkPravegaDynamicTableSink(
-                TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
+                TableSchemaUtils.getPhysicalSchema(TableSchema.fromResolvedSchema(SINK_SCHEMA)),
                 encodingFormat,
                 getTestPravegaConfig(),
                 Stream.of(SCOPE, STREAM3),
@@ -384,16 +412,17 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 "default",
                 "sinkTable");
         final CatalogTable sinkTable = createPravegaSinkCatalogTable();
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(sinkTable, SINK_SCHEMA);
         final DynamicTableSink actualSink = FactoryUtil.createTableSink(
                 null,
                 objectIdentifier,
-                sinkTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
 
         final FlinkPravegaDynamicTableSink sink = new FlinkPravegaDynamicTableSink(
-                TableSchemaUtils.getPhysicalSchema(SINK_SCHEMA),
+                TableSchemaUtils.getPhysicalSchema(TableSchema.fromResolvedSchema(SINK_SCHEMA)),
                 encodingFormat,
                 getTestPravegaConfig(),
                 Stream.of(SCOPE, STREAM3),
@@ -427,13 +456,14 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.put("scan.execution.type", "abc");
                 });
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'scan.execution.type'. "
                 + "Supported values are ['streaming', 'batch'].")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -452,13 +482,14 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.put("scan.reader-group.max-outstanding-checkpoint-request", "-1");
                 });
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'scan.reader-group.max-outstanding-checkpoint-request'" +
                 " requires a positive integer, received -1")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -477,12 +508,13 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.remove("scan.streams");
                 });
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'scan.streams' is required but missing")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -502,13 +534,14 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.put("scan.end-streamcuts", "abc;def");
                 });
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Start stream cuts are not matching the number of streams," +
                 " having 1, expected 2")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -528,13 +561,14 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.put("scan.end-streamcuts", "abc");
                 });
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("End stream cuts are not matching the number of streams," +
                 " having 1, expected 2")));
         FactoryUtil.createTableSource(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -553,13 +587,14 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.put("sink.semantic", "abc");
                 });
         CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SINK_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'sink.semantic'. "
                 + "Supported values are ['at-least-once', 'exactly-once', 'best-effort'].")));
         FactoryUtil.createTableSink(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -578,12 +613,13 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                     options.remove("sink.stream");
                 });
         CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
+        ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SINK_SCHEMA);
 
         thrown.expect(ValidationException.class);
         thrown.expect(containsCause(new ValidationException("'sink.stream' is required but missing")));
         FactoryUtil.createTableSink(null,
                 objectIdentifier,
-                catalogTable,
+                resolvedCatalogTable,
                 new Configuration(),
                 Thread.currentThread().getContextClassLoader(),
                 false);
@@ -602,7 +638,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     private CatalogTable createPravegaSourceCatalogTable(Map<String, String> options) {
-        return new CatalogTableImpl(SOURCE_SCHEMA, options, "scanTable");
+        return new CatalogTableImpl(TableSchema.fromResolvedSchema(SOURCE_SCHEMA), options, "scanTable");
     }
 
     private CatalogTable createPravegaSinkCatalogTable() {
@@ -610,7 +646,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     }
 
     private CatalogTable createPravegaSinkCatalogTable(Map<String, String> options) {
-        return new CatalogTableImpl(SINK_SCHEMA, options, "sinkTable");
+        return new CatalogTableImpl(TableSchema.fromResolvedSchema(SINK_SCHEMA), options, "sinkTable");
     }
 
     private static Map<String, String> getModifiedOptions(

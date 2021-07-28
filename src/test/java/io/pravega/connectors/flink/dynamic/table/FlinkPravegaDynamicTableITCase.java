@@ -447,13 +447,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
          */
         List<String> expected =
                 Arrays.asList(
-                        "products,scooter,3.140",
-                        "products,car battery,8.100",
-                        "products,12-pack drill bits,0.800",
-                        "products,hammer,2.625",
-                        "products,rocks,5.100",
-                        "products,jacket,0.600",
-                        "products,spare tire,22.200");
+                        "+I[products, scooter, 3.140]",
+                        "+I[products, car battery, 8.100]",
+                        "+I[products, 12-pack drill bits, 0.800]",
+                        "+I[products, hammer, 2.625]",
+                        "+I[products, rocks, 5.100]",
+                        "+I[products, jacket, 0.600]",
+                        "+I[products, spare tire, 22.200]");
 
         waitingExpectedResults("sink", expected, Duration.ofSeconds(10));
 
