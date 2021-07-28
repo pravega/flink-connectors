@@ -40,7 +40,7 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
 
     /**
      * Creates a new Pravega Record Emitter instance.
-     * PravegaRecordEmitter turns {@link EventRead<ByteBuffer>} into {@link T}.
+     * PravegaRecordEmitter turns {@link EventRead} into {@link T}.
      *
      * @param deserializationSchema   The implementation to deserialize events from Pravega streams.
      */
@@ -67,6 +67,8 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
     /**
      * Invoked right after the Source Reader called {@code emitRecord} and the record is a checkpoint record.
      * The behavior is to return the checkpoint ID after reset it.
+     *
+     * @return checkpointId
      */
     public Optional<Long> getAndResetCheckpointId() {
         Optional<Long> chkPt = checkpointId;

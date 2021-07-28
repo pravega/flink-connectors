@@ -27,6 +27,9 @@ public class PravegaSplit implements SourceSplit, Serializable {
     /**
      * A Pravega Split instance represents an EventStreamReader, but with no operations and keep stateless.
      * To keep it serializable, we will not keep the reader inside.
+     *
+     * @param readerGroupName   The reader group name.
+     * @param subtaskId         The subtaskId of source reader.
      */
     public PravegaSplit(String readerGroupName, int subtaskId) {
         this.readerGroupName = readerGroupName;

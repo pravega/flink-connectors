@@ -185,6 +185,7 @@ public class PravegaSource<T>
     /**
      * Gets a builder for {@link PravegaSource} to read Pravega streams using the Flink streaming API.
      * @param <T> the element type.
+     * @return A new builder of {@link PravegaSource}
      */
     public static <T> Builder<T> builder() {
         return new Builder<>();
@@ -246,6 +247,7 @@ public class PravegaSource<T>
         /**
          * Builds a {@link PravegaSource} based on the configuration.
          * @throws IllegalStateException if the configuration is invalid.
+         * @return A new {@link PravegaSource} instance.
          */
         public PravegaSource<T> build() {
             PravegaSource<T> source = buildSource();
