@@ -37,26 +37,24 @@ supported versions of Flink and Pravega.
 | [r0.9-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)   | 0.9  | Java 11 | Java 8 or 11 | 1.10 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.10_2.12/0.9.1/    |
 | [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)     | 0.9  | Java 11 | Java 8 or 11 | 1.9  | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.9_2.12/0.9.1/     |
 
-## How to build and use
+## How to build
 Building the connectors from the source is only necessary when we want to use or contribute to the latest (unreleased) version of the Pravega Flink connectors.
 
 The connector project is linked to a specific version of Pravega, based on the `pravegaVersion` field in `gradle.properties`. 
 
 Checkout the source code repository by following below steps:
 
-`git clone https://github.com/pravega/flink-connectors.git`
+```git clone https://github.com/pravega/flink-connectors.git```
 
-After cloning the repository, the project can be built by running the below command in the project root directory flink-connectors.
+After cloning the repository, the project can be built (excluding tests) by running the below command in the project root directory flink-connectors.
 
-`./gradlew clean build`
+```./gradlew clean build -x test```
 
-To install the artifacts in the project root directory, run the following command:
+## How to use
 
-`./gradlew clean install`
+Check out documents [here](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/dev-guide.md) to learn how to build your own applications using Flink connector for Pravega.
 
-To learn more about how to build and use the Flink Connector library, check out project Wiki [here](https://github.com/pravega/flink-connectors/wiki).
-
-More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples) repository.
+More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples/tree/master/flink-connector-examples) repository.
 
 ## Support
 
