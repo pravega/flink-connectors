@@ -91,6 +91,20 @@ public class PravegaSource<T>
     // flag to enable/disable metrics
     final boolean enableMetrics;
 
+    /**
+     * Creates a new Pravega Source instance which can be added as a source to a Flink job.
+     * It manages a reader group with a builder style constructor with user provided ReaderGroupConfig.
+     * We can use {@link AbstractStreamingReaderBuilder} to build such a source.
+     *
+     * @param clientConfig              The Pravega client configuration.
+     * @param readerGroupConfig         The Pravega reader group configuration.
+     * @param scope                     The reader group scope name.
+     * @param readerGroupName           The reader group name.
+     * @param deserializationSchema     The implementation to deserialize events from Pravega streams.
+     * @param eventReadTimeout          The event read timeout.
+     * @param checkpointInitiateTimeout The checkpoint initiation timeout.
+     * @param enableMetrics             Flag to indicate whether metrics needs to be enabled or not.
+     */
     public PravegaSource(ClientConfig clientConfig,
                          ReaderGroupConfig readerGroupConfig, String scope, String readerGroupName,
                          DeserializationSchema<T> deserializationSchema,

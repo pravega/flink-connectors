@@ -73,6 +73,19 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // A long-lived thread pool for scheduling all checkpoint tasks
     private ScheduledExecutorService scheduledExecutorService;
 
+    /**
+     * Creates a new Pravega Split Enumerator instance which can connect to a
+     * Pravega reader group with the pravega stream.
+     * The Enumerator is a single instance on Flink jobmanager. It is the "brain" of the source to initialize
+     * the reader group when it starts, then discover and assign the subtasks.
+     *
+     * @param context              The Pravega Split Enumeratior context.
+     * @param scope                The reader group scope name.
+     * @param readerGroupName      The reader group name.
+     * @param clientConfig         The Pravega client configuration.
+     * @param readerGroupConfig    The Pravega reader group configuration.
+     * @param checkpoint           The Pravega checkpoint.
+     */
     public PravegaSplitEnumerator(
             SplitEnumeratorContext<PravegaSplit> context,
             String scope,
@@ -93,6 +106,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         this.scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
 
+    // initiate reader group manager, reader group and reset the group to the checkpoint position if checkpoint isn't null
     @Override
     public void start() {
         LOG.info("Starting the PravegaSplitEnumerator for reader group: {}/{}.", this.scope, this.readerGroupName);
@@ -121,6 +135,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         // the Pravega source pushes splits eagerly, rather than act upon split requests
     }
 
+    // check with the current parallelism and update the assignment (always one-to-one mapping)
     @Override
     public void addReader(int subtaskId) {
         if (enumContext.registeredReaders().size() == enumContext.currentParallelism() && splits.size() > 0) {
@@ -138,6 +153,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         }
     }
 
+    // deal with the data recovery, it will call readerGroup::initiateCheckpoint to get a checkpoint for recovery.
+    // this call will be handled in another thread pool instead of the split enumerator thread.
     @Override
     public Checkpoint snapshotState(long chkPtID) throws Exception {
         final String checkpointName = createCheckpointName(chkPtID);
@@ -161,12 +178,14 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         readerGroupManager.close();
     }
 
+    // This method is called when it tries to "regionally" recover from a failure to assign unassigned splits. We will
+    // throw an intentional exception here to trigger a global recovery since Pravega since Pravega
+    // doesn't have a mechanism to recover from partial failure. This will shutdown the reader group,
+    // recreate it and recover it from the latest checkpoint.
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
         LOG.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
 
-        // Trigger a global failure to restore from instead of a partial failure
-        // since Pravega doesn't have a mechanism to recover from partial failure
         if (!isRecovered) {
             isRecovered = true;
             throw new RuntimeException("triggering global failure");

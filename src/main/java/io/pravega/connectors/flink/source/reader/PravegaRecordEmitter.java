@@ -38,6 +38,12 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
     // checkpoint ID of the latest record if record is a checkpoint record
     private Optional<Long> checkpointId;
 
+    /**
+     * Creates a new Pravega Record Emitter instance.
+     * PravegaRecordEmitter turns {@link EventRead<ByteBuffer>} into {@link T}.
+     *
+     * @param deserializationSchema   The implementation to deserialize events from Pravega streams.
+     */
     public PravegaRecordEmitter(DeserializationSchema<T> deserializationSchema) {
         checkpointId = Optional.empty();
         this.collector = new SimpleCollector<>();

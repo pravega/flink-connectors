@@ -14,13 +14,20 @@ import org.apache.flink.api.connector.source.SourceSplit;
 
 import java.io.Serializable;
 
-
+/**
+ * A {@link SourceSplit} implementation.
+ *
+ */
 public class PravegaSplit implements SourceSplit, Serializable {
 
     private static final String PREFIX = "flink-reader";
     private int subtaskId;
     private String readerGroupName;
 
+    /**
+     * A Pravega Split instance represents an EventStreamReader, but with no operations and keep stateless.
+     * To keep it serializable, we will not keep the reader inside.
+     */
     public PravegaSplit(String readerGroupName, int subtaskId) {
         this.readerGroupName = readerGroupName;
         this.subtaskId = subtaskId;
@@ -36,6 +43,7 @@ public class PravegaSplit implements SourceSplit, Serializable {
 
     @Override
     public String splitId() {
+        // the splitId will be the Pravega reader Id.
         return splitId(subtaskId);
     }
 

@@ -53,6 +53,19 @@ public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<ByteBuffe
         checkpointId = Optional.empty();
     }
 
+    /**
+     * Creates a new Pravega Source Reader instance.
+     * The PravegaSourceReader has a default recommended Flink implementation {@link SourceReaderBase}.
+     * It constructs with three major components, {@link PravegaSplitReader}, {@link PravegaFetcherManager}
+     * and {@link PravegaRecordEmitter}.
+     * Each reader will have a single threaded fetcher which will supply the split reader and assign all the splits
+     * assigned by the enumerator to it.
+     *
+     * @param splitReaderSupplier   The Pravega split reader supplier.
+     * @param recordEmitter         The Pravega Source reader record emitter.
+     * @param config                The Flink configuration.
+     * @param context               The Pravega Source reader context.
+     */
     public PravegaSourceReader(
             Supplier<PravegaSplitReader> splitReaderSupplier,
             RecordEmitter<EventRead<ByteBuffer>, T, PravegaSplit> recordEmitter,

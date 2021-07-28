@@ -71,6 +71,14 @@ public class PravegaSplitReader
      */
     private final EventStreamClientFactory eventStreamClientFactory;
 
+    /**
+     * Creates a new Pravega Split Reader instance which can read event from Pravega stream.
+     * The Pravega Split Reader is actually an instance of a {@link EventStreamReader}.
+     *
+     * @param eventStreamClientFactory          The event stream client factory from Source Reader.
+     * @param readerGroupName                   The reader group name.
+     * @param subtaskId                         The subtaskId of source reader.
+     */
     public PravegaSplitReader(
             EventStreamClientFactory eventStreamClientFactory,
             String readerGroupName,
@@ -86,6 +94,7 @@ public class PravegaSplitReader
                 eventStreamClientFactory);
     }
 
+    // read one or more event from an EventStreamReader
     @Override
     public RecordsWithSplitIds<EventRead<ByteBuffer>> fetch() throws IOException {
         LOG.info("Call fetch");
@@ -109,6 +118,7 @@ public class PravegaSplitReader
         return records.build();
     }
 
+    // get the assigned split
     @Override
     public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
         LOG.info("Call handleSplitsChanges");
