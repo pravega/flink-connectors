@@ -341,7 +341,7 @@ public class FlinkPravegaReader<T>
         while ((event = pravegaCollector.getRecords().poll()) != null) {
             synchronized (ctx.getCheckpointLock()) {
                 if (isEventTimeMode()) {
-                    assert assigner != null;  // assigner won't be null in event time mode
+                    assert assigner != null;  // assigner won't be null in the event time mode
                     long currentTimestamp = assigner.extractTimestamp(event, previousTimestamp);
                     ctx.collectWithTimestamp(event, currentTimestamp);
                     previousTimestamp = currentTimestamp;
@@ -659,7 +659,7 @@ public class FlinkPravegaReader<T>
      * Create the {@link EventStreamReader} for the current configuration. <p>
      *
      * The reader will output raw ByteBuffer rather than the deserialized T.
-     * See {@link emitEvent} for the decoding process.
+     * See {@link #emitEvent} for the decoding process.
      * To customize the process, overwrite {@link PravegaDeserializationSchemaWithMetadata}.
      *
      * @param readerId the readerID to use.
