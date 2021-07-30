@@ -99,7 +99,7 @@ public class PravegaCatalog extends AbstractCatalog {
                 String.format(
                         "%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
-        schemaRegistryUri);
+                schemaRegistryUri);
 
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
@@ -175,7 +175,6 @@ public class PravegaCatalog extends AbstractCatalog {
                 .filter(s -> !s.startsWith("_"))
                 .collect(Collectors.toList());
 
-        log.info("aaa: {}", databaseList);
         return databaseList;
     }
 
@@ -251,9 +250,9 @@ public class PravegaCatalog extends AbstractCatalog {
 
         return StreamSupport
                 .stream(iterable.spliterator(), false)
-                .map(s -> s.getStreamName())
+                .map(Stream::getStreamName)
                 .filter(s -> !s.startsWith("_"))
-                .filter(s -> groupSet.contains(s))
+                .filter(groupSet::contains)
                 .collect(Collectors.toList());
     }
 
@@ -349,7 +348,8 @@ public class PravegaCatalog extends AbstractCatalog {
                 Compatibility.allowAny(),
                 true));
 
-        SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(table.getSchema(), serializationFormat);
+        SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(
+                table.getSchema(), serializationFormat);
         schemaRegistryClient.addSchema(stream, schemaInfo);
     }
 

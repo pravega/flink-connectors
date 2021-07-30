@@ -14,6 +14,8 @@ import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.serializer.shared.credentials.PravegaCredentialProvider;
 import org.apache.flink.util.Preconditions;
 
+import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLoadDynamic;
+
 public class SchemaRegistryUtils {
 
     /**
@@ -30,9 +32,18 @@ public class SchemaRegistryUtils {
                 .schemaRegistryUri(pravegaConfig.getSchemaRegistryUri());
 
         if (pravegaConfig.getCredentials() != null) {
-            builder.authentication(pravegaConfig.getCredentials().getAuthenticationType(), pravegaConfig.getCredentials().getAuthenticationToken());
+            // basic credential
+            builder.authentication(
+                    pravegaConfig.getCredentials().getAuthenticationType(),
+                    pravegaConfig.getCredentials().getAuthenticationToken()
+            );
         } else {
-            builder.authentication(new PravegaCredentialProvider(pravegaConfig.getClientConfig()));
+            if (isCredentialsLoadDynamic()) {
+                // dynamic credential, e.g. Keycloak
+                builder.authentication(new PravegaCredentialProvider(pravegaConfig.getClientConfig()));
+            } else {
+                // no credential
+            }
         }
 
         return builder.build();
