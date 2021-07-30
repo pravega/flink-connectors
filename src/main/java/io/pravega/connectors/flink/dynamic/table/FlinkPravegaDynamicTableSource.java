@@ -140,7 +140,8 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource {
 
             return SourceFunctionProvider.of(readerBuilder.build(), isBounded);
         } else {
-            FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
+            FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder =
+                    FlinkPravegaInputFormat.<RowData>builder()
                     .withPravegaConfig(pravegaConfig)
                     .withDeserializationSchema(decodingFormat.createRuntimeDecoder(runtimeProviderContext, producedDataType));
 
