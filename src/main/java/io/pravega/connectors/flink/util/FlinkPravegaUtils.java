@@ -135,7 +135,8 @@ public class FlinkPravegaUtils {
         @SneakyThrows
         public T deserialize(ByteBuffer buffer) {
             byte[] array;
-            if (buffer.hasArray() && buffer.arrayOffset() == 0 && buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
+            if (buffer.hasArray() && buffer.arrayOffset() == 0 &&
+                    buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
                 array = buffer.array();
             } else {
                 array = new byte[buffer.remaining()];

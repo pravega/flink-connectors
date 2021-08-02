@@ -202,9 +202,10 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
 
             return SourceFunctionProvider.of(readerBuilder.build(), isBounded);
         } else {
-            FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder = FlinkPravegaInputFormat.<RowData>builder()
-                    .withPravegaConfig(pravegaConfig)
-                    .withDeserializationSchema(deserializationSchema);
+            FlinkPravegaInputFormat.Builder<RowData> inputFormatBuilder =
+                    FlinkPravegaInputFormat.<RowData>builder()
+                            .withPravegaConfig(pravegaConfig)
+                            .withDeserializationSchema(deserializationSchema);
 
             for (StreamWithBoundaries stream : streams) {
                 inputFormatBuilder.forStream(stream.getStream(), stream.getFrom(), stream.getTo());
