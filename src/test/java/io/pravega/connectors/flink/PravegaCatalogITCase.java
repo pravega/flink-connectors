@@ -288,7 +288,7 @@ public class PravegaCatalogITCase {
         CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 "Avro", "false", "false",
-                "SQL", "FAIL", "null");
+                "SQL", "FAIL", "null", "false");
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();

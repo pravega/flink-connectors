@@ -41,6 +41,7 @@ public class PravegaCatalogFactoryOptions {
     public static final ConfigOption<String> JSON_TIMESTAMP_FORMAT = JsonOptions.TIMESTAMP_FORMAT;
     public static final ConfigOption<String> JSON_MAP_NULL_KEY_MODE = JsonOptions.MAP_NULL_KEY_MODE;
     public static final ConfigOption<String> JSON_MAP_NULL_KEY_LITERAL = JsonOptions.MAP_NULL_KEY_LITERAL;
+    public static final ConfigOption<Boolean> ENCODE_DECIMAL_AS_PLAIN_NUMBER = JsonOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER;
 
     private PravegaCatalogFactoryOptions() {}
 }

@@ -54,6 +54,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
         options.add(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT);
         options.add(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE);
         options.add(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL);
+        options.add(PravegaCatalogFactoryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         return options;
     }
 
@@ -80,6 +81,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
                 delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).toString(),
                 delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT),
                 delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL));
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL),
+                delegatingConfiguration.get(PravegaCatalogFactoryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER).toString());
     }
 }

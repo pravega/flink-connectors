@@ -33,6 +33,7 @@ import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.formats.json.RowDataToJsonConverters;
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
@@ -102,6 +103,9 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     /** The string literal when handling mode for map null key LITERAL. is */
     private final String mapNullKeyLiteral;
 
+    /** Flag indicating whether to serialize all decimals as plain numbers. */
+    private final boolean encodeDecimalAsPlainNumber;
+
     public PravegaRegistryRowDataSerializationSchema(
             RowType rowType,
             String namespace,
@@ -110,7 +114,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
             SerializationFormat serializationFormat,
             TimestampFormat timestampOption,
             JsonOptions.MapNullKeyMode mapNullKeyMode,
-            String mapNullKeyLiteral) {
+            String mapNullKeyLiteral,
+            boolean encodeDecimalAsPlainNumber) {
         this.rowType = rowType;
         this.serializer = null;
         this.namespace = namespace;
@@ -120,6 +125,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         this.timestampFormat = timestampOption;
         this.mapNullKeyMode = mapNullKeyMode;
         this.mapNullKeyLiteral = mapNullKeyLiteral;
+        this.encodeDecimalAsPlainNumber = encodeDecimalAsPlainNumber;
     }
 
     @SuppressWarnings("unchecked")
@@ -183,7 +189,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         RowDataToJsonConverters.RowDataToJsonConverter runtimeConverter = new RowDataToJsonConverters(
                 timestampFormat, mapNullKeyMode, mapNullKeyLiteral)
                 .createConverter(rowType);
-        ObjectMapper mapper = new ObjectMapper();
+        ObjectMapper mapper = new ObjectMapper().configure(
+                JsonGenerator.Feature.WRITE_BIGDECIMAL_AS_PLAIN, encodeDecimalAsPlainNumber);
         ObjectNode node = mapper.createObjectNode();
         return runtimeConverter.convert(mapper, node, row);
     }
@@ -221,12 +228,13 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) &&
                 Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
                 serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat &&
-                mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral);
+                mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral)
+                && encodeDecimalAsPlainNumber == that.encodeDecimalAsPlainNumber;
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(rowType, namespace, groupId, schemaRegistryURI, serializationFormat,
-                timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
+                timestampFormat, mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
     }
 }
