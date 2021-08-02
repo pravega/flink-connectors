@@ -41,7 +41,7 @@ To add the Pravega connector dependencies to your project, add the following ent
 ```
 
 Use appropriate version as necessary. `1.9` is the Flink Major-Minor version. `2.12` is the Scala version. `0.6.0` is the Pravega version.
-The snapshot versions are published to [`jcenter`](https://oss.jfrog.org/artifactory/jfrog-dependencies/io/pravega/) repository and the release artifacts are available in [`Maven Central`](https://mvnrepository.com/artifact/io.pravega/pravega-connectors-flink) repository.
+The snapshot versions are published to [`GitHub Packages`](https://github.com/orgs/pravega/packages) repository and the release artifacts are available in [`Maven Central`](https://mvnrepository.com/artifact/io.pravega/pravega-connectors-flink) repository.
 
 Alternatively, we could build and publish the connector artifacts to local maven repository by executing the following command and make use of that version as your application dependency.
 
