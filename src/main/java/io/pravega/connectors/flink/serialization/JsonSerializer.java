@@ -21,7 +21,7 @@ public class JsonSerializer<T> implements Serializer<T>, Serializable {
 
     /** Object mapper for parsing the JSON. */
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private Class<T> valueType;
+    private final Class<T> valueType;
 
     public JsonSerializer(Class<T> valueType) {
         this.valueType = valueType;

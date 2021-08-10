@@ -38,7 +38,7 @@ public class PravegaOptions {
     // Connection specific options
     // --------------------------------------------------------------------------------------------
 
-    public static final ConfigOption<String> CONTROLLER_URL = ConfigOptions
+    public static final ConfigOption<String> CONTROLLER_URI = ConfigOptions
             .key("controller-uri")
             .stringType()
             .noDefaultValue()
@@ -209,7 +209,7 @@ public class PravegaOptions {
         validateScanExecutionType(tableOptions);
         validateSourceStreams(tableOptions);
         if (tableOptions.get(SCAN_EXECUTION_TYPE).equals(SCAN_EXECUTION_TYPE_VALUE_STREAMING)) {
-            validateReaderGroup(tableOptions);
+            validateReaderGroupConfig(tableOptions);
         }
     }
 
@@ -251,14 +251,7 @@ public class PravegaOptions {
         });
     }
 
-    private static void validateReaderGroup(ReadableConfig tableOptions) {
-        Optional<String> readerGroupName = tableOptions.getOptional(SCAN_READER_GROUP_NAME);
-        if (!readerGroupName.isPresent()) {
-            throw new ValidationException(String.format("'%s' is required but missing", SCAN_READER_GROUP_NAME.key()));
-        } else {
-            NameUtils.validateReaderGroupName(readerGroupName.get());
-        }
-
+    private static void validateReaderGroupConfig(ReadableConfig tableOptions) {
         tableOptions.getOptional(SCAN_READER_GROUP_MAX_OUTSTANDING_CHECKPOINT_REQUEST).ifPresent(num -> {
             if (num < 1) {
                 throw new ValidationException(String.format("'%s' requires a positive integer, received %d",
@@ -291,7 +284,7 @@ public class PravegaOptions {
 
     public static PravegaConfig getPravegaConfig(ReadableConfig tableOptions) {
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(URI.create(tableOptions.get(CONTROLLER_URL)))
+                .withControllerURI(URI.create(tableOptions.get(CONTROLLER_URI)))
                 .withDefaultScope(tableOptions.get(SCOPE))
                 .withHostnameValidation(tableOptions.get(SECURITY_VALIDATE_HOSTNAME))
                 .withTrustStore(tableOptions.get(SECURITY_TRUST_STORE));
@@ -315,8 +308,8 @@ public class PravegaOptions {
         return tableOptions.get(SCAN_READER_GROUP_NAME);
     }
 
-    public static Optional<String> getUid(ReadableConfig tableOptions) {
-        return tableOptions.getOptional(SCAN_UID);
+    public static String getUid(ReadableConfig tableOptions) {
+        return tableOptions.get(SCAN_UID);
     }
 
     public static long getReaderGroupRefreshTimeMillis(ReadableConfig tableOptions) {
@@ -388,7 +381,7 @@ public class PravegaOptions {
         return tableOptions.get(SINK_ENABLE_WATERMARK_PROPAGATION);
     }
 
-    public static Optional<String> getRoutingKeyField(ReadableConfig tableOptions) {
-        return tableOptions.getOptional(SINK_ROUTINGKEY_FIELD_NAME);
+    public static String getRoutingKeyField(ReadableConfig tableOptions) {
+        return tableOptions.get(SINK_ROUTINGKEY_FIELD_NAME);
     }
 }

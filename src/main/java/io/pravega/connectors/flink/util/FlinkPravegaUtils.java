@@ -13,19 +13,20 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.impl.ByteBufferSerializer;
 import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
-import io.pravega.connectors.flink.serialization.WrappingSerializer;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.shared.security.auth.Credentials;
 import lombok.SneakyThrows;
-
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
-import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.util.Preconditions;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -90,30 +91,26 @@ public class FlinkPravegaUtils {
     }
 
     /**
-     * Creates a Pravga {@link EventStreamReader}.
+     * Creates a Pravega {@link EventStreamReader}. <p>
+     *
+     * Instead of directly returns T, it returns ByteBuffer so that the
+     * additional information can be extracted from the event.
+     * To manipulate metadata, overwrite the
+     * {@link PravegaDeserializationSchemaWithMetadata}.
      *
      * @param readerId The id of the Pravega reader.
      * @param readerGroupName The reader group name.
-     * @param deserializationSchema The implementation to deserialize events from pravega streams.
      * @param readerConfig The reader configuration.
      * @param eventStreamClientFactory The eventStreamClientFactory used to create the EventStreamReader
      * @param <T> The type of the event.
      * @return the create Pravega reader.
      */
-    public static <T> EventStreamReader<T> createPravegaReader(
+    public static <T> EventStreamReader<ByteBuffer> createPravegaReader(
             String readerId,
             String readerGroupName,
-            DeserializationSchema<T> deserializationSchema,
             ReaderConfig readerConfig,
             EventStreamClientFactory eventStreamClientFactory) {
-
-        // create the adapter between Pravega's serializers and Flink's serializers
-        @SuppressWarnings("unchecked")
-        final Serializer<T> deserializer = deserializationSchema instanceof WrappingSerializer
-                ? ((WrappingSerializer<T>) deserializationSchema).getWrappedSerializer()
-                : new FlinkDeserializer<>(deserializationSchema);
-
-        return eventStreamClientFactory.createReader(readerId, readerGroupName, deserializer, readerConfig);
+        return eventStreamClientFactory.createReader(readerId, readerGroupName, new ByteBufferSerializer(), readerConfig);
     }
 
     /**
@@ -121,7 +118,7 @@ public class FlinkPravegaUtils {
      *
      * @param <T> The type of the event.
      */
-    public static final class FlinkDeserializer<T> implements Serializer<T> {
+    public static final class FlinkDeserializer<T> implements Serializer<T>, Serializable {
 
         private final DeserializationSchema<T> deserializationSchema;
 
@@ -138,7 +135,8 @@ public class FlinkPravegaUtils {
         @SneakyThrows
         public T deserialize(ByteBuffer buffer) {
             byte[] array;
-            if (buffer.hasArray() && buffer.arrayOffset() == 0 && buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
+            if (buffer.hasArray() && buffer.arrayOffset() == 0 &&
+                    buffer.position() == 0 && buffer.limit() == buffer.capacity()) {
                 array = buffer.array();
             } else {
                 array = new byte[buffer.remaining()];
@@ -190,5 +188,15 @@ public class FlinkPravegaUtils {
     public static boolean isCredentialsLoadDynamic() {
         return System.getProperties().contains(AUTH_PARAM_LOAD_DYNAMIC) && Boolean.parseBoolean(System.getProperty(AUTH_PARAM_LOAD_DYNAMIC)) ||
                 System.getenv().containsKey(AUTH_PARAM_LOAD_DYNAMIC_ENV) && Boolean.parseBoolean(System.getenv(AUTH_PARAM_LOAD_DYNAMIC_ENV));
+    }
+
+    public static byte[] byteBufferToArray(ByteBuffer buf) {
+        if (buf.hasArray() && buf.arrayOffset() == 0 && buf.position() == 0 && buf.limit() == buf.capacity()) {
+            return buf.array();
+        } else {
+            byte[] bytes = new byte[buf.remaining()];
+            buf.get(bytes);
+            return bytes;
+        }
     }
 }
