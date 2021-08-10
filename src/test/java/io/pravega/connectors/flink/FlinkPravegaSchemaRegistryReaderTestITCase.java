@@ -13,17 +13,15 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.SpecificRecordTestClass;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.AvroRuntimeException;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.avro.specific.SpecificRecord;
-import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -53,62 +51,13 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         }
     }
 
-    @SuppressWarnings("checkstyle:ConstantName")
-    public static class SpecificRecordTestClass extends SpecificRecordBase implements SpecificRecord {
-        public static final Schema SCHEMA$ = new Schema.Parser().parse(
-                "{\"type\":\"record\",\"name\":\"SpecificRecordTestClass\"," +
-                "\"namespace\":\"io.pravega.connectors.flink.FlinkPravegaSchemaRegistryReaderTestITCase\"," +
-                "\"fields\":[{\"name\":\"a\",\"type\":\"string\"}]}");
-
-        private CharSequence a;
-
-        public SpecificRecordTestClass() {}
-
-        public SpecificRecordTestClass(CharSequence a) {
-            this.a = a;
-        }
-
-        @Override
-        public Schema getSchema() {
-            return SCHEMA$;
-        }
-
-        @Override
-        public Object get(int field) {
-            if (field == 0) {
-                return a;
-            }
-            throw new AvroRuntimeException("Bad index");
-        }
-
-        @Override
-        public void put(int field, Object value) {
-            if (field == 0) {
-                this.a = (CharSequence) value;
-            } else {
-                throw new AvroRuntimeException("Bad index");
-            }
-        }
-
-        public CharSequence getA() {
-            return a;
-        }
-
-        public void setA(CharSequence a) {
-            this.a = a;
-        }
-    }
-
     // Setup utility.
     protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     protected static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static final Schema SCHEMA = new Schema.Parser().parse(
-            "{\"type\":\"record\",\"name\":\"SpecificRecordTestClass\"," +
-            "\"namespace\":\"io.pravega.connectors.flink.FlinkPravegaSchemaRegistryReaderTestITCase\"," +
-            "\"fields\":[{\"name\":\"a\",\"type\":\"string\"}]}");
+    private static final Schema SCHEMA = SpecificRecordTestClass.SCHEMA$;
     private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("a", "test").build();
     private static final MyTest JSON_EVENT = new MyTest("test");
 
