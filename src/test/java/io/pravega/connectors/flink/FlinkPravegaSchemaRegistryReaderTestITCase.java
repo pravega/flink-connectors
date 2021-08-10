@@ -13,8 +13,8 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import io.pravega.connectors.flink.utils.SpecificRecordTestClass;
 import io.pravega.connectors.flink.utils.SuccessException;
+import io.pravega.connectors.flink.utils.User;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
@@ -57,8 +57,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     protected static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
-    private static final Schema SCHEMA = SpecificRecordTestClass.SCHEMA$;
-    private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("a", "test").build();
+    private static final Schema SCHEMA = User.SCHEMA$;
+    private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("name", "test").build();
     private static final MyTest JSON_EVENT = new MyTest("test");
 
     //Ensure each test completes within 180 seconds.
@@ -94,7 +94,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
             @Override
             public void invoke(GenericRecord value, Context context) throws Exception {
                 if (true) {
-                    System.out.println(value.get("a"));
+                    System.out.println(value.get("name"));
                     throw new SuccessException();
                 }
             }
@@ -115,18 +115,18 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         prepareAvroStream(streamName, AvroSchema.of(SCHEMA));
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
-        FlinkPravegaReader<SpecificRecordTestClass> reader = FlinkPravegaReader.<SpecificRecordTestClass>builder()
+        FlinkPravegaReader<User> reader = FlinkPravegaReader.<User>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
-                .withDeserializationSchemaFromRegistry(streamName, SpecificRecordTestClass.class)
+                .withDeserializationSchemaFromRegistry(streamName, User.class)
                 .build();
 
-        env.addSource(reader).addSink(new SinkFunction<SpecificRecordTestClass>() {
+        env.addSource(reader).addSink(new SinkFunction<User>() {
             @Override
-            public void invoke(SpecificRecordTestClass value, Context context) throws Exception {
+            public void invoke(User value, Context context) throws Exception {
                 if (true) {
-                    System.out.println(value.get("a"));
+                    System.out.println(value.get("name"));
                     throw new SuccessException();
                 }
             }

@@ -17,8 +17,8 @@
  {
    "namespace": "io.pravega.connectors.flink.utils",
    "type": "record",
-   "name": "SpecificRecordTestClass",
+   "name": "User",
    "fields": [
-       {"name": "a", "type": "string"}
+       {"name": "name", "type": "string"}
    ]
  }
