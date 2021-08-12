@@ -20,10 +20,10 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.impl.CheckpointImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.runtime.concurrent.Executors;
-import org.apache.flink.shaded.guava18.com.google.common.collect.ImmutableMap;
+import org.apache.flink.util.concurrent.Executors;
 import org.junit.Test;
 
+import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
@@ -118,9 +118,10 @@ public class ReaderCheckpointHookTest {
         CheckpointImpl checkpointImpl = mock(CheckpointImpl.class);
 
         when(checkpoint.asImpl()).thenReturn(checkpointImpl);
-        when(checkpointImpl.getPositions()).thenReturn(ImmutableMap.<Stream, StreamCut>builder()
-                .put(Stream.of(SCOPE, "s1"), getStreamCut("s1"))
-                .put(Stream.of(SCOPE, "s2"), getStreamCut("s2")).build());
+        when(checkpointImpl.getPositions()).thenReturn(new HashMap<Stream, StreamCut>() {{
+            put(Stream.of(SCOPE, "s1"), getStreamCut("s1"));
+            put(Stream.of(SCOPE, "s2"), getStreamCut("s2"));
+        }});
 
         ReaderGroupConfig readerGroupConfig = ReaderGroupConfig.builder()
                 .disableAutomaticCheckpoints()
@@ -173,8 +174,8 @@ public class ReaderCheckpointHookTest {
     }
 
     private StreamCut getStreamCut(String streamName, long offset) {
-        ImmutableMap<Segment, Long> positions = ImmutableMap.<Segment, Long>builder().put(new Segment(SCOPE,
-                streamName, 0), offset).build();
+        HashMap<Segment, Long> positions = new HashMap<>();
+        positions.put(new Segment(SCOPE, streamName, 0), offset);
         return new StreamCutImpl(Stream.of(SCOPE, streamName), positions);
     }
 }

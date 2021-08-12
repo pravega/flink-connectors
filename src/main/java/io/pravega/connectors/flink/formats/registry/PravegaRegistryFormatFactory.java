@@ -17,7 +17,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
+import org.apache.flink.formats.json.JsonFormatOptionsUtil;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -54,7 +55,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
 
         final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
         final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
-        TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
+        TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -92,9 +93,9 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         final SerializationFormat serializationFormat = SerializationFormat.valueOf(
                 formatOptions.get(PravegaRegistryOptions.FORMAT));
 
-        TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
-        final JsonOptions.MapNullKeyMode mapNullKeyMode =
-                JsonOptions.getMapNullKeyMode(formatOptions);
+        TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
+        final JsonFormatOptions.MapNullKeyMode mapNullKeyMode =
+                JsonFormatOptionsUtil.getMapNullKeyMode(formatOptions);
         final String mapNullKeyLiteral = formatOptions.get(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
         final boolean encodeDecimalAsPlainNumber = formatOptions.get(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
 

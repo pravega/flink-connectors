@@ -34,9 +34,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A Flink {@link OutputFormat} that can be added as a sink to write into Pravega. The current implementation does not
- * support transactional writes. The {@link FlinkPravegaOutputFormat} is used in {@link FlinkPravegaTableSink}
- * implementation to support writing to Pravega as part of batch {@link org.apache.flink.api.java.DataSet} operation.
- * See io.pravega.connectors.flink.FlinkTableITCase for more details on how to use it.
+ * support transactional writes.
  */
 @Slf4j
 public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {

@@ -46,7 +46,7 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
         super(operator, maxParallelism, parallelism, subtaskIndex);
         this.sourceOperator = operator;
         this.triggeredCheckpoints = new ConcurrentLinkedQueue<>();
-        this.operatorChain = new OperatorChain<>(this.mockTask, StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment()));
+        this.operatorChain = new OperatorChain<>(this.mockTask, StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment()), false);
     }
 
     @Override
@@ -63,7 +63,7 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
      * @throws Exception if execution fails.
      */
     public void run() throws Exception {
-        sourceOperator.run(this.getCheckpointLock(), this.mockTask.getStreamStatusMaintainer(), operatorChain);
+        sourceOperator.run(this.getCheckpointLock(), operatorChain);
     }
 
     /**
