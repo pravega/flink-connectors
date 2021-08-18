@@ -96,8 +96,7 @@ public class FlinkPravegaWriterITCase {
      */
     @Test
     public void testAtLeastOnceWriter() throws Exception {
-        // final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String streamName = "test";
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment()
                 .setParallelism(1)
@@ -117,7 +116,7 @@ public class FlinkPravegaWriterITCase {
                 .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
-        testHelper(EVENT_COUNT_PER_SOURCE, streamName, env, true, 100);
+        writeAndCheckData(EVENT_COUNT_PER_SOURCE, streamName, env, true, 100);
     }
 
     /**
@@ -153,8 +152,8 @@ public class FlinkPravegaWriterITCase {
                 })
                 .addSink(sink).setParallelism(2);
 
-        testHelper(EVENT_COUNT_PER_SOURCE, streamName, env, true, 30);
-        testWaterMark(streamName);
+        writeAndCheckData(EVENT_COUNT_PER_SOURCE, streamName, env, true, 30);
+        checkWatermark(streamName);
     }
 
     /**
@@ -184,7 +183,7 @@ public class FlinkPravegaWriterITCase {
                 .map(new FailingMapper<>(numElements / 2))
                 .addSink(sink).setParallelism(2);
 
-        testHelper(numElements, streamName, env, false, 30);
+        writeAndCheckData(numElements, streamName, env, false, 30);
     }
 
     /**
@@ -215,7 +214,7 @@ public class FlinkPravegaWriterITCase {
                 .map(new FailingMapper<>(numElements / 2))
                 .addSink(sink).setParallelism(2);
 
-        testHelper(numElements, streamName, env, false, 30);
+        writeAndCheckData(numElements, streamName, env, false, 30);
     }
 
     /**
@@ -248,8 +247,8 @@ public class FlinkPravegaWriterITCase {
                 .map(new FailingMapper<>(numElements / 2))
                 .addSink(sink).setParallelism(2);
 
-        testHelper(numElements, streamName, env, false, 1000);
-        testWaterMark(streamName);
+        writeAndCheckData(numElements, streamName, env, false, 1000);
+        checkWatermark(streamName);
     }
 
     // ----------------------------------------------------------------------------
@@ -267,16 +266,16 @@ public class FlinkPravegaWriterITCase {
      *
      * @param numElements        The max num written by the function.
      * @param streamName         The test stream name containing the data to be verified.
-     * @param env                The Flink environment to be executed.
+     * @param env                The Flink environment to be executed, with the data stream configured.
      * @param allowDuplicate     Check data in AT_LEAST_ONCE or EXACTLY_ONCE mode.
      * @param waitSeconds        The maximum seconds we wait for the checker.
      * @throws Exception on any errors.
      */
-    void testHelper(int numElements,
-                    String streamName,
-                    StreamExecutionEnvironment env,
-                    boolean allowDuplicate,
-                    int waitSeconds) throws Exception {
+    void writeAndCheckData(int numElements,
+                           String streamName,
+                           StreamExecutionEnvironment env,
+                           boolean allowDuplicate,
+                           int waitSeconds) throws Exception {
         SETUP_UTILS.createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
@@ -342,7 +341,7 @@ public class FlinkPravegaWriterITCase {
      * @param streamName         The test stream name containing the data to be verified.
      * @throws InterruptedException on interruption.
      */
-    void testWaterMark(String streamName) throws InterruptedException {
+    void checkWatermark(String streamName) throws InterruptedException {
         // Wait for the Pravega controller to generate TimeWindow
         Thread.sleep(11000);
 
