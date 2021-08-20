@@ -193,7 +193,9 @@ public class FlinkPravegaWriterITCase {
 
         DataStream<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE))
-                .assignTimestampsAndWatermarks(WatermarkStrategy.forMonotonousTimestamps());
+                .assignTimestampsAndWatermarks(WatermarkStrategy
+                        .<Integer>forMonotonousTimestamps()
+                        .withTimestampAssigner((event, timestamp) -> event));
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
