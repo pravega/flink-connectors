@@ -54,11 +54,14 @@ public class FlinkPravegaWriterITCase {
     protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     // Number of events to generate for each of the tests.
-    private static final int EVENT_COUNT_PER_SOURCE = 20;
+    private static final int EVENT_COUNT_PER_SOURCE = 10000;
+
+    // The maximum time we wait for the checker.
+    private static final int WAIT_SECONDS = 30;
 
     // Ensure each test completes within 120 seconds.
     @Rule
-    public Timeout globalTimeout = new Timeout(2400, TimeUnit.SECONDS);
+    public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setup() throws Exception {
@@ -113,10 +116,10 @@ public class FlinkPravegaWriterITCase {
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
-                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
+                // .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
-        writeAndCheckData(EVENT_COUNT_PER_SOURCE, streamName, env, true, 100);
+        writeAndCheckData(streamName, env, true);
     }
 
     /**
@@ -152,7 +155,7 @@ public class FlinkPravegaWriterITCase {
                 })
                 .addSink(sink).setParallelism(2);
 
-        writeAndCheckData(EVENT_COUNT_PER_SOURCE, streamName, env, true, 30);
+        writeAndCheckData(streamName, env, true);
         checkWatermark(streamName);
     }
 
@@ -161,7 +164,6 @@ public class FlinkPravegaWriterITCase {
      */
     @Test
     public void testExactlyOnceWriter() throws Exception {
-        int numElements = 10000;
         final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
@@ -179,11 +181,11 @@ public class FlinkPravegaWriterITCase {
                 .build();
 
         env
-                .addSource(new ThrottledIntegerGeneratingSource(numElements))
-                .map(new FailingMapper<>(numElements / 2))
+                .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
+                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
-        writeAndCheckData(numElements, streamName, env, false, 30);
+        writeAndCheckData(streamName, env, false);
     }
 
     /**
@@ -191,7 +193,6 @@ public class FlinkPravegaWriterITCase {
      */
     @Test
     public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
-        int numElements = 10000;
         final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
@@ -210,11 +211,11 @@ public class FlinkPravegaWriterITCase {
                 .build();
 
         env
-                .addSource(new ThrottledIntegerGeneratingSource(numElements))
-                .map(new FailingMapper<>(numElements / 2))
+                .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
+                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
-        writeAndCheckData(numElements, streamName, env, false, 30);
+        writeAndCheckData(streamName, env, false);
     }
 
     /**
@@ -222,7 +223,6 @@ public class FlinkPravegaWriterITCase {
      */
     @Test
     public void testExactlyOnceWriterWithWatermark() throws Exception {
-        int numElements = 2000;
         final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
@@ -243,11 +243,11 @@ public class FlinkPravegaWriterITCase {
                 .build();
 
         env
-                .addSource(new ThrottledIntegerGeneratingSource(numElements).withWatermarks(20))
-                .map(new FailingMapper<>(numElements / 2))
+                .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE).withWatermarks(20))
+                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
-        writeAndCheckData(numElements, streamName, env, false, 1000);
+        writeAndCheckData(streamName, env, false);
         checkWatermark(streamName);
     }
 
@@ -264,18 +264,14 @@ public class FlinkPravegaWriterITCase {
     /**
      * Write some events and check the result concurrently.
      *
-     * @param numElements        The number of events written into Pravega stream.
      * @param streamName         The test Pravega stream name.
      * @param env                The Flink environment to be executed, with the job graph configured.
      * @param allowDuplicate     Check data in AT_LEAST_ONCE or EXACTLY_ONCE mode.
-     * @param waitSeconds        The maximum time we wait for the checker.
      * @throws Exception on any errors.
      */
-    void writeAndCheckData(int numElements,
-                           String streamName,
+    void writeAndCheckData(String streamName,
                            StreamExecutionEnvironment env,
-                           boolean allowDuplicate,
-                           int waitSeconds) throws Exception {
+                           boolean allowDuplicate) throws Exception {
         SETUP_UTILS.createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
@@ -300,7 +296,7 @@ public class FlinkPravegaWriterITCase {
             try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
                 final BitSet duplicateChecker = new BitSet();
 
-                for (int numElementsRemaining = numElements; numElementsRemaining > 0; ) {
+                for (int numElementsRemaining = EVENT_COUNT_PER_SOURCE; numElementsRemaining > 0; ) {
                     final EventRead<Integer> eventRead = reader.readNextEvent(1000);
                     final Integer event = eventRead.getEvent();
 
@@ -325,7 +321,7 @@ public class FlinkPravegaWriterITCase {
         executorService.execute(writeTask);
         executorService.execute(checkTask);
 
-        boolean wait = latch.await(waitSeconds, TimeUnit.SECONDS);
+        boolean wait = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
         if (!wait) {
             Assert.fail("Read/Write operations taking more time to complete");
         }
