@@ -45,6 +45,7 @@ import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.runtime.metrics.scope.ScopeFormat;
+import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
@@ -448,7 +449,9 @@ public class FlinkPravegaReaderTest {
      */
     private <T, F extends SourceFunction<T>> StreamSourceOperatorTestHarness<T, F> createTestHarness(
             F sourceFunction) throws Exception {
-        return new StreamSourceOperatorTestHarness<>(sourceFunction, 1, 1, 0);
+        StreamSourceOperatorTestHarness<T, F> harness = new StreamSourceOperatorTestHarness<>(sourceFunction, 1, 1, 0);
+        harness.setTimeCharacteristic(TimeCharacteristic.EventTime);
+        return harness;
     }
 
     /**

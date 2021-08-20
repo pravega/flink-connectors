@@ -57,7 +57,7 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptions.validateTableSourceOptions(tableOptions);
 
-        DataType producedDataType = context.getCatalogTable().getResolvedSchema().toPhysicalRowDataType();
+        DataType producedDataType = context.getCatalogTable().getSchema().toPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSource(
                 producedDataType,
