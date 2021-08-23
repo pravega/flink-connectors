@@ -22,9 +22,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.windowing.AllWindowFunction;
+import org.apache.flink.streaming.api.windowing.assigners.TumblingEventTimeWindows;
 import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
@@ -107,7 +107,6 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
             final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
 
-            env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
             env.setParallelism(4);
             env.getConfig().setAutoWatermarkInterval(1000);
 
@@ -127,7 +126,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
             env
                     .addSource(pravegaSource)
-                    .timeWindowAll(Time.seconds(1))
+                    .windowAll(TumblingEventTimeWindows.of(Time.seconds(1)))
                     .apply(new AllWindowFunction<Integer, Integer, TimeWindow>() {
                         @Override
                         public void apply(TimeWindow window, Iterable<Integer> arr, Collector<Integer> collector) throws Exception {

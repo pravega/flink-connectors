@@ -20,15 +20,14 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 import lombok.Cleanup;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.apache.flink.util.Preconditions;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -190,17 +189,13 @@ public class FlinkPravegaWriterITCase {
                 .setParallelism(1)
                 .enableCheckpointing(1000, CheckpointingMode.AT_LEAST_ONCE);
         execEnv.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
-        execEnv.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         execEnv.getConfig().setAutoWatermarkInterval(50);
 
         DataStream<Integer> dataStream = execEnv
                 .addSource(new IntegerGeneratingSource(false, EVENT_COUNT_PER_SOURCE))
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Integer>() {
-                    @Override
-                    public long extractAscendingTimestamp(Integer i) {
-                        return i;
-                    }
-                });
+                .assignTimestampsAndWatermarks(WatermarkStrategy
+                        .<Integer>forMonotonousTimestamps()
+                        .withTimestampAssigner((event, timestamp) -> event));
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
@@ -325,7 +320,6 @@ public class FlinkPravegaWriterITCase {
                     .setParallelism(1)
                     .enableCheckpointing(500, CheckpointingMode.EXACTLY_ONCE);
             env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
-            env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
             env.getConfig().setAutoWatermarkInterval(100);
 
             FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
