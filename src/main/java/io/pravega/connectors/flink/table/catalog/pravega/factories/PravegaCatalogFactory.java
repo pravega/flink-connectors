@@ -27,7 +27,7 @@ import java.util.Set;
 /** Factory for {@link PravegaCatalog}. */
 public class PravegaCatalogFactory implements CatalogFactory {
     // the prefix of checkpoint names json related options
-    private static final String JSON_PREFIX = "json";
+    private static final String JSON_PREFIX = "json.";
 
     private static final Logger LOG = LoggerFactory.getLogger(PravegaCatalogFactory.class);
 
