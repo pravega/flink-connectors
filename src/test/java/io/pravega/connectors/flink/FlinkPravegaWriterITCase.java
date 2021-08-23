@@ -269,7 +269,7 @@ public class FlinkPravegaWriterITCase {
      * @param allowDuplicate     Check data in AT_LEAST_ONCE or EXACTLY_ONCE mode.
      * @throws Exception on any errors.
      */
-    void writeAndCheckData(String streamName,
+    private void writeAndCheckData(String streamName,
                            StreamExecutionEnvironment env,
                            boolean allowDuplicate) throws Exception {
         SETUP_UTILS.createTestStream(streamName, 4);
@@ -337,7 +337,7 @@ public class FlinkPravegaWriterITCase {
      * @param streamName         The Pravega stream name.
      * @throws InterruptedException on interruption.
      */
-    void checkWatermark(String streamName) throws InterruptedException {
+    private void checkWatermark(String streamName) throws InterruptedException {
         // Wait 11 seconds for the Pravega controller to generate TimeWindow
         Thread.sleep(11000);
 
