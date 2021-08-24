@@ -13,7 +13,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
@@ -42,7 +41,6 @@ public class EventTimeOrderingFunctionTest {
         function = new EventTimeOrderingFunction<>(TypeInformation.of(new TypeHint<Tuple2<String, Long>>() {
         }));
         testHarness = ProcessFunctionTestHarnesses.forKeyedProcessFunction(function, in -> in.f0, TypeInformation.of(String.class));
-        testHarness.setTimeCharacteristic(TimeCharacteristic.EventTime);
         testHarness.open();
     }
 
@@ -127,7 +125,6 @@ public class EventTimeOrderingFunctionTest {
 
     @Test
     public void testProcessingTime() throws Exception {
-        testHarness.setTimeCharacteristic(TimeCharacteristic.ProcessingTime);
         testHarness.processElement(new StreamRecord<>(new Tuple2<>(K1, 0L)));
         Queue<Object> actual = testHarness.getOutput();
         Queue<Object> expected = new ConcurrentLinkedQueue<>();
