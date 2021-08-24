@@ -55,23 +55,23 @@ public class FlinkPravegaDynamicTableFactory implements
 
         // Validation
         helper.validate();
-        PravegaOptions.validateTableSourceOptions(tableOptions);
+        PravegaOptionsUtil.validateTableSourceOptions(tableOptions);
 
         DataType producedDataType = context.getCatalogTable().getSchema().toPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSource(
                 producedDataType,
                 decodingFormat,
-                PravegaOptions.getReaderGroupName(tableOptions),
-                PravegaOptions.getPravegaConfig(tableOptions),
-                PravegaOptions.resolveScanStreams(tableOptions),
-                PravegaOptions.getReaderGroupRefreshTimeMillis(tableOptions),
-                PravegaOptions.getCheckpointInitiateTimeoutMillis(tableOptions),
-                PravegaOptions.getEventReadTimeoutMillis(tableOptions),
-                PravegaOptions.getMaxOutstandingCheckpointRequest(tableOptions),
-                PravegaOptions.getUid(tableOptions),
-                PravegaOptions.isStreamingReader(tableOptions),
-                PravegaOptions.isBoundedRead(tableOptions));
+                PravegaOptionsUtil.getReaderGroupName(tableOptions),
+                PravegaOptionsUtil.getPravegaConfig(tableOptions),
+                PravegaOptionsUtil.resolveScanStreams(tableOptions),
+                PravegaOptionsUtil.getReaderGroupRefreshTimeMillis(tableOptions),
+                PravegaOptionsUtil.getCheckpointInitiateTimeoutMillis(tableOptions),
+                PravegaOptionsUtil.getEventReadTimeoutMillis(tableOptions),
+                PravegaOptionsUtil.getMaxOutstandingCheckpointRequest(tableOptions),
+                PravegaOptionsUtil.getUid(tableOptions),
+                PravegaOptionsUtil.isStreamingReader(tableOptions),
+                PravegaOptionsUtil.isBoundedRead(tableOptions));
     }
 
     @Override
@@ -86,19 +86,19 @@ public class FlinkPravegaDynamicTableFactory implements
 
         // Validation
         helper.validate();
-        PravegaOptions.validateTableSinkOptions(tableOptions);
+        PravegaOptionsUtil.validateTableSinkOptions(tableOptions);
 
         TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(context.getCatalogTable().getSchema());
 
         return new FlinkPravegaDynamicTableSink(
                 tableSchema,
                 encodingFormat,
-                PravegaOptions.getPravegaConfig(tableOptions),
-                PravegaOptions.getSinkStream(tableOptions),
-                PravegaOptions.getWriterMode(tableOptions),
-                PravegaOptions.getTransactionLeaseRenewalIntervalMillis(tableOptions),
-                PravegaOptions.isWatermarkPropagationEnabled(tableOptions),
-                PravegaOptions.getRoutingKeyField(tableOptions));
+                PravegaOptionsUtil.getPravegaConfig(tableOptions),
+                PravegaOptionsUtil.getSinkStream(tableOptions),
+                PravegaOptionsUtil.getWriterMode(tableOptions),
+                PravegaOptionsUtil.getTransactionLeaseRenewalIntervalMillis(tableOptions),
+                PravegaOptionsUtil.isWatermarkPropagationEnabled(tableOptions),
+                PravegaOptionsUtil.getRoutingKeyField(tableOptions));
     }
 
     @Override
