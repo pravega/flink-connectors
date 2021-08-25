@@ -295,15 +295,35 @@ public class FlinkPravegaWriterITCase {
 
                     if (event != null) {
                         numElementsRemaining--;
-                        if (allowDuplicate) {
+                        if (!allowDuplicate) {
                             assertFalse("found a duplicate", duplicateChecker.get(event));
                         }
                         duplicateChecker.set(event);
                     }
                 }
 
-                // No more events should be there
-                assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                if (!allowDuplicate) {
+                    // No more events should be there
+                    assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                }else{
+                    if (duplicateChecker.nextClearBit(1) > 9999) {
+                        // the first round holds every event we write
+                    }else{
+                        // some duplicates in the first round, read at most another round to get all data
+                        for (int numElementsRemaining = EVENT_COUNT_PER_SOURCE; numElementsRemaining > 0; ) {
+                            final EventRead<Integer> eventRead = reader.readNextEvent(1000);
+                            final Integer event = eventRead.getEvent();
+
+                            if (event != null) {
+                                numElementsRemaining--;
+                                duplicateChecker.set(event);
+                                if (duplicateChecker.nextClearBit(1) > 9999) {
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
 
                 // Notify that the checker is complete
                 latch.countDown();
