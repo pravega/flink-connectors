@@ -19,14 +19,13 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
-import org.apache.flink.streaming.api.TimeCharacteristic;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.streaming.api.functions.timestamps.AscendingTimestampExtractor;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -57,7 +56,7 @@ public class FlinkPravegaWriterITCase {
     private static final int EVENT_COUNT_PER_SOURCE = 10000;
 
     // The maximum time we wait for the checker.
-    private static final int WAIT_SECONDS = 30;
+    private static final int WAIT_SECONDS = 3000;
 
     // Ensure each test completes within 120 seconds.
     @Rule
@@ -116,7 +115,7 @@ public class FlinkPravegaWriterITCase {
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
-                // .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
+                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
                 .addSink(sink).setParallelism(2);
 
         writeAndCheckData(streamName, env, true);
@@ -134,7 +133,6 @@ public class FlinkPravegaWriterITCase {
                 .setParallelism(1)
                 .enableCheckpointing(1000, CheckpointingMode.AT_LEAST_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
-        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         env.getConfig().setAutoWatermarkInterval(50);
 
         FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
@@ -147,12 +145,9 @@ public class FlinkPravegaWriterITCase {
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
-                .assignTimestampsAndWatermarks(new AscendingTimestampExtractor<Integer>() {
-                    @Override
-                    public long extractAscendingTimestamp(Integer i) {
-                        return i;
-                    }
-                })
+                .assignTimestampsAndWatermarks(WatermarkStrategy
+                        .<Integer>forMonotonousTimestamps()
+                        .withTimestampAssigner((event, timestamp) -> event))
                 .addSink(sink).setParallelism(2);
 
         writeAndCheckData(streamName, env, true);
@@ -228,9 +223,7 @@ public class FlinkPravegaWriterITCase {
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
                 .setParallelism(1)
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
-        env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
         env.getConfig().setAutoWatermarkInterval(100);
-        env.getCheckpointConfig().enableUnalignedCheckpoints();
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
         final FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()

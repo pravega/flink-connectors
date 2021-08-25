@@ -259,7 +259,7 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<String> listViews(String databaseName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
@@ -363,27 +363,27 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public List<CatalogPartitionSpec> listPartitionsByFilter(ObjectPath tablePath, List<Expression> filters) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public CatalogPartition getPartition(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws PartitionNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        throw new PartitionNotExistException(getName(), tablePath, partitionSpec);
     }
 
     @Override
     public boolean partitionExists(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws CatalogException {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
@@ -403,17 +403,17 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<String> listFunctions(String dbName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public CatalogFunction getFunction(ObjectPath functionPath) throws FunctionNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        throw new FunctionNotExistException(getName(), functionPath);
     }
 
     @Override
     public boolean functionExists(ObjectPath functionPath) throws CatalogException {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
