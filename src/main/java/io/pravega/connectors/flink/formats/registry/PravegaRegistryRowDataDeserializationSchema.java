@@ -216,7 +216,9 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         }
 
         @Override
-        public final JsonNode deserialize(InputStream inputStream, SchemaInfo writerSchemaInfo, SchemaInfo readerSchemaInfo) throws IOException {
+        public final JsonNode deserialize(InputStream inputStream,
+                                          SchemaInfo writerSchemaInfo,
+                                          SchemaInfo readerSchemaInfo) throws IOException {
             return objectMapper.readTree(inputStream);
         }
     }

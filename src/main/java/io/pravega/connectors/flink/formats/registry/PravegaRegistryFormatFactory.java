@@ -96,6 +96,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         final JsonOptions.MapNullKeyMode mapNullKeyMode =
                 JsonOptions.getMapNullKeyMode(formatOptions);
         final String mapNullKeyLiteral = formatOptions.get(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
+        final boolean encodeDecimalAsPlainNumber = formatOptions.get(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
 
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
@@ -110,7 +111,8 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                         serializationFormat,
                         timestampOption,
                         mapNullKeyMode,
-                        mapNullKeyLiteral);
+                        mapNullKeyLiteral,
+                        encodeDecimalAsPlainNumber);
             }
 
             @Override
@@ -143,6 +145,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         options.add(PravegaRegistryOptions.TIMESTAMP_FORMAT);
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_MODE);
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
+        options.add(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         return options;
     }
 }

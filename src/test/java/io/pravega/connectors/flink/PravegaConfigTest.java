@@ -11,8 +11,8 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.impl.DefaultCredentials;
 import io.pravega.shared.security.auth.Credentials;
+import io.pravega.shared.security.auth.DefaultCredentials;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.junit.Test;
 

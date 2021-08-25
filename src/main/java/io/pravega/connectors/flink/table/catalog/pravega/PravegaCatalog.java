@@ -80,7 +80,8 @@ public class PravegaCatalog extends AbstractCatalog {
 
     public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
                           String serializationFormat, String failOnMissingField, String ignoreParseErrors,
-                          String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
+                          String timestampFormat, String mapNullKeyMode,
+                          String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
 
         super(catalogName, defaultDatabase);
 
@@ -98,13 +99,14 @@ public class PravegaCatalog extends AbstractCatalog {
                 String.format(
                         "%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
-        schemaRegistryUri);
+                schemaRegistryUri);
 
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 this.serializationFormat.name());
 
-        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
+        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat,
+                mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -174,7 +176,6 @@ public class PravegaCatalog extends AbstractCatalog {
                 .filter(s -> !s.startsWith("_"))
                 .collect(Collectors.toList());
 
-        log.info("aaa: {}", databaseList);
         return databaseList;
     }
 
@@ -250,15 +251,15 @@ public class PravegaCatalog extends AbstractCatalog {
 
         return StreamSupport
                 .stream(iterable.spliterator(), false)
-                .map(s -> s.getStreamName())
+                .map(Stream::getStreamName)
                 .filter(s -> !s.startsWith("_"))
-                .filter(s -> groupSet.contains(s))
+                .filter(groupSet::contains)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<String> listViews(String databaseName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
@@ -348,7 +349,8 @@ public class PravegaCatalog extends AbstractCatalog {
                 Compatibility.allowAny(),
                 true));
 
-        SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(table.getSchema(), serializationFormat);
+        SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(
+                table.getSchema(), serializationFormat);
         schemaRegistryClient.addSchema(stream, schemaInfo);
     }
 
@@ -361,27 +363,27 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public List<CatalogPartitionSpec> listPartitions(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public List<CatalogPartitionSpec> listPartitionsByFilter(ObjectPath tablePath, List<Expression> filters) throws TableNotExistException, TableNotPartitionedException, CatalogException {
-        return null;
+        return Collections.emptyList();
     }
 
     @Override
     public CatalogPartition getPartition(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws PartitionNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        throw new PartitionNotExistException(getName(), tablePath, partitionSpec);
     }
 
     @Override
     public boolean partitionExists(ObjectPath tablePath, CatalogPartitionSpec partitionSpec) throws CatalogException {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
@@ -401,17 +403,17 @@ public class PravegaCatalog extends AbstractCatalog {
 
     @Override
     public List<String> listFunctions(String dbName) throws DatabaseNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        return Collections.emptyList();
     }
 
     @Override
     public CatalogFunction getFunction(ObjectPath functionPath) throws FunctionNotExistException, CatalogException {
-        throw new UnsupportedOperationException();
+        throw new FunctionNotExistException(getName(), functionPath);
     }
 
     @Override
     public boolean functionExists(ObjectPath functionPath) throws CatalogException {
-        throw new UnsupportedOperationException();
+        return false;
     }
 
     @Override
@@ -481,7 +483,7 @@ public class PravegaCatalog extends AbstractCatalog {
 
     // put Json related options to properties
     private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors, String timestampFormat,
-                                      String mapNullKeyMode, String mapNullKeyLiteral) {
+                                      String mapNullKeyMode, String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
 
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
@@ -498,5 +500,8 @@ public class PravegaCatalog extends AbstractCatalog {
         properties.put(String.format("%s.%s",
                 PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
                 mapNullKeyLiteral);
+        properties.put(String.format("%s.%s",
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER.key()),
+                encodeDecimalAsPlainNumber);
     }
 }

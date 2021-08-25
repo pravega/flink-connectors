@@ -23,8 +23,8 @@ import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.IndexedRecord;
+import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
@@ -79,10 +79,10 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
                     break;
                 case Avro:
                     Preconditions.checkArgument(IndexedRecord.class.isAssignableFrom(tClass));
-                    if (GenericRecord.class.isAssignableFrom(tClass)) {
-                        serializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(serializerConfig, null);
-                    } else {
+                    if (SpecificRecordBase.class.isAssignableFrom(tClass)) {
                         serializer = SerializerFactory.avroDeserializer(serializerConfig, AvroSchema.of(tClass));
+                    } else {
+                        serializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(serializerConfig, null);
                     }
                     break;
                 case Protobuf:

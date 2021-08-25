@@ -105,6 +105,7 @@ public class PravegaRegistrySeDeITCase {
     private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
             JsonOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
+    private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
@@ -128,7 +129,7 @@ public class PravegaRegistrySeDeITCase {
         final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 "Avro", "false", "false",
-                "SQL", "FAIL", "null");
+                "SQL", "FAIL", "null", "false");
         initAvro();
         avroCatalog.open();
 
@@ -183,7 +184,7 @@ public class PravegaRegistrySeDeITCase {
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(avroRowType, SETUP_UTILS.getScope(),
                         AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(), SerializationFormat.Avro,
-                        TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL);
+                        TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo, SETUP_UTILS.getScope(),
@@ -215,7 +216,7 @@ public class PravegaRegistrySeDeITCase {
         final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
                 SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 "Json", "false", "false",
-                "SQL", "FAIL", "null");
+                "SQL", "FAIL", "null", "false");
         initJson();
         jsonCatalog.open();
 
@@ -327,7 +328,7 @@ public class PravegaRegistrySeDeITCase {
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(
                         jsonRowType, SETUP_UTILS.getScope(), JSON_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
-                        SerializationFormat.Json, TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL);
+                        SerializationFormat.Json, TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
 
         byte[] actualBytes = serializationSchema.serialize(rowData);

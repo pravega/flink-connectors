@@ -138,7 +138,7 @@ public class FlinkPravegaReaderTest {
                 "hookUid", clientConfig, rgConfig, SAMPLE_SCOPE, GROUP_NAME, schema,
                 null, READER_TIMEOUT, CHKPT_TIMEOUT, enableMetrics);
         StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime);
+                createTestHarness(reader);
 
         testHarness.open();
         Assert.assertTrue(schema.isOpenCalled());
@@ -152,7 +152,7 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<Integer> reader = createReader();
 
         try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                 createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+                 createTestHarness(reader)) {
             testHarness.open();
 
             // prepare a sequence of events
@@ -208,7 +208,7 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<Integer> reader = createReader();
 
         try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+                     createTestHarness(reader)) {
             testHarness.open();
 
             // prepare a sequence of events
@@ -244,7 +244,7 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<IntegerWithEventPointer> reader = createReaderWithMetadata();
 
         try (StreamSourceOperatorTestHarness<IntegerWithEventPointer, TestableFlinkPravegaReader<IntegerWithEventPointer>> testHarness =
-                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+                     createTestHarness(reader)) {
             testHarness.open();
 
             // prepare a sequence of events
@@ -290,7 +290,7 @@ public class FlinkPravegaReaderTest {
         });
 
         try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.EventTime)) {
+                     createTestHarness(reader)) {
             // reset the auto watermark interval to 50 millisecond
             testHarness.getExecutionConfig().setAutoWatermarkInterval(50);
             testHarness.open();
@@ -382,7 +382,7 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<Integer> reader = createReader();
 
         try (StreamSourceOperatorTestHarness<Integer, TestableFlinkPravegaReader<Integer>> testHarness =
-                     createTestHarness(reader, 1, 1, 0, TimeCharacteristic.ProcessingTime)) {
+                     createTestHarness(reader)) {
             testHarness.open();
 
             // prepare a sequence of events
@@ -448,9 +448,9 @@ public class FlinkPravegaReaderTest {
      * Creates a test harness for a {@link SourceFunction}.
      */
     private <T, F extends SourceFunction<T>> StreamSourceOperatorTestHarness<T, F> createTestHarness(
-            F sourceFunction, int maxParallelism, int parallelism, int subtaskIndex, TimeCharacteristic timeCharacteristic) throws Exception {
-        StreamSourceOperatorTestHarness harness = new StreamSourceOperatorTestHarness<T, F>(sourceFunction, maxParallelism, parallelism, subtaskIndex);
-        harness.setTimeCharacteristic(timeCharacteristic);
+            F sourceFunction) throws Exception {
+        StreamSourceOperatorTestHarness<T, F> harness = new StreamSourceOperatorTestHarness<>(sourceFunction, 1, 1, 0);
+        harness.setTimeCharacteristic(TimeCharacteristic.EventTime);
         return harness;
     }
 
