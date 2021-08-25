@@ -56,6 +56,18 @@ We can check and change the Flink version that Pravega builds against via the `f
 
 **Note**: Only Flink versions that are compatible with the latest connector code can be chosen.
 
+#### Building against another Scala version
+
+This section is only relevant if you use [Scala](https://www.scala-lang.org/) in the stream processing application with Flink and Pravega.
+
+Parts of the Apache Flink use the language or depend on libraries written in Scala. Because Scala is **not** strictly compatible across versions, there exist different versions of Flink compiled for different Scala versions.
+If we use Scala code in the same application where we use the Apache Flink or the Flink connectors, we typically have to make sure we use a version of Flink that uses the same Scala version as our application.
+
+Each version of Flink has a preferred Scala version as determined by the official Flink docker image. We use the preferred version by default.
+To depend on released Flink artifacts for a different Scala version, you need to edit the `build.gradle` file and change all entries for the Flink dependencies to have a different Scala version suffix. For example, `flink-streaming-java_2.11` would be replaced by `flink-streaming-java_2.12` for Scala **2.12**.
+
+In order to build a new version of Flink for a different Scala version, please refer to the [Flink documentation](https://ci.apache.org/projects/flink/flink-docs-stable/start/building.html#scala-versions).
+
 ## Setting up your IDE
 
 Connector project uses [Project Lombok](https://projectlombok.org/), so we should ensure that we have our IDE setup with the required plugins. (**IntelliJ is recommended**).
