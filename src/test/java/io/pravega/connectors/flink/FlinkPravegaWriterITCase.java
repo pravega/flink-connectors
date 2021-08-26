@@ -287,17 +287,17 @@ public class FlinkPravegaWriterITCase {
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
             try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
-                final BitSet duplicateChecker = new BitSet();
+                final BitSet checker = new BitSet();
 
-                while (duplicateChecker.nextClearBit(1) < EVENT_COUNT_PER_SOURCE) {
+                while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {
                     final EventRead<Integer> eventRead = reader.readNextEvent(1000);
                     final Integer event = eventRead.getEvent();
 
                     if (event != null) {
                         if (!allowDuplicate) {
-                            assertFalse("found a duplicate", duplicateChecker.get(event));
+                            assertFalse("found a duplicate", checker.get(event));
                         }
-                        duplicateChecker.set(event);
+                        checker.set(event);
                     }
                 }
 
