@@ -17,7 +17,6 @@
 package io.pravega.connectors.flink.source;
 
 import io.pravega.client.ClientConfig;
-import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
@@ -133,10 +132,9 @@ public class PravegaSource<T>
 
     @Override
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
-        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
         Supplier<PravegaSplitReader> splitReaderSupplier =
                 () ->
-                        new PravegaSplitReader(clientFactory,
+                        new PravegaSplitReader(scope, clientConfig,
                                 readerGroupName, readerContext.getIndexOfSubtask());
 
         return new PravegaSourceReader<>(

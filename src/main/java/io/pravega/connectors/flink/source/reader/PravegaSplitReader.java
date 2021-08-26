@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.source.reader;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
@@ -34,7 +35,6 @@ import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.nio.ByteBuffer;
 
 /**
@@ -81,18 +81,20 @@ public class PravegaSplitReader
      * Creates a new Pravega Split Reader instance which can read event from Pravega stream.
      * The Pravega Split Reader is actually an instance of a {@link EventStreamReader}.
      *
-     * @param eventStreamClientFactory          The event stream client factory from Source Reader.
+     * @param scope                             The reader group scope name.
+     * @param clientConfig                      The Pravega client configuration.
      * @param readerGroupName                   The reader group name.
      * @param subtaskId                         The subtaskId of source reader.
      */
     public PravegaSplitReader(
-            EventStreamClientFactory eventStreamClientFactory,
+            String scope,
+            ClientConfig clientConfig,
             String readerGroupName,
             int subtaskId) {
         this.subtaskId = subtaskId;
         this.options = new Configuration();
         this.readerGroupName = readerGroupName;
-        this.eventStreamClientFactory = eventStreamClientFactory;
+        this.eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
@@ -102,7 +104,7 @@ public class PravegaSplitReader
 
     // read one or more event from an EventStreamReader
     @Override
-    public RecordsWithSplitIds<EventRead<ByteBuffer>> fetch() throws IOException {
+    public RecordsWithSplitIds<EventRead<ByteBuffer>> fetch() {
         LOG.info("Call fetch");
         RecordsBySplits.Builder<EventRead<ByteBuffer>> records = new RecordsBySplits.Builder<>();
         EventRead<ByteBuffer> eventRead = null;
@@ -119,7 +121,9 @@ public class PravegaSplitReader
                 // so that we return an empty RecordsBySplits to stop fetching and not break the recovering.
                 return new RecordsBySplits.Builder<EventRead<ByteBuffer>>().build();
             }
-            records.add(split, eventRead);
+            if (eventRead.getEvent() != null || eventRead.isCheckpoint()) {
+                records.add(split, eventRead);
+            }
         } while (eventRead != null && !eventRead.isCheckpoint() && eventRead.getEvent() != null);
         return records.build();
     }
@@ -151,6 +155,7 @@ public class PravegaSplitReader
     @Override
     public void close() {
         LOG.info("Call close");
+        eventStreamClientFactory.close();
         pravegaReader.close();
     }
 }

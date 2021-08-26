@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.source;
 
+import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
@@ -40,8 +41,13 @@ import java.util.concurrent.TimeUnit;
 
 public class FlinkPravegaSourceTest extends AbstractTestBase {
 
+    private static final String READER_GROUP_NAME = "flink-reader";
+
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
+
+    // Number of events to produce into the test stream.
+    private static final int NUM_STREAM_ELEMENTS = 10000;
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
@@ -59,8 +65,23 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
     }
 
     @Test
-    public void testSource() throws Exception {
-        runTest(2, 4, 10000);
+    public void testOneSourceOneSegment() throws Exception {
+        runTest(1, 1, NUM_STREAM_ELEMENTS);
+    }
+
+    @Test
+    public void testOneSourceMultipleSegments() throws Exception {
+        runTest(1, 4, NUM_STREAM_ELEMENTS);
+    }
+
+    @Test
+    public void testMultipleSourcesOneSegment() throws Exception {
+        runTest(4, 1, NUM_STREAM_ELEMENTS);
+    }
+
+    @Test
+    public void testMultipleSourcesMultipleSegments() throws Exception {
+        runTest(4, 4, NUM_STREAM_ELEMENTS);
     }
 
     private static void runTest(
@@ -113,7 +134,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
                     .forStream(streamName)
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
-                    .withReaderGroupName("flink-reader")
+                    .withReaderGroupName(READER_GROUP_NAME)
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 
@@ -155,6 +176,15 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
 
             final long executeEnd = System.nanoTime();
             System.out.println(String.format("Test execution took %d ms", (executeEnd - executeStart) / 1_000_000));
+
+            deleteReaderGroup();
         }
+    }
+
+    private static void deleteReaderGroup() throws Exception {
+        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
+        readerGroupManager.getReaderGroup(READER_GROUP_NAME).close();
+        readerGroupManager.deleteReaderGroup(READER_GROUP_NAME);
+        readerGroupManager.close();
     }
 }
