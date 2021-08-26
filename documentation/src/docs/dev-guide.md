@@ -37,8 +37,8 @@ However, you can go straight to the completed example at [flink-connector-exampl
 # Starting Flink
 Download Flink release and un-tar it. We use Flink 1.11.2 here. 
 ```
-$ tar -xzf flink-1.11.2-bin-scala_2.11.tgz
-$ cd flink-1.11.2-bin-scala_2.11
+$ tar -xzf flink-1.11.2-bin-scala_2.12.tgz
+$ cd flink-1.11.2-bin-scala_2.12
 ```
 Start a cluster
 ```
