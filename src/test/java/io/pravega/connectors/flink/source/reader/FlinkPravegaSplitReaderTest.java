@@ -69,6 +69,7 @@ public class FlinkPravegaSplitReaderTest {
         createReaderGroup(streamName);
         PravegaSplitReader reader = createSplitReader(READER0);
         assignSplitsAndFetchUntilFinish(reader, SPLIT0, streamName);
+        reader.close();
         deleteReaderGroup();
     }
 
@@ -80,32 +81,35 @@ public class FlinkPravegaSplitReaderTest {
         PravegaSplitReader reader = createSplitReader(READER0);
         assignSplit(reader, SPLIT0);
 
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-        AtomicBoolean exit = new AtomicBoolean();
-        Thread t1 =
-                new Thread(
-                        () -> {
-                            int i = 0;
-                            while (!exit.get()) {
-                                eventWriter.writeEvent(i++);
-                            }
-                        },
-                        "nonExisting Pravega stream");
-        t1.start();
+        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+            AtomicBoolean exit = new AtomicBoolean();
+            Thread t1 =
+                    new Thread(
+                            () -> {
+                                int i = 0;
+                                while (!exit.get()) {
+                                    eventWriter.writeEvent(i++);
+                                }
+                            },
+                            "nonExisting Pravega stream");
+            t1.start();
 
-        AtomicReference<RecordsWithSplitIds<EventRead<ByteBuffer>>> records = new AtomicReference<>();
-        Thread t2 =
-                new Thread(
-                        () -> records.set(reader.fetch()),
-                        "testWakeUp-thread");
-        t2.start();
-        Thread.sleep(1000);
+            AtomicReference<RecordsWithSplitIds<EventRead<ByteBuffer>>> records = new AtomicReference<>();
+            Thread t2 =
+                    new Thread(
+                            () -> records.set(reader.fetch()),
+                            "testWakeUp-thread");
+            t2.start();
+            Thread.sleep(1000);
 
-        reader.wakeUp();
-        Thread.sleep(10);
-        Assert.assertEquals(Whitebox.getInternalState(records.get(), "splitsIterator"), Collections.emptyIterator());
-        exit.set(true);
-        t1.join();
+            reader.wakeUp();
+            Thread.sleep(10);
+            Assert.assertEquals(Whitebox.getInternalState(records.get(), "splitsIterator"), Collections.emptyIterator());
+            exit.set(true);
+            t1.join();
+        }
+
+        reader.close();
         deleteReaderGroup();
     }
 
@@ -116,25 +120,26 @@ public class FlinkPravegaSplitReaderTest {
         assignSplit(reader, split);
         RecordsWithSplitIds<EventRead<ByteBuffer>> recordsBySplitIds;
         EventRead<ByteBuffer> eventRead;
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-        int numEvents = 0;
-        Set<String> finishedSplits = new HashSet<>();
-        for (int i = 0; i < NUM_EVENTS; i++) {
-            eventWriter.writeEvent(i);
-        }
+        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+            int numEvents = 0;
+            Set<String> finishedSplits = new HashSet<>();
+            for (int i = 0; i < NUM_EVENTS; i++) {
+                eventWriter.writeEvent(i);
+            }
 
-        while (finishedSplits.size() < 1) {
-            recordsBySplitIds = reader.fetch();
-            String splitId = recordsBySplitIds.nextSplit();
-            while (splitId != null) {
-                while ((eventRead = recordsBySplitIds.nextRecordFromSplit()) != null) {
-                    if (eventRead.getEvent() != null) {
-                        numEvents++;
+            while (finishedSplits.size() < 1) {
+                recordsBySplitIds = reader.fetch();
+                String splitId = recordsBySplitIds.nextSplit();
+                while (splitId != null) {
+                    while ((eventRead = recordsBySplitIds.nextRecordFromSplit()) != null) {
+                        if (eventRead.getEvent() != null) {
+                            numEvents++;
+                        }
                     }
+                    finishedSplits.add(splitId);
+                    Assert.assertEquals(numEvents, NUM_EVENTS);
+                    splitId = recordsBySplitIds.nextSplit();
                 }
-                finishedSplits.add(splitId);
-                Assert.assertEquals(numEvents, NUM_EVENTS);
-                splitId = recordsBySplitIds.nextSplit();
             }
         }
     }

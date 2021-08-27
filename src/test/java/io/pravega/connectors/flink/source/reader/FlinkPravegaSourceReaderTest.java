@@ -78,8 +78,8 @@ public class FlinkPravegaSourceReaderTest {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(streamName);
-        try (PravegaSourceReader<Integer> reader = (PravegaSourceReader<Integer>) createReader(READER0, true)) {
-            EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+        try (final PravegaSourceReader<Integer> reader = (PravegaSourceReader<Integer>) createReader(READER0, true);
+             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
@@ -99,8 +99,8 @@ public class FlinkPravegaSourceReaderTest {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(streamName);
-        try (SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false)) {
-            EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+        try (final SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false);
+             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
@@ -120,22 +120,26 @@ public class FlinkPravegaSourceReaderTest {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(streamName);
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-        for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
-            eventWriter.writeEvent(i);
-        }
 
         ValidatingSourceOutput output = new ValidatingSourceOutput();
         List<PravegaSplit> splits =
                 Collections.singletonList(getSplit(READER0));
-        // Consumer all the records in the split.
-        try (SourceReader<Integer, PravegaSplit> reader =
-                     consumeRecords(splits, output, NUM_RECORDS_PER_SPLIT)) {
-            // Now let the main thread poll again.
-            assertEquals(
-                    "The status should be ",
-                    InputStatus.NOTHING_AVAILABLE,
-                    reader.pollNext(output));
+
+        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+            for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
+                eventWriter.writeEvent(i);
+            }
+
+            // Consumer all the records in the split.
+            try (final SourceReader<Integer, PravegaSplit> reader =
+                         consumeRecords(splits, output, NUM_RECORDS_PER_SPLIT);
+            ) {
+                // Now let the main thread poll again.
+                assertEquals(
+                        "The status should be ",
+                        InputStatus.NOTHING_AVAILABLE,
+                        reader.pollNext(output));
+            }
         }
         deleteReaderGroup();
     }
@@ -145,13 +149,14 @@ public class FlinkPravegaSourceReaderTest {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(streamName);
-        EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
-        for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
-            eventWriter.writeEvent(i);
-        }
 
         // Consumer all the records in the split.
-        try (SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false)) {
+        try (final SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false);
+             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+            for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
+                eventWriter.writeEvent(i);
+            }
+
             CompletableFuture<?> future = reader.isAvailable();
             Assert.assertFalse("There should be no records ready for poll.", future.isDone());
             // Add a split to the reader so there are more records to be read.
