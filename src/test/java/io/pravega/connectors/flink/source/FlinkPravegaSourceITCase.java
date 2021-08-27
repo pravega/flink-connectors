@@ -16,8 +16,8 @@
 
 package io.pravega.connectors.flink.source;
 
-import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
@@ -39,9 +39,7 @@ import org.junit.rules.Timeout;
 
 import java.util.concurrent.TimeUnit;
 
-public class FlinkPravegaSourceTest extends AbstractTestBase {
-
-    private static final String READER_GROUP_NAME = "flink-reader";
+public class FlinkPravegaSourceITCase extends AbstractTestBase {
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
@@ -91,6 +89,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
 
         try (
@@ -134,7 +133,7 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
                     .forStream(streamName)
                     .enableMetrics(false)
                     .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
-                    .withReaderGroupName(READER_GROUP_NAME)
+                    .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 
@@ -176,15 +175,6 @@ public class FlinkPravegaSourceTest extends AbstractTestBase {
 
             final long executeEnd = System.nanoTime();
             System.out.println(String.format("Test execution took %d ms", (executeEnd - executeStart) / 1_000_000));
-
-            deleteReaderGroup();
         }
-    }
-
-    private static void deleteReaderGroup() throws Exception {
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
-        readerGroupManager.getReaderGroup(READER_GROUP_NAME).close();
-        readerGroupManager.deleteReaderGroup(READER_GROUP_NAME);
-        readerGroupManager.close();
     }
 }

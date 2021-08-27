@@ -22,6 +22,7 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
@@ -43,10 +44,7 @@ import java.util.concurrent.atomic.AtomicReference;
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
     private static final int NUM_PRAVEGA_SEGMENTS = 4;
-    private static final String READER_GROUP_NAME = "flink-reader";
-
     private static final int READER0 = 0;
-    private static final PravegaSplit SPLIT0 = new PravegaSplit(READER_GROUP_NAME, READER0);
     private static final int NUM_EVENTS = 100;
 
     /** Setup utility */
@@ -65,21 +63,23 @@ public class FlinkPravegaSplitReaderTest {
     @Test
     public void testHandleSplitChangesAndFetch() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
-        PravegaSplitReader reader = createSplitReader(READER0);
-        assignSplitsAndFetchUntilFinish(reader, SPLIT0, streamName);
-        reader.close();
-        deleteReaderGroup();
+        createReaderGroup(readerGroupName, streamName);
+        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
+        assignSplitsAndFetchUntilFinish(reader, split, streamName);
     }
 
     @Test
     public void testWakeUp() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
-        PravegaSplitReader reader = createSplitReader(READER0);
-        assignSplit(reader, SPLIT0);
+        createReaderGroup(readerGroupName, streamName);
+        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
+        assignSplit(reader, split);
 
         try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             AtomicBoolean exit = new AtomicBoolean();
@@ -108,9 +108,6 @@ public class FlinkPravegaSplitReaderTest {
             exit.set(true);
             t1.join();
         }
-
-        reader.close();
-        deleteReaderGroup();
     }
 
     // ------------------
@@ -150,25 +147,18 @@ public class FlinkPravegaSplitReaderTest {
         reader.handleSplitsChanges(splitsChange);
     }
 
-    private PravegaSplitReader createSplitReader(int subtaskId) throws Exception {
+    private PravegaSplitReader createSplitReader(int subtaskId, String readerGroupName) throws Exception {
         return new PravegaSplitReader(
                 SETUP_UTILS.getScope(),
                 SETUP_UTILS.getClientConfig(),
-                READER_GROUP_NAME,
+                readerGroupName,
                 subtaskId);
     }
 
-    private static void createReaderGroup(String streamName) throws Exception {
+    private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {
         ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
         Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
-        readerGroupManager.createReaderGroup(READER_GROUP_NAME, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
-        readerGroupManager.close();
-    }
-
-    private static void deleteReaderGroup() throws Exception {
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
-        readerGroupManager.getReaderGroup(READER_GROUP_NAME).close();
-        readerGroupManager.deleteReaderGroup(READER_GROUP_NAME);
+        readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
         readerGroupManager.close();
     }
 }

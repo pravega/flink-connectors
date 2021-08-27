@@ -21,6 +21,7 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -56,9 +57,7 @@ public class FlinkPravegaSourceReaderTest {
     private static final int TOTAL_NUM_RECORDS = NUM_RECORDS_PER_SPLIT * NUM_SPLITS;
 
     private static final int NUM_PRAVEGA_SEGMENTS = 4;
-    private static final String READER_GROUP_NAME = "flink-reader";
     private static final int READER0 = 0;
-    private static final PravegaSplit SPLIT0 = new PravegaSplit(READER_GROUP_NAME, READER0);
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
@@ -76,54 +75,56 @@ public class FlinkPravegaSourceReaderTest {
     @Test
     public void testReadCheckpoint() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
-        try (final PravegaSourceReader<Integer> reader = (PravegaSourceReader<Integer>) createReader(READER0, true);
+        createReaderGroup(readerGroupName, streamName);
+        try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, true);
              final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
 
-            reader.addSplits(Collections.singletonList(SPLIT0));
+            reader.addSplits(Collections.singletonList(split));
             ReaderOutput<Integer> output = new TestingReaderOutput<>();
 
             InputStatus status = reader.pollNext(output);
             Assert.assertEquals(status, InputStatus.NOTHING_AVAILABLE);
         }
-        deleteReaderGroup();
     }
 
     /** Simply test the reader reads all the splits fine. */
     @Test
     public void testRead() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
-        try (final SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false);
+        createReaderGroup(readerGroupName, streamName);
+        try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
              final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
 
-            reader.addSplits(getSplits());
+            reader.addSplits(getSplits(readerGroupName));
             ValidatingSourceOutput output = new ValidatingSourceOutput();
             while (output.count() < TOTAL_NUM_RECORDS) {
                 reader.pollNext(output);
             }
             output.validate();
         }
-        deleteReaderGroup();
     }
 
     @Test
     public void testPollingFromEmptyQueue() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
+        createReaderGroup(readerGroupName, streamName);
 
         ValidatingSourceOutput output = new ValidatingSourceOutput();
         List<PravegaSplit> splits =
-                Collections.singletonList(getSplit(READER0));
+                Collections.singletonList(getSplit(readerGroupName, READER0));
 
         try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
@@ -132,7 +133,7 @@ public class FlinkPravegaSourceReaderTest {
 
             // Consumer all the records in the split.
             try (final SourceReader<Integer, PravegaSplit> reader =
-                         consumeRecords(splits, output, NUM_RECORDS_PER_SPLIT);
+                         consumeRecords(readerGroupName, splits, output, NUM_RECORDS_PER_SPLIT);
             ) {
                 // Now let the main thread poll again.
                 assertEquals(
@@ -141,17 +142,17 @@ public class FlinkPravegaSourceReaderTest {
                         reader.pollNext(output));
             }
         }
-        deleteReaderGroup();
     }
 
     @Test
     public void testAvailableOnEmptyQueue() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(streamName);
+        createReaderGroup(readerGroupName, streamName);
 
         // Consumer all the records in the split.
-        try (final SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false);
+        try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
              final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
@@ -162,15 +163,14 @@ public class FlinkPravegaSourceReaderTest {
             // Add a split to the reader so there are more records to be read.
             reader.addSplits(
                     Collections.singletonList(
-                            getSplit(READER0)));
+                            getSplit(readerGroupName, READER0)));
             // The future should be completed fairly soon. Otherwise the test will hit timeout and
             // fail.
             future.get();
         }
-        deleteReaderGroup();
     }
 
-    private SourceReader<Integer, PravegaSplit> createReader(int subtaskId, boolean isCheckpointEvent) throws Exception {
+    private SourceReader<Integer, PravegaSplit> createReader(String readerGroupName, int subtaskId, boolean isCheckpointEvent) throws Exception {
         PravegaRecordEmitter emitter;
         if (isCheckpointEvent) {
             emitter = Mockito.mock(PravegaRecordEmitter.class);
@@ -180,39 +180,32 @@ public class FlinkPravegaSourceReaderTest {
         }
         return new PravegaSourceReader<>(
                 () -> new PravegaSplitReader(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig(),
-                        READER_GROUP_NAME, subtaskId),
+                        readerGroupName, subtaskId),
                 emitter,
                 new Configuration(),
                 new TestingReaderContext());
     }
 
-    private static void createReaderGroup(String streamName) throws Exception {
+    private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {
         ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
         Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
-        readerGroupManager.createReaderGroup(READER_GROUP_NAME, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
+        readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
         readerGroupManager.close();
     }
 
-    private static void deleteReaderGroup() throws Exception {
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
-        readerGroupManager.getReaderGroup(READER_GROUP_NAME).close();
-        readerGroupManager.deleteReaderGroup(READER_GROUP_NAME);
-        readerGroupManager.close();
-    }
-
-    private List<PravegaSplit> getSplits() {
+    private List<PravegaSplit> getSplits(String readerGroupName) {
         List<PravegaSplit> splits = new ArrayList<>();
-        splits.add(getSplit(READER0));
+        splits.add(getSplit(readerGroupName, READER0));
         return splits;
     }
 
-    private PravegaSplit getSplit(int splitId) {
-        return new PravegaSplit(READER_GROUP_NAME, splitId);
+    private PravegaSplit getSplit(String readerGroupName, int splitId) {
+        return new PravegaSplit(readerGroupName, splitId);
     }
 
     private SourceReader<Integer, PravegaSplit> consumeRecords(
-            List<PravegaSplit> splits, ValidatingSourceOutput output, int n) throws Exception {
-        SourceReader<Integer, PravegaSplit> reader = createReader(READER0, false);
+            String readerGroupName, List<PravegaSplit> splits, ValidatingSourceOutput output, int n) throws Exception {
+        final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
         // Add splits to start the fetcher.
         reader.addSplits(splits);
         // Poll all the n records of the single split.
