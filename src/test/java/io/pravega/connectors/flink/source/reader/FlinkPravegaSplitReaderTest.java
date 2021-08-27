@@ -69,6 +69,7 @@ public class FlinkPravegaSplitReaderTest {
         createReaderGroup(readerGroupName, streamName);
         PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
         assignSplitsAndFetchUntilFinish(reader, split, streamName);
+        reader.close();
     }
 
     @Test
@@ -108,6 +109,7 @@ public class FlinkPravegaSplitReaderTest {
             exit.set(true);
             t1.join();
         }
+        reader.close();
     }
 
     // ------------------

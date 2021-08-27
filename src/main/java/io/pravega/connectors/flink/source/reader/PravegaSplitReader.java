@@ -155,7 +155,7 @@ public class PravegaSplitReader
     @Override
     public void close() {
         LOG.info("Call close");
-        eventStreamClientFactory.close();
         pravegaReader.close();
+        eventStreamClientFactory.close();
     }
 }
