@@ -20,7 +20,7 @@ public class PravegaOptions {
     // Connection specific options
     // --------------------------------------------------------------------------------------------
 
-    public static final ConfigOption<String> CONTROLLER_URL = ConfigOptions
+    public static final ConfigOption<String> CONTROLLER_URI = ConfigOptions
             .key("controller-uri")
             .stringType()
             .noDefaultValue()

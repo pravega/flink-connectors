@@ -105,7 +105,7 @@ public class FlinkPravegaDynamicTableFactory implements
     public Set<ConfigOption<?>> requiredOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
         options.add(FactoryUtil.FORMAT);
-        options.add(CONTROLLER_URL);
+        options.add(CONTROLLER_URI);
         options.add(SCOPE);
         return options;
     }
