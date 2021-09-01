@@ -26,6 +26,7 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 import static org.apache.flink.util.Preconditions.checkNotNull;
@@ -107,8 +108,11 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
 
-        // Add a timeout to the future, to prevent long blocking calls
-        scheduledExecutorService.schedule(() -> checkpointResult.cancel(false), triggerTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
+        try {
+            checkpointResult.get(triggerTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
+        } catch (TimeoutException e) {
+            checkpointResult.cancel(false);
+        }
 
         return checkpointResult;
     }

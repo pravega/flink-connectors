@@ -60,16 +60,16 @@ public class ReaderCheckpointHookTest {
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
         ClientConfig clientConfig = mock(ClientConfig.class);
         CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
+        Checkpoint expectedCheckpoint = mock(Checkpoint.class);
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
 
         when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        checkpointPromise.complete(expectedCheckpoint);
+
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertNotNull(checkpointFuture);
         verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
 
-        // complete the checkpoint promise
-        Checkpoint expectedCheckpoint = mock(Checkpoint.class);
-        checkpointPromise.complete(expectedCheckpoint);
         assertTrue(checkpointFuture.isDone());
         assertSame(expectedCheckpoint, checkpointFuture.get());
     }
@@ -87,8 +87,6 @@ public class ReaderCheckpointHookTest {
         assertNotNull(checkpointFuture);
         verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
 
-        // invoke the timeout callback
-        hook.invokeScheduledCallables();
         assertTrue(checkpointFuture.isCancelled());
     }
 
