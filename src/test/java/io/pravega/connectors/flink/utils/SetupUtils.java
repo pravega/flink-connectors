@@ -71,7 +71,7 @@ public final class SetupUtils {
 
     // Set to true to enable TLS
     @Setter
-    private boolean enableTls = false;
+    private boolean enableTls = true;
 
     @Getter
     @Setter
@@ -145,7 +145,7 @@ public final class SetupUtils {
      */
     static String getFileFromResource(String resourceName)  {
         try {
-            Path tempPath = Files.createTempFile("test-", ".tmp");
+            Path tempPath = Files.createTempFile("test-", "-" + resourceName);
             tempPath.toFile().deleteOnExit();
             try (InputStream stream = SetupUtils.class.getClassLoader().getResourceAsStream(resourceName)) {
                 Files.copy(SetupUtils.class.getClassLoader().getResourceAsStream(resourceName), tempPath, StandardCopyOption.REPLACE_EXISTING);
@@ -320,7 +320,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(false) //configure ZK for security
+                    .secureZK(enableTls) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
