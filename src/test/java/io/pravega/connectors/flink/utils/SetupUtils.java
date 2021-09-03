@@ -43,22 +43,22 @@ import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.CERT_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.CLIENT_TRUST_STORE_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.KEY_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.PASSWD_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.PRAVEGA_PASSWORD;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.PRAVEGA_USERNAME;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.STANDALONE_KEYSTORE_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.STANDALONE_KEYSTORE_PASSWD_FILE;
+import static io.pravega.connectors.flink.utils.SecurityConfigDefaults.STANDALONE_TRUSTSTORE_FILE;
+
 /**
  * Utility functions for creating the test setup.
  */
 @Slf4j
 @NotThreadSafe
 public final class SetupUtils {
-
-    private static final String PRAVEGA_USERNAME = "admin";
-    private static final String PRAVEGA_PASSWORD = "1111_aaaa";
-    private static final String PASSWD_FILE = "passwd";
-    private static final String KEY_FILE = "server-key.key";
-    private static final String CERT_FILE = "server-cert.crt";
-    private static final String CLIENT_TRUST_STORE_FILE = "ca-cert.crt";
-    private static final String STANDALONE_KEYSTORE_FILE = "server.keystore.jks";
-    private static final String STANDALONE_TRUSTSTORE_FILE = "client.truststore.jks";
-    private static final String STANDALONE_KEYSTORE_PASSWD_FILE = "server.keystore.jks.passwd";
 
     private final PravegaGateway gateway;
 
@@ -71,7 +71,7 @@ public final class SetupUtils {
 
     // Set to true to enable TLS
     @Setter
-    private boolean enableTls = true;
+    private boolean enableTls = false;
 
     @Getter
     @Setter
@@ -143,7 +143,7 @@ public final class SetupUtils {
      *
      * @return Path of the temp file.
      */
-    static String getFileFromResource(String resourceName)  {
+    public static String getFileFromResource(String resourceName)  {
         try {
             Path tempPath = Files.createTempFile("test-", "-" + resourceName);
             tempPath.toFile().deleteOnExit();
@@ -320,7 +320,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(enableTls) //configure ZK for security
+                    .secureZK(true) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
@@ -334,7 +334,7 @@ public final class SetupUtils {
                     .enableMetrics(false)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
-                    .certFile(getFileFromResource(CERT_FILE))   // pravega #2519
+                    .certFile(getFileFromResource(CERT_FILE))
                     .keyFile(getFileFromResource(KEY_FILE))
                     .jksKeyFile(getFileFromResource(STANDALONE_KEYSTORE_FILE))
                     .jksTrustFile(getFileFromResource(STANDALONE_TRUSTSTORE_FILE))
