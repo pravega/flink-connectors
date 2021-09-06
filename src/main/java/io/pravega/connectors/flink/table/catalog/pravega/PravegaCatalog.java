@@ -10,6 +10,7 @@
 
 package io.pravega.connectors.flink.table.catalog.pravega;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.DeleteScopeFailedException;
 import io.pravega.client.stream.Stream;
@@ -55,11 +56,8 @@ import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.factories.Factory;
-import org.apache.flink.table.factories.FactoryUtil;
 
-import java.net.URI;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -72,41 +70,20 @@ import java.util.stream.StreamSupport;
 public class PravegaCatalog extends AbstractCatalog {
     private StreamManager streamManager;
     private SchemaRegistryClient schemaRegistryClient;
+    private ClientConfig clientConfig;
     private SchemaRegistryClientConfig config;
-    private final URI controllerUri;
-    private final URI schemaRegistryUri;
     private Map<String, String> properties;
     private SerializationFormat serializationFormat;
 
-    public PravegaCatalog(String catalogName, String defaultDatabase, String controllerUri, String schemaRegistryUri,
-                          String serializationFormat, String failOnMissingField, String ignoreParseErrors,
-                          String timestampFormat, String mapNullKeyMode,
-                          String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
+    public PravegaCatalog(String catalogName, String defaultDatabase, Map<String, String> properties,
+                          ClientConfig clientConfig, SchemaRegistryClientConfig config,
+                          SerializationFormat serializationFormat) {
 
         super(catalogName, defaultDatabase);
-
-        this.controllerUri = URI.create(controllerUri);
-        this.schemaRegistryUri = URI.create(schemaRegistryUri);
-        this.config = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(this.schemaRegistryUri).build();
-        this.serializationFormat = SerializationFormat.valueOf(serializationFormat);
-
-        this.properties = new HashMap<>();
-        properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put(PravegaOptions.CONTROLLER_URI.key(), controllerUri);
-        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(
-                String.format(
-                        "%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
-                schemaRegistryUri);
-
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
-                this.serializationFormat.name());
-
-        propagateJsonOptions(failOnMissingField, ignoreParseErrors, timestampFormat,
-                mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
+        this.clientConfig = clientConfig;
+        this.config = config;
+        this.serializationFormat = serializationFormat;
+        this.properties = properties;
 
         log.info("Created Pravega Catalog {}", catalogName);
     }
@@ -115,7 +92,7 @@ public class PravegaCatalog extends AbstractCatalog {
     public void open() throws CatalogException {
         if (streamManager == null) {
             try {
-                streamManager = StreamManager.create(controllerUri);
+                streamManager = StreamManager.create(clientConfig);
             } catch (Exception e) {
                 throw new CatalogException("Failed to connect Pravega controller");
             }
@@ -479,29 +456,5 @@ public class PravegaCatalog extends AbstractCatalog {
             throw new CatalogException("Fail to close connection to Pravega Schema registry", e);
         }
         schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace, config);
-    }
-
-    // put Json related options to properties
-    private void propagateJsonOptions(String failOnMissingField, String ignoreParseErrors, String timestampFormat,
-                                      String mapNullKeyMode, String mapNullKeyLiteral, String encodeDecimalAsPlainNumber) {
-
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
-                failOnMissingField);
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.IGNORE_PARSE_ERRORS.key()),
-                ignoreParseErrors);
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.TIMESTAMP_FORMAT.key()),
-                timestampFormat);
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_MODE.key()),
-                mapNullKeyMode);
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
-                mapNullKeyLiteral);
-        properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER.key()),
-                encodeDecimalAsPlainNumber);
     }
 }
