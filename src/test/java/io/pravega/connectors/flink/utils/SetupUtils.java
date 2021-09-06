@@ -32,13 +32,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -137,27 +132,6 @@ public final class SetupUtils {
     }
 
     /**
-     * Get resources as temp file.
-     *
-     * @param resourceName    Name of the resource.
-     *
-     * @return Path of the temp file.
-     */
-    public static String getFileFromResource(String resourceName)  {
-        try {
-            Path tempPath = Files.createTempFile("test-", "-" + resourceName);
-            tempPath.toFile().deleteOnExit();
-            try (InputStream stream = SetupUtils.class.getClassLoader().getResourceAsStream(resourceName)) {
-                Files.copy(SetupUtils.class.getClassLoader().getResourceAsStream(resourceName), tempPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            return tempPath.toFile().getAbsolutePath();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-
-    /**
      * Fetch the controller endpoint for this cluster.
      *
      * @return URI The controller endpoint to connect to this cluster.
@@ -192,7 +166,7 @@ public final class SetupUtils {
      * Fetch Pravega client trust store.
      */
     public String getPravegaClientTrustStore() {
-        return getFileFromResource(CLIENT_TRUST_STORE_FILE);
+        return SetupUtils.class.getClassLoader().getResource(CLIENT_TRUST_STORE_FILE).getPath();
     }
 
     /**
@@ -204,7 +178,7 @@ public final class SetupUtils {
                 .withDefaultScope(getScope())
                 .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                 .withHostnameValidation(enableHostNameValidation)
-                .withTrustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE));
+                .withTrustStore(SetupUtils.class.getClassLoader().getResource(CLIENT_TRUST_STORE_FILE).getPath());
     }
 
     /**
@@ -334,12 +308,12 @@ public final class SetupUtils {
                     .enableMetrics(false)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
-                    .certFile(getFileFromResource(CERT_FILE))
-                    .keyFile(getFileFromResource(KEY_FILE))
-                    .jksKeyFile(getFileFromResource(STANDALONE_KEYSTORE_FILE))
-                    .jksTrustFile(getFileFromResource(STANDALONE_TRUSTSTORE_FILE))
-                    .keyPasswordFile(getFileFromResource(STANDALONE_KEYSTORE_PASSWD_FILE))
-                    .passwdFile(getFileFromResource(PASSWD_FILE))
+                    .certFile(SetupUtils.class.getClassLoader().getResource(CERT_FILE).getFile())
+                    .keyFile(SetupUtils.class.getClassLoader().getResource(KEY_FILE).getPath())
+                    .jksKeyFile(SetupUtils.class.getClassLoader().getResource(STANDALONE_KEYSTORE_FILE).getPath())
+                    .jksTrustFile(SetupUtils.class.getClassLoader().getResource(STANDALONE_TRUSTSTORE_FILE).getPath())
+                    .keyPasswordFile(SetupUtils.class.getClassLoader().getResource(STANDALONE_KEYSTORE_PASSWD_FILE).getPath())
+                    .passwdFile(SetupUtils.class.getClassLoader().getResource(PASSWD_FILE).getPath())
                     .userName(PRAVEGA_USERNAME)
                     .passwd(PRAVEGA_PASSWORD)
                     .build();
@@ -363,7 +337,7 @@ public final class SetupUtils {
                     .controllerURI(URI.create(inProcPravegaCluster.getControllerURI()))
                     .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .validateHostName(enableHostNameValidation)
-                    .trustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE))
+                    .trustStore(SetupUtils.class.getClassLoader().getResource(CLIENT_TRUST_STORE_FILE).getPath())
                     .build();
         }
     }
@@ -390,7 +364,7 @@ public final class SetupUtils {
                     .controllerURI(controllerUri)
                     .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .validateHostName(enableHostNameValidation)
-                    .trustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE))
+                    .trustStore(SetupUtils.class.getClassLoader().getResource(CLIENT_TRUST_STORE_FILE).getPath())
                     .build();
         }
     }
