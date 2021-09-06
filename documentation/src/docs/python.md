@@ -178,6 +178,23 @@ if __name__ == '__main__':
 
 ```
 
+The pravega should have events like:
+
+```bash
+$ bin/helloWorldReader -scope "scope" -name "stream"
+Reading all the events from scope/stream
+Read event '{"f0":3,"f1":1}'
+Read event '{"f0":0,"f1":1}'
+Read event '{"f0":0,"f1":1}'
+...
+Read event '{"f0":0,"f1":1}'
+Read event '{"f0":3,"f1":1}'
+Read event '{"f0":3,"f1":1}'
+No more events from scope/stream
+```
+
+from [gettingstarted example](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples#gettingstarted) of [pravega-samples](https://github.com/pravega/pravega-samples).
+
 ### Create a StreamExecutionEnvironment
 
 The StreamExecutionEnvironment is a central concept of the DataStream API program. The following code example shows how to create a StreamExecutionEnvironment:
