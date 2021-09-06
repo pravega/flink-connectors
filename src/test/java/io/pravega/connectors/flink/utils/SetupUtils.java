@@ -136,7 +136,7 @@ public final class SetupUtils {
      *
      * @param resourceName    Name of the resource.
      *
-     * @return Path of the temp file.
+     * @return Path of the resource file.
      */
     static String getPathFromResource(String resourceName) {
         return SetupUtils.class.getClassLoader().getResource(resourceName).getPath();
