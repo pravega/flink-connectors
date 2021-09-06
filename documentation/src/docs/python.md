@@ -112,8 +112,8 @@ We follow the official [Intro to the Python DataStream API](https://ci.apache.or
 
 ```python
 from pyflink.common import WatermarkStrategy, Row
-from pyflink.common.serialization import SimpleStringSchema
-from pyflink.common.typeinfo import Types
+from pyflink.common.serialization import JsonRowSerializationSchema
+from pyflink.common.typeinfo import Types, TypeInformation
 from pyflink.datastream import StreamExecutionEnvironment
 from pyflink.datastream.connectors import NumberSequenceSource
 from pyflink.datastream.functions import RuntimeContext, MapFunction
@@ -154,16 +154,19 @@ def state_access_demo():
         type_info=Types.LONG())
 
     # 3. define the execution logic
-    ds = ds.map(lambda a: Row(a % 4, 1), output_type=Types.ROW([Types.LONG(), Types.LONG()])) \
+    type_info: TypeInformation = Types.ROW([Types.LONG(), Types.LONG()])
+    ds = ds.map(lambda a: Row(a % 4, 1), output_type=type_info) \
            .key_by(lambda a: a[0]) \
-           .map(MyMapFunction(), output_type=Types.ROW([Types.LONG(), Types.LONG()]))
+           .map(MyMapFunction(), output_type=type_info)
 
     # 4. create sink and emit result to sink
+    serialization_schema = JsonRowSerializationSchema.builder().with_type_info(
+        type_info).build()
     pravega_config = PravegaConfig(uri=CONTROLLER_URI, scope=SCOPE)
     pravega_writer = FlinkPravegaWriter(
         stream=STREAM,
         pravega_config=pravega_config,
-        serialization_schema=SimpleStringSchema())
+        serialization_schema=serialization_schema)
     ds.add_sink(pravega_writer)
 
     # 5. execute the job
