@@ -308,7 +308,7 @@ public final class SetupUtils {
                     .enableMetrics(false)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
-                    .certFile(SetupUtils.class.getClassLoader().getResource(CERT_FILE).getFile())
+                    .certFile(SetupUtils.class.getClassLoader().getResource(CERT_FILE).getPath())
                     .keyFile(SetupUtils.class.getClassLoader().getResource(KEY_FILE).getPath())
                     .jksKeyFile(SetupUtils.class.getClassLoader().getResource(STANDALONE_KEYSTORE_FILE).getPath())
                     .jksTrustFile(SetupUtils.class.getClassLoader().getResource(STANDALONE_TRUSTSTORE_FILE).getPath())
