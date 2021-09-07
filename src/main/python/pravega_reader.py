@@ -20,30 +20,60 @@ from pravega_config import PravegaConfig, Stream
 
 
 class StreamCut():
-    """
-    A set of segment/offset pairs for a single stream that represent
+    """A set of segment/offset pairs for a single stream that represent
     a consistent position in the stream.
 
     NOTE: Only UNBOUNDED stream cut is supported, users who wish to use
-    a particular stream cut need to wrap the `StreamCutImpl` manually.
+    a particular stream cut need to wrap the `StreamCutImpl` manually or
+    call the `from_base64` classmethod.
     """
 
     _j_stream_cut: JavaObject
 
-    UNBOUNDED: 'StreamCut'
+    _unbounded: 'StreamCut'
 
-    def __init__(self, _j_stream_cut: JavaObject) -> None:
+    def __init__(self, j_stream_cut: JavaObject) -> None:
         """Add stream cut implementation to the internal java object.
 
         Args:
             _j_stream_cut (JavaObject): Unbounded stream cut implementation
                 for now, but also could be `StreamCutImpl` if added manually.
         """
-        self._j_stream_cut = _j_stream_cut
+        self._j_stream_cut = j_stream_cut
 
+    @classmethod
+    def from_base64(cls, base64: str) -> 'StreamCut':
+        """Obtains the a StreamCut object from its Base64 representation
+        obtained via `asText()` in java.
 
-StreamCut.UNBOUNDED = StreamCut(
-    get_gateway().jvm.io.pravega.client.stream.StreamCut.UNBOUNDED)
+        Args:
+            base64 (str):
+                Base64 representation of StreamCut obtained using `asText()`.
+
+        Returns:
+            StreamCut: The StreamCut object.
+        """
+        j_stream_cut = getattr(
+            get_gateway().jvm.io.pravega.client.stream.StreamCut,
+            'from')(base64)
+        return cls(j_stream_cut)
+
+    @classmethod
+    def UNBOUNDED(cls) -> 'StreamCut':
+        """This is used represents an unbounded StreamCut.
+        This is used when the user wants to refer to the current HEAD of the
+        stream or the current TAIL of the stream.
+
+        Returns:
+            StreamCut: The UNBOUNDED StreamCut object.
+        """
+        if not hasattr(cls, '_unbounded'):
+            # get the java object after the connector jar is loaded
+            j_stream_cut = get_gateway(
+            ).jvm.io.pravega.client.stream.StreamCut.UNBOUNDED
+            cls._unbounded = cls(j_stream_cut)
+
+        return cls._unbounded
 
 
 class FlinkPravegaReader(SourceFunction):
@@ -52,8 +82,8 @@ class FlinkPravegaReader(SourceFunction):
                  stream: Union[str, Stream],
                  pravega_config: PravegaConfig,
                  deserialization_schema: DeserializationSchema,
-                 start_stream_cut: StreamCut = StreamCut.UNBOUNDED,
-                 end_stream_cut: StreamCut = StreamCut.UNBOUNDED,
+                 start_stream_cut: StreamCut = StreamCut.UNBOUNDED(),
+                 end_stream_cut: StreamCut = StreamCut.UNBOUNDED(),
                  enable_metrics: bool = True,
                  uid: Optional[str] = None,
                  reader_group_scope: Optional[str] = None,
