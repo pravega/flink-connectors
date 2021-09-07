@@ -2,9 +2,19 @@
 
 This Pravega connector of Python API provides a data source and data sink for Flink streaming jobs.
 
+Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python).
+
 **DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not meant for out-of-box usage.**
 
 [TOC]
+
+## How to use
+
+Together with python wrapper files, you could submit your job with main compute code like this:
+
+```bash
+flink run --python ./application.py --pyFiles ./pravega_config.py --pyFiles ./pravega_writer.py --pyFiles ./pravega_reader.py --jarfile /path/to/pravega-connectors-flink.jar
+```
 
 ## PravegaConfig
 
@@ -51,9 +61,9 @@ from pravega_reader import FlinkPravegaReader
 
 env = StreamExecutionEnvironment.get_execution_environment()
 
-pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
+pravega_config = PravegaConfig(uri=uri, scope=scope)
 pravega_reader = FlinkPravegaReader(
-    stream=STREAM,
+    stream=stream,
     pravega_config=pravega_config,
     deserialization_schema=SimpleStringSchema())
 
@@ -91,8 +101,8 @@ from pravega_writer import FlinkPravegaWriter
 
 env = StreamExecutionEnvironment.get_execution_environment()
 
-pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
-pravega_writer = FlinkPravegaWriter(stream=STREAM,
+pravega_config = PravegaConfig(uri=uri, scope=scope)
+pravega_writer = FlinkPravegaWriter(stream=stream,
                                     pravega_config=pravega_config,
                                     serialization_schema=SimpleStringSchema())
 
@@ -115,10 +125,6 @@ For more details about concepts like *Watermark* and *Writer Modes*? See [the ja
 
 Metrics are reported by default unless it is explicitly disabled using enable_metrics(False) option. See [Metrics](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/metrics.md) page for more details on type of metrics that are reported.
 
-Metrics is also gatherable by Python code. See [Metrics](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/table/metrics/) page of PyFlink for more information.
-
 ## Serialization
-
-See the [serialization](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/serialization.md) page for more information on how to use the java serializer and deserializer.
 
 See the [Data Types](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/datastream/data_types/) page of PyFlink for more information.
