@@ -16,6 +16,7 @@ from py4j.java_gateway import JavaObject
 from pyflink.common.serialization import SerializationSchema
 from pyflink.datastream.functions import SinkFunction
 from pyflink.java_gateway import get_gateway
+from pyflink.util.java_utils import to_j_flink_time
 
 from pravega_config import PravegaConfig, Stream
 
@@ -47,7 +48,6 @@ class PravegaWriterMode(Enum):
 
 class FlinkPravegaWriter(SinkFunction):
     """Flink sink implementation for writing into pravega storage."""
-
     def __init__(
         self,
         stream: Union[str, Stream],
@@ -98,17 +98,16 @@ class FlinkPravegaWriter(SinkFunction):
             .io.pravega.connectors.flink.FlinkPravegaWriter.builder()
 
         # AbstractWriterBuilder
-        j_builder.forStream(
-            stream if type(stream) == str else stream._j_stream)
+        j_builder.forStream(stream if type(stream) ==
+                            str else stream._j_stream)
         j_builder.withPravegaConfig(pravega_config._j_pravega_config)
         j_builder.enableMetrics(enable_metrics)
 
         # AbstractStreamingWriterBuilder
         j_builder.withWriterMode(writer_mode._to_j_pravega_writer_mode())
         j_builder.enableWatermark(enable_watermark)
-        JFlinkTimeCls = get_gateway().jvm.org.apache.flink.api.common.time.Time
         j_builder.withTxnLeaseRenewalPeriod(
-            JFlinkTimeCls.seconds(txn_leader_renewal_period.seconds))
+            to_j_flink_time(txn_leader_renewal_period))
 
         # FlinkPravegaWriter.Builder
         j_builder.withSerializationSchema(

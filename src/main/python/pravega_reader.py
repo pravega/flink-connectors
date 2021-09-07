@@ -15,6 +15,7 @@ from py4j.java_gateway import JavaObject
 from pyflink.common.serialization import DeserializationSchema
 from pyflink.datastream.functions import SourceFunction
 from pyflink.java_gateway import get_gateway
+from pyflink.util.java_utils import to_j_flink_time
 
 from pravega_config import PravegaConfig, Stream
 
@@ -179,13 +180,11 @@ class FlinkPravegaReader(SourceFunction):
             j_builder.withReaderGroupScope(reader_group_scope)
         if reader_group_name:
             j_builder.withReaderGroupName(reader_group_name)
-        JFlinkTimeCls = get_gateway().jvm.org.apache.flink.api.common.time.Time
         j_builder.withReaderGroupRefreshTime(
-            JFlinkTimeCls.seconds(reader_group_refresh_time.seconds))
+            to_j_flink_time(reader_group_refresh_time))
         j_builder.withCheckpointInitiateTimeout(
-            JFlinkTimeCls.seconds(checkpoint_initiate_timeout.seconds))
-        j_builder.withEventReadTimeout(
-            JFlinkTimeCls.seconds(event_read_timeout.seconds))
+            to_j_flink_time(checkpoint_initiate_timeout))
+        j_builder.withEventReadTimeout(to_j_flink_time(event_read_timeout))
         j_builder.withMaxOutstandingCheckpointRequest(
             max_outstanding_checkpoint_request)
 
