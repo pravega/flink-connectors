@@ -56,7 +56,7 @@ class FlinkPravegaWriter(SinkFunction):
         enable_metrics: bool = True,
         writer_mode: PravegaWriterMode = PravegaWriterMode.ATLEAST_ONCE,
         enable_watermark: bool = False,
-        txn_leader_renewal_period: timedelta = timedelta(seconds=30)
+        txn_lease_renewal_period: timedelta = timedelta(seconds=30)
     ) -> None:
         """Build the `FlinkPravegaWriter` with options.
 
@@ -74,7 +74,7 @@ class FlinkPravegaWriter(SinkFunction):
                 Sets the serialization schema.
 
             enable_metrics (bool, optional):
-                Pravega reader metrics. Defaults to True.
+                Pravega writer metrics. Defaults to True.
 
             writer_mode (PravegaWriterMode, optional):
                 Sets the writer mode to provide at-least-once or exactly-once
@@ -83,7 +83,7 @@ class FlinkPravegaWriter(SinkFunction):
             enable_watermark (bool, optional):
                 Enable watermark. Defaults to False.
 
-            txn_leader_renewal_period (timedelta, optional):
+            txn_lease_renewal_period (timedelta, optional):
                 Sets the transaction lease renewal period.
                 Defaults to 30 seconds on java side.
 
@@ -107,7 +107,7 @@ class FlinkPravegaWriter(SinkFunction):
         j_builder.withWriterMode(writer_mode._to_j_pravega_writer_mode())
         j_builder.enableWatermark(enable_watermark)
         j_builder.withTxnLeaseRenewalPeriod(
-            to_j_flink_time(txn_leader_renewal_period))
+            to_j_flink_time(txn_lease_renewal_period))
 
         # FlinkPravegaWriter.Builder
         j_builder.withSerializationSchema(

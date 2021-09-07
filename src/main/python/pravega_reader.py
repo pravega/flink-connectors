@@ -100,8 +100,7 @@ class FlinkPravegaReader(SourceFunction):
 
         Args:
             stream (Union[str, Stream]):
-                Add a stream to be read by the source,
-                from the earliest available position in the stream.
+                The stream to be read from.
 
             pravega_config (PravegaConfig):
                 Set the Pravega client configuration, which includes
@@ -115,15 +114,15 @@ class FlinkPravegaReader(SourceFunction):
                 Defaults to StreamCut.UNBOUNDED.
 
             end_stream_cut (StreamCut, optional):
-                Read from the given start position in the stream
-                to the given end position. Defaults to StreamCut.UNBOUNDED.
+                Read to the given end position in the stream.
+                Defaults to StreamCut.UNBOUNDED.
 
             enable_metrics (bool, optional):
                 Pravega reader metrics. Defaults to True.
 
             uid (Optional[str], optional):
                 Configures the source uid to identify the checkpoint state
-                of this source. Defaults to generated random uid on java side.
+                of this source. Defaults to random generated uid on java side.
 
             reader_group_scope (Optional[str], optional):
                 Configures the reader group scope for synchronization

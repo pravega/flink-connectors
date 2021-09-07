@@ -1,227 +1,46 @@
-<!--
-Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+# Python API for the connector
 
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
+This Pravega connector of Python API provides a data source and data sink for Flink streaming jobs.
 
-  http://www.apache.org/licenses/LICENSE-2.0
--->
+**DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not meant for out-of-box usage.**
 
-# Pravega Flink Connectors for Python
+[TOC]
 
-[![Build Status](https://img.shields.io/github/workflow/status/pravega/flink-connectors/build)](https://github.com/pravega/flink-connectors/actions/workflows/build.yml?query=branch%3Amaster) [![Issue Tracking](https://img.shields.io/github/issues/pravega/flink-connectors)](https://github.com/pravega/flink-connectors/issues) [![License](https://img.shields.io/github/license/pravega/flink-connectors)](https://github.com/pravega/flink-connectors/blob/master/LICENSE) [![Downloads](https://img.shields.io/github/downloads/pravega/flink-connectors/total)](https://github.com/pravega/flink-connectors/releases) [![docs](https://img.shields.io/static/v1?label=docs&message=see-latest&color=blue)](https://github.com/pravega/flink-connectors/tree/master/documentation/src/docs)
+## PravegaConfig
 
-👏🎉 Welcome to the Python world of Pravega Flink Connectors!
-
-🧾 This page is all about how to use the connectors in `PyFlink`.
-
-🚨 **DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not meant for out-of-box usage.** See below [Technical Details](#Technical-Details) for more information.
-
----
-
-We assume you know some basic ideas about `Pravega`, `Python`, `PyFlink` and is eager to use Pravega as the streaming storage for batch and/or streaming workloads of Flink.
-If not, see the below [Overview](#Overview) section or learn more about [Pravega](https://pravega.io/), [Flink](https://flink.apache.org/), and [Pravega Flink Connectors](https://github.com/pravega/flink-connectors) for their usage and appropriate scenarios.
-
-## Overview
-
-* Pravega
-  > Pravega is an open-source distributed storage service implementing Streams. It offers Stream as the main primitive for the foundation of reliable storage systems: a high-performance, durable, elastic, and unlimited append-only byte stream with strict ordering and consistency.
-* PyFlink
-  > PyFlink is a Python API for Apache Flink that allows you to build scalable batch and streaming workloads, such as real-time data processing pipelines, large-scale exploratory data analysis, Machine Learning (ML) pipelines, and ETL processes.
-* Pravega Flink Connectors
-  > The connectors can be used to build end-to-end stream processing pipelines that use Pravega as the stream storage and message bus, and Apache Flink for computation over the streams.
-
-**TL;DR** With the help of the connectors, your streaming workload can safely rely on Pravega as the streaming storage which provides **end-to-end exactly-once processing pipelines** and **seamless integration with Flink's checkpoints and savepoints mechanism** with the help of connectors.
-
-This Python API of connectors provides both **`PyFlink Table API`** and **`PyFlink DataStream API`**. We will cover them respectively at [Table API](#Table-API) and [DataStream API](#DataStream-API).
-
-## Pre-requisites
-
-To get everything ready, all the following conditions should meet.
-
-1. Pravega running. See [here](http://pravega.io/docs/latest/getting-started/) for instructions.
-2. Python and its packages installed. See [PyFlink setup](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/installation/).
-3. Latest Pravega Flink connectors at [the release page](https://github.com/pravega/flink-connectors/releases).
-4. Apache Flink running.
-
-> If you wish to use Anaconda instead, replace `pip` with `conda` in the steps above.
-
-## Technical Details
-
-We postpone the actual tutorials here is because understanding the underlying `PyFlink` mechanism is crucial for using connectors' Python API.
-
-🚨 **Python wrapper** is the key for this section and keeps it in mind all the time.
-
-Everything you see in the Python API is a wrapper that points to an actual Java object in the JVM. So basically, the Python API does nothing but simply calls the corresponding Java API for you.
-
-If you wish to have other unimplemented things such as a particular stream cut or event router, you could refer to `DefaultCredentials` implementation in the Python API. (For `interface` implementation, see [Implementing Java interfaces from Python (callback)](https://www.py4j.org/advanced_topics.html#implementing-java-interfaces-from-python-callback))
-
-Consider a simple Java class (`DefaultCredentials`):
-
-```java
-package io.pravega.shared.security.auth;
-
-// omit imports
-
-public class DefaultCredentials implements Credentials {
-    private final String token;
-
-    public DefaultCredentials(@NonNull String password, @NonNull String userName) {
-        String decoded = userName + ":" + password;
-        this.token = Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
-    }
-
-    // omit other members and methods
-}
-```
-
-To use this in Python, simply do the following:
+A top-level config object, `PravegaConfig`, is provided to establish a Pravega context for the Flink connector.
 
 ```python
-from py4j.java_gateway import JavaObject
-from pyflink.java_gateway import get_gateway
-
-username, password = 'admin', '1111_aaaa'
-
-# create the java object
-j_default_credentials: JavaObject = get_gateway() \
-    .jvm.io.pravega.shared.security.auth \
-    .DefaultCredentials(username, password)
-
-# and when you want to use this
-j_pravega_config: JavaObject = get_gateway() \
-            .jvm.io.pravega.connectors.flink \
-            .PravegaConfig.fromDefaults() \
-            .withCredentials(j_default_credentials)
-```
-
-🚨 The magic here is that you could call any java method with matching parameters. If the parameter is a primitive type like `Integer` and `String`, you could simply pass the corresponding Python type like `int` and `str`. For derived types like `DefaultCredentials`, calling the constructor and pass the corresponding `JavaObject` is sufficient.
-
-## Table API
-
-✈ Table API is suitable for pure SQL use. See [Flink Pravega Table API samples for Python](https://github.com/pravega/pravega-samples/blob/dev/scenarios/pravega-flink-connector-sql-samples/python.md) for more details.
-
-## DataStream API
-
-DataStream programs in Flink are regular programs that implement transformations on data streams (e.g., filtering, updating state, defining windows, aggregating). The data streams are initially created from various sources (e.g., message queues, socket streams, files). Results are returned via sinks, which may for example write the data to files, or to standard output (for example the command line terminal).
-
-We follow the official [Intro to the Python DataStream API](https://ci.apache.org/projects/flink/flink-docs-master/docs/dev/python/datastream/intro_to_datastream_api/) documentation. For topics we do not cover below such as the Table & SQL conversion-related things, feel free to visit in need.
-
-### Common Structure of Python DataStream API Programs with Pravega Flink Connectors
-
-```python
-from pyflink.common import WatermarkStrategy, Row
-from pyflink.common.serialization import JsonRowSerializationSchema
-from pyflink.common.typeinfo import Types, TypeInformation
-from pyflink.datastream import StreamExecutionEnvironment
-from pyflink.datastream.connectors import NumberSequenceSource
-from pyflink.datastream.functions import RuntimeContext, MapFunction
-from pyflink.datastream.state import ValueStateDescriptor
-
 from pravega_config import PravegaConfig
-from pravega_writer import FlinkPravegaWriter
 
-CONTROLLER_URI = 'tcp://localhost:9090'
-SCOPE = 'scope'
-STREAM = 'stream'
-
-
-class MyMapFunction(MapFunction):
-    def open(self, runtime_context: RuntimeContext):
-        state_desc = ValueStateDescriptor('cnt', Types.PICKLED_BYTE_ARRAY())
-        self.cnt_state = runtime_context.get_state(state_desc)
-
-    def map(self, value):
-        cnt = self.cnt_state.value()
-        if cnt is None or cnt < 2:
-            self.cnt_state.update(1 if cnt is None else cnt + 1)
-            return value[0], value[1] + 1
-        else:
-            return value[0], value[1]
-
-
-def state_access_demo():
-    # 1. create a StreamExecutionEnvironment
-    env = StreamExecutionEnvironment.get_execution_environment()
-
-    # 2. create source DataStream
-    seq_num_source = NumberSequenceSource(1, 10000)
-    ds = env.from_source(
-        source=seq_num_source,
-        watermark_strategy=WatermarkStrategy.for_monotonous_timestamps(),
-        source_name='seq_num_source',
-        type_info=Types.LONG())
-
-    # 3. define the execution logic
-    type_info: TypeInformation = Types.ROW([Types.LONG(), Types.LONG()])
-    ds = ds.map(lambda a: Row(a % 4, 1), output_type=type_info) \
-           .key_by(lambda a: a[0]) \
-           .map(MyMapFunction(), output_type=type_info)
-
-    # 4. create sink and emit result to sink
-    serialization_schema = JsonRowSerializationSchema.builder().with_type_info(
-        type_info).build()
-    pravega_config = PravegaConfig(uri=CONTROLLER_URI, scope=SCOPE)
-    pravega_writer = FlinkPravegaWriter(
-        stream=STREAM,
-        pravega_config=pravega_config,
-        serialization_schema=serialization_schema)
-    ds.add_sink(pravega_writer)
-
-    # 5. execute the job
-    env.execute('state_access_demo')
-
-
-if __name__ == '__main__':
-    state_access_demo()
-
+pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
 ```
 
-The pravega should have events like:
+|parameter|type|required|default value|description|
+|-|-|-|-|-|
+|uri|str|Yes|N/A|The Pravega controller RPC URI.|
+|scope|str|Yes|N/A|The self-defined Pravega scope.|
+|schema_registry_uri|str|No|None|The Pravega schema registry URI.|
+|trust_store|str|No|None|The truststore value.|
+|default_scope|str|No|None|The default Pravega scope, to resolve unqualified stream names and to support reader groups.|
+|credentials|DefaultCredentials|No|None|The Pravega credentials to use.|
+|validate_hostname|bool|No|True|TLS hostname validation.|
 
-```bash
-$ bin/helloWorldReader -scope "scope" -name "stream"
-Reading all the events from scope/stream
-Read event '{"f0":3,"f1":1}'
-Read event '{"f0":0,"f1":1}'
-Read event '{"f0":0,"f1":1}'
-...
-Read event '{"f0":0,"f1":1}'
-Read event '{"f0":3,"f1":1}'
-Read event '{"f0":3,"f1":1}'
-No more events from scope/stream
-```
+For more details about *Default Scope*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/configurations.md#understanding-the-default-scope).
 
-from [gettingstarted example](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples#gettingstarted) of [pravega-samples](https://github.com/pravega/pravega-samples).
+## StreamCut
 
-### Create a StreamExecutionEnvironment
+A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on `StreamCuts`, please refer to documentation on [StreamCut](http://pravega.io/docs/latest/streamcuts/) and [sample code(java only)](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
-The StreamExecutionEnvironment is a central concept of the DataStream API program. The following code example shows how to create a StreamExecutionEnvironment:
+A `StreamCut` object could be constructed from the `from_base64` class method where a base64 str is passed as the only parameter.
 
-```python
-from pyflink.datastream import StreamExecutionEnvironment
+By default, the `FlinkPravegaReader` will pass the `UNBOUNDED` `StreamCut` which let the reader read from the HEAD to the TAIL.
 
-env = StreamExecutionEnvironment.get_execution_environment()
+For more details about *Historical Stream Processing*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#historical-stream-processing).
 
-# for EXACTLY_ONCE writer mode, checkpoint is required
-env.enable_checkpointing(1000, CheckpointingMode.EXACTLY_ONCE)
+## FlinkPravegaReader
 
-# add connectors jar if the job is not submitted with --jarfile options
-env.add_jars("file:///path/to/pravega-connectors-flink.jar")
-```
-
-### Create a DataStream
-
-The DataStream API gets its name from the special DataStream class that is used to represent a collection of data in a Flink program. You can think of them as immutable collections of data that can contain duplicates. This data can either be finite or unbounded, the API that you use to work on them is the same.
-
-A `DataStream` is similar to a regular Python `Collection` in terms of usage but is quite different in some key ways. They are immutable, meaning that once they are created you cannot add or remove elements. You can also not simply inspect the elements inside but only work on them using the `DataStream` API operations, which are also called transformations.
-
-You can create an initial `DataStream` by adding a source in a Flink program. Then you can derive new streams from this and combine them by using API methods such as `map`, `filter`, and so on.
-
-#### Create using Pravega Flink Connectors
-
-`Datastream` can be created from a list object like [this official example](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/datastream/intro_to_datastream_api/#create-from-a-list-object). But here we will focus on how to read from external source such as Pravega. This is achieved by using DataStream connectors with method `add_source` as following:
+Use `FlinkPravegaReader` as a datastream source. Could be added by `env.add_source`.
 
 ```python
 from pyflink.common.serialization import SimpleStringSchema
@@ -230,107 +49,76 @@ from pyflink.datastream import StreamExecutionEnvironment
 from pravega_config import PravegaConfig
 from pravega_reader import FlinkPravegaReader
 
-CONTROLLER_URI = 'tcp://localhost:9090'
-SCOPE = 'scope'
-STREAM = 'stream'
-
 env = StreamExecutionEnvironment.get_execution_environment()
-env.set_parallelism(1)
-env.add_jars("file:///path/to/pravega-connectors-flink.jar")
 
-pravega_config = PravegaConfig('tcp://localhost:9090', SCOPE)
+pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
 pravega_reader = FlinkPravegaReader(
     stream=STREAM,
     pravega_config=pravega_config,
-    deserialization_schema=SimpleStringSchema(),
-    enable_metrics=False)
+    deserialization_schema=SimpleStringSchema())
 
 ds = env.add_source(pravega_reader)
-ds.print()
-
-env.execute("reader_example")
 ```
 
-*Unified Source through `from_source` is not supported yet.*
+|parameter|type|required|default value|description|
+|-|-|-|-|-|
+|stream|Union[str, Stream]|Yes|N/A|The stream to be read from.|
+|pravega_config|PravegaConfig|Yes|N/A|Set the Pravega client configuration, which includes connection info, security info, and a default scope.|
+|deserialization_schema|DeserializationSchema|Yes|N/A|The deserialization schema which describes how to turn byte messages into events.|
+|start_stream_cut|StreamCut|No|StreamCut.UNBOUNDED|Read from the given start position in the stream.|
+|end_stream_cut|StreamCut|No|StreamCut.UNBOUNDED|Read to the given end position in the stream.|
+|enable_metrics|bool|No|True|Pravega reader metrics.|
+|uid|str|No|None(random generated uid on java side)|The uid to identify the checkpoint state of this source.|
+|reader_group_scope|str|No|pravega_config.default_scope|The scope to store the Reader Group synchronization stream into.|
+|reader_group_name|str|No|None(auto-generated name on java side)|The Reader Group name for display purposes.|
+|reader_group_refresh_time|timedelta|No|None(3 seconds on java side)|The interval for synchronizing the Reader Group state across parallel source instances.|
+|checkpoint_initiate_timeout|timedelta|No|None(5 seconds on java side)|The timeout for executing a checkpoint of the Reader Group state.|
+|event_read_timeout|timedelta|No|None(1 second on java side)|Sets the timeout for the call to read events from Pravega. After the timeout expires (without an event being returned), another call will be made.|
+|max_outstanding_checkpoint_request|int|No|None(3 on java side)|Configures the maximum outstanding checkpoint requests to Pravega.|
 
-### DataStream Transformations
+For more details about concepts like *Reader Parallelism* and *Checkpointing*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#input-streams).
 
-Operators transform one or more `DataStream` into a new `DataStream`. Programs can combine multiple transformations into sophisticated dataflow topologies.
+## FlinkPravegaWriter
 
-The following example shows a simple example about how to convert a `DataStream` into another `DataStream` using map transformation:
-
-```python
-ds = ds.map(lambda a: a + 1)
-```
-
-See [operators](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/datastream/operators/overview/) for an overview of the available `DataStream` transformations.
-
-### Emit Results
-
-#### Print
-
-You can call the `print` method to print the data of a `DataStream` to the standard output:
-
-```python
-ds.print()
-```
-
-#### Collect results to client
-
-You can call the `execute_and_collect` method to collect the data of a `DataStream` to client:
-
-```python
-with ds.execute_and_collect() as results:
-    for result in results:
-        print(result)
-```
-
-#### Emit results to Pravega via Pravega Flink Connectors
-
-You can call the `add_sink` method to emit the data of a `DataStream` to a DataStream sink connector:
+Use `FlinkPravegaWriter` as a datastream sink. Could be added by `env.add_sink`.
 
 ```python
 from pyflink.common.serialization import SimpleStringSchema
-from pyflink.common.typeinfo import Types
-from pyflink.datastream import StreamExecutionEnvironment, CheckpointingMode
+from pyflink.datastream import StreamExecutionEnvironment
 
 from pravega_config import PravegaConfig
-from pravega_writer import FlinkPravegaWriter, PravegaWriterMode
-
-CONTROLLER_URI = 'tcp://localhost:9090'
-SCOPE = 'scope'
-STREAM = 'stream'
+from pravega_writer import FlinkPravegaWriter
 
 env = StreamExecutionEnvironment.get_execution_environment()
-env.set_parallelism(1)
-env.enable_checkpointing(1000, CheckpointingMode.EXACTLY_ONCE)
-env.add_jars("file:///path/to/pravega-connectors-flink.jar")
 
-pravega_config = PravegaConfig(uri=CONTROLLER_URI, scope=SCOPE)
+pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
 pravega_writer = FlinkPravegaWriter(stream=STREAM,
                                     pravega_config=pravega_config,
-                                    writer_mode=PravegaWriterMode.ATLEAST_ONCE,
                                     serialization_schema=SimpleStringSchema())
 
-ds = env.from_collection(collection=['a', 'bb', 'ccc'],
-                         type_info=Types.STRING())
-ds.add_sink(pravega_writer)
-
-env.execute("writer_example")
+ds = env.add_sink(pravega_reader)
 ```
 
-*Unified Sink through `sink_to` is not supported yet.*
+|parameter|type|required|default value|description|
+|-|-|-|-|-|
+|stream|Union[str, Stream]|Yes|N/A|Add a stream to be read by the source, from the earliest available position in the stream.|
+|pravega_config|PravegaConfig|Yes|N/A|Set the Pravega client configuration, which includes connection info, security info, and a default scope.|
+|serialization_schema|SerializationSchema|Yes|N/A|The serialization schema which describes how to turn events into byte messages.|
+|enable_metrics|bool|No|True|Pravega writer metrics.|
+|writer_mode|PravegaWriterMode|No|PravegaWriterMode.ATLEAST_ONCE|The writer mode to provide *Best-effort*, *At-least-once*, or *Exactly-once* guarantees.|
+|enable_watermark|bool|No|False|Emit Flink watermark in event-time semantics to Pravega streams.|
+|txn_lease_renewal_period|timedelta|No|None(30 seconds on java side)|Report Pravega metrics.|
 
-### Submit Job
+For more details about concepts like *Watermark* and *Writer Modes*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#writer-parallelism).
 
-Finally, you should call the `StreamExecutionEnvironment.execute` method to submit the DataStream API job for execution:
+## Metrics
 
-```python
-env.execute()
-```
+Metrics are reported by default unless it is explicitly disabled using enable_metrics(False) option. See [Metrics](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/metrics.md) page for more details on type of metrics that are reported.
 
-Or submit via `flink` command line interface:
+Metrics is also gatherable by Python code. See [Metrics](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/table/metrics/) page of PyFlink for more information.
 
-```bash
-flink run --python ./pravega_examples.py --pyFiles ./pravega_config.py --pyFiles ./pravega_writer.py --jarfile /path/to/pravega-connectors-flink.jar
-```
+## Serialization
+
+See the [serialization](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/serialization.md) page for more information on how to use the java serializer and deserializer.
+
+See the [Data Types](https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/python/datastream/data_types/) page of PyFlink for more information.
