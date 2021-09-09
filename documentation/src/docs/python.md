@@ -1,19 +1,19 @@
-# Python API for the connector
+# Pravega Python DataStream connector
 
 This Pravega connector of Python API provides a data source and data sink for Flink streaming jobs.
 
-Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python).
+Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python). This page only describes the API usage and for parameter concepts please refer to [Configurations](configurations.md) and [Streaming](streaming.md)
 
-**DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not meant for out-of-box usage.**
+**DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not officially published.**
 
 [TOC]
 
 ## How to use
 
-Together with python wrapper files, you could submit your job with main compute code like this:
+Together with the connector jar and python wrapper files, you could submit your job with main compute code like this:
 
 ```bash
-flink run --python ./application.py --pyFiles ./pravega_config.py --pyFiles ./pravega_writer.py --pyFiles ./pravega_reader.py --jarfile /path/to/pravega-connectors-flink.jar
+flink run --python ./application.py --pyFiles <connector-repo>/src/main/python/ --jarfile /path/to/pravega-connectors-flink.jar
 ```
 
 ## PravegaConfig
@@ -23,30 +23,23 @@ A top-level config object, `PravegaConfig`, is provided to establish a Pravega c
 ```python
 from pravega_config import PravegaConfig
 
-pravega_config = PravegaConfig(CONTROLLER_URI, SCOPE)
+pravega_config = PravegaConfig(uri=uri, scope=scope)
 ```
 
 |parameter|type|required|default value|description|
 |-|-|-|-|-|
 |uri|str|Yes|N/A|The Pravega controller RPC URI.|
 |scope|str|Yes|N/A|The self-defined Pravega scope.|
-|schema_registry_uri|str|No|None|The Pravega schema registry URI.|
 |trust_store|str|No|None|The truststore value.|
 |default_scope|str|No|None|The default Pravega scope, to resolve unqualified stream names and to support reader groups.|
 |credentials|DefaultCredentials|No|None|The Pravega credentials to use.|
 |validate_hostname|bool|No|True|TLS hostname validation.|
 
-For more details about *Default Scope*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/configurations.md#understanding-the-default-scope).
-
 ## StreamCut
-
-A `StreamCut` represents a specific position in a Pravega Stream, which may be obtained from various API interactions with the Pravega client. The `FlinkPravegaReader` accepts a `StreamCut` as the start and/or end position of a given stream. For further reading on `StreamCuts`, please refer to documentation on [StreamCut](http://pravega.io/docs/latest/streamcuts/) and [sample code(java only)](https://github.com/pravega/pravega-samples/tree/master/pravega-client-examples/src/main/java/io/pravega/example/streamcuts).
 
 A `StreamCut` object could be constructed from the `from_base64` class method where a base64 str is passed as the only parameter.
 
 By default, the `FlinkPravegaReader` will pass the `UNBOUNDED` `StreamCut` which let the reader read from the HEAD to the TAIL.
-
-For more details about *Historical Stream Processing*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#historical-stream-processing).
 
 ## FlinkPravegaReader
 
@@ -86,8 +79,6 @@ ds = env.add_source(pravega_reader)
 |event_read_timeout|timedelta|No|None(1 second on java side)|Sets the timeout for the call to read events from Pravega. After the timeout expires (without an event being returned), another call will be made.|
 |max_outstanding_checkpoint_request|int|No|None(3 on java side)|Configures the maximum outstanding checkpoint requests to Pravega.|
 
-For more details about concepts like *Reader Parallelism* and *Checkpointing*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#input-streams).
-
 ## FlinkPravegaWriter
 
 Use `FlinkPravegaWriter` as a datastream sink. Could be added by `env.add_sink`.
@@ -119,11 +110,9 @@ ds = env.add_sink(pravega_reader)
 |enable_watermark|bool|No|False|Emit Flink watermark in event-time semantics to Pravega streams.|
 |txn_lease_renewal_period|timedelta|No|None(30 seconds on java side)|Report Pravega metrics.|
 
-For more details about concepts like *Watermark* and *Writer Modes*? See [the java doc](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/streaming.md#writer-parallelism).
-
 ## Metrics
 
-Metrics are reported by default unless it is explicitly disabled using enable_metrics(False) option. See [Metrics](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/metrics.md) page for more details on type of metrics that are reported.
+Metrics are reported by default unless it is explicitly disabled using enable_metrics(False) option. See [Metrics](metrics.md) page for more details on type of metrics that are reported.
 
 ## Serialization
 
