@@ -7,24 +7,24 @@ You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 -->
-# Pravega Flink Connectors [![Build Status](https://travis-ci.org/pravega/flink-connectors.svg?branch=master)](https://travis-ci.org/pravega/flink-connectors)
+
+# Pravega Flink Connectors
+
+[![Build Status](https://img.shields.io/github/workflow/status/pravega/flink-connectors/build)](https://github.com/pravega/flink-connectors/actions/workflows/build.yml?query=branch%3Amaster) [![License](https://img.shields.io/github/license/pravega/flink-connectors)](https://github.com/pravega/flink-connectors/blob/master/LICENSE) [![Downloads](https://img.shields.io/github/downloads/pravega/flink-connectors/total)](https://github.com/pravega/flink-connectors/releases) [![Codecov](https://img.shields.io/codecov/c/github/pravega/flink-connectors)](https://app.codecov.io/gh/pravega/flink-connectors/)
 
 This repository implements connectors to read and write [Pravega](http://pravega.io/) Streams with [Apache Flink](http://flink.apache.org/) stream processing framework.
 
 The connectors can be used to build end-to-end stream processing pipelines (see [Samples](https://github.com/pravega/pravega-samples)) that use Pravega as the stream storage and message bus, and Apache Flink for computation over the streams.
 
-
 ## Features & Highlights
 
-  - **Exactly-once processing guarantees** for both Reader and Writer, supporting **end-to-end exactly-once processing pipelines**
-
-  - Seamless integration with Flink's checkpoints and savepoints.
-
-  - Parallel Readers and Writers supporting high throughput and low latency processing.
-
-  - Table API support to access Pravega Streams for both **Batch** and **Streaming** use case.
+- **Exactly-once processing guarantees** for both Reader and Writer, supporting **end-to-end exactly-once processing pipelines**
+- Seamless integration with Flink's checkpoints and savepoints.
+- Parallel Readers and Writers supporting high throughput and low latency processing.
+- Table API support to access Pravega Streams for both **Batch** and **Streaming** use case.
 
 ## Compatibility Matrix
+
 The [master](https://github.com/pravega/flink-connectors) branch will always have the most recent
 supported versions of Flink and Pravega.
 
@@ -38,6 +38,7 @@ supported versions of Flink and Pravega.
 | [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)     | 0.9  | Java 11 | Java 8 or 11 | 1.9  | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.9_2.12/0.9.1/     |
 
 ## How to build
+
 Building the connectors from the source is only necessary when we want to use or contribute to the latest (unreleased) version of the Pravega Flink connectors.
 
 The connector project is linked to a specific version of Pravega, based on the `pravegaVersion` field in `gradle.properties`. 
