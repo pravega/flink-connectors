@@ -6,7 +6,13 @@ Your Flink streaming jobs could use Pravega as their storage with these [Python 
 
 **DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not officially published.**
 
-[TOC]
+* [How to use](#How-to-use)
+* [PravegaConfig](#PravegaConfig)
+* [StreamCut](#StreamCut)
+* [FlinkPravegaReader](#FlinkPravegaReader)
+* [FlinkPravegaWriter](#FlinkPravegaWriter)
+* [Metrics](#Metrics)
+* [Serialization](#Serialization)
 
 ## How to use
 
