@@ -11,10 +11,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
-import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory;
-import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
-import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
-import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.factories.PravegaCatalogFactoryOptions;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
@@ -290,17 +286,12 @@ public class PravegaCatalogITCase {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
         Map<String, String> properties = new HashMap<>();
-        properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put(PravegaOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
-        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(
-                String.format(
-                        "%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
-                "Avro");
+        properties.put("pravega-registry.format", "Avro");
         CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(), properties, SETUP_UTILS.getClientConfig(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build(),
                 SerializationFormat.Avro);

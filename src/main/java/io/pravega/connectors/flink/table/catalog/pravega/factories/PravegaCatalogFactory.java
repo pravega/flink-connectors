@@ -59,17 +59,17 @@ public class PravegaCatalogFactory implements CatalogFactory {
     @Override
     public Set<ConfigOption<?>> optionalOptions() {
         final Set<ConfigOption<?>> options = new HashSet<>();
+        options.add(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE);
+        options.add(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN);
+        options.add(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME);
+        options.add(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE);
         options.add(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT);
         options.add(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD);
         options.add(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS);
         options.add(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT);
         options.add(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE);
         options.add(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL);
-        options.add(PravegaCatalogFactoryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
-        options.add(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE);
-        options.add(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN);
-        options.add(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME);
-        options.add(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE);
+        options.add(PravegaCatalogFactoryOptions.JSON_ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         return options;
     }
 
@@ -84,7 +84,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
         // all catalog options
         ReadableConfig configOptions = helper.getOptions();
         // options that separate "json" prefix and the configuration
-        ReadableConfig delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
+        DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
 
         Map<String, String> properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
@@ -100,24 +100,10 @@ public class PravegaCatalogFactory implements CatalogFactory {
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
 
         // put json related options into properties
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FAIL_ON_MISSING_FIELD.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_FAIL_ON_MISSING_FIELD).toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.IGNORE_PARSE_ERRORS.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_IGNORE_PARSE_ERRORS).toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.TIMESTAMP_FORMAT.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_TIMESTAMP_FORMAT));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_MODE.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_MODE));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.MAP_NULL_KEY_LITERAL.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.JSON_MAP_NULL_KEY_LITERAL));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER.key()),
-                delegatingConfiguration.get(PravegaCatalogFactoryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER).toString());
+        Map<String, String> jsonProperties = delegatingConfiguration.toMap();
+        jsonProperties.forEach((key, value) -> {
+            properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value);
+        });
 
         PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions);
         SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder().
