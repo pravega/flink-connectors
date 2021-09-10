@@ -107,6 +107,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
         });
 
         PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
+                .withDefaultScope(configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE))
                 .withSchemaRegistryURI(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI)));
         SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         return new PravegaCatalog(
