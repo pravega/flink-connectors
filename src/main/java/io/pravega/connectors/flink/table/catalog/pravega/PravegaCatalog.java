@@ -75,6 +75,16 @@ public class PravegaCatalog extends AbstractCatalog {
     private Map<String, String> properties;
     private SerializationFormat serializationFormat;
 
+    /**
+     * Creates a new Pravega Catalog instance.
+     *
+     * @param catalogName             The Pravega catalog name.
+     * @param defaultDatabase         The default database for Pravega catalog, which is mapped to Pravega scope here.
+     * @param properties              The options read from configuration.
+     * @param clientConfig            The Pravega client configuration.
+     * @param config                  The Schema Registry client configuration.
+     * @param serializationFormat     The serialization format used for serialization.
+     */
     public PravegaCatalog(String catalogName, String defaultDatabase, Map<String, String> properties,
                           ClientConfig clientConfig, SchemaRegistryClientConfig config,
                           SerializationFormat serializationFormat) {

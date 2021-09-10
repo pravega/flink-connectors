@@ -11,8 +11,6 @@
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
-import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory;
-import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
@@ -37,7 +35,6 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.Arra
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.util.DataFormatConverters;
-import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
@@ -130,17 +127,12 @@ public class PravegaRegistrySeDeITCase {
     @Test
     public void testAvroSerializeDeserialize() throws Exception {
         Map<String, String> properties = new HashMap<>();
-        properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put(PravegaOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
-        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(
-                String.format(
-                        "%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
-                "Avro");
+        properties.put("pravega-registry.format", "Avro");
         final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(), properties, SETUP_UTILS.getClientConfig(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build(),
                 SerializationFormat.Avro);
@@ -228,17 +220,12 @@ public class PravegaRegistrySeDeITCase {
     @Test
     public void testJsonDeserialize() throws Exception {
         Map<String, String> properties = new HashMap<>();
-        properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
-        properties.put(PravegaOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
-        properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(
-                String.format(
-                        "%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
-                "Json");
+        properties.put("pravega-registry.format", "Json");
         final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(), properties, SETUP_UTILS.getClientConfig(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build(),
                 SerializationFormat.Json);

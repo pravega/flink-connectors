@@ -1,11 +1,11 @@
 /**
  * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
- * <p>
+ *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * <p>
- * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
  */
 
 package io.pravega.connectors.flink.table.catalog.pravega.factories;
@@ -17,6 +17,7 @@ import io.pravega.connectors.flink.dynamic.table.PravegaOptionsUtil;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.configuration.ConfigOption;
@@ -105,9 +106,9 @@ public class PravegaCatalogFactory implements CatalogFactory {
             properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value);
         });
 
-        PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions);
-        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder().
-                schemaRegistryUri(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI))).build();
+        PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
+                .withSchemaRegistryURI(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI)));
+        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         return new PravegaCatalog(
                 context.getName(),
                 configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
