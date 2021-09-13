@@ -1,6 +1,6 @@
 # Pravega Python DataStream connector
 
-This Pravega connector of Python API provides a data source and data sink for Flink streaming jobs.
+This Pravega Python DataStream connector provides a data source and data sink for Flink streaming jobs.
 
 Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python). This page only describes the API usage and for parameter concepts please refer to [Configurations](configurations.md) and [Streaming](streaming.md)
 
