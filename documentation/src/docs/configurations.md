@@ -15,18 +15,21 @@ limitations under the License.
 -->
 
 # Configurations
+
 The Flink connector library for Pravega supports the **Flink Streaming API**, **Table API** and **Batch API**, using a common configuration class.  
 
 ## Table of Contents
+
 - [Common Configuration](#common-configuration)
-  - [PravegaConfig Class](#pravegaconfig-class)
-  - [Creating PravegaConfig](#creating-pravegaconfig)
-  - [Using PravegaConfig](#using-pravegaconfig)
-  - [Understanding the Default Scope](#understanding-the-default-scope)
+    - [PravegaConfig Class](#pravegaconfig-class)
+    - [Creating PravegaConfig](#creating-pravegaconfig)
+    - [Using PravegaConfig](#using-pravegaconfig)
+    - [Understanding the Default Scope](#understanding-the-default-scope)
 
 ## Common Configuration
 
 ### PravegaConfig Class
+
 A top-level config object, `PravegaConfig`, is provided to establish a Pravega context for the Flink connector. The config object automatically configures itself from _environment variables_, _system properties_ and _program arguments_.
 
 `PravegaConfig` information sources is given below:
@@ -39,18 +42,22 @@ A top-level config object, `PravegaConfig`, is provided to establish a Pravega c
 |Hostname Validation|-|`true`|
 
 ### Creating PravegaConfig
+
 The recommended way to create an instance of `PravegaConfig` is to pass an instance of `ParameterTool` to `fromParams`:
+
 ```java
 ParameterTool params = ParameterTool.fromArgs(args);
 PravegaConfig config = PravegaConfig.fromParams(params);
 ```
 
 If your application doesn't use the `ParameterTool` class that is provided by Flink, create the `PravegaConfig` using `fromDefaults`:
+
 ```java
 PravegaConfig config = PravegaConfig.fromDefaults();
 ```
 
 The `PravegaConfig` class provides a builder-style API to override the default configuration settings:
+
 ```java
 PravegaConfig config = PravegaConfig.fromDefaults()
     .withControllerURI("tcp://...")
@@ -60,7 +67,9 @@ PravegaConfig config = PravegaConfig.fromDefaults()
 ```
 
 ### Using PravegaConfig
+
 All of the various source and sink classes provided with the connector library have a builder-style API which accepts a `PravegaConfig` for common configuration. Pass a `PravegaConfig` object to the respective builder via `withPravegaConfig`. For example, see below code:
+
 ```java
 PravegaConfig config = ...;
 
@@ -71,6 +80,7 @@ FlinkPravegaReader<MyClass> pravegaSource = FlinkPravegaReader.<MyClass>builder(
 ```
 
 ### Understanding the Default Scope
+
 Pravega organizes streams into _scopes_ for the purposes of manageability.  The `PravegaConfig` establishes a default scope name that is used in two scenarios:
 
 1. For resolving unqualified stream names when constructing a source or sink.  The sources and sinks accept stream names that may be **qualified** (e.g. `my-scope/my-stream`) or **unqualified** (e.g. `my-stream`).
