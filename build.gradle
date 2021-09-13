@@ -26,6 +26,7 @@ buildscript {
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
+        classpath "org.ajoberstar.grgit:grgit-gradle:${gradleGitPluginVersion}"
         classpath "gradle.plugin.com.github.spotbugs.snom:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
@@ -53,7 +54,6 @@ group = "io.pravega"
 version = getProjectVersion()
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven {
         url "https://maven.pkg.github.com/pravega/pravega"

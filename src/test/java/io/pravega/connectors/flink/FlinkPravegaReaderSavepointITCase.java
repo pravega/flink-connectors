@@ -33,7 +33,7 @@ import org.apache.flink.runtime.jobgraph.JobGraph;
 import org.apache.flink.runtime.jobgraph.SavepointRestoreSettings;
 import org.apache.flink.runtime.minicluster.MiniCluster;
 import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
-import org.apache.flink.runtime.state.filesystem.FsStateBackend;
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.TestLogger;
 import org.junit.AfterClass;
@@ -198,7 +198,8 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         env.getCheckpointConfig().setTolerableCheckpointFailureNumber(1);
 
         // checkpoint to files (but aggregate state below 1 MB) and don't to any async checkpoints
-        env.setStateBackend(new FsStateBackend(tmpFolder.newFolder().toURI(), 1024 * 1024, false));
+        env.getCheckpointConfig().setCheckpointStorage(
+                new FileSystemCheckpointStorage(tmpFolder.newFolder().toURI(), 1024 * 1024));
 
         // the Pravega reader
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()

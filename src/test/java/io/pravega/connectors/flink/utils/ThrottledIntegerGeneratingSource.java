@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.pravega.connectors.flink;
+package io.pravega.connectors.flink.utils;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.runtime.state.CheckpointListener;
