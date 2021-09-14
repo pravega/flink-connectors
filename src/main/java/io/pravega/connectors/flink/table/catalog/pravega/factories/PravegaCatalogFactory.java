@@ -82,11 +82,23 @@ public class PravegaCatalogFactory implements CatalogFactory {
         // PravegaCatalogFactoryOptions don't have 'json' prefix.
         // will validate these options later in PravegaRegistryFormatFactory
         helper.validateExcept(JSON_PREFIX);
+
         // all catalog options
         ReadableConfig configOptions = helper.getOptions();
-        // options that separate "json" prefix and the configuration
-        DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
 
+        Map<String, String> properties = getCatalogOptions(configOptions);
+        PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
+                .withDefaultScope(configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE))
+                .withSchemaRegistryURI(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI)));
+        return new PravegaCatalog(
+                context.getName(),
+                configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
+                properties,
+                pravegaConfig,
+                configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
+    }
+
+    private Map<String, String> getCatalogOptions(ReadableConfig configOptions) {
         Map<String, String> properties = new HashMap<>();
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put(PravegaOptions.CONTROLLER_URI.key(), configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI));
@@ -97,25 +109,17 @@ public class PravegaCatalogFactory implements CatalogFactory {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI));
         properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
+                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
+
+        // options that separate "json" prefix and the configuration
+        DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
 
         // put json related options into properties
         Map<String, String> jsonProperties = delegatingConfiguration.toMap();
         jsonProperties.forEach((key, value) -> {
             properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value);
         });
-
-        PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
-                .withDefaultScope(configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE))
-                .withSchemaRegistryURI(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI)));
-        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
-        return new PravegaCatalog(
-                context.getName(),
-                configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE),
-                properties,
-                pravegaConfig.getClientConfig(),
-                schemaRegistryClientConfig,
-                SerializationFormat.valueOf(configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT)));
+        return properties;
     }
 }

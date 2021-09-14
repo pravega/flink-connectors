@@ -15,11 +15,13 @@ import io.pravega.client.admin.StreamManager;
 import io.pravega.client.stream.DeleteScopeFailedException;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory;
 import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -68,11 +70,22 @@ import java.util.stream.StreamSupport;
 
 @Slf4j
 public class PravegaCatalog extends AbstractCatalog {
+    // the Pravega stream manager to manage streams
     private StreamManager streamManager;
+
+    // the schema-registry client that communicates with schema-registry service
     private SchemaRegistryClient schemaRegistryClient;
+
+    // the Pravega client config
     private ClientConfig clientConfig;
+
+    // the schema-registry client config
     private SchemaRegistryClientConfig config;
+
+    // the Pravega catalog table options
     private Map<String, String> properties;
+
+    // the serialization format for Pravega catalog
     private SerializationFormat serializationFormat;
 
     /**
@@ -80,19 +93,17 @@ public class PravegaCatalog extends AbstractCatalog {
      *
      * @param catalogName             The Pravega catalog name.
      * @param defaultDatabase         The default database for Pravega catalog, which is mapped to Pravega scope here.
-     * @param properties              The options read from configuration.
-     * @param clientConfig            The Pravega client configuration.
-     * @param config                  The Schema Registry client configuration.
+     * @param properties              The table options that should propagate from the catalog options.
+     * @param pravegaConfig           The Pravega configuration.
      * @param serializationFormat     The serialization format used for serialization.
      */
     public PravegaCatalog(String catalogName, String defaultDatabase, Map<String, String> properties,
-                          ClientConfig clientConfig, SchemaRegistryClientConfig config,
-                          SerializationFormat serializationFormat) {
+                          PravegaConfig pravegaConfig, String serializationFormat) {
 
         super(catalogName, defaultDatabase);
-        this.clientConfig = clientConfig;
-        this.config = config;
-        this.serializationFormat = serializationFormat;
+        this.clientConfig = pravegaConfig.getClientConfig();
+        this.config = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
+        this.serializationFormat = SerializationFormat.valueOf(serializationFormat);
         this.properties = properties;
 
         log.info("Created Pravega Catalog {}", catalogName);

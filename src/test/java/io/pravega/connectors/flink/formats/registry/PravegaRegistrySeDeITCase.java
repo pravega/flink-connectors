@@ -133,9 +133,11 @@ public class PravegaRegistrySeDeITCase {
         properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Avro");
-        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(), properties, SETUP_UTILS.getClientConfig(),
-                SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build(),
-                SerializationFormat.Avro);
+        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Avro");
         initAvro();
         avroCatalog.open();
 
@@ -226,9 +228,11 @@ public class PravegaRegistrySeDeITCase {
         properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Json");
-        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(), properties, SETUP_UTILS.getClientConfig(),
-                SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build(),
-                SerializationFormat.Json);
+        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Json");
         initJson();
         jsonCatalog.open();
 
