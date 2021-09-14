@@ -17,9 +17,6 @@ import io.pravega.connectors.flink.dynamic.table.PravegaOptionsUtil;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
 import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
-import io.pravega.connectors.flink.util.SchemaRegistryUtils;
-import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
-import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.configuration.DelegatingConfiguration;
@@ -117,9 +114,8 @@ public class PravegaCatalogFactory implements CatalogFactory {
 
         // put json related options into properties
         Map<String, String> jsonProperties = delegatingConfiguration.toMap();
-        jsonProperties.forEach((key, value) -> {
-            properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value);
-        });
+        jsonProperties.forEach((key, value) ->
+                properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value));
         return properties;
     }
 }
