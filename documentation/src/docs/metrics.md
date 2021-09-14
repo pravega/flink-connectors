@@ -18,7 +18,6 @@ limitations under the License.
 
 Pravega metrics are collected and exposed via Flink metrics framework when using [`FlinkPravegaReader`](streaming.md#flinkpravegareader) or [`FlinkPravegaWriter`](streaming.md#flinkpravegawriter).
 
-
 ## Reader Metrics
 
 The following metrics are exposed for `FlinkPravegaReader` related operations:

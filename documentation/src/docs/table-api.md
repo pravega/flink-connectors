@@ -13,7 +13,9 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
+
 # Table Connector
+
 The Flink connector library for Pravega provides a table source and table sink for use with the Flink Table API. 
 The Table API provides a unified table source API for both the Flink streaming and batch environment, and also sink for the Flink streaming environment.
 
@@ -22,24 +24,25 @@ It is possible to treat the Pravega streams as tables with the help of Flink.
 See the below sections for details.
 
 ## Table of Contents
+
 - [Introduction](#introduction)
 - [How to create a table](#how-to-create-a-table)
 - [Connector options](#connector-options)
 - [Features](#features)
-  - [Batch and Streaming read](#batch-and-streaming-read)
-  - [Specify start and end streamcut](#specify-start-and-end-streamcut)
-  - [Changelog Source](#changelog-source)
-  - [Routing key by column](#routing-key-by-column)
-  - [Consistency guarantees](#consistency-guarantees)
+    - [Batch and Streaming read](#batch-and-streaming-read)
+    - [Specify start and end streamcut](#specify-start-and-end-streamcut)
+    - [Changelog Source](#changelog-source)
+    - [Routing key by column](#routing-key-by-column)
+    - [Consistency guarantees](#consistency-guarantees)
 - [Useful Flink links](#useful-flink-links)
 
-
 ## Introduction
-Before Flink 1.10 connector, the connector has implemented Flink legacy `TableFactory` interface to support table mapping, 
+
+Before Flink 1.10 connector, the connector has implemented Flink legacy `TableFactory` interface to support table mapping,
 and provided `FlinkPravegaTableSource` and `FlinkPravegaTableSink` to read and write Pravega as Flink tables via a Pravega descriptor.
 
-Since Flink 1.11 connector, as Flink introduces a new Table API with [FLIP-95](https://cwiki.apache.org/confluence/display/FLINK/FLIP-95%3A+New+TableSource+and+TableSink+interfaces), 
-we integrate Flink `Factory` interface and provided `FlinkPravegaDynamicTableSource` and `FlinkPravegaDynamicTableSink` to simplify the application coding. 
+Since Flink 1.11 connector, as Flink introduces a new Table API with [FLIP-95](https://cwiki.apache.org/confluence/display/FLINK/FLIP-95%3A+New+TableSource+and+TableSink+interfaces),
+we integrate Flink `Factory` interface and provided `FlinkPravegaDynamicTableSource` and `FlinkPravegaDynamicTableSink` to simplify the application coding.
 
 Note that the legacy table API is deprecated and will be removed in the future releases, we strongly suggest users to switch to the new table API.
 We will focus on the new table API introduction in the document below, please refer to the documentation of older versions if you want to check the legacy table API.
@@ -48,33 +51,34 @@ Pravega table source supports both the Flink **streaming** and **batch** environ
 Pravega table sink is an append-only table sink, it does NOT support upsert/retract output.
 
 ## How to create a table
+
 Pravega Stream can be used as a table source/sink within a Flink table program.
 The example below shows how to create a table connecting a Pravega stream as both source and sink:
 
 ```sql
-create table pravega (
-	user_id STRING,
+CREATE TABLE user_behavior (
+    user_id STRING,
     item_id BIGINT,
     category_id BIGINT,
     behavior STRING,
     log_ts TIMESTAMP(3),
-	ts as log_ts + INTERVAL '1' SECOND,
-	watermark for ts as ts
-	)
-with (
-	'connector' = 'pravega'
-	'controller-uri' = 'tcp://localhost:9090',
-	'scope' = 'scope',
-	'scan.execution.type' = 'streaming',
-	'scan.reader-group.name' = 'group1',
-	'scan.streams' = 'stream',
-	'sink.stream' = 'stream',
-	'sink.routing-key.field.name' = 'user_id',
-	'format' = 'json'
-	)
+    ts as log_ts + INTERVAL '1' SECOND,
+    watermark for ts as ts
+    )
+WITH (
+    'connector' = 'pravega'
+    'controller-uri' = 'tcp://localhost:9090',
+    'scope' = 'scope',
+    'scan.execution.type' = 'streaming',
+    'scan.streams' = 'stream',
+    'sink.stream' = 'stream',
+    'sink.routing-key.field.name' = 'user_id',
+    'format' = 'json'
+    )
 ```
 
 ## Connector options
+
 | Option                                                 | Required            | Default       | Type         | Description                                                                                                   |
 |--------------------------------------------------------|---------------------|---------------|--------------|---------------------------------------------------------------------------------------------------------------|
 | connector                                              | required            | (none)        | String       | Specify what connector to use, here should be 'pravega'                                                       |
@@ -136,5 +140,5 @@ By default, a Pravega sink ingests data with at-least-once guarantees if the que
 Users can try with Pravega table APIs quickly though Flink SQL client. Here is some tutorial to setup the environment.
 https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/sqlClient.html
 
-The usage and definition of time attribute and WATERMARK schema can be referred in:
-https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/streaming/time_attributes.html
+The usage and definition Flink SQL can be referred in:
+https://ci.apache.org/projects/flink/flink-docs-stable/docs/dev/table/sql/overview/
