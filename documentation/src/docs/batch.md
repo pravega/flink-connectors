@@ -13,24 +13,28 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
+
 # Batch Connector
+
 The Flink Connector library for Pravega makes it possible to use a Pravega Stream as a data source and data sink in a batch program.  See the below sections for details.
 
 ## Table of Contents
+
 - [FlinkPravegaInputFormat](#flinkpravegainputformat)
-  - [Parameters](#parameters)
-  - [Input Stream(s)](#input-streams)
-  - [StreamCuts](#streamcuts)
-  - [Parallelism](#parallelism)
+    - [Parameters](#parameters)
+    - [Input Stream(s)](#input-streams)
+    - [StreamCuts](#streamcuts)
+    - [Parallelism](#parallelism)
 
 - [FlinkPravegaOutputFormat](#flinkpravegaoutputformat)
-  - [Parameters](#parameters)
-  - [Output Stream](#output-stream)
-  - [Parallelism](#parallelism)
-  - [Event Routing](#event-routing)
+    - [Parameters](#parameters)
+    - [Output Stream](#output-stream)
+    - [Parallelism](#parallelism)
+    - [Event Routing](#event-routing)
 - [Serialization](#serialization)
 
 ## FlinkPravegaInputFormat
+
 A Pravega Stream may be used as a data source within a Flink batch program using an instance of
 `io.pravega.connectors.flink.FlinkPravegaInputFormat`. The input format reads events of a stream as a [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html) (the basic abstraction of the Flink Batch API). This input format opens the stream for batch reading, which processes stream segments in **parallel** and does not follow routing key order.
 
@@ -59,6 +63,7 @@ DataSource<EventType> dataSet = env.createInput(inputFormat, TypeInformation.of(
 ```
 
 ### Parameters
+
 A builder API is provided to construct an instance of `FlinkPravegaInputFormat`. See the table below for a summary of builder properties. Note that the builder accepts an instance of `PravegaConfig` for common configuration properties. See the [configurations](configurations.md) page for more information.
 
 |Method                |Description|
@@ -68,11 +73,13 @@ A builder API is provided to construct an instance of `FlinkPravegaInputFormat`.
 |`withDeserializationSchema`|The deserialization schema which describes how to turn byte messages into events.|
 
 ### Input Stream(s)
+
 Each Pravega stream exists within a scope. A scope defines a namespace for streams such that names are unique. Across scopes, streams can have the same name. For example, if we have scopes `A` and `B`, then we can have a stream called `myStream` in each one of them. We cannot have a stream with the same name in the same scope. The builder API accepts both **qualified** and **unqualified** stream names.
 
-  - In qualified stream names, the scope is explicitly specified, e.g. `my-scope/my-stream`.
-  - In unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`.
- See the [configurations](configurations.md) page for more information on default scope.
+- In qualified stream names, the scope is explicitly specified, e.g. `my-scope/my-stream`.
+- In unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`.
+
+See the [configurations](configurations.md) page for more information on default scope.
 
 A stream may be specified in one of three ways:
 
@@ -89,9 +96,11 @@ A `StreamCut` represents a specific position in a Pravega Stream, which may be o
 If stream cuts are not provided then the default start position requested is assumed to be the earliest available data in the stream and the default end position is assumed to be all available data in that stream as of when the job execution begins.
 
 ### Parallelism
+
 `FlinkPravegaInputFormat` supports parallelization. Use the `setParallelism` method of `DataSet` to configure the number of parallel instances to execute.  The parallel instances consume the stream in a coordinated manner, each consuming one or more stream segments.
 
 ## FlinkPravegaOutputFormat
+
 A Pravega Stream may be used as a data sink within a Flink batch program using an instance of `io.pravega.connectors.flink.FlinkPravegaOutputFormat`. The `FlinkPravegaOutputFormat` can be supplied as a sink to the [`DataSet`](https://ci.apache.org/projects/flink/flink-docs-master/api/java/org/apache/flink/api/java/DataSet.html#output-org.apache.flink.api.common.io.OutputFormat-) (the basic abstraction of the Flink Batch API).
 
 ### Example
@@ -122,6 +131,7 @@ env.execute("...");
 ```
 
 ### Parameter
+
 A builder API is provided to construct an instance of `FlinkPravegaOutputFormat`. See the table below for a summary of builder properties.  Note that the builder accepts an instance of `PravegaConfig` for common configuration properties.  See the [configurations](configurations.md) page for more information.
 
 |Method                |Description|
@@ -135,8 +145,8 @@ A builder API is provided to construct an instance of `FlinkPravegaOutputFormat`
 
 Each stream in Pravega is contained by a scope.  A scope acts as a namespace for one or more streams. The builder API accepts both **qualified** and **unqualified** stream names.  
 
-  - In qualified, the scope is explicitly specified, e.g. `my-scope/my-stream`.  
-  - In Unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`.
+- In qualified, the scope is explicitly specified, e.g. `my-scope/my-stream`.  
+- In Unqualified stream names are assumed to refer to the default scope as set in the `PravegaConfig`.
 
 A stream may be specified in one of three ways:
 
@@ -145,12 +155,15 @@ A stream may be specified in one of three ways:
  3. As an instance of `io.pravega.client.stream.Stream`, e.g. `Stream.of("my-scope", "my-stream")`.
 
 ### Parallelism
+
 `FlinkPravegaWriter` supports parallelization. Use the `setParallelism` method to configure the number of parallel instances to execute.
 
 ### Event Routing
+
 Every event written to a Pravega Stream has an associated Routing Key.  The Routing Key is the basis for event ordering. See the [Pravega Concepts](http://pravega.io/docs/latest/pravega-concepts/#events) for details.
 
 To establish the routing key for each event, provide an implementation of `io.pravega.connectors.flink.PravegaEventRouter` when constructing the writer.
 
 ## Serialization
+
 Please, see the [serialization](serialization.md) page for more information on how to use the _serializer_ and _deserializer_.
