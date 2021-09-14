@@ -43,8 +43,6 @@ supported versions of Flink and Pravega.
 | [r0.9-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)   | 0.9  | Java 11 | Java 8 or 11 | 1.10 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.10_2.12/0.9.1/    |
 | [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)     | 0.9  | Java 11 | Java 8 or 11 | 1.9  | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.9_2.12/0.9.1/     |
 
-Looking for python as an alternative? Check [here](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/python.md) for python implementation reference.
-
 ## How to build
 
 Building the connectors from the source is only necessary when we want to use or contribute to the latest (unreleased) version of the Pravega Flink connectors.
