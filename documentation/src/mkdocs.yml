@@ -42,6 +42,7 @@ nav:
       - 'Batch': 'batch.md'
       - 'Table API': 'table-api.md'
       - 'Catalog': 'catalog.md'
+      - 'Python Datastream API': 'python.md'
   - Metrics: 'metrics.md'
   - Configurations: 'configurations.md'
   - Serialization: 'serialization.md'
