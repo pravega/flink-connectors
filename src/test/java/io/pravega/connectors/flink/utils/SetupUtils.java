@@ -72,7 +72,7 @@ public final class SetupUtils {
 
     // Set to true to enable TLS
     @Setter
-    private boolean enableTls = false;
+    private boolean enableTls = true;
 
     @Getter
     @Setter

@@ -132,10 +132,18 @@ public class PravegaRegistrySeDeITCase {
 
     @Test
     public void testAvroSerializeDeserialize() throws Exception {
-        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Avro", "false", "false",
-                "SQL", "FAIL", "null", "false");
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Avro");
+        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Avro");
         initAvro();
         avroCatalog.open();
 
@@ -219,10 +227,18 @@ public class PravegaRegistrySeDeITCase {
 
     @Test
     public void testJsonDeserialize() throws Exception {
-        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Json", "false", "false",
-                "SQL", "FAIL", "null", "false");
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Json");
+        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Json");
         initJson();
         jsonCatalog.open();
 
