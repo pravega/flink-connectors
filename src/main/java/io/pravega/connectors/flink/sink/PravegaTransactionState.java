@@ -1,23 +1,27 @@
-package io.pravega.connectors.flink.sink.writer;
+package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.stream.Transaction;
+import io.pravega.connectors.flink.PravegaEventRouter;
 
 import java.util.Objects;
 
-public class PravegaTransactionState {
-    private transient Transaction transaction;
+public class PravegaTransactionState<T> {
+    private transient Transaction<T> transaction;
     private String transactionId;
     private Long watermark;
 
+    private String writerId;
+
     PravegaTransactionState() {
-        this(null);
+        this(null, (Long) null);
     }
 
-    PravegaTransactionState(Transaction transaction) {
-        this(transaction, null);
+    PravegaTransactionState(Transaction<T> transaction, String writerId) {
+        this(transaction, (Long) null);
+        this.writerId = writerId;
     }
 
-    PravegaTransactionState(Transaction transaction, Long watermark) {
+    PravegaTransactionState(Transaction<T> transaction, Long watermark) {
         this.transaction = transaction;
         if (transaction != null) {
             this.transactionId = transaction.getTxnId().toString();
@@ -25,13 +29,34 @@ public class PravegaTransactionState {
         this.watermark = watermark;
     }
 
-    PravegaTransactionState(String transactionId, Long watermark) {
+    PravegaTransactionState(String transactionId, String writerId, Long watermark) {
         this.transactionId = transactionId;
         this.watermark = watermark;
+        this.writerId = writerId;
     }
 
-    Transaction getTransaction() {
+    public static <I> PravegaTransactionState of(FlinkPravegaInternalWriter<I> writer) {
+        return new PravegaTransactionState(writer.getTransactionId(), writer.getWriterId(), writer.getCurrentWatermark());
+    }
+
+    public Transaction<T> getTransaction() {
         return transaction;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public Long getWatermark() {
+        return watermark;
+    }
+
+    public String getWriterId() {
+        return writerId;
+    }
+
+    public void setWatermark(Long watermark) {
+        this.watermark = watermark;
     }
 
     @Override
