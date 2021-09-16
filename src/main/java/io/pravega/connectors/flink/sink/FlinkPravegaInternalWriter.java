@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
+    // ----------- configuration fields -----------
 
     // The Pravega client config.
     private final ClientConfig clientConfig;

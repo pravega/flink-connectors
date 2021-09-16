@@ -71,7 +71,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
         committables.forEach(transaction -> {
             FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(
                     clientConfig, txnLeaseRenewalPeriod, stream, writerMode, enableWatermark,
-                    serializationSchema, eventRouter, transaction.getWriterId());
+                    serializationSchema, eventRouter, transaction.getWriterId(), transaction.getTransactionId());
             writer.commitTransaction();
         });
         return Collections.emptyList();
