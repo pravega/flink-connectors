@@ -112,4 +112,58 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
     public Optional<SimpleVersionedSerializer<Void>> getWriterStateSerializer() {
         return Optional.empty();
     }
+
+
+    // ------------------------------------------------------------------------
+    //  builder
+    // ------------------------------------------------------------------------
+
+    /**
+     * A builder for {@link FlinkPravegaSink}.
+     *
+     * @param <T> the element type.
+     */
+    public static class Builder<T> extends AbstractStreamingWriterBuilder<T, Builder<T>> {
+
+        private SerializationSchema<T> serializationSchema;
+
+        @Nullable
+        private PravegaEventRouter<T> eventRouter;
+
+        protected Builder<T> builder() {
+            return this;
+        }
+
+        /**
+         * Sets the serialization schema.
+         *
+         * @param serializationSchema The serialization schema
+         * @return Builder instance.
+         */
+        public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
+            this.serializationSchema = serializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the event router.
+         *
+         * @param eventRouter the event router which produces a key per event.
+         * @return Builder instance.
+         */
+        public Builder<T> withEventRouter(PravegaEventRouter<T> eventRouter) {
+            this.eventRouter = eventRouter;
+            return builder();
+        }
+
+        /**
+         * Builds the {@link FlinkPravegaSink}.
+         *
+         * @return An instance of {@link FlinkPravegaSink}
+         */
+        public FlinkPravegaSink<T> build() {
+            Preconditions.checkState(serializationSchema != null, "Serialization schema must be supplied.");
+            return createSink(serializationSchema, eventRouter);
+        }
+    }
 }

@@ -15,6 +15,7 @@
  */
 package io.pravega.connectors.flink;
 
+import io.pravega.connectors.flink.sink.FlinkPravegaSink;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -101,5 +102,18 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 txnLeaseRenewalPeriod.toMilliseconds(),
                 enableWatermark,
                 isMetricsEnabled());
+    }
+
+    protected FlinkPravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter){
+        Preconditions.checkNotNull(serializationSchema, "serializationSchema");
+        return new FlinkPravegaSink<>(
+                isMetricsEnabled(),
+                getPravegaConfig().getClientConfig(),
+                resolveStream(),
+                txnLeaseRenewalPeriod.toMilliseconds(),
+                writerMode,
+                enableWatermark,
+                serializationSchema,
+                eventRouter);
     }
 }
