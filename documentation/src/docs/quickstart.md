@@ -1,22 +1,29 @@
 <!--
-Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+Copyright Pravega Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
 # Getting Started
+
 ## Creating a Flink Stream Processing Project
 
 **Note**: _You can skip this step if you have a streaming project set up already._
 
 Please use the following project templates and setup guidelines, to set up a stream processing project with Apache Flink using Connectors
 
-  - [Project template for Java](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/java_api_quickstart.html)
-  - [Project template for Scala](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/scala_api_quickstart.html)
+- [Project template for Java](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/java_api_quickstart.html)
+- [Project template for Scala](https://ci.apache.org/projects/flink/flink-docs-stable/quickstart/scala_api_quickstart.html)
 
 Once after the set up, please follow the below instructions to add the **Flink Pravega connectors** to the project.
 
@@ -45,7 +52,7 @@ The snapshot versions are published to [`GitHub Packages`](https://github.com/or
 
 Alternatively, we could build and publish the connector artifacts to local maven repository by executing the following command and make use of that version as your application dependency.
 
-```
+```bash
 ./gradlew clean install
 ```
 
@@ -53,10 +60,7 @@ Alternatively, we could build and publish the connector artifacts to local maven
 
 From Flink's perspective, the connector to Pravega is part of the streaming application (not part of Flink's core runtime), so the connector code must be part of the application's code artifact (JAR file). Typically, a Flink application is bundled as a _`fat-jar`_ (also known as an _`uber-jar`_) , such that all its dependencies are embedded.
 
- - The project set up should have been a success, if you have used the above linked [templates/guides](#creating-a-flink-stream-processing-project).
-
- - If you set up a application's project and dependencies manually, you need to make sure that it builds a _jar with dependencies_, to include both the application and the connector classes.
- 
- - The Flink connector has embedded and shaded the `pravega-client` dependency of the same version. Please **DO NOT** include both `pravega-client` and `pravega-flink-connector` dependency into the jar file, otherwise there will be dependency conflict issues.
- 
- - If user application uses Table API and SQL, please **DO NOT** compile `flink-table-planner` or `flink-table-planner-blink` into the jar file as they are provided by the Flink cluster.
+- The project set up should have been a success, if you have used the above linked [templates/guides](#creating-a-flink-stream-processing-project).
+- If you set up a application's project and dependencies manually, you need to make sure that it builds a _jar with dependencies_, to include both the application and the connector classes.
+- The Flink connector has embedded and shaded the `pravega-client` dependency of the same version. Please **DO NOT** include both `pravega-client` and `pravega-flink-connector` dependency into the jar file, otherwise there will be dependency conflict issues.
+- If user application uses Table API and SQL, please **DO NOT** compile `flink-table-planner` or `flink-table-planner-blink` into the jar file as they are provided by the Flink cluster.
