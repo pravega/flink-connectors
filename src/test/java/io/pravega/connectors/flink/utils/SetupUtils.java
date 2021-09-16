@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.pravega.connectors.flink.utils;
 
@@ -32,13 +38,8 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.concurrent.NotThreadSafe;
-import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.Base64;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -71,7 +72,7 @@ public final class SetupUtils {
 
     // Set to true to enable TLS
     @Setter
-    private boolean enableTls = false;
+    private boolean enableTls = true;
 
     @Getter
     @Setter
@@ -137,23 +138,14 @@ public final class SetupUtils {
     }
 
     /**
-     * Get resources as temp file.
+     * Get resources path from resource
      *
      * @param resourceName    Name of the resource.
      *
-     * @return Path of the temp file.
+     * @return Path of the resource file.
      */
-    static String getFileFromResource(String resourceName)  {
-        try {
-            Path tempPath = Files.createTempFile("test-", ".tmp");
-            tempPath.toFile().deleteOnExit();
-            try (InputStream stream = SetupUtils.class.getClassLoader().getResourceAsStream(resourceName)) {
-                Files.copy(SetupUtils.class.getClassLoader().getResourceAsStream(resourceName), tempPath, StandardCopyOption.REPLACE_EXISTING);
-            }
-            return tempPath.toFile().getAbsolutePath();
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
+    static String getPathFromResource(String resourceName) {
+        return SetupUtils.class.getClassLoader().getResource(resourceName).getPath();
     }
 
 
@@ -192,7 +184,7 @@ public final class SetupUtils {
      * Fetch Pravega client trust store.
      */
     public String getPravegaClientTrustStore() {
-        return getFileFromResource(CLIENT_TRUST_STORE_FILE);
+        return getPathFromResource(CLIENT_TRUST_STORE_FILE);
     }
 
     /**
@@ -204,7 +196,7 @@ public final class SetupUtils {
                 .withDefaultScope(getScope())
                 .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                 .withHostnameValidation(enableHostNameValidation)
-                .withTrustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE));
+                .withTrustStore(getPathFromResource(CLIENT_TRUST_STORE_FILE));
     }
 
     /**
@@ -320,7 +312,7 @@ public final class SetupUtils {
 
             this.inProcPravegaCluster = InProcPravegaCluster.builder()
                     .isInProcZK(true)
-                    .secureZK(false) //configure ZK for security
+                    .secureZK(true) //configure ZK for security
                     .zkUrl("localhost:" + zkPort)
                     .zkPort(zkPort)
                     .isInMemStorage(true)
@@ -334,12 +326,12 @@ public final class SetupUtils {
                     .enableMetrics(false)
                     .enableAuth(enableAuth)
                     .enableTls(enableTls)
-                    .certFile(getFileFromResource(CERT_FILE))   // pravega #2519
-                    .keyFile(getFileFromResource(KEY_FILE))
-                    .jksKeyFile(getFileFromResource(STANDALONE_KEYSTORE_FILE))
-                    .jksTrustFile(getFileFromResource(STANDALONE_TRUSTSTORE_FILE))
-                    .keyPasswordFile(getFileFromResource(STANDALONE_KEYSTORE_PASSWD_FILE))
-                    .passwdFile(getFileFromResource(PASSWD_FILE))
+                    .certFile(getPathFromResource(CERT_FILE))
+                    .keyFile(getPathFromResource(KEY_FILE))
+                    .jksKeyFile(getPathFromResource(STANDALONE_KEYSTORE_FILE))
+                    .jksTrustFile(getPathFromResource(STANDALONE_TRUSTSTORE_FILE))
+                    .keyPasswordFile(getPathFromResource(STANDALONE_KEYSTORE_PASSWD_FILE))
+                    .passwdFile(getPathFromResource(PASSWD_FILE))
                     .userName(PRAVEGA_USERNAME)
                     .passwd(PRAVEGA_PASSWORD)
                     .build();
@@ -363,7 +355,7 @@ public final class SetupUtils {
                     .controllerURI(URI.create(inProcPravegaCluster.getControllerURI()))
                     .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .validateHostName(enableHostNameValidation)
-                    .trustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE))
+                    .trustStore(getPathFromResource(CLIENT_TRUST_STORE_FILE))
                     .build();
         }
     }
@@ -390,7 +382,7 @@ public final class SetupUtils {
                     .controllerURI(controllerUri)
                     .credentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
                     .validateHostName(enableHostNameValidation)
-                    .trustStore(getFileFromResource(CLIENT_TRUST_STORE_FILE))
+                    .trustStore(getPathFromResource(CLIENT_TRUST_STORE_FILE))
                     .build();
         }
     }
