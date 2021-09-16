@@ -1,3 +1,18 @@
+/**
+ * Copyright Pravega Authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.pravega.connectors.flink.sink;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -14,7 +29,7 @@ import java.util.Collections;
 import java.util.List;
 
 @Slf4j
-public class PravegaCommitter<T> implements Committer<PravegaTransactionState<T>> {
+public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     // The Pravega client config.
     private final ClientConfig clientConfig;
 
@@ -52,7 +67,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState<T>
     }
 
     @Override
-    public List<PravegaTransactionState<T>> commit(List<PravegaTransactionState<T>> committables) throws IOException {
+    public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
         committables.forEach(transaction -> {
             FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(
                     clientConfig, txnLeaseRenewalPeriod, stream, writerMode, enableWatermark,

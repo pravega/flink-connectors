@@ -1,46 +1,35 @@
+/**
+ * Copyright Pravega Authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.pravega.connectors.flink.sink;
-
-import io.pravega.client.stream.Transaction;
-import io.pravega.connectors.flink.PravegaEventRouter;
 
 import java.util.Objects;
 
-public class PravegaTransactionState<T> {
-    private transient Transaction<T> transaction;
-    private String transactionId;
-    private Long watermark;
+public class PravegaTransactionState {
+    private final String transactionId;
+    private final Long watermark;
+    private final String writerId;
 
-    private String writerId;
-
-    PravegaTransactionState() {
-        this(null, (Long) null);
-    }
-
-    PravegaTransactionState(Transaction<T> transaction, String writerId) {
-        this(transaction, (Long) null);
-        this.writerId = writerId;
-    }
-
-    PravegaTransactionState(Transaction<T> transaction, Long watermark) {
-        this.transaction = transaction;
-        if (transaction != null) {
-            this.transactionId = transaction.getTxnId().toString();
-        }
-        this.watermark = watermark;
-    }
-
-    PravegaTransactionState(String transactionId, String writerId, Long watermark) {
+    PravegaTransactionState(String transactionId, Long watermark, String writerId) {
         this.transactionId = transactionId;
         this.watermark = watermark;
         this.writerId = writerId;
     }
 
     public static <I> PravegaTransactionState of(FlinkPravegaInternalWriter<I> writer) {
-        return new PravegaTransactionState(writer.getTransactionId(), writer.getWriterId(), writer.getCurrentWatermark());
-    }
-
-    public Transaction<T> getTransaction() {
-        return transaction;
+        return new PravegaTransactionState(writer.getTransactionId(), writer.getCurrentWatermark(), writer.getWriterId());
     }
 
     public String getTransactionId() {
@@ -53,10 +42,6 @@ public class PravegaTransactionState<T> {
 
     public String getWriterId() {
         return writerId;
-    }
-
-    public void setWatermark(Long watermark) {
-        this.watermark = watermark;
     }
 
     @Override
@@ -76,11 +61,12 @@ public class PravegaTransactionState<T> {
         }
         PravegaTransactionState that = (PravegaTransactionState) o;
         return Objects.equals(transactionId, that.transactionId) &&
-                Objects.equals(watermark, that.watermark);
+                Objects.equals(watermark, that.watermark) &&
+                Objects.equals(writerId, that.writerId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId, watermark);
+        return Objects.hash(transactionId, watermark, writerId);
     }
 }

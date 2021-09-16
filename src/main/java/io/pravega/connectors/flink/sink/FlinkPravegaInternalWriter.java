@@ -1,3 +1,18 @@
+/**
+ * Copyright Pravega Authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.pravega.connectors.flink.sink;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
@@ -66,7 +81,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     // Transaction
     @Nullable
-    private transient PravegaTransactionState<T> transaction = null;
+    private transient Transaction<T> transaction = null;
 
     // Client factory for PravegaWriter instances
     @Nullable
@@ -117,12 +132,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                       boolean enableWatermark,
                                       SerializationSchema<T> serializationSchema,
                                       PravegaEventRouter<T> eventRouter,
-                                      String writerId,
-                                      PravegaTransactionState<T> transaction) {
+                                      String writerId, String transactionId) {
         this(clientConfig, txnLeaseRenewalPeriod, stream, writerMode,
                 enableWatermark, serializationSchema, eventRouter, writerId);
-        this.transaction = transaction;
-        log.info("Initialized Pravega writer with transaction");
+        assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
+        this.transaction = this.transactionalWriter.getTxn(UUID.fromString(transactionId));
     }
 
     public void initializeInternalWriter() {
@@ -172,11 +186,10 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transactionalWriter != null;
-                Transaction<T> txn = transactionalWriter.beginTxn();
-                this.transaction = new PravegaTransactionState<>(txn, writerId);
+                this.transaction = transactionalWriter.beginTxn();
             case ATLEAST_ONCE:
             case BEST_EFFORT:
-                this.transaction = new PravegaTransactionState<>();
+                break;
             default:
                 throw new UnsupportedOperationException("Not implemented writer mode");
         }
@@ -187,16 +200,16 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
         switch (writerMode) {
             case EXACTLY_ONCE:
-                assert transactionalWriter != null && transaction != null;
+                assert transaction != null;
 
                 if (eventRouter != null) {
-                    transaction.getTransaction().writeEvent(eventRouter.getRoutingKey(element), element);
+                    transaction.writeEvent(eventRouter.getRoutingKey(element), element);
                 } else {
-                    transaction.getTransaction().writeEvent(element);
+                    transaction.writeEvent(element);
                 }
 
                 if (enableWatermark) {
-                    transaction.setWatermark(context.currentWatermark());
+                    currentWatermark = context.currentWatermark();
                 }
                 break;
             case ATLEAST_ONCE:
@@ -240,27 +253,26 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             case EXACTLY_ONCE:
                 assert transaction != null;
                 // This may come from a job recovery from a non-transactional writer.
-                if (transaction.getTransactionId() == null) {
+                if (transaction.getTxnId().toString() == null) {
                     break;
                 }
-                final Transaction<T> txn = transaction.getTransaction();
                 try {
-                    final Transaction.Status status = txn.checkStatus();
+                    final Transaction.Status status = transaction.checkStatus();
                     if (status == Transaction.Status.OPEN) {
-                        if (enableWatermark && transaction.getWatermark() != null) {
-                            txn.commit(transaction.getWatermark());
+                        if (enableWatermark) {
+                            transaction.commit(currentWatermark);
                         } else {
-                            txn.commit();
+                            transaction.commit();
                         }
                     } else {
                         log.warn("{} - Transaction {} has unexpected transaction status {} while committing",
-                                writerId, txn.getTxnId(), status);
+                                writerId, transaction.getTxnId(), status);
                     }
                 } catch (TxnFailedException e) {
-                    log.error("{} - Transaction {} commit failed.", writerId, txn.getTxnId());
+                    log.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
                 } catch (StatusRuntimeException e) {
                     if (e.getStatus() == Status.NOT_FOUND) {
-                        log.error("{} - Transaction {} not found.", writerId, txn.getTxnId());
+                        log.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
                     }
                 }
                 break;
@@ -277,13 +289,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 // This may come from a job recovery from a non-transactional writer.
-                if (transaction.getTransactionId() == null) {
+                if (transaction.getTxnId() == null) {
                     break;
                 }
-                log.info("Aborting the transaction: {}", transaction.getTransactionId());
-                final Transaction<T> txn = transaction.getTransaction() != null ? transaction.getTransaction() :
-                        transactionalWriter.getTxn(UUID.fromString(transaction.getTransactionId()));
-                txn.abort();
+                log.info("Aborting the transaction: {}", transaction.getTxnId());
+                transaction.abort();
                 break;
             case ATLEAST_ONCE:
             case BEST_EFFORT:
@@ -294,17 +304,27 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     @VisibleForTesting
-    public void flushAndVerify() throws IOException, InterruptedException {
-        writer.flush();
+    public void flushAndVerify() throws IOException, InterruptedException, TxnFailedException {
+        switch(writerMode){
+            case EXACTLY_ONCE:
+                assert transaction != null;
+                transaction.flush();
+                break;
+            case BEST_EFFORT:
+            case ATLEAST_ONCE:
+                assert writer != null;
+                writer.flush();
 
-        // Wait until all errors, if any, have been recorded.
-        synchronized (this) {
-            while (this.pendingWritesCount.get() > 0) {
-                this.wait();
-            }
+                // Wait until all errors, if any, have been recorded.
+                synchronized (this) {
+                    while (this.pendingWritesCount.get() > 0) {
+                        this.wait();
+                    }
+                }
+
+                checkWriteError();
+                break;
         }
-
-        checkWriteError();
     }
 
     private void checkWriteError() throws IOException {
@@ -381,6 +401,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     public String getTransactionId() {
         assert this.transaction != null;
-        return this.transaction.getTransactionId();
+        return this.transaction.getTxnId().toString();
     }
 }

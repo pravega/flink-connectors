@@ -1,3 +1,18 @@
+/**
+ * Copyright Pravega Authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.ClientConfig;
@@ -15,7 +30,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState<T>, Void, Void> {
+public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
 
     // flag to enable/disable metrics
     private final boolean enableMetrics;
@@ -51,7 +66,7 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState<T>, 
     }
 
     @Override
-    public SinkWriter<T, PravegaTransactionState<T>, Void> createWriter(
+    public SinkWriter<T, PravegaTransactionState, Void> createWriter(
             InitContext context, List<Void> states) throws IOException {
         return new PravegaWriter<>(
                 context,
@@ -66,18 +81,18 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState<T>, 
     }
 
     @Override
-    public Optional<Committer<PravegaTransactionState<T>>> createCommitter() throws IOException {
+    public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
         return Optional.of(new PravegaCommitter<>(clientConfig,
                 txnLeaseRenewalPeriod, stream, writerMode, enableWatermark, serializationSchema, eventRouter));
     }
 
     @Override
-    public Optional<GlobalCommitter<PravegaTransactionState<T>, Void>> createGlobalCommitter() throws IOException {
+    public Optional<GlobalCommitter<PravegaTransactionState, Void>> createGlobalCommitter() throws IOException {
         return Optional.empty();
     }
 
     @Override
-    public Optional<SimpleVersionedSerializer<PravegaTransactionState<T>>> getCommittableSerializer() {
+    public Optional<SimpleVersionedSerializer<PravegaTransactionState>> getCommittableSerializer() {
         return Optional.empty();
     }
 
