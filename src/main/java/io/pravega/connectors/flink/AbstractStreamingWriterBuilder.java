@@ -15,7 +15,7 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.sink.FlinkPravegaSink;
+import io.pravega.connectors.flink.sink.PravegaSink;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -104,9 +104,9 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 isMetricsEnabled());
     }
 
-    protected FlinkPravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter){
+    protected PravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter){
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        return new FlinkPravegaSink<>(
+        return new PravegaSink<>(
                 isMetricsEnabled(),
                 getPravegaConfig().getClientConfig(),
                 resolveStream(),

@@ -33,7 +33,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
-public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
+public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
 
     // flag to enable/disable metrics
     private final boolean enableMetrics;
@@ -58,10 +58,10 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
     @Nullable
     private final PravegaEventRouter<T> eventRouter;
 
-    public FlinkPravegaSink(boolean enableMetrics, ClientConfig clientConfig,
-                            Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
-                            boolean enableWatermark, SerializationSchema<T> serializationSchema,
-                            PravegaEventRouter<T> eventRouter) {
+    public PravegaSink(boolean enableMetrics, ClientConfig clientConfig,
+                       Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
+                       boolean enableWatermark, SerializationSchema<T> serializationSchema,
+                       PravegaEventRouter<T> eventRouter) {
         this.enableMetrics = enableMetrics;
         this.clientConfig = clientConfig;
         this.stream = stream;
@@ -119,7 +119,7 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
     // ------------------------------------------------------------------------
 
     /**
-     * A builder for {@link FlinkPravegaSink}.
+     * A builder for {@link PravegaSink}.
      *
      * @param <T> the element type.
      */
@@ -157,11 +157,11 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
         }
 
         /**
-         * Builds the {@link FlinkPravegaSink}.
+         * Builds the {@link PravegaSink}.
          *
-         * @return An instance of {@link FlinkPravegaSink}
+         * @return An instance of {@link PravegaSink}
          */
-        public FlinkPravegaSink<T> build() {
+        public PravegaSink<T> build() {
             Preconditions.checkState(serializationSchema != null, "Serialization schema must be supplied.");
             return createSink(serializationSchema, eventRouter);
         }
