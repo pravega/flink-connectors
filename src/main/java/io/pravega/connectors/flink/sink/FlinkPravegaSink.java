@@ -93,7 +93,7 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
 
     @Override
     public Optional<SimpleVersionedSerializer<PravegaTransactionState>> getCommittableSerializer() {
-        return Optional.empty();
+        return Optional.of(new PravegaTransactionStateSerializer());
     }
 
     @Override
