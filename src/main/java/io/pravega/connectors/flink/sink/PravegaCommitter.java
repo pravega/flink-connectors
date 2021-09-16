@@ -15,6 +15,7 @@
  */
 package io.pravega.connectors.flink.sink;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
@@ -49,6 +50,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
+    @Nullable
     private final PravegaEventRouter<T> eventRouter;
 
     public PravegaCommitter(ClientConfig clientConfig,

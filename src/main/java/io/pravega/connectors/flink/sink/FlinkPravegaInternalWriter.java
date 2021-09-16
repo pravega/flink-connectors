@@ -68,6 +68,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
+    @Nullable
     private final PravegaEventRouter<T> eventRouter;
 
     private long currentWatermark = Long.MIN_VALUE;

@@ -15,7 +15,7 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import edu.umd.cs.findbugs.annotations.Nullable;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.*;
 import io.pravega.connectors.flink.PravegaEventRouter;
@@ -31,11 +31,8 @@ import org.apache.flink.metrics.MetricGroup;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -64,7 +61,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                          final PravegaWriterMode writerMode,
                          boolean enableWatermark,
                          SerializationSchema<T> serializationSchema,
-                         PravegaEventRouter<T> eventRouter) {
+                         @Nullable PravegaEventRouter<T> eventRouter) {
         this.sinkInitContext = sinkInitContext;
         this.writerMode = writerMode;
 

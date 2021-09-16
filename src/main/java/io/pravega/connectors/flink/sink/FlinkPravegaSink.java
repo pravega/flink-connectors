@@ -15,8 +15,10 @@
  */
 package io.pravega.connectors.flink.sink;
 
+import edu.umd.cs.findbugs.annotations.Nullable;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.AbstractStreamingWriterBuilder;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -25,6 +27,7 @@ import org.apache.flink.api.connector.sink.GlobalCommitter;
 import org.apache.flink.api.connector.sink.Sink;
 import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 import java.util.List;
@@ -52,9 +55,13 @@ public class FlinkPravegaSink<T> implements Sink<T, PravegaTransactionState, Voi
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
+    @Nullable
     private final PravegaEventRouter<T> eventRouter;
 
-    public FlinkPravegaSink(boolean enableMetrics, ClientConfig clientConfig, Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode, boolean enableWatermark, SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+    public FlinkPravegaSink(boolean enableMetrics, ClientConfig clientConfig,
+                            Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
+                            boolean enableWatermark, SerializationSchema<T> serializationSchema,
+                            PravegaEventRouter<T> eventRouter) {
         this.enableMetrics = enableMetrics;
         this.clientConfig = clientConfig;
         this.stream = stream;
