@@ -31,6 +31,7 @@ import org.apache.flink.metrics.MetricGroup;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -94,12 +95,12 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     @Override
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException {
         final List<PravegaTransactionState> committables;
-        try {
-            currentWriter.flushAndVerify();
+        // try {
+            // currentWriter.flushAndVerify();
 
             if (!flush) {
-                currentWriter.beginTransaction();
             }
+            // currentWriter.beginTransaction();
 
             switch (writerMode) {
                 case EXACTLY_ONCE:
@@ -113,16 +114,16 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                 default:
                     throw new UnsupportedOperationException("Not implemented writer mode");
             }
-        } catch (InterruptedException | TxnFailedException e) {
-            throw new IOException("", e);
-        }
+        // } catch (InterruptedException | TxnFailedException e) {
+        //     throw new IOException("", e);
+        // }
         log.info("Committing {} committables.", committables);
         return committables;
     }
 
     @Override
-    public List<Void> snapshotState() throws IOException {
-        return null;
+    public List<Void> snapshotState(long checkpointId) throws IOException {
+        return Collections.emptyList();
     }
 
     @Override
