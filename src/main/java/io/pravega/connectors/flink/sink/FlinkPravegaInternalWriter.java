@@ -28,7 +28,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import lombok.extern.slf4j.Slf4j;
@@ -103,6 +102,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     // Pravega Writer Id
     private final String writerId;
+
+    private volatile boolean inTransaction;
 
     public FlinkPravegaInternalWriter(ClientConfig clientConfig,
                                       long txnLeaseRenewalPeriod,
@@ -188,7 +189,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transactionalWriter != null;
-                this.transaction = transactionalWriter.beginTxn();
+                transaction = transactionalWriter.beginTxn();
+                inTransaction = true;
             case ATLEAST_ONCE:
             case BEST_EFFORT:
                 break;
@@ -277,6 +279,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                         log.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
                     }
                 }
+                inTransaction = false;
+                transaction = null;
                 break;
             case ATLEAST_ONCE:
             case BEST_EFFORT:
@@ -287,15 +291,21 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public void abort() {
-        assert transaction != null;
         switch (writerMode) {
             case EXACTLY_ONCE:
+                assert transaction != null;
                 // This may come from a job recovery from a non-transactional writer.
                 if (transaction.getTxnId() == null) {
                     break;
                 }
+                if (!inTransaction) {
+                    break;
+                }
                 log.info("Aborting the transaction: {}", transaction.getTxnId());
-                transaction.abort();
+                // TODO: why?
+                final Transaction<T> txn =  transactionalWriter.getTxn(transaction.getTxnId());
+                txn.abort();
+                transaction = null;
                 break;
             case ATLEAST_ONCE:
             case BEST_EFFORT:
