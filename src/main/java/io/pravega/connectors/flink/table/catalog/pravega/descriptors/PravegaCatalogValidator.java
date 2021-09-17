@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.table.catalog.pravega.descriptors;
@@ -22,6 +28,14 @@ public class PravegaCatalogValidator extends CatalogDescriptorValidator {
     public static final String CATALOG_SCHEMA_REGISTRY_URI = "schema-registry-uri";
     // Serialization format for Pravega catalog
     public static final String CATALOG_SERIALIZATION_FORMAT = "serialization.format";
+    // Optional static authentication/authorization type for security
+    public static final String SECURITY_AUTH_TYPE = "security.auth-type";
+    // Optional static authentication/authorization token for security
+    public static final String SECURITY_AUTH_TOKEN = "security.auth-token";
+    // Optional flag to decide whether to enable host name validation when TLS is enabled
+    public static final String SECURITY_VALIDATE_HOSTNAME = "security.validate-hostname";
+    // Optional trust store for Pravega client
+    public static final String SECURITY_TRUST_STORE = "security.trust-store";
 
     // --------------------------------------------------------------------------------------------
     // Properties if using Json serialization format
@@ -46,6 +60,11 @@ public class PravegaCatalogValidator extends CatalogDescriptorValidator {
         properties.validateString(CATALOG_CONTROLLER_URI, false, 1);
         properties.validateString(CATALOG_SCHEMA_REGISTRY_URI, false, 1);
         properties.validateString(CATALOG_DEFAULT_DATABASE, false, 1);
+
+        properties.validateString(SECURITY_AUTH_TYPE, true, 1);
+        properties.validateString(SECURITY_AUTH_TOKEN, true, 1);
+        properties.validateString(SECURITY_VALIDATE_HOSTNAME, true, 1);
+        properties.validateString(SECURITY_TRUST_STORE, true, 1);
 
         properties.validateString(CATALOG_SERIALIZATION_FORMAT, true, 1);
         properties.validateString(CATALOG_JSON_FAIL_ON_MISSING_FIELD, true, 1);
