@@ -103,9 +103,21 @@ public class PravegaCatalogFactory implements CatalogFactory {
 
     private Map<String, String> getCatalogOptions(ReadableConfig configOptions) {
         Map<String, String> properties = new HashMap<>();
+
+        // table options
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put(PravegaOptions.CONTROLLER_URI.key(), configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI));
         properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
+        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
+        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
+        properties.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
+        properties.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
+
+        // Pravega registry options
         properties.put(
                 String.format(
                         "%s.%s",
