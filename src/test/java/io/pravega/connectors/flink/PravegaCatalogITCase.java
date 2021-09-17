@@ -57,6 +57,7 @@ import org.junit.Test;
 import org.junit.rules.Timeout;
 
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -135,7 +136,7 @@ public class PravegaCatalogITCase {
                 SETUP_UTILS.getControllerUri().toString(),
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
                 SETUP_UTILS.getScope(),
-                null, null, null,
+                "Avro", null, null,
                 null, null, null);
         final Map<String, String> properties = catalogDescriptor.toProperties();
 
@@ -295,10 +296,18 @@ public class PravegaCatalogITCase {
     private static void init() throws Exception {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
-        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                null, null, null,
-                null, null, null);
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Avro");
+        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Avro");
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();

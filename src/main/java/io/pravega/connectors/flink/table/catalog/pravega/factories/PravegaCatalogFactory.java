@@ -16,17 +16,26 @@
 
 package io.pravega.connectors.flink.table.catalog.pravega.factories;
 
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.dynamic.table.FlinkPravegaDynamicTableFactory;
+import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
+import io.pravega.connectors.flink.dynamic.table.PravegaOptionsUtil;
+import io.pravega.connectors.flink.formats.registry.PravegaRegistryFormatFactory;
+import io.pravega.connectors.flink.formats.registry.PravegaRegistryOptions;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator;
+import org.apache.flink.configuration.Configuration;
+import org.apache.flink.formats.json.JsonOptions;
 import org.apache.flink.table.catalog.Catalog;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.table.factories.CatalogFactory;
+import org.apache.flink.table.factories.FactoryUtil;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_CONTROLLER_URI;
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_JSON_FAIL_ON_MISSING_FIELD;
@@ -39,6 +48,10 @@ import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.Prav
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_SERIALIZATION_FORMAT;
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_TYPE;
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_TYPE_VALUE_PRAVEGA;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_AUTH_TOKEN;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_AUTH_TYPE;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_TRUST_STORE;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_VALIDATE_HOSTNAME;
 import static org.apache.flink.table.descriptors.CatalogDescriptorValidator.CATALOG_DEFAULT_DATABASE;
 
 public class PravegaCatalogFactory implements CatalogFactory {
@@ -59,6 +72,10 @@ public class PravegaCatalogFactory implements CatalogFactory {
 
         props.add(CATALOG_CONTROLLER_URI);
         props.add(CATALOG_SCHEMA_REGISTRY_URI);
+        props.add(SECURITY_AUTH_TYPE);
+        props.add(SECURITY_AUTH_TOKEN);
+        props.add(SECURITY_VALIDATE_HOSTNAME);
+        props.add(SECURITY_TRUST_STORE);
 
         props.add(CATALOG_SERIALIZATION_FORMAT);
         props.add(CATALOG_JSON_FAIL_ON_MISSING_FIELD);
@@ -71,39 +88,65 @@ public class PravegaCatalogFactory implements CatalogFactory {
 
     @Override
     public Catalog createCatalog(String name, Map<String, String> properties) {
-        final DescriptorProperties dp = getValidateProperties(properties);
+        validateProperties(properties);
 
-        final Optional<String> serializationFormat =
-                dp.getOptionalString(CATALOG_SERIALIZATION_FORMAT);
-        final Optional<String> failOnMissingField =
-                dp.getOptionalString(CATALOG_JSON_FAIL_ON_MISSING_FIELD);
-        final Optional<String> ignoreParseErrors =
-                dp.getOptionalString(CATALOG_JSON_IGNORE_PARSE_ERRORS);
-        final Optional<String> timestampFormat =
-                dp.getOptionalString(CATALOG_JSON_TIMESTAMP_FORMAT);
-        final Optional<String> mapNullKeyMode =
-                dp.getOptionalString(CATALOG_JSON_MAP_NULL_KEY_MODE);
-        final Optional<String> mapNullKeyLiteral =
-                dp.getOptionalString(CATALOG_JSON_MAP_NULL_KEY_LITERAL);
-
+        Configuration configOptions = Configuration.fromMap(properties);
+        PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
+                .withDefaultScope(properties.get(CATALOG_DEFAULT_DATABASE))
+                .withSchemaRegistryURI(URI.create(properties.get(CATALOG_SCHEMA_REGISTRY_URI)));
+        Map<String, String> catalogProperties = getCatalogOptions(properties);
         return new PravegaCatalog(
                 name,
-                dp.getString(CATALOG_DEFAULT_DATABASE),
-                dp.getString(CATALOG_CONTROLLER_URI),
-                dp.getString(CATALOG_SCHEMA_REGISTRY_URI),
-                serializationFormat.orElse(null),
-                failOnMissingField.orElse(null),
-                ignoreParseErrors.orElse(null),
-                timestampFormat.orElse(null),
-                mapNullKeyMode.orElse(null),
-                mapNullKeyLiteral.orElse(null));
+                properties.get(CATALOG_DEFAULT_DATABASE),
+                catalogProperties,
+                pravegaConfig,
+                properties.getOrDefault(CATALOG_SERIALIZATION_FORMAT, null));
     }
 
-    private DescriptorProperties getValidateProperties(Map<String, String> properties) {
+    private void validateProperties(Map<String, String> properties) {
         final DescriptorProperties dp = new DescriptorProperties();
         dp.putProperties(properties);
 
         new PravegaCatalogValidator().validate(dp);
-        return dp;
+    }
+
+    private Map<String, String> getCatalogOptions(Map<String, String> properties) {
+        Map<String, String> catalogProperties = new HashMap<>();
+        catalogProperties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
+        catalogProperties.put(PravegaOptions.CONTROLLER_URI.key(), properties.get(CATALOG_CONTROLLER_URI));
+        catalogProperties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
+        catalogProperties.put(
+                String.format(
+                        "%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
+                properties.get(CATALOG_SCHEMA_REGISTRY_URI));
+
+        // put json related options into properties
+        if (properties.containsKey(CATALOG_JSON_FAIL_ON_MISSING_FIELD)) {
+            catalogProperties.put(String.format("%s.%s",
+                            PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.FAIL_ON_MISSING_FIELD.key()),
+                    properties.get(CATALOG_JSON_FAIL_ON_MISSING_FIELD));
+        }
+        if (properties.containsKey(CATALOG_JSON_IGNORE_PARSE_ERRORS)) {
+            catalogProperties.put(String.format("%s.%s",
+                            PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.IGNORE_PARSE_ERRORS.key()),
+                    properties.get(CATALOG_JSON_IGNORE_PARSE_ERRORS));
+        }
+        if (properties.containsKey(CATALOG_JSON_TIMESTAMP_FORMAT)) {
+            catalogProperties.put(String.format("%s.%s",
+                            PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.TIMESTAMP_FORMAT.key()),
+                    properties.get(CATALOG_JSON_TIMESTAMP_FORMAT));
+        }
+        if (properties.containsKey(CATALOG_JSON_MAP_NULL_KEY_MODE)) {
+            catalogProperties.put(String.format("%s.%s",
+                            PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_MODE.key()),
+                    properties.get(CATALOG_JSON_MAP_NULL_KEY_MODE));
+        }
+        if (properties.containsKey(CATALOG_JSON_MAP_NULL_KEY_LITERAL)) {
+            catalogProperties.put(String.format("%s.%s",
+                            PravegaRegistryFormatFactory.IDENTIFIER, JsonOptions.MAP_NULL_KEY_LITERAL.key()),
+                    properties.get(CATALOG_JSON_MAP_NULL_KEY_LITERAL));
+        }
+        return catalogProperties;
     }
 }
