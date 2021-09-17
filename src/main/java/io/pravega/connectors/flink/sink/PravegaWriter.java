@@ -17,7 +17,9 @@ package io.pravega.connectors.flink.sink;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
 import io.pravega.client.ClientConfig;
-import io.pravega.client.stream.*;
+import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import lombok.extern.slf4j.Slf4j;
@@ -96,24 +98,24 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException {
         final List<PravegaTransactionState> committables;
         // try {
-            // currentWriter.flushAndVerify();
+        // currentWriter.flushAndVerify();
 
-            if (!flush) {
-            }
-            // currentWriter.beginTransaction();
+        if (!flush) {
+        }
+        // currentWriter.beginTransaction();
 
-            switch (writerMode) {
-                case EXACTLY_ONCE:
-                    committables = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
-                    writers.clear();
-                    break;
-                case ATLEAST_ONCE:
-                case BEST_EFFORT:
-                    committables = new ArrayList<>();
-                    break;
-                default:
-                    throw new UnsupportedOperationException("Not implemented writer mode");
-            }
+        switch (writerMode) {
+            case EXACTLY_ONCE:
+                committables = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
+                writers.clear();
+                break;
+            case ATLEAST_ONCE:
+            case BEST_EFFORT:
+                committables = new ArrayList<>();
+                break;
+            default:
+                throw new UnsupportedOperationException("Not implemented writer mode");
+        }
         // } catch (InterruptedException | TxnFailedException e) {
         //     throw new IOException("", e);
         // }

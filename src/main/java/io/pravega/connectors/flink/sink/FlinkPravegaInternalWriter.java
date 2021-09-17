@@ -46,6 +46,23 @@ import java.util.concurrent.atomic.AtomicReference;
 
 @Slf4j
 public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
+    // ----------- Runtime fields ----------------
+
+    // Error which will be detected asynchronously and reported to Flink
+    @VisibleForTesting
+    volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
+
+    // Used to track confirmation from all writes to ensure guaranteed writes.
+    @VisibleForTesting
+    AtomicLong pendingWritesCount = new AtomicLong();
+
+    private transient ExecutorService executorService;
+
+    // Pravega Writer Id
+    private final String writerId;
+
+    private volatile boolean inTransaction;
+
     // ----------- configuration fields -----------
 
     // The Pravega client config.
@@ -87,23 +104,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     // Client factory for PravegaWriter instances
     @Nullable
     private transient EventStreamClientFactory clientFactory = null;
-
-    // ----------- Runtime fields ----------------
-
-    // Error which will be detected asynchronously and reported to Flink
-    @VisibleForTesting
-    volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
-
-    // Used to track confirmation from all writes to ensure guaranteed writes.
-    @VisibleForTesting
-    AtomicLong pendingWritesCount = new AtomicLong();
-
-    private transient ExecutorService executorService;
-
-    // Pravega Writer Id
-    private final String writerId;
-
-    private volatile boolean inTransaction;
 
     public FlinkPravegaInternalWriter(ClientConfig clientConfig,
                                       long txnLeaseRenewalPeriod,
@@ -191,7 +191,9 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                 assert transactionalWriter != null;
                 transaction = transactionalWriter.beginTxn();
                 inTransaction = true;
+                break;
             case ATLEAST_ONCE:
+                break;
             case BEST_EFFORT:
                 break;
             default:
@@ -317,7 +319,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     @VisibleForTesting
     public void flushAndVerify() throws IOException, InterruptedException, TxnFailedException {
-        switch(writerMode){
+        switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transaction != null;
                 transaction.flush();

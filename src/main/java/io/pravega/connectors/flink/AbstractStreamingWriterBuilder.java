@@ -104,7 +104,7 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 isMetricsEnabled());
     }
 
-    protected PravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter){
+    protected PravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         return new PravegaSink<>(
                 isMetricsEnabled(),
