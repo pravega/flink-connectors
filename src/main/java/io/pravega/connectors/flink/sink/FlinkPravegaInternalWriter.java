@@ -352,12 +352,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     public void close() throws Exception {
         Exception exception = null;
 
-        // try {
-        //     // Current transaction will be aborted with this method
-        //     super.close();
-        // } catch (Exception e) {
-        //     exception = e;
-        // }
+        abort();
 
         if (writer != null) {
             try {
