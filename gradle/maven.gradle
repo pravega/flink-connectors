@@ -47,6 +47,7 @@ publishing {
             else {
                 maven {
                     url = publishUrl
+                    allowInsecureProtocol = true
                     // Only configure credentials if they are provided (allows publishing to the filesystem)
                     if (project.hasProperty("publishUsername") && project.hasProperty("publishPassword")) {
                         credentials {
