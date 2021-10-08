@@ -118,14 +118,24 @@ public class PravegaCatalogFactory implements CatalogFactory {
                 configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
 
         // Pravega registry options
-        properties.put(
-                String.format(
-                        "%s.%s",
+        properties.put(String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI));
         properties.put(String.format("%s.%s",
-                PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
+        properties.put(String.format("%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key()),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
+        properties.put(String.format("%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key()),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
+        properties.put(String.format("%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key()),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
+        properties.put(String.format("%s.%s",
+                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key()),
+                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
 
         // options that separate "json" prefix and the configuration
         DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);

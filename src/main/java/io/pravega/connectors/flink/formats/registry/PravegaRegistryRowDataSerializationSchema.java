@@ -17,6 +17,7 @@
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
@@ -48,7 +49,6 @@ import org.apache.flink.table.types.logical.RowType;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.util.Objects;
 
 /**
@@ -80,14 +80,14 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     private final String groupId;
 
     /**
-     * Schema Registry URI.
-     */
-    private final URI schemaRegistryURI;
-
-    /**
      * Serialization format for schema registry.
      */
     private SerializationFormat serializationFormat;
+
+    /**
+     * Schema registry client config.
+     */
+    private SchemaRegistryClientConfig schemaRegistryClientConfig;
 
     // --------------------------------------------------------------------------------------------
     // Avro fields
@@ -114,19 +114,17 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     public PravegaRegistryRowDataSerializationSchema(
             RowType rowType,
-            String namespace,
             String groupId,
-            URI schemaRegistryURI,
             SerializationFormat serializationFormat,
+            PravegaConfig pravegaConfig,
             TimestampFormat timestampOption,
             JsonOptions.MapNullKeyMode mapNullKeyMode,
             String mapNullKeyLiteral,
             boolean encodeDecimalAsPlainNumber) {
         this.rowType = rowType;
         this.serializer = null;
-        this.namespace = namespace;
+        this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
-        this.schemaRegistryURI = schemaRegistryURI;
         this.serializationFormat = serializationFormat;
         this.timestampFormat = timestampOption;
         this.mapNullKeyMode = mapNullKeyMode;
@@ -137,9 +135,6 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
-        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryURI)
-                .build();
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -232,7 +227,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         }
         PravegaRegistryRowDataSerializationSchema that = (PravegaRegistryRowDataSerializationSchema) o;
         return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) &&
-                Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
+                Objects.equals(groupId, that.groupId) &&
+                Objects.equals(schemaRegistryClientConfig, that.schemaRegistryClientConfig) &&
                 serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat &&
                 mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral)
                 && encodeDecimalAsPlainNumber == that.encodeDecimalAsPlainNumber;
@@ -240,7 +236,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, namespace, groupId, schemaRegistryURI, serializationFormat,
+        return Objects.hash(rowType, namespace, groupId, schemaRegistryClientConfig, serializationFormat,
                 timestampFormat, mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
     }
 }
