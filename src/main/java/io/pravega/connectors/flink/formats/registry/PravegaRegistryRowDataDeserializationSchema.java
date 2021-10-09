@@ -249,7 +249,6 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
                 Objects.equals(rowType, that.rowType) && Objects.equals(typeInfo, that.typeInfo) &&
                 Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) &&
                 serializationFormat == that.serializationFormat &&
-                Objects.equals(schemaRegistryClientConfig, that.schemaRegistryClientConfig) &&
                 timestampFormat == that.timestampFormat;
     }
 

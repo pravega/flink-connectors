@@ -57,7 +57,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
-        final PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(formatOptions)
+        final PravegaConfig pravegaConfig = PravegaRegistryOptionsUtil.getPravegaConfig(formatOptions)
                 .withDefaultScope(formatOptions.get(PravegaRegistryOptions.NAMESPACE))
                 .withSchemaRegistryURI(URI.create(formatOptions.get(PravegaRegistryOptions.URI)));
 
@@ -97,7 +97,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
         final SerializationFormat serializationFormat = SerializationFormat.valueOf(
                 formatOptions.get(PravegaRegistryOptions.FORMAT));
-        final PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(formatOptions)
+        final PravegaConfig pravegaConfig = PravegaRegistryOptionsUtil.getPravegaConfig(formatOptions)
                 .withDefaultScope(formatOptions.get(PravegaRegistryOptions.NAMESPACE))
                 .withSchemaRegistryURI(URI.create(formatOptions.get(PravegaRegistryOptions.URI)));
 

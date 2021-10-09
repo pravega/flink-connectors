@@ -19,6 +19,7 @@ package io.pravega.connectors.flink.formats.registry;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -126,6 +127,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
         this.serializationFormat = serializationFormat;
+        this.schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         this.timestampFormat = timestampOption;
         this.mapNullKeyMode = mapNullKeyMode;
         this.mapNullKeyLiteral = mapNullKeyLiteral;
@@ -228,7 +230,6 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         PravegaRegistryRowDataSerializationSchema that = (PravegaRegistryRowDataSerializationSchema) o;
         return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) &&
                 Objects.equals(groupId, that.groupId) &&
-                Objects.equals(schemaRegistryClientConfig, that.schemaRegistryClientConfig) &&
                 serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat &&
                 mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral)
                 && encodeDecimalAsPlainNumber == that.encodeDecimalAsPlainNumber;
