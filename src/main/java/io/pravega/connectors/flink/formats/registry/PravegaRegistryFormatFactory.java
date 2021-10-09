@@ -17,7 +17,6 @@
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.dynamic.table.PravegaOptionsUtil;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;

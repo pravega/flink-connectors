@@ -88,7 +88,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     /**
      * Schema registry client config.
      */
-    private SchemaRegistryClientConfig schemaRegistryClientConfig;
+    private transient SchemaRegistryClientConfig schemaRegistryClientConfig;
 
     // --------------------------------------------------------------------------------------------
     // Avro fields

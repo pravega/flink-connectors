@@ -89,7 +89,7 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     /**
      * Schema registry client config.
      */
-    private SchemaRegistryClientConfig schemaRegistryClientConfig;
+    private transient SchemaRegistryClientConfig schemaRegistryClientConfig;
 
     /**
      * Deserializer to deserialize <code>byte[]</code> message.

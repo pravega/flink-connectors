@@ -25,6 +25,11 @@ import java.util.Optional;
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLoadDynamic;
 
 public class PravegaRegistryOptionsUtil {
+
+    // --------------------------------------------------------------------------------------------
+    // Utilities
+    // --------------------------------------------------------------------------------------------
+
     public static PravegaConfig getPravegaConfig(ReadableConfig tableOptions) {
         PravegaConfig pravegaConfig = PravegaConfig.fromDefaults()
                 .withDefaultScope(tableOptions.get(PravegaRegistryOptions.NAMESPACE))
