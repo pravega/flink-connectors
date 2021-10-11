@@ -121,6 +121,12 @@ public class PravegaCatalogFactory implements CatalogFactory {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.URI.key()),
                 properties.get(CATALOG_SCHEMA_REGISTRY_URI));
 
+        // put security options into properties
+        copyOptions(SECURITY_AUTH_TYPE, properties, catalogProperties);
+        copyOptions(SECURITY_AUTH_TOKEN, properties, catalogProperties);
+        copyOptions(SECURITY_VALIDATE_HOSTNAME, properties, catalogProperties);
+        copyOptions(SECURITY_TRUST_STORE, properties, catalogProperties);
+
         // put json related options into properties
         if (properties.containsKey(CATALOG_JSON_FAIL_ON_MISSING_FIELD)) {
             catalogProperties.put(String.format("%s.%s",
@@ -148,5 +154,11 @@ public class PravegaCatalogFactory implements CatalogFactory {
                     properties.get(CATALOG_JSON_MAP_NULL_KEY_LITERAL));
         }
         return catalogProperties;
+    }
+
+    private void copyOptions(String key, Map<String, String> sourceMap, Map<String, String> targetMap) {
+        if (sourceMap.containsKey(key)) {
+            targetMap.put(key, sourceMap.get(key));
+        }
     }
 }

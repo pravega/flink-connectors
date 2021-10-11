@@ -30,11 +30,19 @@ import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.Prav
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_SCHEMA_REGISTRY_URI;
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_SERIALIZATION_FORMAT;
 import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.CATALOG_TYPE_VALUE_PRAVEGA;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_AUTH_TOKEN;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_AUTH_TYPE;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_TRUST_STORE;
+import static io.pravega.connectors.flink.table.catalog.pravega.descriptors.PravegaCatalogValidator.SECURITY_VALIDATE_HOSTNAME;
 
 public class PravegaCatalogDescriptor extends CatalogDescriptor {
 
     private final String controllerUri;
     private final String schemaRegistryUri;
+    private final String securityAuthType;
+    private final String securityAuthToken;
+    private final String securityValidateHostname;
+    private final String securityTrustStore;
 
     private final String serializationFormat;
     private final String failOnMissingField;
@@ -45,11 +53,17 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
 
     public PravegaCatalogDescriptor(String controllerUri, String schemaRegistryUri, String defaultDatabase,
                                     String serializationFormat, String failOnMissingField, String ignoreParseErrors,
-                                    String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral) {
+                                    String timestampFormat, String mapNullKeyMode, String mapNullKeyLiteral,
+                                    String securityAuthType, String securityAuthToken, String securityValidateHostname,
+                                    String securityTrustStore) {
         super(CATALOG_TYPE_VALUE_PRAVEGA, 1, defaultDatabase);
 
         this.controllerUri = controllerUri;
         this.schemaRegistryUri = schemaRegistryUri;
+        this.securityAuthType = securityAuthType;
+        this.securityAuthToken = securityAuthToken;
+        this.securityValidateHostname = securityValidateHostname;
+        this.securityTrustStore = securityTrustStore;
 
         this.serializationFormat = serializationFormat;
         this.failOnMissingField = failOnMissingField;
@@ -65,6 +79,19 @@ public class PravegaCatalogDescriptor extends CatalogDescriptor {
 
         properties.putString(CATALOG_CONTROLLER_URI, controllerUri);
         properties.putString(CATALOG_SCHEMA_REGISTRY_URI, schemaRegistryUri);
+
+        if (securityAuthType != null) {
+            properties.putString(SECURITY_AUTH_TYPE, securityAuthType);
+        }
+        if (securityAuthToken != null) {
+            properties.putString(SECURITY_AUTH_TOKEN, securityAuthToken);
+        }
+        if (securityValidateHostname != null) {
+            properties.putString(SECURITY_VALIDATE_HOSTNAME, securityValidateHostname);
+        }
+        if (securityTrustStore != null) {
+            properties.putString(SECURITY_TRUST_STORE, securityTrustStore);
+        }
 
         if (serializationFormat != null) {
             properties.putString(CATALOG_SERIALIZATION_FORMAT, serializationFormat);
