@@ -86,6 +86,10 @@ Pravega Catalog supports the following options:
 - schema-registry-uri: required, URI of the Schema Registry service connected to
 - default-database: required, default Pravega scope which must be created already
 - serialization.format: optional, a static serialization format for the catalog, valid values are 'Avro'(default) and 'Json', this is the format used for all the table sinks in the catalog.
+- security.auth-type: optional, the static authentication/authorization type for security for Pravega
+- security.auth-token: optional, static authentication/authorization token for security for Pravega
+- security.validate-hostname: optional, flag to decide whether to enable host name validation when TLS is enabled for Pravega
+- security.trust-store: optional, trust store for Pravega client
 - json.*: optional, json format specifications for the catalog table sink, will inherit into `PravegaRegistryFormatFactory` for all catalog table sinks
 
 ## How to use Pravega Catalog 
