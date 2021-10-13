@@ -307,6 +307,10 @@ public class PravegaCatalogITCase {
         properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Avro");
+        properties.put("pravega-registry.security.auth-type", SETUP_UTILS.getAuthType());
+        properties.put("pravega-registry.security.auth-token", SETUP_UTILS.getAuthToken());
+        properties.put("pravega-registry.security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
+        properties.put("pravega-registry.security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
         properties.put("security.auth-type", SETUP_UTILS.getAuthType());
         properties.put("security.auth-token", SETUP_UTILS.getAuthToken());
         properties.put("security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));

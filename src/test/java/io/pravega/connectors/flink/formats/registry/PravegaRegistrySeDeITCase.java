@@ -196,13 +196,17 @@ public class PravegaRegistrySeDeITCase {
         record.put(18, map2);
 
         PravegaRegistryRowDataSerializationSchema serializationSchema =
-                new PravegaRegistryRowDataSerializationSchema(avroRowType, SETUP_UTILS.getScope(),
-                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(), SerializationFormat.Avro,
+                new PravegaRegistryRowDataSerializationSchema(avroRowType,
+                        AVRO_TEST_STREAM, SerializationFormat.Avro,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
-                new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo, SETUP_UTILS.getScope(),
-                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
+                new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo,
+                        AVRO_TEST_STREAM,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT);
         deserializationSchema.open(null);
 
@@ -317,8 +321,9 @@ public class PravegaRegistrySeDeITCase {
         // test deserialization
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(
-                        jsonRowType, jsonTypeInfo, SETUP_UTILS.getScope(), JSON_TEST_STREAM,
-                        SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
+                        jsonRowType, jsonTypeInfo, JSON_TEST_STREAM,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT);
         deserializationSchema.open(null);
 
@@ -349,8 +354,10 @@ public class PravegaRegistrySeDeITCase {
         // test serialization
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(
-                        jsonRowType, SETUP_UTILS.getScope(), JSON_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
-                        SerializationFormat.Json, TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+                        jsonRowType, JSON_TEST_STREAM, SerializationFormat.Json,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                        TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
 
         byte[] actualBytes = serializationSchema.serialize(rowData);
