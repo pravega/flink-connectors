@@ -127,6 +127,12 @@ public class PravegaCatalogFactory implements CatalogFactory {
         copyOptions(SECURITY_VALIDATE_HOSTNAME, properties, catalogProperties);
         copyOptions(SECURITY_TRUST_STORE, properties, catalogProperties);
 
+        // put security options into properties for registry format factory options
+        addFormatOptions(SECURITY_AUTH_TYPE, properties, catalogProperties);
+        addFormatOptions(SECURITY_AUTH_TOKEN, properties, catalogProperties);
+        addFormatOptions(SECURITY_VALIDATE_HOSTNAME, properties, catalogProperties);
+        addFormatOptions(SECURITY_TRUST_STORE, properties, catalogProperties);
+
         // put json related options into properties
         if (properties.containsKey(CATALOG_JSON_FAIL_ON_MISSING_FIELD)) {
             catalogProperties.put(String.format("%s.%s",
@@ -159,6 +165,13 @@ public class PravegaCatalogFactory implements CatalogFactory {
     private void copyOptions(String key, Map<String, String> sourceMap, Map<String, String> targetMap) {
         if (sourceMap.containsKey(key)) {
             targetMap.put(key, sourceMap.get(key));
+        }
+    }
+
+    private void addFormatOptions(String key, Map<String, String> sourceMap, Map<String, String> targetMap) {
+        if (sourceMap.containsKey(key)) {
+            targetMap.put(String.format("%s.%s",
+                    PravegaRegistryFormatFactory.IDENTIFIER, key), sourceMap.get(key));
         }
     }
 }
