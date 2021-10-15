@@ -85,9 +85,9 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     private SerializationFormat serializationFormat;
 
     /**
-     * Schema registry client config.
+     * Pravega config for generating schema registry config.
      */
-    private transient SchemaRegistryClientConfig schemaRegistryClientConfig;
+    private final PravegaConfig pravegaConfig;
 
     // --------------------------------------------------------------------------------------------
     // Avro fields
@@ -121,7 +121,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         this.serializer = null;
         this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
-        this.schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
+        this.pravegaConfig = pravegaConfig;
         this.serializationFormat = serializationFormat;
         this.timestampFormat = timestampOption;
         this.mapNullKeyMode = mapNullKeyMode;
@@ -131,6 +131,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
+        SchemaRegistryClientConfig schemaRegistryClientConfig =
+                SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -229,7 +231,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, namespace, groupId, schemaRegistryClientConfig, serializationFormat,
+        return Objects.hash(rowType, namespace, groupId, pravegaConfig, serializationFormat,
                 timestampFormat, mapNullKeyMode, mapNullKeyLiteral);
     }
 }
