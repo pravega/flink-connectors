@@ -87,9 +87,9 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     private SerializationFormat serializationFormat;
 
     /**
-     * Schema registry client config.
+     * Pravega config for generating schema registry config.
      */
-    private transient SchemaRegistryClientConfig schemaRegistryClientConfig;
+    private final PravegaConfig pravegaConfig;
 
     /**
      * Deserializer to deserialize <code>byte[]</code> message.
@@ -126,7 +126,7 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         this.typeInfo = checkNotNull(typeInfo);
         this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
-        this.schemaRegistryClientConfig = SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
+        this.pravegaConfig = pravegaConfig;
         this.failOnMissingField = failOnMissingField;
         this.ignoreParseErrors = ignoreParseErrors;
         this.timestampFormat = timestampFormat;
@@ -135,6 +135,8 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
+        SchemaRegistryClientConfig schemaRegistryClientConfig =
+                SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -254,7 +256,7 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, typeInfo, namespace, groupId, serializationFormat, schemaRegistryClientConfig,
+        return Objects.hash(rowType, typeInfo, namespace, groupId, serializationFormat, pravegaConfig,
                 failOnMissingField, ignoreParseErrors, timestampFormat);
     }
 }
