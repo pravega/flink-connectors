@@ -108,14 +108,14 @@ public class PravegaCatalogFactory implements CatalogFactory {
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put(PravegaOptions.CONTROLLER_URI.key(), configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI));
         properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE, PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(),
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN, PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(),
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME, PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(),
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE, PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(),
+                configOptions, properties);
 
         // Pravega registry options
         properties.put(String.format("%s.%s",
@@ -124,18 +124,18 @@ public class PravegaCatalogFactory implements CatalogFactory {
         properties.put(String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
-        properties.put(String.format("%s.%s",
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE, String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
-        properties.put(String.format("%s.%s",
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN, String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
-        properties.put(String.format("%s.%s",
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME, String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
-        properties.put(String.format("%s.%s",
+                configOptions, properties);
+        copyOptionalOptions(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE, String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
+                configOptions, properties);
 
         // options that separate "json" prefix and the configuration
         DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
@@ -145,5 +145,12 @@ public class PravegaCatalogFactory implements CatalogFactory {
         jsonProperties.forEach((key, value) ->
                 properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, key), value));
         return properties;
+    }
+
+    private void copyOptionalOptions(ConfigOption<?> configOption, String key,
+                             ReadableConfig configOptions, Map<String, String> properties) {
+        if (configOptions.getOptional(configOption).isPresent()) {
+            properties.put(key, configOptions.get(configOption).toString());
+        }
     }
 }
