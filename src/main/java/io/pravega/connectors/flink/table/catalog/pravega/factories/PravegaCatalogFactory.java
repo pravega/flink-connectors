@@ -43,6 +43,8 @@ import java.util.Set;
 public class PravegaCatalogFactory implements CatalogFactory {
     // the prefix of checkpoint names json related options
     private static final String JSON_PREFIX = "json.";
+    // the prefix of Pravega security options
+    private static final String PRAVEGA_SECURITY_PREFIX = "security.";
 
     private static final Logger LOG = LoggerFactory.getLogger(PravegaCatalogFactory.class);
 
@@ -89,7 +91,7 @@ public class PravegaCatalogFactory implements CatalogFactory {
         // all catalog options
         ReadableConfig configOptions = helper.getOptions();
 
-        Map<String, String> properties = getCatalogOptions(configOptions);
+        Map<String, String> properties = getCatalogOptions((Configuration) configOptions);
         PravegaConfig pravegaConfig = PravegaOptionsUtil.getPravegaConfig(configOptions)
                 .withDefaultScope(configOptions.get(PravegaCatalogFactoryOptions.DEFAULT_DATABASE))
                 .withSchemaRegistryURI(URI.create(configOptions.get(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI)));
@@ -101,21 +103,13 @@ public class PravegaCatalogFactory implements CatalogFactory {
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
     }
 
-    private Map<String, String> getCatalogOptions(ReadableConfig configOptions) {
+    private Map<String, String> getCatalogOptions(Configuration configOptions) {
         Map<String, String> properties = new HashMap<>();
 
         // table options
         properties.put(FactoryUtil.CONNECTOR.key(), FlinkPravegaDynamicTableFactory.IDENTIFIER);
         properties.put(PravegaOptions.CONTROLLER_URI.key(), configOptions.get(PravegaCatalogFactoryOptions.CONTROLLER_URI));
         properties.put(FactoryUtil.FORMAT.key(), PravegaRegistryFormatFactory.IDENTIFIER);
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
-        properties.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
 
         // Pravega registry options
         properties.put(String.format("%s.%s",
@@ -124,21 +118,18 @@ public class PravegaCatalogFactory implements CatalogFactory {
         properties.put(String.format("%s.%s",
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.FORMAT.key()),
                 configOptions.get(PravegaCatalogFactoryOptions.SERIALIZATION_FORMAT));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN));
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME).toString());
-        properties.put(String.format("%s.%s",
-                        PravegaRegistryFormatFactory.IDENTIFIER, PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key()),
-                configOptions.get(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE));
+
+        // copy security options to both table options and Pravega registry options
+        for (Map.Entry<String, String> entry : configOptions.toMap().entrySet()) {
+            if (entry.getKey().startsWith(PRAVEGA_SECURITY_PREFIX)) {
+                properties.put(entry.getKey(), entry.getValue());
+                properties.put(String.format("%s.%s", PravegaRegistryFormatFactory.IDENTIFIER, entry.getKey()),
+                        entry.getValue());
+            }
+        }
 
         // options that separate "json" prefix and the configuration
-        DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration((Configuration) configOptions, JSON_PREFIX);
+        DelegatingConfiguration delegatingConfiguration = new DelegatingConfiguration(configOptions, JSON_PREFIX);
 
         // put json related options into properties
         Map<String, String> jsonProperties = delegatingConfiguration.toMap();
