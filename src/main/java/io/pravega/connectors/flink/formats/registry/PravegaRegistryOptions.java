@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.formats.registry;
 
+import io.pravega.connectors.flink.dynamic.table.PravegaOptions;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 import org.apache.flink.formats.json.JsonOptions;
@@ -45,6 +46,12 @@ public class PravegaRegistryOptions {
             .stringType()
             .defaultValue("Avro")
             .withDescription("Optional serialization format for Pravega catalog. Valid enumerations are ['Avro'(default), 'Json']");
+
+    // Pravega security options
+    public static final ConfigOption<String> SECURITY_AUTH_TYPE = PravegaOptions.SECURITY_AUTH_TYPE;
+    public static final ConfigOption<String> SECURITY_AUTH_TOKEN = PravegaOptions.SECURITY_AUTH_TOKEN;
+    public static final ConfigOption<Boolean> SECURITY_VALIDATE_HOSTNAME = PravegaOptions.SECURITY_VALIDATE_HOSTNAME;
+    public static final ConfigOption<String> SECURITY_TRUST_STORE = PravegaOptions.SECURITY_TRUST_STORE;
 
     // --------------------------------------------------------------------------------------------
     // Json Options

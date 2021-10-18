@@ -16,7 +16,10 @@
 
 package io.pravega.connectors.flink.formats.registry;
 
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import org.apache.commons.lang.RandomStringUtils;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
@@ -58,7 +61,14 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
 
     private static final String SCOPE = "test-scope";
     private static final String STREAM = "test-stream";
-    private static final URI SCHEMAREGISTRY_URI = URI.create("http://localhost:10092");
+    private static final String TOKEN = RandomStringUtils.randomAlphabetic(10);
+    private static final String TRUST_STORE = RandomStringUtils.randomAlphabetic(10);
+    private static final PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults().
+            withSchemaRegistryURI(URI.create("http://localhost:10092")).
+            withDefaultScope(SCOPE).
+            withCredentials(new FlinkPravegaUtils.SimpleCredentials("Basic", TOKEN)).
+            withHostnameValidation(false).
+            withTrustStore(TRUST_STORE);
 
     private static final SerializationFormat SERIALIZATIONFORMAT = SerializationFormat.Avro;
     private static final boolean FAIL_ON_MISSING_FIELD = false;
@@ -74,9 +84,8 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                 new PravegaRegistryRowDataDeserializationSchema(
                         ROW_TYPE,
                         InternalTypeInfo.of(ROW_TYPE),
-                        SCOPE,
                         STREAM,
-                        SCHEMAREGISTRY_URI,
+                        PRAVEGA_CONFIG,
                         FAIL_ON_MISSING_FIELD,
                         IGNORE_PARSE_ERRORS,
                         TIMESTAMP_FORMAT);
@@ -97,10 +106,9 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         final PravegaRegistryRowDataSerializationSchema expectedSer =
                 new PravegaRegistryRowDataSerializationSchema(
                         ROW_TYPE,
-                        SCOPE,
                         STREAM,
-                        SCHEMAREGISTRY_URI,
                         SERIALIZATIONFORMAT,
+                        PRAVEGA_CONFIG,
                         TIMESTAMP_FORMAT,
                         MAP_NULL_KEY_MODE,
                         MAP_NULL_KEY_LITERAL);
@@ -135,6 +143,10 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         options.put("pravega-registry.timestamp-format.standard", "SQL");
         options.put("pravega-registry.map-null-key.mode", "FAIL");
         options.put("pravega-registry.map-null-key.literal", "null");
+        options.put("pravega-registry.security.auth-type", "Basic");
+        options.put("pravega-registry.security.auth-token", TOKEN);
+        options.put("pravega-registry.security.validate-hostname", "false");
+        options.put("pravega-registry.security.trust-store", TRUST_STORE);
         return options;
     }
 
