@@ -153,17 +153,6 @@ def getProjectVersion() {
     return ver
 }
 
-distributions {
-    main {
-        contents {
-            // from jar
-            from shadowJar
-            from javadocJar
-            from sourceJar
-        }
-    }
-}
-
 // allow system properties to be passed to the test program
 // for e.g., to use standalone Pravega for running the system test "./gradlew clean build -Dpravega.uri=tcp://localhost:9090"
 test {
