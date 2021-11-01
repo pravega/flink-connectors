@@ -88,7 +88,7 @@ public class PravegaCatalog extends AbstractCatalog {
     // the schema-registry client config
     private SchemaRegistryClientConfig config;
 
-    // the Pravega catalog table options
+    // the table options that should propagate from the catalog options.
     private Map<String, String> properties;
 
     // the serialization format for Pravega catalog
