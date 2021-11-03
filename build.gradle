@@ -107,7 +107,6 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
-    compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
@@ -127,10 +126,10 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-runtime', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion

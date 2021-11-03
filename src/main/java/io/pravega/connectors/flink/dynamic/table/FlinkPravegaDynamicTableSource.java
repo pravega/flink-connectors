@@ -345,4 +345,9 @@ public class FlinkPravegaDynamicTableSource implements ScanTableSource, Supports
             this.dataType = dataType;
         }
     }
+
+    @Override
+    public boolean supportsMetadataProjection() {
+        return false;
+    }
 }
