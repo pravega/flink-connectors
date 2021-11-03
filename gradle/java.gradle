@@ -14,8 +14,21 @@
  * limitations under the License.
  */
 
+buildscript {
+    repositories {
+        mavenCentral()
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "gradle.plugin.com.github.jengelman.gradle.plugins:shadow:${shadowGradlePlugin}"
+    }
+}
+
+import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
+
 apply plugin: 'java-library'
-apply plugin: 'distribution'
 apply plugin: 'com.github.johnrengelman.shadow'
 
 compileJava {
@@ -51,36 +64,39 @@ shadowJar {
     relocate 'META-INF/native/netty', 'META-INF/native/io_pravega_shaded_netty'
 
     // the default classifier will be `all`, which need to be removed for compatibility
-    classifier = null
+    archiveClassifier.set(null)
 
     // update package name in META-INF/services to correspond to the shaded path
     mergeServiceFiles()
 }
 
 jar {
-    classifier = 'original'
+    archiveClassifier.set('original')
     from (['LICENSE', 'NOTICE']) {
         into 'META-INF'
     }
 }
 
-task sourceJar(type: Jar) {
-    classifier = 'sources'
-    from sourceSets.main.java
+java {
+    // add javadocElements and sourcesElements variants to components
+    withJavadocJar()
+    withSourcesJar()
 }
-artifacts { sourceJar }
 
-task javadocJar(type: Jar) {
-    classifier = 'javadoc'
-    from javadoc
-}
-artifacts { javadocJar }
+task testJar(type: ShadowJar) {
+    from sourceSets.main.output, sourceSets.test.output
 
-task testJar(type: Jar) {
-    classifier = 'tests'
-    from sourceSets.test.output
+    archiveClassifier.set("tests")
+
+    // shadow test runtime dependencies
+    configurations = [project.configurations.testRuntimeClasspath]
+
+    // update package name in META-INF/services to correspond to the shaded path
+    mergeServiceFiles()
+
+    // archive contains more than 65535 entries, so enable zip64 support
+    zip64 = true
 }
-// artifacts { testRuntime testJar }
 
 tasks.withType(Test) {
     maxParallelForks = System.properties['maxParallelForks'] ? System.properties['maxParallelForks'].toInteger() : 1
