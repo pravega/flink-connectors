@@ -64,12 +64,17 @@ publishing {
         mavenJava(MavenPublication) {
             artifactId = archivesBaseName
 
-            // the jars you want to include
-            // uncomment this line if you want to include the original, unshaded jar
-            // from components.java
-            artifact shadowJar
-            artifact sourceJar
-            artifact javadocJar
+            // Variants from components could be retrived from `outgoingVariants` task
+            // For now, there are five of them:
+            //     apiElements
+            //     runtimeElements
+            //     shadowRuntimeElements
+            //     javadocElements
+            //     sourcesElements
+            // So there will be `original`, ``(shadowed), `javadoc`, and `sources` jars in publish
+            from components.java
+
+            // Add test jar to the publish
             // artifact testJar
 
             pom {
