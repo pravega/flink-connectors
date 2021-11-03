@@ -24,7 +24,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.CatalogTable;
@@ -77,8 +77,8 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
     private static final boolean FAIL_ON_MISSING_FIELD = false;
     private static final boolean IGNORE_PARSE_ERRORS = false;
     private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
-    private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
-            JsonOptions.MapNullKeyMode.FAIL;
+    private static final JsonFormatOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            JsonFormatOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
     private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
