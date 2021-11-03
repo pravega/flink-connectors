@@ -25,11 +25,11 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.flink.api.common.eventtime.Watermark;
+import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.ReaderOutput;
-import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.configuration.Configuration;
+import org.apache.flink.connector.testutils.source.reader.SourceReaderTestBase;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderContext;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderOutput;
 import org.apache.flink.core.io.InputStatus;
@@ -41,26 +41,20 @@ import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-
-import static org.junit.Assert.assertEquals;
 
 /** Unit tests for {@link PravegaSourceReader}. */
-public class FlinkPravegaSourceReaderTest {
+public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSplit> {
 
     private static final int NUM_SPLITS = 1;
-    private static final int NUM_RECORDS_PER_SPLIT = 10;
-    private static final int TOTAL_NUM_RECORDS = NUM_RECORDS_PER_SPLIT * NUM_SPLITS;
-
     private static final int NUM_PRAVEGA_SEGMENTS = 4;
     private static final int READER0 = 0;
 
     /** Setup utility */
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
+
+    private String readerGroupName;
 
     @BeforeClass
     public static void setup() throws Exception {
@@ -71,6 +65,12 @@ public class FlinkPravegaSourceReaderTest {
     public static void tearDown() throws Exception {
         SETUP_UTILS.stopAllServices();
     }
+
+    protected int getNumSplits() {
+        return NUM_SPLITS;
+    }
+
+    // ------------------------------------------
 
     @Test
     public void testReadCheckpoint() throws Exception {
@@ -93,84 +93,33 @@ public class FlinkPravegaSourceReaderTest {
         }
     }
 
-    /** Simply test the reader reads all the splits fine. */
-    @Test
-    public void testRead() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(readerGroupName, streamName);
-        try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
-             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
-            for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
-                eventWriter.writeEvent(i);
-            }
+    // Pravega doesn't support partial failover recover, so we override this method in test base class
+    @Override
+    public void testSnapshot() throws Exception {
 
-            reader.addSplits(getSplits(readerGroupName));
-            ValidatingSourceOutput output = new ValidatingSourceOutput();
-            while (output.count() < TOTAL_NUM_RECORDS) {
-                reader.pollNext(output);
-            }
-            output.validate();
-        }
     }
 
-    @Test
-    public void testPollingFromEmptyQueue() throws Exception {
+    // ------------------------------------------
+
+    @Override
+    protected SourceReader<Integer, PravegaSplit> createReader() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        setReaderGroupName(readerGroupName);
         SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(readerGroupName, streamName);
-
-        ValidatingSourceOutput output = new ValidatingSourceOutput();
-        List<PravegaSplit> splits =
-                Collections.singletonList(getSplit(readerGroupName, READER0));
 
         try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
-
-            // Consumer all the records in the split.
-            try (final SourceReader<Integer, PravegaSplit> reader =
-                         consumeRecords(readerGroupName, splits, output, NUM_RECORDS_PER_SPLIT);
-            ) {
-                // Now let the main thread poll again.
-                assertEquals(
-                        "The status should be ",
-                        InputStatus.NOTHING_AVAILABLE,
-                        reader.pollNext(output));
-            }
         }
+
+        return createReader(readerGroupName, READER0, false);
     }
 
-    @Test
-    public void testAvailableOnEmptyQueue() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(readerGroupName, streamName);
-
-        // Consumer all the records in the split.
-        try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
-             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
-            for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
-                eventWriter.writeEvent(i);
-            }
-
-            CompletableFuture<?> future = reader.isAvailable();
-            Assert.assertFalse("There should be no records ready for poll.", future.isDone());
-            // Add a split to the reader so there are more records to be read.
-            reader.addSplits(
-                    Collections.singletonList(
-                            getSplit(readerGroupName, READER0)));
-            // The future should be completed fairly soon. Otherwise the test will hit timeout and
-            // fail.
-            future.get();
-        }
-    }
-
-    private SourceReader<Integer, PravegaSplit> createReader(String readerGroupName, int subtaskId, boolean isCheckpointEvent) throws Exception {
+    private SourceReader<Integer, PravegaSplit> createReader(
+            String readerGroupName, int subtaskId, boolean isCheckpointEvent) {
         PravegaRecordEmitter emitter;
         if (isCheckpointEvent) {
             emitter = Mockito.mock(PravegaRecordEmitter.class);
@@ -186,11 +135,9 @@ public class FlinkPravegaSourceReaderTest {
                 new TestingReaderContext());
     }
 
-    private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
-        readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
-        readerGroupManager.close();
+    @Override
+    protected List<PravegaSplit> getSplits(int numSplits, int numRecordsPerSplit, Boundedness boundedness) {
+        return getSplits(readerGroupName);
     }
 
     private List<PravegaSplit> getSplits(String readerGroupName) {
@@ -199,75 +146,28 @@ public class FlinkPravegaSourceReaderTest {
         return splits;
     }
 
+    @Override
+    protected PravegaSplit getSplit(int splitId, int numRecords, Boundedness boundedness) {
+        return getSplit(readerGroupName, splitId);
+    }
+
     private PravegaSplit getSplit(String readerGroupName, int splitId) {
         return new PravegaSplit(readerGroupName, splitId);
     }
 
-    private SourceReader<Integer, PravegaSplit> consumeRecords(
-            String readerGroupName, List<PravegaSplit> splits, ValidatingSourceOutput output, int n) throws Exception {
-        final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, false);
-        // Add splits to start the fetcher.
-        reader.addSplits(splits);
-        // Poll all the n records of the single split.
-        while (output.count() < n) {
-            reader.pollNext(output);
-        }
-        return reader;
+    @Override
+    protected long getNextRecordIndex(PravegaSplit split) {
+        return NUM_RECORDS_PER_SPLIT;
     }
 
-    public static class ValidatingSourceOutput implements ReaderOutput<Integer> {
-        private Set<Integer> consumedValues = new HashSet<>();
-        private int max = Integer.MIN_VALUE;
-        private int min = Integer.MAX_VALUE;
+    private static void createReaderGroup(String readerGroupName, String streamName) {
+        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
+        Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
+        readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
+        readerGroupManager.close();
+    }
 
-        private int count = 0;
-
-        @Override
-        public void collect(Integer element) {
-            max = Math.max(element, max);
-            min = Math.min(element, min);
-            count++;
-            consumedValues.add(element);
-        }
-
-        @Override
-        public void collect(Integer element, long timestamp) {
-            collect(element);
-        }
-
-        public void validate() {
-
-            assertEquals(
-                    String.format("Should be %d distinct elements in total", TOTAL_NUM_RECORDS),
-                    TOTAL_NUM_RECORDS,
-                    consumedValues.size());
-            assertEquals(
-                    String.format("Should be %d elements in total", TOTAL_NUM_RECORDS),
-                    TOTAL_NUM_RECORDS,
-                    count);
-            assertEquals("The min value should be 0", 0, min);
-            assertEquals(
-                    "The max value should be " + (TOTAL_NUM_RECORDS - 1),
-                    TOTAL_NUM_RECORDS - 1,
-                    max);
-        }
-
-        public int count() {
-            return count;
-        }
-
-        @Override
-        public void emitWatermark(Watermark watermark) {}
-
-        @Override
-        public void markIdle() {}
-
-        @Override
-        public SourceOutput<Integer> createOutputForSplit(String splitId) {
-            return this;
-        }
-
-        @Override
-        public void releaseOutputForSplit(String splitId) {}
+    private void setReaderGroupName(String readerGroupName) {
+        this.readerGroupName = readerGroupName;
     }
 }
