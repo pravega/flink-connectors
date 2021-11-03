@@ -1,17 +1,25 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -31,7 +39,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.formats.avro.RowDataToAvroConverters;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.formats.json.RowDataToJsonConverters;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
@@ -42,7 +50,6 @@ import org.apache.flink.table.types.logical.RowType;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URI;
 import java.util.Objects;
 
 /**
@@ -74,14 +81,14 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     private final String groupId;
 
     /**
-     * Schema Registry URI.
-     */
-    private final URI schemaRegistryURI;
-
-    /**
      * Serialization format for schema registry.
      */
     private SerializationFormat serializationFormat;
+
+    /**
+     * Pravega config for generating schema registry config.
+     */
+    private final PravegaConfig pravegaConfig;
 
     // --------------------------------------------------------------------------------------------
     // Avro fields
@@ -98,7 +105,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     private final TimestampFormat timestampFormat;
 
     /** The handling mode when serializing null keys for map data. */
-    private final JsonOptions.MapNullKeyMode mapNullKeyMode;
+    private final JsonFormatOptions.MapNullKeyMode mapNullKeyMode;
 
     /** The string literal when handling mode for map null key LITERAL. is */
     private final String mapNullKeyLiteral;
@@ -108,20 +115,19 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     public PravegaRegistryRowDataSerializationSchema(
             RowType rowType,
-            String namespace,
             String groupId,
-            URI schemaRegistryURI,
             SerializationFormat serializationFormat,
+            PravegaConfig pravegaConfig,
             TimestampFormat timestampOption,
-            JsonOptions.MapNullKeyMode mapNullKeyMode,
+            JsonFormatOptions.MapNullKeyMode mapNullKeyMode,
             String mapNullKeyLiteral,
             boolean encodeDecimalAsPlainNumber) {
         this.rowType = rowType;
         this.serializer = null;
-        this.namespace = namespace;
+        this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
-        this.schemaRegistryURI = schemaRegistryURI;
         this.serializationFormat = serializationFormat;
+        this.pravegaConfig = pravegaConfig;
         this.timestampFormat = timestampOption;
         this.mapNullKeyMode = mapNullKeyMode;
         this.mapNullKeyLiteral = mapNullKeyLiteral;
@@ -131,9 +137,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
-        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryURI)
-                .build();
+        SchemaRegistryClientConfig schemaRegistryClientConfig =
+                SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -226,7 +231,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         }
         PravegaRegistryRowDataSerializationSchema that = (PravegaRegistryRowDataSerializationSchema) o;
         return Objects.equals(rowType, that.rowType) && Objects.equals(namespace, that.namespace) &&
-                Objects.equals(groupId, that.groupId) && Objects.equals(schemaRegistryURI, that.schemaRegistryURI) &&
+                Objects.equals(groupId, that.groupId) &&
                 serializationFormat == that.serializationFormat && timestampFormat == that.timestampFormat &&
                 mapNullKeyMode == that.mapNullKeyMode && Objects.equals(mapNullKeyLiteral, that.mapNullKeyLiteral)
                 && encodeDecimalAsPlainNumber == that.encodeDecimalAsPlainNumber;
@@ -234,7 +239,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, namespace, groupId, schemaRegistryURI, serializationFormat,
+        return Objects.hash(rowType, namespace, groupId, pravegaConfig, serializationFormat,
                 timestampFormat, mapNullKeyMode, mapNullKeyLiteral, encodeDecimalAsPlainNumber);
     }
 }

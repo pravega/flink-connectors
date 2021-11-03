@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.pravega.connectors.flink;
 
@@ -27,7 +33,7 @@ import java.util.regex.Pattern;
 /**
  * An abstract streaming reader builder.
  *
- * The builder is abstracted to act as the base for both the {@link FlinkPravegaReader} and {@link FlinkPravegaTableSource} builders.
+ * The builder is abstracted to act as the base for both the {@link FlinkPravegaReader} builders.
  *
  * @param <T> the element type.
  * @param <B> the builder type.
@@ -147,9 +153,6 @@ public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStream
 
     /**
      * Builds a {@link FlinkPravegaReader} based on the configuration.
-     *
-     * Note that the {@link FlinkPravegaTableSource} supports both the batch and streaming API, and so creates both
-     * a source function and an input format and then uses one or the other.
      *
      * Be sure to call {@code initialize()} before returning the reader to user code.
      *

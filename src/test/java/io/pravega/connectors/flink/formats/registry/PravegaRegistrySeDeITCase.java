@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.formats.registry;
@@ -28,7 +34,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ArrayNode;
@@ -102,8 +108,8 @@ public class PravegaRegistrySeDeITCase {
     private static final boolean FAIL_ON_MISSING_FIELD = false;
     private static final boolean IGNORE_PARSE_ERRORS = false;
     private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.ISO_8601;
-    private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
-            JsonOptions.MapNullKeyMode.FAIL;
+    private static final JsonFormatOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            JsonFormatOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
     private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
@@ -126,10 +132,18 @@ public class PravegaRegistrySeDeITCase {
 
     @Test
     public void testAvroSerializeDeserialize() throws Exception {
-        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Avro", "false", "false",
-                "SQL", "FAIL", "null", "false");
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Avro");
+        final PravegaCatalog avroCatalog = new PravegaCatalog(TEST_AVRO_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Avro");
         initAvro();
         avroCatalog.open();
 
@@ -182,13 +196,17 @@ public class PravegaRegistrySeDeITCase {
         record.put(18, map2);
 
         PravegaRegistryRowDataSerializationSchema serializationSchema =
-                new PravegaRegistryRowDataSerializationSchema(avroRowType, SETUP_UTILS.getScope(),
-                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(), SerializationFormat.Avro,
+                new PravegaRegistryRowDataSerializationSchema(avroRowType,
+                        AVRO_TEST_STREAM, SerializationFormat.Avro,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
-                new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo, SETUP_UTILS.getScope(),
-                        AVRO_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
+                new PravegaRegistryRowDataDeserializationSchema(avroRowType, avroTypeInfo,
+                        AVRO_TEST_STREAM,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT);
         deserializationSchema.open(null);
 
@@ -213,10 +231,18 @@ public class PravegaRegistrySeDeITCase {
 
     @Test
     public void testJsonDeserialize() throws Exception {
-        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Json", "false", "false",
-                "SQL", "FAIL", "null", "false");
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Json");
+        final PravegaCatalog jsonCatalog = new PravegaCatalog(TEST_JSON_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Json");
         initJson();
         jsonCatalog.open();
 
@@ -295,8 +321,9 @@ public class PravegaRegistrySeDeITCase {
         // test deserialization
         PravegaRegistryRowDataDeserializationSchema deserializationSchema =
                 new PravegaRegistryRowDataDeserializationSchema(
-                        jsonRowType, jsonTypeInfo, SETUP_UTILS.getScope(), JSON_TEST_STREAM,
-                        SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
+                        jsonRowType, jsonTypeInfo, JSON_TEST_STREAM,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                         FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT);
         deserializationSchema.open(null);
 
@@ -327,8 +354,10 @@ public class PravegaRegistrySeDeITCase {
         // test serialization
         PravegaRegistryRowDataSerializationSchema serializationSchema =
                 new PravegaRegistryRowDataSerializationSchema(
-                        jsonRowType, SETUP_UTILS.getScope(), JSON_TEST_STREAM, SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri(),
-                        SerializationFormat.Json, TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+                        jsonRowType, JSON_TEST_STREAM, SerializationFormat.Json,
+                        SETUP_UTILS.getPravegaConfig().withDefaultScope(SETUP_UTILS.getScope())
+                                .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                        TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL, ENCODE_DECIMAL_AS_PLAIN_NUMBER);
         serializationSchema.open(null);
 
         byte[] actualBytes = serializationSchema.serialize(rowData);

@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink;
@@ -25,6 +31,7 @@ import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.flink.mock.Whitebox;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.Catalog;
@@ -81,6 +88,7 @@ public class PravegaCatalogITCase {
             new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
 
     private static PravegaCatalog CATALOG = null;
+    private static CatalogTable CATALOG_TABLE = null;
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
@@ -91,7 +99,7 @@ public class PravegaCatalogITCase {
     private final ObjectPath path1 = new ObjectPath(db1, t1);
     private final ObjectPath path2 = new ObjectPath(db1, t2);
     private final CatalogDatabase catalogDb = new CatalogDatabaseImpl(Collections.emptyMap(), null);
-    private final CatalogTable catalogTable = new CatalogTableImpl(TEST_TABLE_SCHEMA, Collections.emptyMap(), null);
+
     // ------------------------------------------------------------------------
 
     @BeforeClass
@@ -129,12 +137,18 @@ public class PravegaCatalogITCase {
         options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SETUP_UTILS.getScope());
         options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
         options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(), SETUP_UTILS.getAuthType());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(), SETUP_UTILS.getAuthToken());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(), String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
+        options.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(), SETUP_UTILS.getPravegaClientTrustStore());
 
         final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
         assertTrue(actualCatalog instanceof PravegaCatalog);
         assertEquals(((PravegaCatalog) actualCatalog).getName(), CATALOG.getName());
         assertEquals(((PravegaCatalog) actualCatalog).getDefaultDatabase(), CATALOG.getDefaultDatabase());
+        assertEquals(Whitebox.getInternalState(actualCatalog, "properties"),
+                Whitebox.getInternalState(CATALOG, "properties"));
     }
 
     @Test
@@ -183,7 +197,7 @@ public class PravegaCatalogITCase {
     @Test(expected = DatabaseNotEmptyException.class)
     public void testDropDbNotEmpty() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         CATALOG.dropDatabase(db1, true, false);
     }
 
@@ -199,33 +213,34 @@ public class PravegaCatalogITCase {
     @Test
     public void testCreateTable() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
         CatalogTable actual = (CatalogTable) CATALOG.getTable(path1);
-        Assert.assertEquals(catalogTable.getClass(), actual.getClass());
-        Assert.assertEquals(catalogTable.getSchema(), actual.getSchema());
+        Assert.assertEquals(CATALOG_TABLE.getClass(), actual.getClass());
+        Assert.assertEquals(CATALOG_TABLE.getSchema(), actual.getSchema());
+        Assert.assertEquals(CATALOG_TABLE.getOptions(), actual.getOptions());
     }
 
     @Test(expected = DatabaseNotExistException.class)
     public void testCreateTableDbNotExist() throws Exception {
         assertFalse(CATALOG.databaseExists(db1));
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
     }
 
     @Test(expected = TableAlreadyExistException.class)
     public void testCreateTableAlreadyExist() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
     }
 
     @Test
     public void testCreateTableAlreadyExistIgnore() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
-        CATALOG.createTable(path1, catalogTable, true);
+        CATALOG.createTable(path1, CATALOG_TABLE, true);
     }
 
     @Test(expected = TableNotExistException.class)
@@ -242,7 +257,7 @@ public class PravegaCatalogITCase {
     @Test
     public void testDropTable() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
         assertTrue(CATALOG.tableExists(path1));
 
@@ -266,8 +281,8 @@ public class PravegaCatalogITCase {
     public void testListTables() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
 
-        CATALOG.createTable(path1, catalogTable, false);
-        CATALOG.createTable(path2, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
+        CATALOG.createTable(path2, CATALOG_TABLE, false);
 
         assertEquals(2, CATALOG.listTables(db1).size());
     }
@@ -276,7 +291,7 @@ public class PravegaCatalogITCase {
     public void testTableExists() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
         assertFalse(CATALOG.tableExists(path1));
-        CATALOG.createTable(path1, catalogTable, false);
+        CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
         assertTrue(CATALOG.tableExists(path1));
     }
@@ -285,10 +300,28 @@ public class PravegaCatalogITCase {
     private static void init() throws Exception {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         SETUP_UTILS.createTestStream(TEST_STREAM, 3);
-        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(),
-                SETUP_UTILS.getControllerUri().toString(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString(),
-                "Avro", "false", "false",
-                "SQL", "FAIL", "null", "false");
+        Map<String, String> properties = new HashMap<>();
+        properties.put("connector", "pravega");
+        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("format", "pravega-registry");
+        properties.put("pravega-registry.uri",
+                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+        properties.put("pravega-registry.format", "Avro");
+        properties.put("pravega-registry.security.auth-type", SETUP_UTILS.getAuthType());
+        properties.put("pravega-registry.security.auth-token", SETUP_UTILS.getAuthToken());
+        properties.put("pravega-registry.security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
+        properties.put("pravega-registry.security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
+        properties.put("security.auth-type", SETUP_UTILS.getAuthType());
+        properties.put("security.auth-token", SETUP_UTILS.getAuthToken());
+        properties.put("security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
+        properties.put("security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
+
+        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
+                SETUP_UTILS.getPravegaConfig()
+                        .withDefaultScope(SETUP_UTILS.getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+                "Avro");
+        CATALOG_TABLE = new CatalogTableImpl(TEST_TABLE_SCHEMA, properties, null);
         EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();

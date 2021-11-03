@@ -1,11 +1,17 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package io.pravega.connectors.flink.utils;
 
@@ -15,6 +21,7 @@ import org.apache.flink.streaming.api.checkpoint.ExternallyInducedSource;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.apache.flink.streaming.api.operators.StreamSource;
 import org.apache.flink.streaming.runtime.tasks.OperatorChain;
+import org.apache.flink.streaming.runtime.tasks.RegularOperatorChain;
 import org.apache.flink.streaming.runtime.tasks.StreamTask;
 import org.apache.flink.streaming.util.AbstractStreamOperatorTestHarness;
 import org.apache.flink.util.FlinkException;
@@ -46,7 +53,7 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
         super(operator, maxParallelism, parallelism, subtaskIndex);
         this.sourceOperator = operator;
         this.triggeredCheckpoints = new ConcurrentLinkedQueue<>();
-        this.operatorChain = new OperatorChain<>(this.mockTask, StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment()));
+        this.operatorChain = new RegularOperatorChain<>(this.mockTask, StreamTask.createRecordWriterDelegate(this.config, this.getEnvironment()));
     }
 
     @Override
@@ -63,7 +70,7 @@ public class StreamSourceOperatorTestHarness<T, F extends SourceFunction<T>> ext
      * @throws Exception if execution fails.
      */
     public void run() throws Exception {
-        sourceOperator.run(this.getCheckpointLock(), this.mockTask.getStreamStatusMaintainer(), operatorChain);
+        sourceOperator.run(this.getCheckpointLock(), operatorChain);
     }
 
     /**

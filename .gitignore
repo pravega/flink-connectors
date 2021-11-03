@@ -16,3 +16,5 @@ log/
 .metadata/
 .recommenders/
 *.log
+*.pyc
+__pycache__/

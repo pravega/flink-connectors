@@ -1,15 +1,22 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.formats.registry;
 
+import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -17,7 +24,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
+import org.apache.flink.formats.json.JsonFormatOptionsUtil;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -48,13 +56,14 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
             DynamicTableFactory.Context context, ReadableConfig formatOptions) {
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
-        final String namespace = formatOptions.get(PravegaRegistryOptions.NAMESPACE);
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
-        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URI));
+        final PravegaConfig pravegaConfig = PravegaRegistryOptionsUtil.getPravegaConfig(formatOptions)
+                .withDefaultScope(formatOptions.get(PravegaRegistryOptions.NAMESPACE))
+                .withSchemaRegistryURI(URI.create(formatOptions.get(PravegaRegistryOptions.URI)));
 
         final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
         final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
-        TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
+        TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
             @Override
@@ -66,9 +75,8 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                 return new PravegaRegistryRowDataDeserializationSchema(
                         rowType,
                         rowDataTypeInfo,
-                        namespace,
                         groupId,
-                        schemaRegistryURI,
+                        pravegaConfig,
                         failOnMissingField,
                         ignoreParseErrors,
                         timestampOption);
@@ -86,15 +94,16 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
             DynamicTableFactory.Context context, ReadableConfig formatOptions) {
         FactoryUtil.validateFactoryOptions(this, formatOptions);
 
-        final String namespace = formatOptions.get(PravegaRegistryOptions.NAMESPACE);
         final String groupId = formatOptions.get(PravegaRegistryOptions.GROUP_ID);
-        final URI schemaRegistryURI = URI.create(formatOptions.get(PravegaRegistryOptions.URI));
         final SerializationFormat serializationFormat = SerializationFormat.valueOf(
                 formatOptions.get(PravegaRegistryOptions.FORMAT));
+        final PravegaConfig pravegaConfig = PravegaRegistryOptionsUtil.getPravegaConfig(formatOptions)
+                .withDefaultScope(formatOptions.get(PravegaRegistryOptions.NAMESPACE))
+                .withSchemaRegistryURI(URI.create(formatOptions.get(PravegaRegistryOptions.URI)));
 
-        TimestampFormat timestampOption = JsonOptions.getTimestampFormat(formatOptions);
-        final JsonOptions.MapNullKeyMode mapNullKeyMode =
-                JsonOptions.getMapNullKeyMode(formatOptions);
+        TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
+        final JsonFormatOptions.MapNullKeyMode mapNullKeyMode =
+                JsonFormatOptionsUtil.getMapNullKeyMode(formatOptions);
         final String mapNullKeyLiteral = formatOptions.get(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
         final boolean encodeDecimalAsPlainNumber = formatOptions.get(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
 
@@ -105,10 +114,9 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                 final RowType rowType = (RowType) consumedDataType.getLogicalType();
                 return new PravegaRegistryRowDataSerializationSchema(
                         rowType,
-                        namespace,
                         groupId,
-                        schemaRegistryURI,
                         serializationFormat,
+                        pravegaConfig,
                         timestampOption,
                         mapNullKeyMode,
                         mapNullKeyLiteral,
@@ -146,6 +154,10 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_MODE);
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
         options.add(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+        options.add(PravegaRegistryOptions.SECURITY_AUTH_TYPE);
+        options.add(PravegaRegistryOptions.SECURITY_AUTH_TOKEN);
+        options.add(PravegaRegistryOptions.SECURITY_VALIDATE_HOSTNAME);
+        options.add(PravegaRegistryOptions.SECURITY_TRUST_STORE);
         return options;
     }
 }

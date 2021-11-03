@@ -1,11 +1,17 @@
 <!--
-Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+Copyright Pravega Authors.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
 -->
 
 # Pravega Catalogs
@@ -52,7 +58,6 @@ The `PravegaCatalog` enables users to connect Flink to Pravega streams. The foll
 | database name                        | scope name        |
 | table name                           | stream name       |
 
-
 Currently `PravegaCatalog` only supports a limited set of `Catalog` methods:
 
 ```java
@@ -68,9 +73,11 @@ PravegaCatalog.tableExists(ObjectPath tablePath);
 PravegaCatalog.dropTable(ObjectPath tablePath, boolean ignoreIfNotExists);
 PravegaCatalog.createTable(ObjectPath tablePath, CatalogBaseTable table, boolean ignoreIfExists);
 ```
+
 Only these database and table operations are currently supported. Views/partitions/functions/statistics operations are NOT supported in `PravegaCatalog`.
 
 ### Catalog options
+
 Pravega Catalog supports the following options:
 
 - name: required, name of the catalog
@@ -79,6 +86,10 @@ Pravega Catalog supports the following options:
 - schema-registry-uri: required, URI of the Schema Registry service connected to
 - default-database: required, default Pravega scope which must be created already
 - serialization.format: optional, a static serialization format for the catalog, valid values are 'Avro'(default) and 'Json', this is the format used for all the table sinks in the catalog.
+- security.auth-type: optional, the static authentication/authorization type for security for Pravega
+- security.auth-token: optional, static authentication/authorization token for security for Pravega
+- security.validate-hostname: optional, flag to decide whether to enable host name validation when TLS is enabled for Pravega
+- security.trust-store: optional, trust store for Pravega client
 - json.*: optional, json format specifications for the catalog table sink, will inherit into `PravegaRegistryFormatFactory` for all catalog table sinks
 
 ## How to use Pravega Catalog 
@@ -86,6 +97,7 @@ Pravega Catalog supports the following options:
 Users can use SQL DDL or Java/Scala programatically to create and register Pravega Flink Catalog.
 
 #### SQL
+
 ```sql
 CREATE CATALOG pravega_catalog WITH(
     'type' = 'pravega',
@@ -98,6 +110,7 @@ USE CATALOG pravega_catalog;
 ```
 
 #### Java
+
 ```java
 TableEnvironment tableEnv = TableEnvironment.create(EnvironmentSettings.newInstance().build());
 
@@ -114,6 +127,7 @@ tableEnv.useCatalog("pravega_catalog");
 ```
 
 #### YAML
+
 ```yaml
 execution:
   ...
@@ -129,6 +143,7 @@ catalogs:
 ```
 
 After that, you can operate Pravega scopes and streams with SQL commands. Here are some examples.
+
 ```sql
 -- List all the scopes
 SHOW DATABASES;
@@ -158,4 +173,5 @@ INSERT INTO test_table SELECT * FROM mytable;
 ```
 
 ## Useful Flink links
+
 See [Flink Table catalogs docs](https://ci.apache.org/projects/flink/flink-docs-stable/dev/table/catalogs.html) for more information on the general Catalog concepts and more detailed operations.

@@ -1,16 +1,24 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -39,7 +47,6 @@ import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
 import javax.annotation.Nullable;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Objects;
 
@@ -75,14 +82,14 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     private final String groupId;
 
     /**
-     * URI of schema registry.
-     */
-    private final URI schemaRegistryURI;
-
-    /**
      * Serialization format for schema registry.
      */
     private SerializationFormat serializationFormat;
+
+    /**
+     * Pravega config for generating schema registry config.
+     */
+    private final PravegaConfig pravegaConfig;
 
     /**
      * Deserializer to deserialize <code>byte[]</code> message.
@@ -105,9 +112,8 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     public PravegaRegistryRowDataDeserializationSchema(
             RowType rowType,
             TypeInformation<RowData> typeInfo,
-            String namespace,
             String groupId,
-            URI schemaRegistryURI,
+            PravegaConfig pravegaConfig,
             boolean failOnMissingField,
             boolean ignoreParseErrors,
             TimestampFormat timestampFormat
@@ -118,9 +124,9 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         }
         this.rowType = rowType;
         this.typeInfo = checkNotNull(typeInfo);
-        this.namespace = namespace;
+        this.namespace = pravegaConfig.getDefaultScope();
         this.groupId = groupId;
-        this.schemaRegistryURI = schemaRegistryURI;
+        this.pravegaConfig = pravegaConfig;
         this.failOnMissingField = failOnMissingField;
         this.ignoreParseErrors = ignoreParseErrors;
         this.timestampFormat = timestampFormat;
@@ -129,9 +135,8 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
-        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
-                .schemaRegistryUri(schemaRegistryURI)
-                .build();
+        SchemaRegistryClientConfig schemaRegistryClientConfig =
+                SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -245,13 +250,13 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         return failOnMissingField == that.failOnMissingField && ignoreParseErrors == that.ignoreParseErrors &&
                 Objects.equals(rowType, that.rowType) && Objects.equals(typeInfo, that.typeInfo) &&
                 Objects.equals(namespace, that.namespace) && Objects.equals(groupId, that.groupId) &&
-                Objects.equals(schemaRegistryURI, that.schemaRegistryURI) && serializationFormat == that.serializationFormat &&
+                serializationFormat == that.serializationFormat &&
                 timestampFormat == that.timestampFormat;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(rowType, typeInfo, namespace, groupId, schemaRegistryURI,
-                serializationFormat, failOnMissingField, ignoreParseErrors, timestampFormat);
+        return Objects.hash(rowType, typeInfo, namespace, groupId, serializationFormat, pravegaConfig,
+                failOnMissingField, ignoreParseErrors, timestampFormat);
     }
 }

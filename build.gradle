@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2017 Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -7,6 +7,11 @@
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
  *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 buildscript {
@@ -21,6 +26,7 @@ buildscript {
         classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:${bintrayPluginVersion}"
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
+        classpath "org.ajoberstar.grgit:grgit-gradle:${gradleGitPluginVersion}"
         classpath "gradle.plugin.com.github.spotbugs.snom:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
     }
 }
@@ -48,7 +54,6 @@ group = "io.pravega"
 version = getProjectVersion()
 
 repositories {
-    mavenLocal()
     mavenCentral()
     maven {
         url "https://maven.pkg.github.com/pravega/pravega"
@@ -60,6 +65,7 @@ repositories {
     if (findProperty("repositoryUrl")) {
         maven {
             url findProperty("repositoryUrl")
+            allowInsecureProtocol = true
         }
     }
     else {
@@ -102,7 +108,6 @@ dependencies {
 
     compileOnly group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
-    compileOnly group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
@@ -123,10 +128,10 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-runtime_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-runtime', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-table-planner-blink_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion

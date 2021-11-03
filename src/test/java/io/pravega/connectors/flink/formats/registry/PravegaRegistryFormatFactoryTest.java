@@ -1,21 +1,30 @@
 /**
- * Copyright (c) Dell Inc., or its subsidiaries. All Rights Reserved.
+ * Copyright Pravega Authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
  *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package io.pravega.connectors.flink.formats.registry;
 
+import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.formats.common.TimestampFormat;
-import org.apache.flink.formats.json.JsonOptions;
+import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.table.api.DataTypes;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.CatalogTable;
@@ -55,14 +64,21 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
 
     private static final String SCOPE = "test-scope";
     private static final String STREAM = "test-stream";
-    private static final URI SCHEMAREGISTRY_URI = URI.create("http://localhost:10092");
+    private static final String TOKEN = RandomStringUtils.randomAlphabetic(10);
+    private static final String TRUST_STORE = RandomStringUtils.randomAlphabetic(10);
+    private static final PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults().
+            withSchemaRegistryURI(URI.create("http://localhost:10092")).
+            withDefaultScope(SCOPE).
+            withCredentials(new FlinkPravegaUtils.SimpleCredentials("Basic", TOKEN)).
+            withHostnameValidation(false).
+            withTrustStore(TRUST_STORE);
 
     private static final SerializationFormat SERIALIZATIONFORMAT = SerializationFormat.Avro;
     private static final boolean FAIL_ON_MISSING_FIELD = false;
     private static final boolean IGNORE_PARSE_ERRORS = false;
     private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
-    private static final JsonOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
-            JsonOptions.MapNullKeyMode.FAIL;
+    private static final JsonFormatOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
+            JsonFormatOptions.MapNullKeyMode.FAIL;
     private static final String MAP_NULL_KEY_LITERAL = "null";
     private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
@@ -72,9 +88,8 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                 new PravegaRegistryRowDataDeserializationSchema(
                         ROW_TYPE,
                         InternalTypeInfo.of(ROW_TYPE),
-                        SCOPE,
                         STREAM,
-                        SCHEMAREGISTRY_URI,
+                        PRAVEGA_CONFIG,
                         FAIL_ON_MISSING_FIELD,
                         IGNORE_PARSE_ERRORS,
                         TIMESTAMP_FORMAT);
@@ -95,10 +110,9 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         final PravegaRegistryRowDataSerializationSchema expectedSer =
                 new PravegaRegistryRowDataSerializationSchema(
                         ROW_TYPE,
-                        SCOPE,
                         STREAM,
-                        SCHEMAREGISTRY_URI,
                         SERIALIZATIONFORMAT,
+                        PRAVEGA_CONFIG,
                         TIMESTAMP_FORMAT,
                         MAP_NULL_KEY_MODE,
                         MAP_NULL_KEY_LITERAL,
@@ -134,6 +148,11 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         options.put("pravega-registry.timestamp-format.standard", "SQL");
         options.put("pravega-registry.map-null-key.mode", "FAIL");
         options.put("pravega-registry.map-null-key.literal", "null");
+
+        options.put("pravega-registry.security.auth-type", "Basic");
+        options.put("pravega-registry.security.auth-token", TOKEN);
+        options.put("pravega-registry.security.validate-hostname", "false");
+        options.put("pravega-registry.security.trust-store", TRUST_STORE);
         return options;
     }
 
