@@ -23,7 +23,7 @@ import org.apache.flink.util.Preconditions;
 /**
  * An abstract streaming writer builder.
  *
- * The builder is abstracted to act as the base for both the {@link FlinkPravegaWriter} and {@link FlinkPravegaTableSink} builders.
+ * The builder is abstracted to act as the base for the {@link FlinkPravegaWriter} builder.
  *
  * @param <T> the element type.
  * @param <B> the builder type.
