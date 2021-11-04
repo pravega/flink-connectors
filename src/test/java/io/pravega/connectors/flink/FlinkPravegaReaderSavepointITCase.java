@@ -22,7 +22,6 @@ import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -51,7 +50,6 @@ import static org.junit.Assert.assertNotNull;
 /**
  * Integration tests for {@link FlinkPravegaReader} focused on savepoint integration.
  */
-@Slf4j
 public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     // Number of events to produce into the test stream.

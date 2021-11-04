@@ -27,7 +27,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
@@ -45,6 +44,8 @@ import org.apache.flink.streaming.api.functions.sink.TwoPhaseCommitSinkFunction;
 import org.apache.flink.streaming.api.operators.StreamingRuntimeContext;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -61,9 +62,9 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * @param <T> The type of the event to be written.
  */
-@Slf4j
 public class FlinkPravegaWriter<T>
         extends TwoPhaseCommitSinkFunction<T, FlinkPravegaWriter.PravegaTransactionState, Void> {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaWriter.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -194,7 +195,7 @@ public class FlinkPravegaWriter<T>
         serializationSchema.open(RuntimeContextInitializationContextAdapters.serializationAdapter(
                 getRuntimeContext(), metricGroup -> metricGroup.addGroup("user")));
         initializeInternalWriter();
-        log.info("Initialized Pravega writer {} for stream: {} with controller URI: {}", writerId(), stream, clientConfig.getControllerURI());
+        LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}", writerId(), stream, clientConfig.getControllerURI());
         if (enableMetrics) {
             registerMetrics();
         }
@@ -233,7 +234,7 @@ public class FlinkPravegaWriter<T>
                 future.whenCompleteAsync(
                         (result, e) -> {
                             if (e != null) {
-                                log.warn("Detected a write failure", e);
+                                LOG.warn("Detected a write failure", e);
 
                                 // We will record only the first error detected, since this will mostly likely help with
                                 // finding the root cause. Storing all errors will not be feasible.
@@ -303,14 +304,14 @@ public class FlinkPravegaWriter<T>
                             txn.commit();
                         }
                     } else {
-                        log.warn("{} - Transaction {} has unexpected transaction status {} while committing",
+                        LOG.warn("{} - Transaction {} has unexpected transaction status {} while committing",
                                 writerId(), txn.getTxnId(), status);
                     }
                 } catch (TxnFailedException e) {
-                    log.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
+                    LOG.error("{} - Transaction {} commit failed.", writerId(), txn.getTxnId());
                 } catch (StatusRuntimeException e) {
                     if (e.getStatus() == Status.NOT_FOUND) {
-                        log.error("{} - Transaction {} not found.", writerId(), txn.getTxnId());
+                        LOG.error("{} - Transaction {} not found.", writerId(), txn.getTxnId());
                     }
                 }
                 break;

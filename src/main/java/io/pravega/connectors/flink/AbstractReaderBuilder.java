@@ -18,7 +18,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
-import lombok.Data;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
@@ -177,7 +176,6 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
     /**
      * A Pravega stream with optional boundaries based on stream cuts.
      */
-    @Data
     private static class StreamSpec implements Serializable {
 
         private static final long serialVersionUID = 1L;
@@ -185,6 +183,12 @@ public abstract class AbstractReaderBuilder<B extends AbstractReaderBuilder> imp
         private final String streamSpec;
         private final StreamCut from;
         private final StreamCut to;
+
+        private StreamSpec(String streamSpec, StreamCut from, StreamCut to) {
+            this.streamSpec = streamSpec;
+            this.from = from;
+            this.to = to;
+        }
 
         public static StreamSpec of(String streamSpec, StreamCut from, StreamCut to) {
             Preconditions.checkNotNull(streamSpec, "streamSpec");

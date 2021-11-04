@@ -31,7 +31,6 @@ import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.functions.RuntimeContext;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -55,6 +54,8 @@ import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.FlinkException;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -71,7 +72,6 @@ import static io.pravega.connectors.flink.util.FlinkPravegaUtils.getReaderName;
  *
  * @param <T> The type of the event to be written.
  */
-@Slf4j
 public class FlinkPravegaReader<T>
         extends RichParallelSourceFunction<T>
         implements ResultTypeQueryable<T>, ExternallyInducedSource<T, Checkpoint> {
@@ -97,6 +97,8 @@ public class FlinkPravegaReader<T>
     protected static final String SEGMENT_POSITIONS_METRICS_GAUGE = "segmentPositions";
 
     protected static final String SEPARATOR = ",";
+
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaReader.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -208,7 +210,7 @@ public class FlinkPravegaReader<T>
 
         // TODO: This will require the client to have access to the pravega controller and handle any temporary errors.
         //       See https://github.com/pravega/flink-connectors/issues/130.
-        log.info("Creating reader group: {}/{} for the Flink job", this.readerGroupScope, this.readerGroupName);
+        LOG.info("Creating reader group: {}/{} for the Flink job", this.readerGroupScope, this.readerGroupName);
         createReaderGroupManager();
         createReaderGroup();
         if (isEventTimeMode()) {
@@ -255,7 +257,7 @@ public class FlinkPravegaReader<T>
 
             if (watermark != null && watermark.getTimestamp() > lastWatermarkTimestamp) {
                 lastWatermarkTimestamp = watermark.getTimestamp();
-                log.debug("Emit watermark with timestamp: {}", watermark.getTimestamp());
+                LOG.debug("Emit watermark with timestamp: {}", watermark.getTimestamp());
                 ctx.emitWatermark(watermark);
             }
 
@@ -275,12 +277,12 @@ public class FlinkPravegaReader<T>
         final String readerId = getReaderName(runtimeContext.getTaskName(), runtimeContext.getIndexOfThisSubtask() + 1,
                 runtimeContext.getNumberOfParallelSubtasks());
 
-        log.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
+        LOG.info("{} : Creating Pravega reader with ID '{}' for controller URI: {}",
                 runtimeContext.getTaskNameWithSubtasks(), readerId, this.clientConfig.getControllerURI());
 
         try (EventStreamReader<ByteBuffer> pravegaReader = createEventStreamReader(readerId)) {
 
-            log.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.clientConfig.getControllerURI());
+            LOG.info("Starting Pravega reader '{}' for controller URI {}", readerId, this.clientConfig.getControllerURI());
 
             long previousTimestamp = Long.MIN_VALUE;
             AssignerWithTimeWindows<T> assigner = null;
@@ -293,7 +295,7 @@ public class FlinkPravegaReader<T>
                         runtimeContext.getUserCodeClassLoader(),
                         ((StreamingRuntimeContext) runtimeContext).getProcessingTimeService());
 
-                log.info("Periodic Watermark Emitter for Reader ID: {} has started with an interval of {}", readerId,
+                LOG.info("Periodic Watermark Emitter for Reader ID: {} has started with an interval of {}", readerId,
                         autoWatermarkInterval());
                 periodicEmitter.start();
             }
@@ -320,13 +322,13 @@ public class FlinkPravegaReader<T>
 
                 if (pravegaCollector.isEndOfStreamSignalled()) {
                     // Found stream end marker.
-                    log.info("Reached end of stream for reader: {}", readerId);
+                    LOG.info("Reached end of stream for reader: {}", readerId);
                     return;
                 }
             }
         }
         catch (RuntimeException e) {
-            log.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
+            LOG.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
             throw e;
         }
     }
@@ -391,11 +393,11 @@ public class FlinkPravegaReader<T>
         Throwable ex = null;
         if (eventStreamClientFactory != null) {
             try {
-                log.info("Closing Pravega eventStreamClientFactory");
+                LOG.info("Closing Pravega eventStreamClientFactory");
                 eventStreamClientFactory.close();
             } catch (Throwable e) {
                 if (e instanceof InterruptedException) {
-                    log.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    LOG.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
                     eventStreamClientFactory.close();
                 } else {
                     ex = ExceptionUtils.firstOrSuppressed(e, ex);
@@ -403,12 +405,12 @@ public class FlinkPravegaReader<T>
             }
         }
         if (readerGroupManager != null) {
-            log.info("Closing Pravega ReaderGroupManager");
+            LOG.info("Closing Pravega ReaderGroupManager");
             try {
                 readerGroupManager.close();
             } catch (Throwable e) {
                 if (e instanceof InterruptedException) {
-                    log.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    LOG.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
                     readerGroupManager.close();
                 } else {
                     ex = ExceptionUtils.firstOrSuppressed(e, ex);
@@ -417,11 +419,11 @@ public class FlinkPravegaReader<T>
         }
         if (readerGroup != null) {
             try {
-                log.info("Closing Pravega ReaderGroup");
+                LOG.info("Closing Pravega ReaderGroup");
                 readerGroup.close();
             } catch (Throwable e) {
                 if (e instanceof InterruptedException) {
-                    log.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    LOG.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
                     readerGroup.close();
                 } else {
                     ex = ExceptionUtils.firstOrSuppressed(e, ex);
@@ -460,7 +462,7 @@ public class FlinkPravegaReader<T>
     private void triggerCheckpoint(String checkpointIdentifier) throws FlinkException {
         Preconditions.checkState(checkpointTrigger != null, "checkpoint trigger not set");
 
-        log.debug("{} received checkpoint event for {}",
+        LOG.debug("{} received checkpoint event for {}",
                 getRuntimeContext().getTaskNameWithSubtasks(), checkpointIdentifier);
 
         final long checkpointId;

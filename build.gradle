@@ -35,7 +35,6 @@ plugins {
 }
 apply plugin: 'eclipse'
 apply plugin: 'org.ajoberstar.grgit'
-apply from: 'gradle/idea.gradle'
 apply from: 'gradle/java.gradle'
 apply from: 'gradle/checkstyle.gradle'
 apply from: 'gradle/spotbugs.gradle'
@@ -102,8 +101,6 @@ dependencies {
     compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
-    compileOnly group: 'org.projectlombok', name: 'lombok', version: lombokVersion // not needed at runtime
-    annotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
@@ -112,7 +109,6 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
 
-    testAnnotationProcessor 'org.projectlombok:lombok:' + lombokVersion
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
         exclude group:  'ch.qos.logback', module: 'logback-classic'

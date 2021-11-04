@@ -73,14 +73,13 @@ In order to build a new version of Flink for a different Scala version, please r
 
 ## Setting up your IDE
 
-Connector project uses [Project Lombok](https://projectlombok.org/), so we should ensure that we have our IDE setup with the required plugins. (**IntelliJ is recommended**).
+IntelliJ is recommended for project connector.
 
 To import the source into IntelliJ:
 
 1. Import the project directory into IntelliJ IDE. It will automatically detect the gradle project and import things correctly.
 2. Enable `Annotation Processing` by going to `Build, Execution, Deployment` -> `Compiler` > `Annotation Processors` and checking `Enable annotation processing`.
-3. Install the `Lombok Plugin`. This can be found in `Preferences` -> `Plugins`. Restart your IDE.
-4. Connectors project compiles properly after applying the above steps.
+3.Connectors project compiles properly after applying the above steps.
 
 For eclipse, we can generate eclipse project files by running `./gradlew eclipse`.
 

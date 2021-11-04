@@ -21,10 +21,11 @@ import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ReaderGroupNotFoundException;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.GuardedBy;
 import java.util.concurrent.CompletableFuture;
@@ -40,8 +41,8 @@ import static org.apache.flink.util.Preconditions.checkNotNull;
  * The hook executed in Flink's Checkpoint Coordinator that triggers and restores
  * checkpoints in on a Pravega ReaderGroup.
  */
-@Slf4j
 class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
+    private static final Logger LOG = LoggerFactory.getLogger(ReaderCheckpointHook.class);
 
     /** The prefix of checkpoint names */
     private static final String PRAVEGA_CHECKPOINT_NAME_PREFIX = "PVG-CHK-";
@@ -138,22 +139,22 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     public void reset() {
         // To avoid the data loss, reset the reader group using the reader config that was initially passed to the job.
         // This can happen when the job recovery happens after a failure but no checkpoint has been taken.
-        log.info("resetting the reader group to initial state using the RG config {}", this.readerGroupConfig);
+        LOG.info("resetting the reader group to initial state using the RG config {}", this.readerGroupConfig);
         this.readerGroup.resetReaderGroup(this.readerGroupConfig);
     }
 
     @Override
     public void close() {
-        log.info("closing reader group Manager");
+        LOG.info("closing reader group Manager");
         this.readerGroupManager.close();
 
         // close the reader group properly
-        log.info("closing the reader group");
+        LOG.info("closing the reader group");
         this.readerGroup.close();
 
         synchronized (scheduledExecutorLock) {
             if (scheduledExecutorService != null ) {
-                log.info("Closing Scheduled Executor for hook {}", hookUid);
+                LOG.info("Closing Scheduled Executor for hook {}", hookUid);
                 scheduledExecutorService.shutdownNow();
                 scheduledExecutorService = null;
             }
@@ -172,7 +173,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
     private void ensureScheduledExecutorExists() {
         synchronized (scheduledExecutorLock) {
             if (scheduledExecutorService == null) {
-                log.info("Creating Scheduled Executor for hook {}", hookUid);
+                LOG.info("Creating Scheduled Executor for hook {}", hookUid);
                 scheduledExecutorService = createScheduledExecutorService();
             }
         }
