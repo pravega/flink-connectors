@@ -88,7 +88,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
 
     @Override
     public void close() throws Exception {
-        try{
+        try {
             for (FlinkPravegaInternalWriter<T> writer : recoveryWriters) {
                 writer.close();
             }
