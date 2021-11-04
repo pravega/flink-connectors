@@ -61,7 +61,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     // Pravega Writer Id
     private final String writerId;
 
-    private volatile boolean inTransaction;
+    private volatile boolean inTransaction = false;
 
     // ----------- configuration fields -----------
 
@@ -138,7 +138,9 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                       String writerId, String transactionId) {
         this(clientConfig, txnLeaseRenewalPeriod, stream, writerMode,
                 enableWatermark, serializationSchema, eventRouter, writerId);
+
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
+        // make sure transaction won't be null even if we created from PravegaTransactionState
         this.transaction = this.transactionalWriter.getTxn(UUID.fromString(transactionId));
     }
 
@@ -185,20 +187,13 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public void beginTransaction() {
+        assert writerMode == PravegaWriterMode.EXACTLY_ONCE;
+
         initializeInternalWriter();
-        switch (writerMode) {
-            case EXACTLY_ONCE:
-                assert transactionalWriter != null;
-                transaction = transactionalWriter.beginTxn();
-                inTransaction = true;
-                break;
-            case ATLEAST_ONCE:
-                break;
-            case BEST_EFFORT:
-                break;
-            default:
-                throw new UnsupportedOperationException("Not implemented writer mode");
-        }
+
+        assert transactionalWriter != null;
+        transaction = transactionalWriter.beginTxn();
+        inTransaction = true;
     }
 
     public void write(T element, SinkWriter.Context context) throws TxnFailedException, IOException {
@@ -255,58 +250,55 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public void commitTransaction() {
-        switch (writerMode) {
-            case EXACTLY_ONCE:
-                assert transaction != null;
-                // This may come from a job recovery from a non-transactional writer.
-                if (transaction.getTxnId().toString() == null) {
-                    break;
-                }
-                try {
-                    final Transaction.Status status = transaction.checkStatus();
-                    if (status == Transaction.Status.OPEN) {
-                        if (enableWatermark) {
-                            transaction.commit(currentWatermark);
-                        } else {
-                            transaction.commit();
-                        }
-                    } else {
-                        log.warn("{} - Transaction {} has unexpected transaction status {} while committing",
-                                writerId, transaction.getTxnId(), status);
-                    }
-                } catch (TxnFailedException e) {
-                    log.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
-                } catch (StatusRuntimeException e) {
-                    if (e.getStatus() == Status.NOT_FOUND) {
-                        log.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
-                    }
-                }
-                inTransaction = false;
-                transaction = null;
-                break;
-            case ATLEAST_ONCE:
-            case BEST_EFFORT:
-                break;
-            default:
-                throw new UnsupportedOperationException("Not implemented writer mode");
+        // This could only be called from `PravegaCommitter#commit`.
+        assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transaction != null;
+
+        // This may come from a job recovery from a non-transactional writer.
+        if (transaction.getTxnId().toString() == null) {
+            return;
         }
+
+        try {
+            final Transaction.Status status = transaction.checkStatus();
+            if (status == Transaction.Status.OPEN) {
+                if (enableWatermark) {
+                    transaction.commit(currentWatermark);
+                } else {
+                    transaction.commit();
+                }
+            } else {
+                log.warn("{} - Transaction {} has unexpected transaction status {} while committing.",
+                        writerId, transaction.getTxnId(), status);
+            }
+        } catch (TxnFailedException e) {
+            log.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
+        } catch (StatusRuntimeException e) {
+            if (e.getStatus() == Status.NOT_FOUND) {
+                log.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
+            }
+        }
+        inTransaction = false;
+        transaction = null;
     }
 
-    public void abort() {
+    public void abort() throws UnsupportedOperationException, AssertionError {
         switch (writerMode) {
             case EXACTLY_ONCE:
+                if (!inTransaction) {
+                    break;
+                }
                 assert transaction != null;
                 // This may come from a job recovery from a non-transactional writer.
                 if (transaction.getTxnId() == null) {
                     break;
                 }
-                if (!inTransaction) {
-                    break;
+                final Transaction.Status status = transaction.checkStatus();
+                if (status == Transaction.Status.OPEN) {
+                    transaction.abort();
+                } else {
+                    log.warn("{} - Transaction {} has unexpected transaction status {} while aborting",
+                            writerId, transaction.getTxnId(), status);
                 }
-                log.info("Aborting the transaction: {}", transaction.getTxnId());
-                // TODO: why?
-                final Transaction<T> txn =  transactionalWriter.getTxn(transaction.getTxnId());
-                txn.abort();
                 transaction = null;
                 break;
             case ATLEAST_ONCE:
@@ -318,11 +310,13 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     @VisibleForTesting
-    public void flushAndVerify() throws IOException, InterruptedException, TxnFailedException {
+    public void flushAndVerify() throws IOException, InterruptedException, TxnFailedException, AssertionError {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transaction != null;
-                transaction.flush();
+                if (inTransaction) {
+                    transaction.flush();
+                }
                 break;
             case BEST_EFFORT:
             case ATLEAST_ONCE:
@@ -352,7 +346,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     public void close() throws Exception {
         Exception exception = null;
 
-        abort();
+        try {
+            abort();
+        } catch (Exception e) {
+            exception = ExceptionUtils.firstOrSuppressed(e, exception);
+        }
 
         if (writer != null) {
             try {
@@ -411,5 +409,9 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     public String getTransactionId() {
         assert this.transaction != null;
         return this.transaction.getTxnId().toString();
+    }
+
+    public boolean isInTransaction() {
+        return inTransaction;
     }
 }

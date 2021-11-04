@@ -139,7 +139,7 @@ public class ThrottledIntegerGeneratingSource
         }
 
         synchronized (this.blocker) {
-            while (this.lastCheckpointConfirmed <= lastCheckpoint + 4) {
+            while (this.lastCheckpointConfirmed <= lastCheckpoint + 2) {
                 this.blocker.wait();
             }
         }

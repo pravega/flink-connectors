@@ -52,7 +52,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
-    private final List<FlinkPravegaInternalWriter<T>> writers = new ArrayList<>();
+    private final List<PravegaTransactionState> writers = new ArrayList<>();
 
     private final FlinkPravegaInternalWriter<T> currentWriter;
 
@@ -75,14 +75,14 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                 txnLeaseRenewalPeriod, stream, writerMode, enableWatermark, serializationSchema, eventRouter, writerId);
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             this.currentWriter.beginTransaction();
+
+            writers.add(PravegaTransactionState.of(currentWriter));
         }
 
         if (enableMetrics) {
             MetricGroup pravegaWriterMetricGroup = this.sinkInitContext.metricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
             pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
         }
-
-        writers.add(currentWriter);
     }
 
     @Override
@@ -98,15 +98,15 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException {
         final List<PravegaTransactionState> committables;
         try {
+            if (flush) {
             currentWriter.flushAndVerify();
-
-            if (!flush) {
             }
-            // currentWriter.beginTransaction();
 
             switch (writerMode) {
                 case EXACTLY_ONCE:
-                    committables = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
+                    currentWriter.beginTransaction();
+
+                    committables = new ArrayList<>(writers);
                     writers.clear();
                     break;
                 case ATLEAST_ONCE:
@@ -125,6 +125,26 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
     @Override
     public List<Void> snapshotState(long checkpointId) throws IOException {
+        try {
+            currentWriter.flushAndVerify();
+        } catch (InterruptedException | TxnFailedException e) {
+            throw new IOException(e);
+        }
+
+        switch (writerMode) {
+            case EXACTLY_ONCE:
+                if (currentWriter.isInTransaction()) {
+                    writers.add(PravegaTransactionState.of(currentWriter));
+                }
+                currentWriter.beginTransaction();
+                break;
+            case ATLEAST_ONCE:
+            case BEST_EFFORT:
+                break;
+            default:
+                throw new UnsupportedOperationException("Not implemented writer mode");
+        }
+
         return Collections.emptyList();
     }
 

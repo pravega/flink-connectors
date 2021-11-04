@@ -47,8 +47,8 @@ public class PravegaTransactionState {
     @Override
     public String toString() {
         return String.format(
-                "%s [transactionId=%s, watermark=%s]",
-                this.getClass().getSimpleName(), transactionId, watermark);
+                "%s [transactionId=%s, watermark=%s, writerId=%s]",
+                this.getClass().getSimpleName(), transactionId, watermark, writerId);
     }
 
     @Override

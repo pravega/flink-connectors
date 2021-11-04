@@ -94,7 +94,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
     @Test
     public void testExactlyOnceWriter() throws Exception {
-        final String streamName = "test";
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
                 .setParallelism(1)
