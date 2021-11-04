@@ -78,8 +78,7 @@ IntelliJ is recommended for project connector.
 To import the source into IntelliJ:
 
 1. Import the project directory into IntelliJ IDE. It will automatically detect the gradle project and import things correctly.
-2. Enable `Annotation Processing` by going to `Build, Execution, Deployment` -> `Compiler` > `Annotation Processors` and checking `Enable annotation processing`.
-3.Connectors project compiles properly after applying the above steps.
+2. Connectors project compiles properly after applying the above step.
 
 For eclipse, we can generate eclipse project files by running `./gradlew eclipse`.
 
