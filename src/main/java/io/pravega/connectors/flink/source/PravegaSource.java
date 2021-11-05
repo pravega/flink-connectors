@@ -28,24 +28,20 @@ import io.pravega.connectors.flink.source.reader.PravegaSplitReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.connector.source.Boundedness;
-import org.apache.flink.api.connector.source.Source;
-import org.apache.flink.api.connector.source.SourceReader;
-import org.apache.flink.api.connector.source.SourceReaderContext;
-import org.apache.flink.api.connector.source.SplitEnumerator;
-import org.apache.flink.api.connector.source.SplitEnumeratorContext;
+import org.apache.flink.api.connector.source.*;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.function.Supplier;
@@ -67,10 +63,10 @@ import java.util.function.Supplier;
  *
  * @param <T> the output type of the source.
  */
-@Slf4j
 @PublicEvolving
 public class PravegaSource<T>
         implements Source<T, PravegaSplit, Checkpoint>, ResultTypeQueryable<T> {
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaSource.class);
 
     // The Pravega client config.
     final ClientConfig clientConfig;
@@ -159,7 +155,7 @@ public class PravegaSource<T>
     @Override
     public SplitEnumerator<PravegaSplit, Checkpoint> restoreEnumerator(
             SplitEnumeratorContext<PravegaSplit> enumContext, Checkpoint checkpoint) throws IOException {
-        log.info("Restore Enumerator called");
+        LOG.info("Restore Enumerator called");
         return new PravegaSplitEnumerator(
                 enumContext,
                 this.scope,
