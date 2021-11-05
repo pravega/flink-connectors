@@ -20,15 +20,17 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TxnFailedException;
+import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Sink;
 import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -38,8 +40,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Slf4j
 public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaWriter.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -140,7 +142,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         } catch (InterruptedException | TxnFailedException e) {
             throw new IOException("", e);
         }
-        log.info("Committing {} committables.", committables);
+        LOG.info("Committing {} committables.", committables);
         return committables;
     }
 
