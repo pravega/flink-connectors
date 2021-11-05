@@ -22,7 +22,6 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.io.RichOutputFormat;
@@ -30,6 +29,8 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.concurrent.CompletableFuture;
@@ -42,8 +43,8 @@ import java.util.concurrent.atomic.AtomicReference;
  * A Flink {@link OutputFormat} that can be added as a sink to write into Pravega. The current implementation does not
  * support transactional writes.
  */
-@Slf4j
 public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaOutputFormat.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -127,7 +128,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
         future.whenCompleteAsync(
                 (result, e) -> {
                     if (e != null) {
-                        log.warn("Detected a write failure: {}", e);
+                        LOG.warn("Detected a write failure: {}", e);
 
                         // We will record only the first error detected, since this will mostly likely help with
                         // finding the root cause. Storing all errors will not be feasible.

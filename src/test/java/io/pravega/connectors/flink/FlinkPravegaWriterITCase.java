@@ -23,8 +23,6 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import lombok.Cleanup;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -58,7 +56,6 @@ import static org.junit.Assert.assertNull;
 /**
  * Integration tests for {@link FlinkPravegaWriter}.
  */
-@Slf4j
 public class FlinkPravegaWriterITCase {
 
     // Setup utility.
@@ -69,7 +66,7 @@ public class FlinkPravegaWriterITCase {
 
     // Ensure each test completes within 120 seconds.
     @Rule
-    public Timeout globalTimeout = new Timeout(2400, TimeUnit.SECONDS);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setup() throws Exception {
@@ -113,18 +110,16 @@ public class FlinkPravegaWriterITCase {
         Preconditions.checkNotNull(streamName);
 
         // Read all data from the stream.
-        @Cleanup
         EventStreamReader<Integer> consumer = SETUP_UTILS.getIntegerReader(streamName);
         List<Integer> elements = new ArrayList<>();
         while (true) {
             Integer event = consumer.readNextEvent(1000).getEvent();
             if (event == null) {
-                log.info("Reached end of stream: " + streamName);
                 break;
             }
             elements.add(event);
-            log.trace("Stream: " + streamName + ". Read event: " + event);
         }
+        consumer.close();
         return elements;
     }
 
@@ -176,9 +171,6 @@ public class FlinkPravegaWriterITCase {
             if (EVENT_COUNT_PER_SOURCE == actualEventCount) {
                 break;
             }
-            // A batch read from Pravega may not return events that were recently written.
-            // In this case, we simply retry the read portion of this test.
-            log.info("Retrying read query. expected={}, actual={}", EVENT_COUNT_PER_SOURCE, actualEventCount);
         }
     }
 

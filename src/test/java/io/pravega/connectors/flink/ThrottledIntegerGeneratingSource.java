@@ -15,13 +15,14 @@
  */
 package io.pravega.connectors.flink;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.runtime.state.CheckpointListener;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.source.RichParallelSourceFunction;
 import org.apache.flink.streaming.api.watermark.Watermark;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializableObject;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -29,10 +30,10 @@ import java.util.List;
 /**
  * A Flink source that generates integers, but slows down until the first checkpoint has been completed.
  */
-@Slf4j
 public class ThrottledIntegerGeneratingSource
         extends RichParallelSourceFunction<Integer>
         implements ListCheckpointed<Integer>, CheckpointListener {
+    private static final Logger LOG = LoggerFactory.getLogger(ThrottledIntegerGeneratingSource.class);
 
     /** Blocker when the generator needs to wait for the checkpoint to happen.
      * Eager initialization means it must be serializable (pick any serializable type) */
@@ -94,7 +95,7 @@ public class ThrottledIntegerGeneratingSource
             ctx.emitWatermark(new Watermark(current));
         }
 
-        log.info("Running");
+        LOG.info("Running");
         while (this.running && current < this.numEventsTotal) {
 
             // throttle if no checkpoint happened so far
