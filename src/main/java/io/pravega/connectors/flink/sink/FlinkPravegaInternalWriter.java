@@ -189,7 +189,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     public void beginTransaction() {
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE;
 
-        initializeInternalWriter();
+        // initializeInternalWriter();
 
         assert transactionalWriter != null;
         transaction = transactionalWriter.beginTxn();
@@ -403,7 +403,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public long getCurrentWatermark() {
-        return currentWatermark;
+        return this.currentWatermark;
     }
 
     public String getTransactionId() {
@@ -412,6 +412,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public boolean isInTransaction() {
-        return inTransaction;
+        return this.inTransaction;
     }
 }

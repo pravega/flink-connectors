@@ -36,6 +36,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
@@ -51,9 +52,20 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
-    private final List<PravegaTransactionState> writers = new ArrayList<>();
+    private final List<FlinkPravegaInternalWriter<T>> writers = new ArrayList<>();
 
-    private final FlinkPravegaInternalWriter<T> currentWriter;
+    private FlinkPravegaInternalWriter<T> currentWriter;
+
+    // --------- save for creating a FlinkPravegaInternalWriter
+
+    private final ClientConfig clientConfig;
+    private final Stream stream;
+    private final long txnLeaseRenewalPeriod;
+    private final boolean enableWatermark;
+    private final SerializationSchema<T> serializationSchema;
+    @Nullable
+    private final PravegaEventRouter<T> eventRouter;
+    private final String writerId;
 
     public PravegaWriter(Sink.InitContext sinkInitContext,
                          boolean enableMetrics,
@@ -67,15 +79,23 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         this.sinkInitContext = sinkInitContext;
         this.writerMode = writerMode;
 
+        this.clientConfig = clientConfig;
+        this.stream = stream;
+        this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
+        this.enableWatermark = enableWatermark;
+        this.serializationSchema = serializationSchema;
+        this.eventRouter = eventRouter;
+        this.writerId = UUID.randomUUID() + "-" + sinkInitContext.getSubtaskId();
+
         // the (transactional) pravega writer is initialized
         // in FlinkPravegaInternalWriter#createInternalWriter
-        String writerId = UUID.randomUUID() + "-" + sinkInitContext.getSubtaskId();
-        this.currentWriter = new FlinkPravegaInternalWriter<>(clientConfig,
-                txnLeaseRenewalPeriod, stream, writerMode, enableWatermark, serializationSchema, eventRouter, writerId);
+        this.currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+                txnLeaseRenewalPeriod, writerMode, enableWatermark, serializationSchema, eventRouter, writerId);
+
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             this.currentWriter.beginTransaction();
 
-            writers.add(PravegaTransactionState.of(currentWriter));
+            writers.add(currentWriter);
         }
 
         if (enableMetrics) {
@@ -103,9 +123,11 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
             switch (writerMode) {
                 case EXACTLY_ONCE:
+                    currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+                            txnLeaseRenewalPeriod, writerMode, enableWatermark, serializationSchema, eventRouter, writerId);
                     currentWriter.beginTransaction();
 
-                    committables = new ArrayList<>(writers);
+                    committables = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
                     writers.clear();
                     break;
                 case ATLEAST_ONCE:
@@ -133,8 +155,10 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         switch (writerMode) {
             case EXACTLY_ONCE:
                 if (currentWriter.isInTransaction()) {
-                    writers.add(PravegaTransactionState.of(currentWriter));
+                    writers.add(currentWriter);
                 }
+                currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+                        txnLeaseRenewalPeriod, writerMode, enableWatermark, serializationSchema, eventRouter, writerId);
                 currentWriter.beginTransaction();
                 break;
             case ATLEAST_ONCE:

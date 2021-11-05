@@ -19,10 +19,10 @@ import java.util.Objects;
 
 public class PravegaTransactionState {
     private final String transactionId;
-    private final Long watermark;
+    private final long watermark;
     private final String writerId;
 
-    PravegaTransactionState(String transactionId, Long watermark, String writerId) {
+    PravegaTransactionState(String transactionId, long watermark, String writerId) {
         this.transactionId = transactionId;
         this.watermark = watermark;
         this.writerId = writerId;
@@ -36,7 +36,7 @@ public class PravegaTransactionState {
         return transactionId;
     }
 
-    public Long getWatermark() {
+    public long getWatermark() {
         return watermark;
     }
 
