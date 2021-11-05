@@ -15,11 +15,12 @@
  */
 package io.pravega.connectors.flink.utils;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
 import org.junit.Assert;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.BitSet;
 import java.util.Collections;
@@ -32,9 +33,9 @@ import java.util.List;
  * 
  * <p>This sink is expected to be run with parallelism one!
  */
-@Slf4j
 public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
         implements ListCheckpointed<Tuple2<Integer, BitSet>> {
+    private static final Logger LOG = LoggerFactory.getLogger(IntSequenceExactlyOnceValidator.class);
 
     private final int numElementsTotal;
 
@@ -82,7 +83,7 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
 
     @Override
     public List<Tuple2<Integer, BitSet>> snapshotState(long checkpointId, long timestamp) throws Exception {
-        log.debug("IntSequenceExactlyOnceValidator - at checkpoint {} having {} elements",
+        LOG.debug("IntSequenceExactlyOnceValidator - at checkpoint {} having {} elements",
                 checkpointId, numElementsSoFar);
         return Collections.singletonList(new Tuple2<>(numElementsSoFar, duplicateChecker));
     }
@@ -102,6 +103,6 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
         this.duplicateChecker.clear();
         this.duplicateChecker.or(s.f1);
 
-        log.debug("IntSequenceExactlyOnceValidator was restored with {} elements", numElementsSoFar);
+        LOG.debug("IntSequenceExactlyOnceValidator was restored with {} elements", numElementsSoFar);
     }
 }

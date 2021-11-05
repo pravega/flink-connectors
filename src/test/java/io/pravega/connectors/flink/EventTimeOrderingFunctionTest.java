@@ -15,7 +15,6 @@
  */
 package io.pravega.connectors.flink;
 
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.typeinfo.TypeHint;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.tuple.Tuple2;
@@ -34,7 +33,6 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 /**
  * Unit tests for {@link EventTimeOrderingFunction}.
  */
-@Slf4j
 public class EventTimeOrderingFunctionTest {
 
     private static final String K1 = "K1";

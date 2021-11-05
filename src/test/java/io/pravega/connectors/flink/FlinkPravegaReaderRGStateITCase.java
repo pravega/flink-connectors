@@ -31,7 +31,6 @@ import io.pravega.connectors.flink.utils.IntentionalException;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.functions.MapFunction;
@@ -44,6 +43,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -58,7 +59,6 @@ import java.util.concurrent.atomic.AtomicReference;
  * 6. Flink restart strategy should kick in and the reader hook should reinitialize the state of the readers to beginning position
  * 7. Validate and make sure that we are not missing any events.
  */
-@Slf4j
 public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
 
     // Setup utility.
@@ -138,10 +138,10 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
         }
     }
 
-    @Slf4j
     public static class Mapper<T> implements MapFunction<T, T> {
 
         public static final AtomicReference<Runnable> RESUME_WRITE_HANDLER = new AtomicReference<>();
+        private static final Logger LOG = LoggerFactory.getLogger(Mapper.class);
         private static final long serialVersionUID = 1L;
         private final String scope;
         private final String sideStream;
@@ -163,7 +163,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
             }
             EventRead<Integer> rule = sideStreamReader.readNextEvent(50);
             if (rule.getEvent() != null) {
-                log.info("Mapper: received side stream event: {}", rule.getEvent());
+                LOG.info("Mapper: received side stream event: {}", rule.getEvent());
                 /*
                  * Event == 1, continue process original events
                  * Event == 2, trigger an exception (simulate failure) and reset the writer thread and start processing all the records

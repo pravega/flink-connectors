@@ -26,7 +26,6 @@ import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.WrappingSerializer;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.util.StreamWithBoundaries;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
@@ -36,6 +35,8 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.InputSplitAssigner;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -45,8 +46,8 @@ import java.util.List;
 /**
  * A Flink {@link InputFormat} that can be added as a source to read from Pravega in a Flink batch job.
  */
-@Slf4j
 public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputSplit> {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaInputFormat.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -138,7 +139,7 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
             }
         }
 
-        log.info("Prepared {} input splits", splits.size());
+        LOG.info("Prepared {} input splits", splits.size());
         return splits.toArray(new PravegaInputSplit[splits.size()]);
     }
 

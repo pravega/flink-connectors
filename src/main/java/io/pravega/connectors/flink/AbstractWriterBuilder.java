@@ -16,7 +16,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.Stream;
-import lombok.Data;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
@@ -121,11 +120,14 @@ public abstract class AbstractWriterBuilder<B extends AbstractWriterBuilder> imp
     /**
      * A Pravega stream.
      */
-    @Data
     private static class StreamSpec implements Serializable {
         private static final long serialVersionUID = 1L;
 
         private final String streamSpec;
+
+        private StreamSpec(String streamSpec) {
+            this.streamSpec = streamSpec;
+        }
 
         public static StreamSpec of(String streamSpec) {
             Preconditions.checkNotNull(streamSpec, "streamSpec");

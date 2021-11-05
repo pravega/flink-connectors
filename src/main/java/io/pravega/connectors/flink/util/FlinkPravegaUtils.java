@@ -24,7 +24,6 @@ import io.pravega.connectors.flink.EventTimeOrderingFunction;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.shared.security.auth.Credentials;
-import lombok.SneakyThrows;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
@@ -32,6 +31,7 @@ import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.streaming.api.datastream.DataStreamSink;
 import org.apache.flink.util.Preconditions;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 import java.util.Objects;
@@ -138,7 +138,6 @@ public class FlinkPravegaUtils {
         }
 
         @Override
-        @SneakyThrows
         public T deserialize(ByteBuffer buffer) {
             byte[] array;
             if (buffer.hasArray() && buffer.arrayOffset() == 0 &&
@@ -149,7 +148,13 @@ public class FlinkPravegaUtils {
                 buffer.get(array);
             }
 
-            return deserializationSchema.deserialize(array);
+            T event = null;
+            try {
+                event = deserializationSchema.deserialize(array);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return event;
         }
     }
 
