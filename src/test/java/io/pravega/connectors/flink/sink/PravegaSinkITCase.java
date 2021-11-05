@@ -151,6 +151,33 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     @Test
+    public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
+
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
+                .setParallelism(1)
+                .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
+        env.getCheckpointConfig().enableUnalignedCheckpoints();
+        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
+
+        final PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+                .forStream(streamName)
+                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withSerializationSchema(new IntSerializer())
+                .withEventRouter(event -> "fixedkey")
+                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withTxnLeaseRenewalPeriod(Time.seconds(30))
+                .build();
+
+        env
+                .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
+                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
+                .sinkTo(pravegaSink).setParallelism(2);
+
+        writeAndCheckData(streamName, env, false);
+    }
+
+    @Test
     public void testExactlyOnceWriterWithWatermark() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
 
