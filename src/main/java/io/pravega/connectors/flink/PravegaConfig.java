@@ -18,7 +18,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.shared.security.auth.Credentials;
-import lombok.Data;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.util.Preconditions;
 
@@ -265,7 +264,6 @@ public class PravegaConfig implements Serializable {
     /**
      * A configuration parameter resolvable via command-line parameters, system properties, or OS environment variables.
      */
-    @Data
     static class PravegaParameter implements Serializable {
 
         private static final long serialVersionUID = 1L;
@@ -273,6 +271,24 @@ public class PravegaConfig implements Serializable {
         private final String parameterName;
         private final String propertyName;
         private final String variableName;
+
+        PravegaParameter(String parameterName, String propertyName, String variableName) {
+            this.parameterName = parameterName;
+            this.propertyName = propertyName;
+            this.variableName = variableName;
+        }
+
+        public String getParameterName() {
+            return parameterName;
+        }
+
+        public String getPropertyName() {
+            return propertyName;
+        }
+
+        public String getVariableName() {
+            return variableName;
+        }
 
         public Optional<String> resolve(ParameterTool parameters, Properties properties, Map<String, String> variables) {
             if (parameters != null && parameters.has(parameterName)) {

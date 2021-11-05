@@ -24,7 +24,6 @@ import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -47,7 +46,6 @@ import java.util.concurrent.TimeUnit;
 /**
  * Integration tests for {@link FlinkPravegaReader}.
  */
-@Slf4j
 public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     // Setup utility.

@@ -35,7 +35,6 @@ import io.pravega.schemaregistry.contract.data.Compatibility;
 import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.AbstractCatalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
@@ -64,6 +63,8 @@ import org.apache.flink.table.catalog.stats.CatalogColumnStatistics;
 import org.apache.flink.table.catalog.stats.CatalogTableStatistics;
 import org.apache.flink.table.expressions.Expression;
 import org.apache.flink.table.factories.Factory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -74,8 +75,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-@Slf4j
 public class PravegaCatalog extends AbstractCatalog {
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaCatalog.class);
+
     // the Pravega stream manager to manage streams
     private StreamManager streamManager;
 
@@ -112,7 +114,7 @@ public class PravegaCatalog extends AbstractCatalog {
         this.serializationFormat = SerializationFormat.valueOf(serializationFormat);
         this.properties = properties;
 
-        log.info("Created Pravega Catalog {}", catalogName);
+        LOG.info("Created Pravega Catalog {}", catalogName);
     }
 
     @Override
@@ -125,7 +127,7 @@ public class PravegaCatalog extends AbstractCatalog {
             }
         }
 
-        log.info("Connected to Pravega controller");
+        LOG.info("Connected to Pravega controller");
 
         if (!databaseExists(getDefaultDatabase())) {
             throw new CatalogException(String.format("Configured default database %s doesn't exist in catalog %s.",
@@ -140,7 +142,7 @@ public class PravegaCatalog extends AbstractCatalog {
             }
         }
 
-        log.info("Connected to Pravega Schema Registry");
+        LOG.info("Connected to Pravega Schema Registry");
     }
 
     @Override
@@ -148,13 +150,13 @@ public class PravegaCatalog extends AbstractCatalog {
         if (streamManager != null) {
             streamManager.close();
             streamManager = null;
-            log.info("Close connection to Pravega");
+            LOG.info("Close connection to Pravega");
         }
 
         if (schemaRegistryClient != null) {
             try {
                 schemaRegistryClient.close();
-                log.info("Close connection to Pravega Schema registry");
+                LOG.info("Close connection to Pravega Schema registry");
             } catch (Exception e) {
                 throw new CatalogException("Fail to close connection to Pravega Schema registry", e);
             } finally {

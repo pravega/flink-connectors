@@ -18,16 +18,15 @@ package io.pravega.connectors.flink.util;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
-import lombok.Data;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.util.Preconditions;
 
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * A Pravega stream with optional boundaries based on stream cuts.
  */
-@Data
 @Internal
 public class StreamWithBoundaries implements Serializable {
 
@@ -38,10 +37,45 @@ public class StreamWithBoundaries implements Serializable {
     private final StreamCut from;
     private final StreamCut to;
 
+    public StreamWithBoundaries(Stream stream, StreamCut from, StreamCut to) {
+        this.stream = stream;
+        this.from = from;
+        this.to = to;
+    }
+
     public static StreamWithBoundaries of(Stream stream, StreamCut from, StreamCut to) {
         Preconditions.checkNotNull(stream, "stream");
         Preconditions.checkNotNull(from, "from");
         Preconditions.checkNotNull(to, "to");
         return new StreamWithBoundaries(stream, from, to);
+    }
+
+    public Stream getStream() {
+        return stream;
+    }
+
+    public StreamCut getFrom() {
+        return from;
+    }
+
+    public StreamCut getTo() {
+        return to;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        StreamWithBoundaries that = (StreamWithBoundaries) o;
+        return Objects.equals(stream, that.stream) && Objects.equals(from, that.from) && Objects.equals(to, that.to);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(stream, from, to);
     }
 }

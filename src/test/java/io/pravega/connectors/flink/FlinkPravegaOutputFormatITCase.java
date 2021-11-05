@@ -20,7 +20,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -36,7 +35,6 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
 
     /** Setup utility */

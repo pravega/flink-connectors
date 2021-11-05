@@ -24,7 +24,6 @@ import io.pravega.connectors.flink.utils.User;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -44,7 +43,6 @@ import org.junit.rules.Timeout;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
-@Slf4j
 public class FlinkPravegaSchemaRegistryReaderTestITCase {
 
     private static class MyTest {
