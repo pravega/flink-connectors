@@ -33,7 +33,12 @@ import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.apache.flink.api.connector.source.*;
+import org.apache.flink.api.connector.source.Boundedness;
+import org.apache.flink.api.connector.source.Source;
+import org.apache.flink.api.connector.source.SourceReader;
+import org.apache.flink.api.connector.source.SourceReaderContext;
+import org.apache.flink.api.connector.source.SplitEnumerator;
+import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
@@ -77,7 +82,7 @@ public class PravegaSource<T>
     // The scope name of the reader group.
     final String scope;
 
-    // The readergroup name to coordinate the parallel readers. This should be unique for a Flink job.
+    // The readergroup name to colordinate the parallel readers. This should be unique for a Flink job.
     final String readerGroupName;
 
     // The supplied event deserializer.
