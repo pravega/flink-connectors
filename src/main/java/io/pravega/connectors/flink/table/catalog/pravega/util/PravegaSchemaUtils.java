@@ -20,7 +20,6 @@ import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.Schema;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.annotation.Internal;
@@ -37,7 +36,6 @@ import org.apache.flink.table.types.utils.TypeConversions;
 
 import java.util.List;
 
-@Slf4j
 @Internal
 public class PravegaSchemaUtils {
 

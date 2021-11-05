@@ -28,18 +28,19 @@ import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-@Slf4j
 public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
+    private static final Logger LOG = LoggerFactory.getLogger(DeserializerFromSchemaRegistry.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -68,7 +69,7 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
                     pravegaConfig.getDefaultScope(), schemaRegistryClientConfig)) {
                 format = schemaRegistryClient.getGroupProperties(group).getSerializationFormat();
             } catch (Exception e) {
-                log.error("Error while closing the schema registry client", e);
+                LOG.error("Error while closing the schema registry client", e);
                 throw new FlinkRuntimeException(e);
             }
 

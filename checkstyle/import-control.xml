@@ -14,7 +14,6 @@
     <allow pkg="com.google"/>
     <allow pkg="io.grpc"/>
     <allow pkg="io.pravega"/>
-    <allow pkg="lombok"/>
     <allow pkg="org.apache"/>
     <allow pkg="edu.umd.cs.findbugs"/>
 
