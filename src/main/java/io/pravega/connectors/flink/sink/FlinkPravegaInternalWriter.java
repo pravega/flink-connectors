@@ -126,23 +126,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                 stream, clientConfig.getControllerURI());
     }
 
-    public FlinkPravegaInternalWriter(ClientConfig clientConfig,
-                                      Stream stream,
-                                      long txnLeaseRenewalPeriod,
-                                      PravegaWriterMode writerMode,
-                                      boolean enableWatermark,
-                                      SerializationSchema<T> serializationSchema,
-                                      PravegaEventRouter<T> eventRouter,
-                                      long watermark, String transactionId) {
-        this(clientConfig, stream, txnLeaseRenewalPeriod, writerMode,
-                enableWatermark, serializationSchema, eventRouter);
-
-        // Reset the variables from PravegaTransactionState.
-        assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
-        this.transaction = this.transactionalWriter.getTxn(UUID.fromString(transactionId));
-        this.currentWatermark = watermark;
-    }
-
     public void initializeInternalWriter() {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             if (this.transactionalWriter != null) {
@@ -192,7 +175,19 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
         assert transactionalWriter != null;
         transaction = transactionalWriter.beginTxn();
+
         LOG.info("Transaction began with id {}.", transaction.getTxnId());
+        inTransaction = true;
+    }
+
+    public void resumeTransaction(PravegaTransactionState transactionState) {
+        assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
+
+        transaction = transactionalWriter.getTxn(UUID.fromString(transactionState.getTransactionId()));
+        currentWatermark = transactionState.getWatermark();
+
+        assert transaction != null;
+        LOG.info("Transaction resumed with id {}.", transaction.getTxnId());
         inTransaction = true;
     }
 

@@ -63,11 +63,11 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
 
     @Override
     public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
-        committables.forEach(transaction -> {
+        committables.forEach(transactionState -> {
             FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(
                     clientConfig, stream, txnLeaseRenewalPeriod, writerMode, enableWatermark,
-                    serializationSchema, eventRouter,
-                    transaction.getWatermark(), transaction.getTransactionId());
+                    serializationSchema, eventRouter);
+            writer.resumeTransaction(transactionState);
             writer.commitTransaction();
 
             // temporarily store the writer so that if we need to abort
