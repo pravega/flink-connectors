@@ -30,29 +30,21 @@ import java.util.Collections;
 import java.util.List;
 
 public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
-    // The Pravega client config.
-    private final ClientConfig clientConfig;
 
-    // Various timeouts
+    private final List<FlinkPravegaInternalWriter<T>> recoveryWriters = new ArrayList<>();
+
+    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
+    private final ClientConfig clientConfig;  // The Pravega client config.
     private final long txnLeaseRenewalPeriod;
-
-    // The destination stream.
     @SuppressFBWarnings("SE_BAD_FIELD")
-    private final Stream stream;
-
+    private final Stream stream;  // The destination stream.
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
-
-    // flag to enable/disable watermark
     private final boolean enableWatermark;
-
     private final SerializationSchema<T> serializationSchema;
-
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
     private final PravegaEventRouter<T> eventRouter;
-
-    private final List<FlinkPravegaInternalWriter<T>> recoveryWriters = new ArrayList<>();
 
     public PravegaCommitter(ClientConfig clientConfig,
                             long txnLeaseRenewalPeriod,
@@ -74,13 +66,13 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
         committables.forEach(transaction -> {
             FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(
                     clientConfig, stream, txnLeaseRenewalPeriod, writerMode, enableWatermark,
-                    serializationSchema, eventRouter, transaction.getWriterId(),
+                    serializationSchema, eventRouter,
                     transaction.getWatermark(), transaction.getTransactionId());
             writer.commitTransaction();
 
             // temporarily store the writer so that if we need to abort
             // in case of failure, close it.
-            recoveryWriters.add(writer);
+            // recoveryWriters.add(writer);
         });
         return Collections.emptyList();
     }

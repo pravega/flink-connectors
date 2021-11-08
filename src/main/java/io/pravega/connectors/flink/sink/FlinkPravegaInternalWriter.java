@@ -61,9 +61,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     private transient ExecutorService executorService;
 
-    // Pravega Writer Id
-    private final String writerId;
-
     private volatile boolean inTransaction = false;
 
     // ----------- configuration fields -----------
@@ -114,8 +111,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                       PravegaWriterMode writerMode,
                                       boolean enableWatermark,
                                       SerializationSchema<T> serializationSchema,
-                                      PravegaEventRouter<T> eventRouter,
-                                      String writerId) {
+                                      PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -123,12 +119,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         this.enableWatermark = enableWatermark;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
-        this.writerId = writerId;
 
         initializeInternalWriter();
 
-        LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
-                writerId, stream, clientConfig.getControllerURI());
+        LOG.info("Initialized Pravega writer for stream: {} with controller URI: {}",
+                stream, clientConfig.getControllerURI());
     }
 
     public FlinkPravegaInternalWriter(ClientConfig clientConfig,
@@ -138,12 +133,12 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                       boolean enableWatermark,
                                       SerializationSchema<T> serializationSchema,
                                       PravegaEventRouter<T> eventRouter,
-                                      String writerId, long watermark, String transactionId) {
+                                      long watermark, String transactionId) {
         this(clientConfig, stream, txnLeaseRenewalPeriod, writerMode,
-                enableWatermark, serializationSchema, eventRouter, writerId);
+                enableWatermark, serializationSchema, eventRouter);
 
+        // Reset the variables from PravegaTransactionState.
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
-        // make sure transaction won't be null even if we created from PravegaTransactionState
         this.transaction = this.transactionalWriter.getTxn(UUID.fromString(transactionId));
         this.currentWatermark = watermark;
     }
@@ -174,10 +169,10 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)
                 .build();
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-            transactionalWriter = clientFactory.createTransactionalEventWriter(writerId, stream.getStreamName(), eventSerializer, writerConfig);
+            transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         } else {
             executorService = Executors.newSingleThreadExecutor();
-            writer = clientFactory.createEventWriter(writerId, stream.getStreamName(), eventSerializer, writerConfig);
+            writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
     }
 
@@ -197,6 +192,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
         assert transactionalWriter != null;
         transaction = transactionalWriter.beginTxn();
+        LOG.info("Transaction began with id {}.", transaction.getTxnId());
         inTransaction = true;
     }
 
@@ -254,7 +250,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public void commitTransaction() {
-        // This could only be called from `PravegaCommitter#commit`.
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transaction != null;
 
         // This may come from a job recovery from a non-transactional writer.
@@ -265,27 +260,28 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         try {
             final Transaction.Status status = transaction.checkStatus();
             if (status == Transaction.Status.OPEN) {
+                LOG.info("Committing the transaction: {}.", transaction.getTxnId());
                 if (enableWatermark) {
                     transaction.commit(currentWatermark);
                 } else {
                     transaction.commit();
                 }
             } else {
-                LOG.warn("{} - Transaction {} has unexpected transaction status {} while committing.",
-                        writerId, transaction.getTxnId(), status);
+                LOG.warn("Transaction {} has unexpected transaction status {} while committing.",
+                        transaction.getTxnId(), status);
             }
         } catch (TxnFailedException e) {
-            LOG.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
+            LOG.error("Transaction {} commit failed.", transaction.getTxnId());
         } catch (StatusRuntimeException e) {
             if (e.getStatus() == Status.NOT_FOUND) {
-                LOG.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
+                LOG.error("Transaction {} not found.", transaction.getTxnId());
             }
         }
         inTransaction = false;
         transaction = null;
     }
 
-    public void abort() throws UnsupportedOperationException, AssertionError {
+    public void abortTransaction() throws UnsupportedOperationException, AssertionError {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 if (!inTransaction) {
@@ -298,10 +294,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                 }
                 final Transaction.Status status = transaction.checkStatus();
                 if (status == Transaction.Status.OPEN) {
+                    LOG.info("Aborting the transaction: {}", transaction.getTxnId());
                     transaction.abort();
                 } else {
-                    LOG.warn("{} - Transaction {} has unexpected transaction status {} while aborting",
-                            writerId, transaction.getTxnId(), status);
+                    LOG.warn("Transaction {} has unexpected transaction status {} while aborting",
+                            transaction.getTxnId(), status);
                 }
                 transaction = null;
                 break;
@@ -318,6 +315,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transaction != null;
+                LOG.info("Flush txn id:{}", transaction.getTxnId());
                 if (inTransaction) {
                     transaction.flush();
                 }
@@ -348,10 +346,12 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
+        LOG.info("Close the FlinkPravegaInternalWriter");
+
         Exception exception = null;
 
         try {
-            abort();
+            abortTransaction();
         } catch (Exception e) {
             exception = ExceptionUtils.firstOrSuppressed(e, exception);
         }
@@ -400,10 +400,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     boolean shouldEmitWatermark(long watermark, SinkWriter.Context context) {
         return context.currentWatermark() > Long.MIN_VALUE && context.currentWatermark() < Long.MAX_VALUE &&
                 watermark < context.currentWatermark() && context.timestamp() >= context.currentWatermark();
-    }
-
-    public String getWriterId() {
-        return this.writerId;
     }
 
     public long getCurrentWatermark() {
