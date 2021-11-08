@@ -46,7 +46,6 @@ public class PravegaTransactionStateSerializer implements SimpleVersionedSeriali
              final DataInputStream in = new DataInputStream(bais)) {
             final String transactionalId = in.readUTF();
             final long watermark = in.readLong();
-            final String writerId = in.readUTF();
             return new PravegaTransactionState(transactionalId, watermark);
         }
     }
