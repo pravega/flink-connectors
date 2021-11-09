@@ -33,7 +33,6 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
