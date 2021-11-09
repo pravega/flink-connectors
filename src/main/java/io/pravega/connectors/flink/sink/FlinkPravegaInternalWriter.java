@@ -78,16 +78,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
-    // flag to enable/disable watermark
-    private final boolean enableWatermark;
-
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
     private final PravegaEventRouter<T> eventRouter;
-
-    private long currentWatermark = Long.MIN_VALUE;
 
     // Pravega writer instance
     @Nullable
@@ -109,14 +104,12 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                       Stream stream,
                                       long txnLeaseRenewalPeriod,
                                       PravegaWriterMode writerMode,
-                                      boolean enableWatermark,
                                       SerializationSchema<T> serializationSchema,
                                       PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.writerMode = writerMode;
-        this.enableWatermark = enableWatermark;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
 
@@ -184,14 +177,13 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transactionalWriter != null;
 
         transaction = transactionalWriter.getTxn(UUID.fromString(transactionState.getTransactionId()));
-        currentWatermark = transactionState.getWatermark();
 
         assert transaction != null;
         LOG.info("Transaction resumed with id {}.", transaction.getTxnId());
         inTransaction = true;
     }
 
-    public void write(T element, SinkWriter.Context context) throws TxnFailedException, IOException {
+    public void write(T element) throws TxnFailedException, IOException {
         checkWriteError();
 
         switch (writerMode) {
@@ -204,9 +196,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                     transaction.writeEvent(element);
                 }
 
-                if (enableWatermark) {
-                    currentWatermark = context.currentWatermark();
-                }
                 break;
             case ATLEAST_ONCE:
             case BEST_EFFORT:
@@ -217,10 +206,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                     future = writer.writeEvent(eventRouter.getRoutingKey(element), element);
                 } else {
                     future = writer.writeEvent(element);
-                }
-                if (enableWatermark && shouldEmitWatermark(currentWatermark, context)) {
-                    writer.noteTime(context.currentWatermark());
-                    currentWatermark = context.currentWatermark();
                 }
                 future.whenCompleteAsync(
                         (result, e) -> {
@@ -255,12 +240,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         try {
             final Transaction.Status status = transaction.checkStatus();
             if (status == Transaction.Status.OPEN) {
-                LOG.info("Committing the transaction: {}.", transaction.getTxnId());
-                if (enableWatermark) {
-                    transaction.commit(currentWatermark);
-                } else {
                     transaction.commit();
-                }
+                LOG.debug("Committed transaction {}.", transaction.getTxnId());
             } else {
                 LOG.warn("Transaction {} has unexpected transaction status {} while committing.",
                         transaction.getTxnId(), status);
@@ -392,18 +373,9 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         }
     }
 
-    boolean shouldEmitWatermark(long watermark, SinkWriter.Context context) {
-        return context.currentWatermark() > Long.MIN_VALUE && context.currentWatermark() < Long.MAX_VALUE &&
-                watermark < context.currentWatermark() && context.timestamp() >= context.currentWatermark();
-    }
-
-    public long getCurrentWatermark() {
-        return this.currentWatermark;
-    }
-
     public String getTransactionId() {
-        assert this.transaction != null;
-        return this.transaction.getTxnId().toString();
+        assert transaction != null;
+        return transaction.getTxnId().toString();
     }
 
     public boolean isInTransaction() {

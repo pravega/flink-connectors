@@ -63,7 +63,6 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     private final ClientConfig clientConfig;
     private final Stream stream;
     private final long txnLeaseRenewalPeriod;
-    private final boolean enableWatermark;
     private final SerializationSchema<T> serializationSchema;
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
@@ -75,7 +74,6 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                          Stream stream,
                          long txnLeaseRenewalPeriod,
                          final PravegaWriterMode writerMode,
-                         boolean enableWatermark,
                          SerializationSchema<T> serializationSchema,
                          @Nullable PravegaEventRouter<T> eventRouter) {
         this.writerMode = writerMode;
@@ -83,14 +81,13 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
-        this.enableWatermark = enableWatermark;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
 
         // the (transactional) pravega writer is initialized
         // in FlinkPravegaInternalWriter#createInternalWriter
         this.currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                txnLeaseRenewalPeriod, writerMode, enableWatermark, serializationSchema, eventRouter);
+                txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
 
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             this.currentWriter.beginTransaction();
@@ -107,7 +104,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     @Override
     public void write(T element, Context context) throws IOException {
         try {
-            currentWriter.write(element, context);
+            currentWriter.write(element);
         } catch (TxnFailedException e) {
             throw new IOException(e);
         }
@@ -123,13 +120,14 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
             switch (writerMode) {
                 case EXACTLY_ONCE:
-                    currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                            txnLeaseRenewalPeriod, writerMode, enableWatermark,
-                            serializationSchema, eventRouter);
-                    currentWriter.beginTransaction();
-
                     transactionStates = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
                     writers.clear();
+
+                    currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+                            txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+                    currentWriter.beginTransaction();
+                    writers.add(currentWriter);
+
                     break;
                 case ATLEAST_ONCE:
                 case BEST_EFFORT:
@@ -159,7 +157,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                     writers.add(currentWriter);
                 }
                 currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                        txnLeaseRenewalPeriod, writerMode, enableWatermark, serializationSchema, eventRouter);
+                        txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
                 currentWriter.beginTransaction();
                 break;
             case ATLEAST_ONCE:

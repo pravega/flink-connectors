@@ -19,30 +19,24 @@ import java.util.Objects;
 
 public class PravegaTransactionState {
     private final String transactionId;
-    private final long watermark;
 
-    PravegaTransactionState(String transactionId, long watermark) {
+    PravegaTransactionState(String transactionId) {
         this.transactionId = transactionId;
-        this.watermark = watermark;
     }
 
     public static <I> PravegaTransactionState of(FlinkPravegaInternalWriter<I> writer) {
-        return new PravegaTransactionState(writer.getTransactionId(), writer.getCurrentWatermark());
+        return new PravegaTransactionState(writer.getTransactionId());
     }
 
     public String getTransactionId() {
         return transactionId;
     }
 
-    public long getWatermark() {
-        return watermark;
-    }
-
     @Override
     public String toString() {
         return String.format(
-                "%s [transactionId=%s, watermark=%s]",
-                this.getClass().getSimpleName(), transactionId, watermark);
+                "%s [transactionId=%s]",
+                this.getClass().getSimpleName(), transactionId);
     }
 
     @Override
@@ -54,12 +48,11 @@ public class PravegaTransactionState {
             return false;
         }
         PravegaTransactionState that = (PravegaTransactionState) o;
-        return Objects.equals(transactionId, that.transactionId) &&
-                Objects.equals(watermark, that.watermark);
+        return Objects.equals(transactionId, that.transactionId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(transactionId, watermark);
+        return Objects.hash(transactionId);
     }
 }

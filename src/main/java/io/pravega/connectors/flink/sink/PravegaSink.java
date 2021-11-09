@@ -49,9 +49,6 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
-    // flag to enable/disable watermark
-    private final boolean enableWatermark;
-
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
@@ -60,14 +57,12 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
 
     public PravegaSink(boolean enableMetrics, ClientConfig clientConfig,
                        Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
-                       boolean enableWatermark, SerializationSchema<T> serializationSchema,
-                       PravegaEventRouter<T> eventRouter) {
+                       SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.enableMetrics = enableMetrics;
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.writerMode = writerMode;
-        this.enableWatermark = enableWatermark;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
     }
@@ -82,7 +77,6 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
                 stream,
                 txnLeaseRenewalPeriod,
                 writerMode,
-                enableWatermark,
                 serializationSchema,
                 eventRouter);
     }
@@ -90,7 +84,7 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     @Override
     public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
         return Optional.of(new PravegaCommitter<>(clientConfig,
-                txnLeaseRenewalPeriod, stream, writerMode, enableWatermark, serializationSchema, eventRouter));
+                txnLeaseRenewalPeriod, stream, writerMode, serializationSchema, eventRouter));
     }
 
     @Override

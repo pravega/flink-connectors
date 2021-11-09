@@ -34,7 +34,6 @@ public class PravegaTransactionStateSerializer implements SimpleVersionedSeriali
         try (final ByteArrayOutputStream baos = new ByteArrayOutputStream();
              final DataOutputStream out = new DataOutputStream(baos)) {
             out.writeUTF(state.getTransactionId());
-            out.writeLong(state.getWatermark());
             out.flush();
             return baos.toByteArray();
         }
@@ -45,8 +44,7 @@ public class PravegaTransactionStateSerializer implements SimpleVersionedSeriali
         try (final ByteArrayInputStream bais = new ByteArrayInputStream(serialized);
              final DataInputStream in = new DataInputStream(bais)) {
             final String transactionalId = in.readUTF();
-            final long watermark = in.readLong();
-            return new PravegaTransactionState(transactionalId, watermark);
+            return new PravegaTransactionState(transactionalId);
         }
     }
 }

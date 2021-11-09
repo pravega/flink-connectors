@@ -17,13 +17,11 @@ package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
-import io.pravega.client.stream.TimeWindow;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -53,7 +51,10 @@ public class PravegaSinkITCase extends AbstractTestBase {
     private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     // Number of events to generate for each of the tests.
-    private static final int EVENT_COUNT_PER_SOURCE = 2000;
+    private static final int EVENT_COUNT_PER_SOURCE = 10000;
+
+    // The maximum time we wait for the checker.
+    private static final int WAIT_SECONDS = 30;
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
@@ -95,37 +96,33 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     @Test
-    public void testAtLeastOnceWriterWithWatermark() throws Exception {
+    public void testExactlyOnceWriter() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 1);
 
-        StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
+        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
                 .setParallelism(1)
-                .enableCheckpointing(1000, CheckpointingMode.AT_LEAST_ONCE);
-        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
-        env.getConfig().setAutoWatermarkInterval(50);
+                .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
+        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
         PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
-                .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
-                .enableWatermark(true)
+                .withEventRouter(event -> "fixedkey")
+                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
-                .assignTimestampsAndWatermarks(WatermarkStrategy
-                        .<Integer>forMonotonousTimestamps()
-                        .withTimestampAssigner((event, timestamp) -> event))
+                .map(val -> val)
                 .sinkTo(pravegaSink).setParallelism(2);
 
-        writeAndCheckData(streamName, env, true);
-        checkWatermark(streamName);
+        writeAndCheckData(streamName, env, false);
     }
 
     @Test
-    public void testExactlyOnceWriter() throws Exception {
+    public void testExactlyOnceWriterWithFailingMapper() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
 
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
@@ -175,34 +172,6 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .sinkTo(pravegaSink).setParallelism(2);
 
         writeAndCheckData(streamName, env, false);
-    }
-
-    @Test
-    public void testExactlyOnceWriterWithWatermark() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-
-        final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment()
-                .setParallelism(1)
-                .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
-        env.getConfig().setAutoWatermarkInterval(100);
-        env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
-
-        final PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
-                .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
-                .withSerializationSchema(new IntSerializer())
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
-                .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .enableWatermark(true)
-                .build();
-
-        env
-                .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE).withWatermarks(20))
-                .map(new FailingMapper<>(EVENT_COUNT_PER_SOURCE / 2))
-                .sinkTo(pravegaSink).setParallelism(2);
-
-        writeAndCheckData(streamName, env, false);
-        checkWatermark(streamName);
     }
 
     private static class IntSerializer implements SerializationSchema<Integer> {
@@ -273,7 +242,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
         executorService.execute(writeTask);
         executorService.execute(checkTask);
 
-        boolean wait = latch.await(300, TimeUnit.SECONDS);
+        boolean wait = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
         if (!wait) {
             Assert.fail("Read/Write operations taking more time to complete");
         }
@@ -281,24 +250,5 @@ public class PravegaSinkITCase extends AbstractTestBase {
         if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
             executorService.shutdownNow();
         }
-    }
-
-    /**
-     * Check the watermark generated by the Pravega.
-     *
-     * @param streamName         The Pravega stream name.
-     * @throws InterruptedException on interruption.
-     */
-    private void checkWatermark(String streamName) throws InterruptedException {
-        // Wait 11 seconds for the Pravega controller to generate TimeWindow
-        Thread.sleep(11000);
-
-        EventStreamReader<Integer> consumer = SETUP_UTILS.getIntegerReader(streamName);
-        consumer.readNextEvent(1000);
-        TimeWindow timeWindow = consumer.getCurrentTimeWindow(SETUP_UTILS.getStream(streamName));
-
-        // Assert the TimeWindow proceeds
-        Assert.assertNotNull(timeWindow.getUpperTimeBound());
-        Assert.assertTrue(timeWindow.getUpperTimeBound() > 0);
     }
 }

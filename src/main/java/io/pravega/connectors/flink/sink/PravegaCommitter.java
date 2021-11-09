@@ -40,7 +40,6 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     private final Stream stream;  // The destination stream.
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
-    private final boolean enableWatermark;
     private final SerializationSchema<T> serializationSchema;
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
@@ -50,13 +49,11 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
                             long txnLeaseRenewalPeriod,
                             Stream stream,
                             PravegaWriterMode writerMode,
-                            boolean enableWatermark,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.stream = stream;
         this.writerMode = writerMode;
-        this.enableWatermark = enableWatermark;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
     }
@@ -65,7 +62,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
         committables.forEach(transactionState -> {
             FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(
-                    clientConfig, stream, txnLeaseRenewalPeriod, writerMode, enableWatermark,
+                    clientConfig, stream, txnLeaseRenewalPeriod, writerMode,
                     serializationSchema, eventRouter);
             writer.resumeTransaction(transactionState);
             writer.commitTransaction();
