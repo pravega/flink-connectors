@@ -25,14 +25,10 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
 public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
-
-    private final List<FlinkPravegaInternalWriter<T>> recoveryWriters = new ArrayList<>();
-
     // --------- configuration for creating a FlinkPravegaInternalWriter ---------
     private final ClientConfig clientConfig;  // The Pravega client config.
     private final long txnLeaseRenewalPeriod;
@@ -66,22 +62,12 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
                     serializationSchema, eventRouter);
             writer.resumeTransaction(transactionState);
             writer.commitTransaction();
-
-            // temporarily store the writer so that if we need to abort
-            // in case of failure, close it.
-            // recoveryWriters.add(writer);
         });
         return Collections.emptyList();
     }
 
     @Override
     public void close() throws Exception {
-        try {
-            for (FlinkPravegaInternalWriter<T> writer : recoveryWriters) {
-                writer.close();
-            }
-        } finally {
-            recoveryWriters.clear();
-        }
+        // do nothing
     }
 }
