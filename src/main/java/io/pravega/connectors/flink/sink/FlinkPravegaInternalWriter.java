@@ -58,9 +58,9 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     @VisibleForTesting
     AtomicLong pendingWritesCount = new AtomicLong();
 
-    private transient ExecutorService executorService;
+    private final String writerId = UUID.randomUUID() + "";
 
-    private volatile boolean inTransaction = false;
+    private transient ExecutorService executorService;
 
     // ----------- configuration fields -----------
 
@@ -114,8 +114,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
         initializeInternalWriter();
 
-        LOG.info("Initialized Pravega writer for stream: {} with controller URI: {}",
-                stream, clientConfig.getControllerURI());
+        LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
+                writerId, stream, clientConfig.getControllerURI());
     }
 
     public void initializeInternalWriter() {
@@ -168,8 +168,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         assert transactionalWriter != null;
         transaction = transactionalWriter.beginTxn();
 
-        LOG.info("Transaction began with id {}.", transaction.getTxnId());
-        inTransaction = true;
+        LOG.info("{} - Transaction began with id {}.", writerId, transaction.getTxnId());
     }
 
     public void resumeTransaction(PravegaTransactionState transactionState) {
@@ -177,9 +176,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
         transaction = transactionalWriter.getTxn(UUID.fromString(transactionState.getTransactionId()));
 
-        assert transaction != null;
-        LOG.info("Transaction resumed with id {}.", transaction.getTxnId());
-        inTransaction = true;
+        LOG.info("{} - Transaction resumed with id {}.", writerId, transaction.getTxnId());
     }
 
     public void write(T element) throws TxnFailedException, IOException {
@@ -240,40 +237,38 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             final Transaction.Status status = transaction.checkStatus();
             if (status == Transaction.Status.OPEN) {
                     transaction.commit();
-                LOG.debug("Committed transaction {}.", transaction.getTxnId());
+                LOG.debug("{} - Committed transaction {}.", writerId, transaction.getTxnId());
             } else {
-                LOG.warn("Transaction {} has unexpected transaction status {} while committing.",
-                        transaction.getTxnId(), status);
+                LOG.warn("{} - Transaction {} has unexpected transaction status {} while committing.",
+                        writerId, transaction.getTxnId(), status);
             }
         } catch (TxnFailedException e) {
-            LOG.error("Transaction {} commit failed.", transaction.getTxnId());
+            LOG.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
         } catch (StatusRuntimeException e) {
             if (e.getStatus() == Status.NOT_FOUND) {
-                LOG.error("Transaction {} not found.", transaction.getTxnId());
+                LOG.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
             }
         }
-        inTransaction = false;
         transaction = null;
     }
 
     public void abortTransaction() throws UnsupportedOperationException, AssertionError {
         switch (writerMode) {
             case EXACTLY_ONCE:
-                if (!inTransaction) {
+                if (transaction == null) {
                     break;
                 }
-                assert transaction != null;
                 // This may come from a job recovery from a non-transactional writer.
                 if (transaction.getTxnId() == null) {
                     break;
                 }
                 final Transaction.Status status = transaction.checkStatus();
                 if (status == Transaction.Status.OPEN) {
-                    LOG.info("Aborting the transaction: {}", transaction.getTxnId());
                     transaction.abort();
+                    LOG.info("{} - Aborted the transaction: {}", writerId, transaction.getTxnId());
                 } else {
-                    LOG.warn("Transaction {} has unexpected transaction status {} while aborting",
-                            transaction.getTxnId(), status);
+                    LOG.warn("{} - Transaction {} has unexpected transaction status {} while aborting",
+                            writerId, transaction.getTxnId(), status);
                 }
                 transaction = null;
                 break;
@@ -290,10 +285,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         switch (writerMode) {
             case EXACTLY_ONCE:
                 assert transaction != null;
-                LOG.info("Flush txn id:{}", transaction.getTxnId());
-                if (inTransaction) {
+                LOG.info("{} - Flush txn id: {}", writerId, transaction.getTxnId());
                     transaction.flush();
-                }
                 break;
             case BEST_EFFORT:
             case ATLEAST_ONCE:
@@ -321,7 +314,8 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     @Override
     public void close() throws Exception {
-        LOG.info("Close the FlinkPravegaInternalWriter");
+        LOG.info("{} - Close the FlinkPravegaInternalWriter with transaction {}",
+                writerId, transaction == null ? null : transaction.getTxnId());
 
         Exception exception = null;
 
