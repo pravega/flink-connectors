@@ -146,11 +146,12 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         } else {
-            executorService = Executors.newSingleThreadExecutor();
+            executorService = createExecutorService();
             writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
     }
 
+    @VisibleForTesting
     protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
         return EventStreamClientFactory.withScope(scopeName, clientConfig);
     }
@@ -236,7 +237,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         try {
             final Transaction.Status status = transaction.checkStatus();
             if (status == Transaction.Status.OPEN) {
-                    transaction.commit();
+                transaction.commit();
                 LOG.debug("{} - Committed transaction {}.", writerId, transaction.getTxnId());
             } else {
                 LOG.warn("{} - Transaction {} has unexpected transaction status {} while committing.",
@@ -286,7 +287,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             case EXACTLY_ONCE:
                 assert transaction != null;
                 LOG.info("{} - Flush txn id: {}", writerId, transaction.getTxnId());
-                    transaction.flush();
+                transaction.flush();
                 break;
             case BEST_EFFORT:
             case ATLEAST_ONCE:
@@ -371,7 +372,20 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         return transaction.getTxnId().toString();
     }
 
-    public boolean isInTransaction() {
-        return this.inTransaction;
+    public Transaction<T> getTransaction() {
+        return this.transaction;
+    }
+
+    public PravegaEventRouter<T> getEventRouter() {
+        return eventRouter;
+    }
+
+    public PravegaWriterMode getPravegaWriterMode() {
+        return writerMode;
+    }
+
+    @VisibleForTesting
+    protected ExecutorService createExecutorService() {
+        return Executors.newSingleThreadExecutor();
     }
 }

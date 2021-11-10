@@ -153,7 +153,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
         switch (writerMode) {
             case EXACTLY_ONCE:
-                if (currentWriter.isInTransaction()) {
+                if (currentWriter.getTransaction() != null) {
                     writers.add(currentWriter);
                 }
                 currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
