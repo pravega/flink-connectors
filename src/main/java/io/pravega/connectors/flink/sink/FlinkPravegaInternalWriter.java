@@ -112,7 +112,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
 
-        initializeInternalWriter();
+        // initializeInternalWriter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());

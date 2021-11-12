@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.utils;
 import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
 import org.apache.flink.streaming.api.operators.StreamSink;
+import org.apache.flink.streaming.runtime.operators.sink.SinkOperatorFactory;
 import org.apache.flink.streaming.util.OneInputStreamOperatorTestHarness;
 
 /**
@@ -33,5 +34,9 @@ public class StreamSinkOperatorTestHarness<T> extends OneInputStreamOperatorTest
 
     public StreamSinkOperatorTestHarness(StreamSink<T> operator, TypeSerializer<T> typeSerializerIn) throws Exception {
         super(operator, typeSerializerIn);
+    }
+
+    public StreamSinkOperatorTestHarness(SinkOperatorFactory factory, TypeSerializer<T> typeSerializer) throws Exception {
+        super(factory, typeSerializer);
     }
 }

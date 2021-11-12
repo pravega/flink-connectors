@@ -86,8 +86,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
         // the (transactional) pravega writer is initialized
         // in FlinkPravegaInternalWriter#createInternalWriter
-        this.currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+        this.currentWriter = createFlinkPravegaInternalWriter();
 
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             this.currentWriter.beginTransaction();
@@ -123,8 +122,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                     transactionStates = writers.stream().map(PravegaTransactionState::of).collect(Collectors.toList());
                     writers.clear();
 
-                    currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                            txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+                    currentWriter = createFlinkPravegaInternalWriter();
                     currentWriter.beginTransaction();
                     writers.add(currentWriter);
 
@@ -156,8 +154,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
                 if (currentWriter.getTransaction() != null) {
                     writers.add(currentWriter);
                 }
-                currentWriter = new FlinkPravegaInternalWriter<>(clientConfig, stream,
-                        txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+                currentWriter = createFlinkPravegaInternalWriter();
                 currentWriter.beginTransaction();
                 break;
             case ATLEAST_ONCE:
@@ -215,5 +212,14 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         public String getValue() {
             return stream;
         }
+    }
+
+    // Extract this initialization for the testing sake.
+    @VisibleForTesting
+    protected FlinkPravegaInternalWriter<T> createFlinkPravegaInternalWriter() {
+        FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+                txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+        writer.initializeInternalWriter();
+        return writer;
     }
 }
