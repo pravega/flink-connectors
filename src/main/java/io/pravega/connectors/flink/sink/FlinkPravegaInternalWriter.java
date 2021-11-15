@@ -28,7 +28,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -46,7 +45,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaWriter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaInternalWriter.class);
 
     // ----------- Runtime fields ----------------
 
@@ -112,13 +111,13 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
 
-        // initializeInternalWriter();
+        initializeInternalWriter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
     }
 
-    public void initializeInternalWriter() {
+    private void initializeInternalWriter() {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             if (this.transactionalWriter != null) {
                 return;
@@ -138,7 +137,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         createInternalWriter(this.clientFactory);
     }
 
-    protected void createInternalWriter(EventStreamClientFactory clientFactory) {
+    private void createInternalWriter(EventStreamClientFactory clientFactory) {
         Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder()
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)
@@ -146,7 +145,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         } else {
-            executorService = createExecutorService();
+            executorService = Executors.newSingleThreadExecutor();
             writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
     }
@@ -154,6 +153,11 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     @VisibleForTesting
     protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
         return EventStreamClientFactory.withScope(scopeName, clientConfig);
+    }
+
+    @VisibleForTesting
+    protected ExecutorService getExecutorService() {
+        return executorService;
     }
 
     private boolean isCheckpointEnabled() {
@@ -218,7 +222,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                 this.notify();
                             }
                         },
-                        executorService
+                        getExecutorService()
                 );
                 break;
             default:
@@ -340,7 +344,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             }
 
             try {
-                executorService.shutdown();
+                getExecutorService().shutdown();
             } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
             }
@@ -372,20 +376,25 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         return transaction.getTxnId().toString();
     }
 
-    public Transaction<T> getTransaction() {
-        return this.transaction;
-    }
-
-    public PravegaEventRouter<T> getEventRouter() {
+    @VisibleForTesting
+    protected PravegaEventRouter<T> getEventRouter() {
         return eventRouter;
     }
 
-    public PravegaWriterMode getPravegaWriterMode() {
+    @VisibleForTesting
+    protected PravegaWriterMode getPravegaWriterMode() {
         return writerMode;
     }
 
     @VisibleForTesting
-    protected ExecutorService createExecutorService() {
-        return Executors.newSingleThreadExecutor();
+    @Nullable
+    protected EventStreamWriter<T> getWriter() {
+        return writer;
+    }
+
+    @VisibleForTesting
+    @Nullable
+    protected TransactionalEventStreamWriter<T> getTransactionalWriter() {
+        return transactionalWriter;
     }
 }

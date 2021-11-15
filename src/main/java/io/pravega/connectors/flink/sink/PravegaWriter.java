@@ -20,7 +20,6 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
@@ -35,12 +34,11 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
-    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaWriter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaWriter.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -48,25 +46,25 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
+    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
+    protected final ClientConfig clientConfig;
+    protected final Stream stream;
+    protected final long txnLeaseRenewalPeriod;
+    protected final SerializationSchema<T> serializationSchema;
+    // The router used to partition events within a stream, can be null for random routing
+    @Nullable
+    protected final PravegaEventRouter<T> eventRouter;
+    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
+
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    protected final PravegaWriterMode writerMode;
 
     // The writer we use for create and begin a transaction.
     // However, the transaction is committed in PravegaCommitter via a re-created FlinkPravegaInternalWriter.
-    private FlinkPravegaInternalWriter<T> currentWriter;
+    protected FlinkPravegaInternalWriter<T> currentWriter;
 
     // Place where we hold writers for different checkpoints.
     private final List<FlinkPravegaInternalWriter<T>> writers = new ArrayList<>();
-
-    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
-
-    private final ClientConfig clientConfig;
-    private final Stream stream;
-    private final long txnLeaseRenewalPeriod;
-    private final SerializationSchema<T> serializationSchema;
-    // The router used to partition events within a stream, can be null for random routing
-    @Nullable
-    private final PravegaEventRouter<T> eventRouter;
 
     public PravegaWriter(Sink.InitContext context,
                          boolean enableMetrics,
@@ -113,7 +111,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException {
         final List<PravegaTransactionState> transactionStates;
         try {
-            if (flush) {
+            if (writerMode != PravegaWriterMode.BEST_EFFORT || flush) {
                 currentWriter.flushAndVerify();
             }
 
@@ -139,32 +137,6 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         }
         LOG.info("Committing {} committables, final commit={}.", transactionStates, flush);
         return transactionStates;
-    }
-
-    @Override
-    public List<Void> snapshotState(long checkpointId) throws IOException {
-        try {
-            currentWriter.flushAndVerify();
-        } catch (InterruptedException | TxnFailedException e) {
-            throw new IOException(e);
-        }
-
-        switch (writerMode) {
-            case EXACTLY_ONCE:
-                if (currentWriter.getTransaction() != null) {
-                    writers.add(currentWriter);
-                }
-                currentWriter = createFlinkPravegaInternalWriter();
-                currentWriter.beginTransaction();
-                break;
-            case ATLEAST_ONCE:
-            case BEST_EFFORT:
-                break;
-            default:
-                throw new UnsupportedOperationException("Not implemented writer mode");
-        }
-
-        return Collections.emptyList();
     }
 
     @Override
@@ -217,9 +189,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     // Extract this initialization for the testing sake.
     @VisibleForTesting
     protected FlinkPravegaInternalWriter<T> createFlinkPravegaInternalWriter() {
-        FlinkPravegaInternalWriter<T> writer = new FlinkPravegaInternalWriter<>(clientConfig, stream,
+        return new FlinkPravegaInternalWriter<>(clientConfig, stream,
                 txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
-        writer.initializeInternalWriter();
-        return writer;
     }
 }
