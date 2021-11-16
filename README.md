@@ -36,12 +36,12 @@ supported versions of Flink and Pravega.
 
 | Git Branch | Pravega Version | Java Version To Build Connector | Java Version To Run Connector | Flink Version | Status | Artifact Link |
 |-------------------------------------------------------------------------------------|------|---------|--------------|------|-------------------|----------------------------------------------------------------------------------------|
-| [master](https://github.com/pravega/flink-connectors)                               | 0.10 | Java 11 | Java 8 or 11 | 1.13 | Under Development | https://github.com/pravega/flink-connectors/packages/910737 |
-| [r0.10-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.12) | 0.10 | Java 11 | Java 8 or 11 | 1.12 | Under Development | https://github.com/pravega/flink-connectors/packages/887087 |
-| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.11) | 0.10 | Java 11 | Java 8 or 11 | 1.11 | Under Development | https://github.com/pravega/flink-connectors/packages/904171 |
-| [r0.9](https://github.com/pravega/flink-connectors/tree/r0.9)                       | 0.9  | Java 11 | Java 8 or 11 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.9.1/    |
-| [r0.9-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)   | 0.9  | Java 11 | Java 8 or 11 | 1.10 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.10_2.12/0.9.1/    |
-| [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)     | 0.9  | Java 11 | Java 8 or 11 | 1.9  | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.9_2.12/0.9.1/     |
+| [master](https://github.com/pravega/flink-connectors)                               | 0.11 | Java 11 | Java 8 or 11 | 1.14 | Under Development | https://github.com/pravega/flink-connectors/packages/1076644|
+| [r0.11-flink1.13](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.13) | 0.11 | Java 11 | Java 8 or 11 | 1.13 | Under Development | https://github.com/pravega/flink-connectors/packages/910737 |
+| [r0.11-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.12) | 0.11 | Java 11 | Java 8 or 11 | 1.12 | Under Development | https://github.com/pravega/flink-connectors/packages/887087 |
+| [r0.10](https://github.com/pravega/flink-connectors/tree/r0.9)                      | 0.10 | Java 11 | Java 8 or 11 | 1.13 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.13_2.12/0.10.1/    |
+| [r0.10-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)  | 0.10 | Java 11 | Java 8 or 11 | 1.12 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.12_2.12/0.10.1/    |
+| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)   | 0.10 | Java 11 | Java 8 or 11 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.10.1/     |
 
 ## How to build
 
