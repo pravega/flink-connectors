@@ -46,7 +46,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
 
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
-    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
+    // --------- configurations for creating a FlinkPravegaInternalWriter ---------
     protected final ClientConfig clientConfig;
     protected final Stream stream;
     protected final long txnLeaseRenewalPeriod;
@@ -54,7 +54,7 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
     protected final PravegaEventRouter<T> eventRouter;
-    // --------- configuration for creating a FlinkPravegaInternalWriter ---------
+    // --------- configurations for creating a FlinkPravegaInternalWriter ---------
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     protected final PravegaWriterMode writerMode;
