@@ -16,6 +16,8 @@
 package io.pravega.connectors.flink.sink;
 
 import edu.umd.cs.findbugs.annotations.Nullable;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
@@ -55,6 +57,7 @@ import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -320,6 +323,81 @@ public class FlinkPravegaInternalWriterTest {
             } catch (IOException e) {
                 // TxnFailedException wrapped in IOException is caught
             }
+        }
+    }
+
+    /**
+     * Tests the error handling with unknown transaction.
+     */
+    @Test
+    public void testTransactionalWriterCommitWithUnknownId() throws Exception {
+        final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+
+        try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
+                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+            testHarness.open();
+            StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+            testHarness.processElement(e1);
+            testHarness.prepareSnapshotPreBarrier(1L);
+            testHarness.snapshot(1L, 1L);
+
+            Mockito.when(trans.checkStatus()).thenThrow(new StatusRuntimeException(Status.NOT_FOUND));
+            testHarness.notifyOfCompletedCheckpoint(1L);
+            // StatusRuntimeException with Unknown transaction is caught
+        }
+    }
+
+    /**
+     * Tests the error handling.
+     */
+    @Test
+    public void testTransactionalWriterCommitFail() throws Exception {
+        final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+
+        try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
+                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+            testHarness.open();
+            StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+            testHarness.processElement(e1);
+            testHarness.snapshot(1L, 1L);
+
+            Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
+            Mockito.doThrow(new TxnFailedException()).when(trans).commit();
+            testHarness.notifyOfCompletedCheckpoint(1L);
+            // TxnFailedException is caught
+        }
+    }
+
+    /**
+     * Tests the wrong transaction status while committing.
+     */
+    @Test
+    public void testTransactionalWriterCommitWithWrongStatus() throws Exception {
+        final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+
+        try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
+                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+            testHarness.open();
+            StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+            testHarness.processElement(e1);
+
+            testHarness.snapshot(1L, 1L);
+            Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.ABORTED);
+            testHarness.notifyOfCompletedCheckpoint(1L);
+
+            verify(trans, never()).commit();
         }
     }
 
