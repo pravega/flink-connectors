@@ -63,13 +63,21 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class FlinkPravegaInternalWriterTest {
+/**
+ * These tests cover not only the {@code PravegaWriter} but also {@code FlinkPravegaInternalWriter}
+ * and {@code PravegaCommitter} by creating a {@code OneInputStreamOperatorTestHarness} which
+ * mimic the process pipeline of the {@code sinkOperator}.
+ */
+public class PravegaWriterTest {
     private static final ClientConfig MOCK_CLIENT_CONFIG = ClientConfig.builder().build();
     private static final String MOCK_SCOPE_NAME = "scope";
     private static final String MOCK_STREAM_NAME = "stream";
     private static final String ROUTING_KEY = "fixed";
     private static final PravegaEventRouter<Integer> FIXED_EVENT_ROUTER = event -> ROUTING_KEY;
 
+    /**
+     * Tests the constructor.
+     */
     @Test
     public void testConstructor() {
         final PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
@@ -81,6 +89,9 @@ public class FlinkPravegaInternalWriterTest {
         Assert.assertEquals(writerMode, writer.getPravegaWriterMode());
     }
 
+    /**
+     * Tests the internal serializer.
+     */
     @Test
     public void testFlinkSerializer() {
         IntegerSerializationSchema schema = new IntegerSerializationSchema();
@@ -94,6 +105,8 @@ public class FlinkPravegaInternalWriterTest {
             // expected
         }
     }
+
+    // region NonTransactionalWriter
 
     /**
      * Tests the {@code processElement} method.
@@ -224,7 +237,7 @@ public class FlinkPravegaInternalWriterTest {
             Assert.assertFalse(flushFuture.isDone());
 
             // allow the flush to complete
-            synchronized (internalWriter) {
+            synchronized (writer.currentWriter) {
                 internalWriter.pendingWritesCount.decrementAndGet();
                 internalWriter.notify();
             }
@@ -273,6 +286,13 @@ public class FlinkPravegaInternalWriterTest {
         }
     }
 
+    // endregion
+
+    // region TransactionalWriter
+
+    /**
+     * Tests the {@code processElement} method.
+     */
     @Test
     public void testTransactionalWriterWrite() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
@@ -303,22 +323,52 @@ public class FlinkPravegaInternalWriterTest {
         }
     }
 
+    /**
+     * Tests the error handling if it fails at {@code writeEvent}.
+     */
     @Test
     public void testTransactionalWriterWriteFail() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
-        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
-                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+
         Mockito.doThrow(new TxnFailedException()).when(trans).writeEvent(anyObject(), anyObject());
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
 
             try {
                 testHarness.processElement(e1);
+                Assert.fail("Expected a TxnFailedException wrapped in IOException");
+            } catch (IOException e) {
+                // TxnFailedException wrapped in IOException is caught
+            }
+        }
+    }
+
+    /**
+     * Tests the error handling if it fails at {@code flush}.
+     */
+    @Test
+    public void testTransactionalWriterPrepareCommitFail() throws Exception {
+        final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+
+        Mockito.doThrow(new TxnFailedException()).when(trans).flush();
+
+        try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
+                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
+            testHarness.open();
+            StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
+            testHarness.processElement(e1);
+            verify(trans).writeEvent(ROUTING_KEY, e1.getValue());
+
+            try {
+                // call the prepareCommit
+                testHarness.prepareSnapshotPreBarrier(1L);
                 Assert.fail("Expected a TxnFailedException wrapped in IOException");
             } catch (IOException e) {
                 // TxnFailedException wrapped in IOException is caught
@@ -400,6 +450,38 @@ public class FlinkPravegaInternalWriterTest {
             verify(trans, never()).commit();
         }
     }
+
+    /**
+     * Tests the {@code close} method.
+     */
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testTransactionalWriterClose() throws Exception {
+        final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
+        final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
+        final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = internalWriter.getTransactionalWriter();
+
+        Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
+
+        try {
+            try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
+                         createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
+                testHarness.open();
+                assert txnEventStreamWriter != null;
+
+                // prepare a worst-case situation that exercises the exception handling aspect of close
+                Mockito.doThrow(new IntentionalRuntimeException()).when(txnEventStreamWriter).close();
+            }
+        } catch (Exception e) {
+            Assert.assertTrue(e instanceof IntentionalRuntimeException);
+        }
+
+        Mockito.reset(txnEventStreamWriter);
+    }
+
+    // endregion
 
     private static class TestablePravegaWriter<T> extends PravegaWriter<T> {
         public TestablePravegaWriter(Sink.InitContext context,
@@ -501,7 +583,7 @@ public class FlinkPravegaInternalWriterTest {
         }
     }
 
-    // --------- utilities ---------
+    // region utilities
 
     @SuppressWarnings("unchecked")
     private static <T> EventStreamWriter<T> mockEventStreamWriter() {
@@ -567,4 +649,6 @@ public class FlinkPravegaInternalWriterTest {
 
     private static class IntentionalRuntimeException extends RuntimeException {
     }
+
+    // endregion
 }
