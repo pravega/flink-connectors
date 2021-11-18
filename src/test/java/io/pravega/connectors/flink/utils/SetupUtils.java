@@ -30,12 +30,10 @@ import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.shared.security.auth.DefaultCredentials;
-import lombok.Cleanup;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
@@ -47,9 +45,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 /**
  * Utility functions for creating the test setup.
  */
-@Slf4j
 @NotThreadSafe
 public final class SetupUtils {
+    private static final Logger LOG = LoggerFactory.getLogger(SetupUtils.class);
 
     private static final String PRAVEGA_USERNAME = "admin";
     private static final String PRAVEGA_PASSWORD = "1111_aaaa";
@@ -67,15 +65,11 @@ public final class SetupUtils {
     private final AtomicBoolean started = new AtomicBoolean(false);
 
     // auth enabled by default. Set it to false to disable Pravega authentication and authorization.
-    @Setter
     private boolean enableAuth = true;
 
     // Set to true to enable TLS
-    @Setter
     private boolean enableTls = true;
 
-    @Getter
-    @Setter
     private boolean enableHostNameValidation = false;
 
     private boolean enableRestServer = true;
@@ -83,7 +77,6 @@ public final class SetupUtils {
     private EventStreamClientFactory eventStreamClientFactory;
 
     // The test Scope name.
-    @Getter
     private final String scope = RandomStringUtils.randomAlphabetic(20);
 
     public SetupUtils() {
@@ -92,14 +85,33 @@ public final class SetupUtils {
 
     public SetupUtils(String externalUri) {
         if (externalUri != null) {
-            log.info("Using Pravega services at {}.", externalUri);
+            LOG.info("Using Pravega services at {}.", externalUri);
             gateway = new ExternalPravegaGateway(URI.create(externalUri));
         } else {
-            log.info("Starting in-process Pravega services.");
+            LOG.info("Starting in-process Pravega services.");
             gateway = new InProcPravegaGateway();
         }
     }
 
+    public void setEnableAuth(boolean enableAuth) {
+        this.enableAuth = enableAuth;
+    }
+
+    public void setEnableTls(boolean enableTls) {
+        this.enableTls = enableTls;
+    }
+
+    public void setEnableHostNameValidation(boolean enableHostNameValidation) {
+        this.enableHostNameValidation = enableHostNameValidation;
+    }
+
+    public boolean isEnableHostNameValidation() {
+        return enableHostNameValidation;
+    }
+
+    public String getScope() {
+        return scope;
+    }
 
     /**
      * Start all pravega related services required for the test deployment.
@@ -108,7 +120,7 @@ public final class SetupUtils {
      */
     public void startAllServices() throws Exception {
         if (!this.started.compareAndSet(false, true)) {
-            log.warn("Services already started, not attempting to start again");
+            LOG.warn("Services already started, not attempting to start again");
             return;
         }
         gateway.start();
@@ -122,7 +134,7 @@ public final class SetupUtils {
      */
     public void stopAllServices() throws Exception {
         if (!this.started.compareAndSet(true, false)) {
-            log.warn("Services not yet started or already stopped, not attempting to stop");
+            LOG.warn("Services not yet started or already stopped, not attempting to stop");
             return;
         }
 
@@ -133,7 +145,7 @@ public final class SetupUtils {
         try {
             gateway.stop();
         } catch (Exception e) {
-            log.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
+            LOG.warn("Services did not stop cleanly (" + e.getMessage() + ")", e);
         }
     }
 
@@ -213,14 +225,14 @@ public final class SetupUtils {
         Preconditions.checkNotNull(streamName);
         Preconditions.checkArgument(numSegments > 0);
 
-        @Cleanup
-        StreamManager streamManager = StreamManager.create(getClientConfig());
-        streamManager.createScope(this.scope);
-        streamManager.createStream(this.scope, streamName,
-                StreamConfiguration.builder()
-                        .scalingPolicy(ScalingPolicy.fixed(numSegments))
-                        .build());
-        log.info("Created stream: " + streamName);
+        try (StreamManager streamManager = StreamManager.create(getClientConfig())) {
+            streamManager.createScope(this.scope);
+            streamManager.createStream(this.scope, streamName,
+                    StreamConfiguration.builder()
+                            .scalingPolicy(ScalingPolicy.fixed(numSegments))
+                            .build());
+            LOG.info("Created stream: " + streamName);
+        }
     }
 
     /**
@@ -338,10 +350,10 @@ public final class SetupUtils {
             this.inProcPravegaCluster.setControllerPorts(new int[]{controllerPort});
             this.inProcPravegaCluster.setSegmentStorePorts(new int[]{hostPort});
             this.inProcPravegaCluster.start();
-            log.info("Initialized Pravega Cluster");
-            log.info("Controller port is {}", controllerPort);
-            log.info("Host port is {}", hostPort);
-            log.info("REST server port is {}", restPort);
+            LOG.info("Initialized Pravega Cluster");
+            LOG.info("Controller port is {}", controllerPort);
+            LOG.info("Host port is {}", hostPort);
+            LOG.info("REST server port is {}", restPort);
         }
 
         @Override

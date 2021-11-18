@@ -23,7 +23,6 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -52,7 +51,6 @@ import static org.junit.Assert.assertNull;
 /**
  * Integration tests for {@link FlinkPravegaWriter}.
  */
-@Slf4j
 public class FlinkPravegaWriterITCase {
 
     // Setup utility.
@@ -66,7 +64,7 @@ public class FlinkPravegaWriterITCase {
 
     // Ensure each test completes within 120 seconds.
     @Rule
-    public Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setup() throws Exception {

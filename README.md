@@ -34,24 +34,22 @@ The connectors can be used to build end-to-end stream processing pipelines (see 
 The [master](https://github.com/pravega/flink-connectors) branch will always have the most recent
 supported versions of Flink and Pravega.
 
-| Git Branch | Pravega Version | Java Version To Build Connector | Java Version To Run Connector | Flink Version | Status | Artifact Link |
-|-------------------------------------------------------------------------------------|------|---------|--------------|------|-------------------|----------------------------------------------------------------------------------------|
-| [master](https://github.com/pravega/flink-connectors)                               | 0.10 | Java 11 | Java 8 or 11 | 1.13 | Under Development | https://github.com/pravega/flink-connectors/packages/910737 |
-| [r0.10-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.12) | 0.10 | Java 11 | Java 8 or 11 | 1.12 | Under Development | https://github.com/pravega/flink-connectors/packages/887087 |
-| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.11) | 0.10 | Java 11 | Java 8 or 11 | 1.11 | Under Development | https://github.com/pravega/flink-connectors/packages/904171 |
-| [r0.9](https://github.com/pravega/flink-connectors/tree/r0.9)                       | 0.9  | Java 11 | Java 8 or 11 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.9.1/    |
-| [r0.9-flink1.10](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)   | 0.9  | Java 11 | Java 8 or 11 | 1.10 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.10_2.12/0.9.1/    |
-| [r0.9-flink1.9](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)     | 0.9  | Java 11 | Java 8 or 11 | 1.9  | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.9_2.12/0.9.1/     |
+| Git Branch | Pravega Version | Flink Version | Status | Artifact Link |
+|-------------------------------------------------------------------------------------|------|------|-------------------|----------------------------------------------------------------------------------------|
+| [master](https://github.com/pravega/flink-connectors)                               | 0.11 | 1.14 | Under Development | https://github.com/pravega/flink-connectors/packages/1076644|
+| [r0.11-flink1.13](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.13) | 0.11 | 1.13 | Under Development | https://github.com/pravega/flink-connectors/packages/910737 |
+| [r0.11-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.12) | 0.11 | 1.12 | Under Development | https://github.com/pravega/flink-connectors/packages/887087 |
+| [r0.10](https://github.com/pravega/flink-connectors/tree/r0.9)                      | 0.10 | 1.13 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.13_2.12/0.10.1/    |
+| [r0.10-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.10)  | 0.10 | 1.12 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.12_2.12/0.10.1/    |
+| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.9-flink1.9)   | 0.10 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.10.1/    |
 
 ## How to build
 
 Building the connectors from the source is only necessary when we want to use or contribute to the latest (unreleased) version of the Pravega Flink connectors.
 
-The connector project is linked to a specific version of Pravega, based on the `pravegaVersion` field in `gradle.properties`. 
+To build the project, Java version 11 is required and the repository needs to be checkout via `git clone https://github.com/pravega/flink-connectors.git`.
 
-Checkout the source code repository by following below steps:
-
-```git clone https://github.com/pravega/flink-connectors.git```
+> The connector project is linked to a specific version of Pravega, based on the `pravegaVersion` field in the `gradle.properties`.
 
 After cloning the repository, the project can be built (excluding tests) by running the below command in the project root directory flink-connectors.
 
@@ -59,7 +57,7 @@ After cloning the repository, the project can be built (excluding tests) by runn
 
 ## How to use
 
-Check out documents [here](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/dev-guide.md) to learn how to build your own applications using Flink connector for Pravega.
+Check out documents [here](https://github.com/pravega/flink-connectors/blob/master/documentation/src/docs/dev-guide.md) to learn how to build your own applications using Flink connector for Pravega. Also watch out that the Java version required to run the connector is either 8 or 11.
 
 More examples on how to use the connectors with Flink application can be found in [Pravega Samples](https://github.com/pravega/pravega-samples/tree/master/flink-connector-examples) repository.
 
