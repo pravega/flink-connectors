@@ -28,12 +28,20 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * This committer handles the final commit stage for EXACTLY_ONCE writer mode.
+ * Internal writers are reconstructed and new transactions are resumed with
+ * the Flink preserved committables that contains previous opened transactions.
+ *
+ * @param <T> The type of the event to be written.
+ */
 public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     // --------- configurations for creating a FlinkPravegaInternalWriter ---------
     protected final ClientConfig clientConfig;  // The Pravega client config.
     protected final long txnLeaseRenewalPeriod;
+    // The destination stream.
     @SuppressFBWarnings("SE_BAD_FIELD")
-    protected final Stream stream;  // The destination stream.
+    protected final Stream stream;
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     protected final PravegaWriterMode writerMode;
     protected final SerializationSchema<T> serializationSchema;
@@ -42,9 +50,19 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     protected final PravegaEventRouter<T> eventRouter;
     // --------- configurations for creating a FlinkPravegaInternalWriter ---------
 
+    /**
+     * A Pravega Committer that implements {@link Committer}.
+     *
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param writerMode            The Pravega writer mode.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public PravegaCommitter(ClientConfig clientConfig,
-                            long txnLeaseRenewalPeriod,
                             Stream stream,
+                            long txnLeaseRenewalPeriod,
                             PravegaWriterMode writerMode,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;

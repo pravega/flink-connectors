@@ -33,6 +33,12 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
+/**
+ * Flink sink implementation for writing into pravega storage.
+ * The flink pravega writer instance which can be added as a sink to a Flink job.
+ *
+ * @param <T>
+ */
 public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
 
     // flag to enable/disable metrics
@@ -83,8 +89,8 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
 
     @Override
     public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
-        return Optional.of(new PravegaCommitter<>(clientConfig,
-                txnLeaseRenewalPeriod, stream, writerMode, serializationSchema, eventRouter));
+        return Optional.of(new PravegaCommitter<>(clientConfig, stream,
+                txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter));
     }
 
     @Override

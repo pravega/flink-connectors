@@ -119,7 +119,7 @@ public class PravegaWriterTest {
         final EventStreamWriter<Integer> eventStreamWriter = writer.currentWriter.getWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.ATLEAST_ONCE, writer)) {
+                     createTestHarness(writer)) {
             testHarness.open();
             assert eventStreamWriter != null;
 
@@ -143,7 +143,7 @@ public class PravegaWriterTest {
         final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.ATLEAST_ONCE, writer)) {
+                     createTestHarness(writer)) {
             testHarness.open();
             assert eventStreamWriter != null;
 
@@ -186,7 +186,7 @@ public class PravegaWriterTest {
         final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.ATLEAST_ONCE, writer)) {
+                     createTestHarness(writer)) {
             testHarness.open();
             assert eventStreamWriter != null;
 
@@ -226,7 +226,7 @@ public class PravegaWriterTest {
         Mockito.reset(eventStreamWriter);
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.ATLEAST_ONCE, writer)) {
+                     createTestHarness(writer)) {
             testHarness.open();
             assert eventStreamWriter != null;
 
@@ -268,7 +268,7 @@ public class PravegaWriterTest {
 
         try {
             try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                         createTestHarness(PravegaWriterMode.ATLEAST_ONCE, writer)) {
+                         createTestHarness(writer)) {
                 testHarness.open();
                 assert eventStreamWriter != null;
 
@@ -302,7 +302,7 @@ public class PravegaWriterTest {
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
@@ -330,12 +330,14 @@ public class PravegaWriterTest {
     public void testTransactionalWriterWriteFail() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         Mockito.doThrow(new TxnFailedException()).when(trans).writeEvent(anyObject(), anyObject());
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
 
@@ -355,12 +357,14 @@ public class PravegaWriterTest {
     public void testTransactionalWriterPrepareCommitFail() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         Mockito.doThrow(new TxnFailedException()).when(trans).flush();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
@@ -388,7 +392,7 @@ public class PravegaWriterTest {
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
@@ -413,7 +417,7 @@ public class PravegaWriterTest {
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
@@ -438,7 +442,7 @@ public class PravegaWriterTest {
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                     createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer, committer)) {
+                     createTestHarness(writer, committer)) {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
@@ -459,6 +463,8 @@ public class PravegaWriterTest {
     public void testTransactionalWriterClose() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
+        final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
+                PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
         final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = internalWriter.getTransactionalWriter();
@@ -467,7 +473,7 @@ public class PravegaWriterTest {
 
         try {
             try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
-                         createTestHarness(PravegaWriterMode.EXACTLY_ONCE, writer)) {
+                         createTestHarness(writer, committer)) {
                 testHarness.open();
                 assert txnEventStreamWriter != null;
 
@@ -562,8 +568,8 @@ public class PravegaWriterTest {
 
         public TestablePravegaCommitter(PravegaWriterMode writerMode,
                                         SerializationSchema<T> serializationSchema) {
-            super(MOCK_CLIENT_CONFIG, DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS,
-                    Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME), writerMode,
+            super(MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
+                    DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, writerMode,
                     serializationSchema, event -> ROUTING_KEY);
         }
 
@@ -583,7 +589,7 @@ public class PravegaWriterTest {
         }
     }
 
-    // region utilities
+    // region mock items
 
     @SuppressWarnings("unchecked")
     private static <T> EventStreamWriter<T> mockEventStreamWriter() {
@@ -624,18 +630,33 @@ public class PravegaWriterTest {
         return sink;
     }
 
-    private OneInputStreamOperatorTestHarness<Integer, byte[]> createTestHarness(PravegaWriterMode writerMode,
-                                                                                 PravegaWriter<Integer> writer,
-                                                                                 PravegaCommitter<Integer> committer) throws Exception {
+    // endregion
+
+    // region utilities
+
+    /**
+     * A test harness suitable for ATLEAST_ONCE tests.
+     *
+     * @param writer An internal writer that contains {@link EventStreamWriter}.
+     * @return A test harness.
+     */
+    private OneInputStreamOperatorTestHarness<Integer, byte[]> createTestHarness(PravegaWriter<Integer> writer) throws Exception {
         return new OneInputStreamOperatorTestHarness<>(
-                new SinkOperatorFactory<>(mockSink(writerMode, writer, committer), false, true),
+                new SinkOperatorFactory<>(mockSink(PravegaWriterMode.ATLEAST_ONCE, writer, null), false, true),
                 IntSerializer.INSTANCE);
     }
 
-    private OneInputStreamOperatorTestHarness<Integer, byte[]> createTestHarness(PravegaWriterMode writerMode,
-                                                                                 PravegaWriter<Integer> writer) throws Exception {
+    /**
+     * A test harness suitable for EXACTLY_ONCE tests.
+     *
+     * @param writer An internal writer that contains {@link EventStreamWriter}.
+     * @param committer A committer that commit the reconstructed transaction.
+     * @return A test harness.
+     */
+    private OneInputStreamOperatorTestHarness<Integer, byte[]> createTestHarness(PravegaWriter<Integer> writer,
+                                                                                 PravegaCommitter<Integer> committer) throws Exception {
         return new OneInputStreamOperatorTestHarness<>(
-                new SinkOperatorFactory<>(mockSink(writerMode, writer, null), false, true),
+                new SinkOperatorFactory<>(mockSink(PravegaWriterMode.EXACTLY_ONCE, writer, committer), false, true),
                 IntSerializer.INSTANCE);
     }
 

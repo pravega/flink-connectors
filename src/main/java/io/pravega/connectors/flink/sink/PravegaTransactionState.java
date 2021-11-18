@@ -17,6 +17,10 @@ package io.pravega.connectors.flink.sink;
 
 import java.util.Objects;
 
+/**
+ * This class holds the necessary information to construct a new {@link FlinkPravegaInternalWriter}
+ * to commit transactions in {@link PravegaCommitter}.
+ */
 public class PravegaTransactionState {
     private final String transactionId;
 

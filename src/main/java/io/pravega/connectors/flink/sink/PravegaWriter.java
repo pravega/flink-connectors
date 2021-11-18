@@ -37,13 +37,17 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+/**
+ * This is a adapter for initialize, write, and prepareCommit stages
+ * of the underlying {@link FlinkPravegaInternalWriter}.<p>
+ * See also {@link PravegaCommitter} for the commit stage.
+ *
+ * @param <T> The type of the event to be written.
+ */
 public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaWriter.class);
-
     private static final long serialVersionUID = 1L;
-
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
-
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
     // --------- configurations for creating a FlinkPravegaInternalWriter ---------
@@ -66,6 +70,18 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
     // Place where we hold writers for different checkpoints.
     private final List<FlinkPravegaInternalWriter<T>> writers = new ArrayList<>();
 
+    /**
+     * A Pravega Writer that implements {@link SinkWriter}.
+     *
+     * @param context               The sink initContext which we used only for metrics.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param writerMode            The Pravega writer mode.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public PravegaWriter(Sink.InitContext context,
                          boolean enableMetrics,
                          ClientConfig clientConfig,
@@ -186,7 +202,10 @@ public class PravegaWriter<T> implements SinkWriter<T, PravegaTransactionState, 
         }
     }
 
-    // Extract this initialization for the testing sake.
+    /**
+     * This initialization method is extracted only fot the testing sake.
+     * @return The internal writer
+     */
     @VisibleForTesting
     protected FlinkPravegaInternalWriter<T> createFlinkPravegaInternalWriter() {
         return new FlinkPravegaInternalWriter<>(clientConfig, stream,

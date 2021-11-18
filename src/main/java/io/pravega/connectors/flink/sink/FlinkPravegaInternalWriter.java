@@ -44,6 +44,12 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * A customized Pravega writer that handles the actual writer call and
+ * the different {@link PravegaWriterMode}.
+ *
+ * @param <T> The type of the event to be written.
+ */
 public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaInternalWriter.class);
 
@@ -98,6 +104,16 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     @Nullable
     private transient EventStreamClientFactory clientFactory = null;
 
+    /**
+     * An internal writer that handles the actual writing process.
+     *
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param writerMode            The Pravega writer mode.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public FlinkPravegaInternalWriter(ClientConfig clientConfig,
                                       Stream stream,
                                       long txnLeaseRenewalPeriod,
@@ -150,16 +166,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         }
     }
 
-    @VisibleForTesting
-    protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-        return EventStreamClientFactory.withScope(scopeName, clientConfig);
-    }
-
-    @VisibleForTesting
-    protected ExecutorService getExecutorService() {
-        return executorService;
-    }
-
     private boolean isCheckpointEnabled() {
         return true;
         // return ((StreamingRuntimeContext) getRuntimeContext()).isCheckpointingEnabled();
@@ -167,8 +173,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     public void beginTransaction() {
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE;
-
-        // initializeInternalWriter();
 
         assert transactionalWriter != null;
         transaction = transactionalWriter.beginTxn();
@@ -372,7 +376,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     public String getTransactionId() {
-        assert transaction != null;
+        assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transaction != null;
         return transaction.getTxnId().toString();
     }
 
@@ -396,5 +400,15 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     @Nullable
     protected TransactionalEventStreamWriter<T> getTransactionalWriter() {
         return transactionalWriter;
+    }
+
+    @VisibleForTesting
+    protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
+        return EventStreamClientFactory.withScope(scopeName, clientConfig);
+    }
+
+    @VisibleForTesting
+    protected ExecutorService getExecutorService() {
+        return executorService;
     }
 }

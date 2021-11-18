@@ -69,6 +69,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
         SETUP_UTILS.stopAllServices();
     }
 
+    /**
+     * Tests the {@link PravegaSink} in {@code AT_LEAST_ONCE} mode.
+     */
     @Test
     public void testAtLeastOnceWriter() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -95,6 +98,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
         writeAndCheckData(streamName, env, true);
     }
 
+    /**
+     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode.
+     */
     @Test
     public void testExactlyOnceWriter() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -121,6 +127,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
         writeAndCheckData(streamName, env, false);
     }
 
+    /**
+     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode without event router.
+     */
     @Test
     public void testExactlyOnceWriterWithoutEventrouter() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -146,6 +155,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
         writeAndCheckData(streamName, env, false);
     }
 
+    /**
+     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with a failing mapper.
+     */
     @Test
     public void testExactlyOnceWriterWithFailingMapper() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -172,6 +184,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
         writeAndCheckData(streamName, env, false);
     }
 
+    /**
+     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with unaligned checkpoint.
+     */
     @Test
     public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
@@ -214,9 +229,9 @@ public class PravegaSinkITCase extends AbstractTestBase {
      * @param allowDuplicate     Check data in AT_LEAST_ONCE or EXACTLY_ONCE mode.
      * @throws Exception on any errors.
      */
-    private void writeAndCheckData(String streamName,
-                                   StreamExecutionEnvironment env,
-                                   boolean allowDuplicate) throws Exception {
+    private static void writeAndCheckData(String streamName,
+                                          StreamExecutionEnvironment env,
+                                          boolean allowDuplicate) throws Exception {
         SETUP_UTILS.createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
