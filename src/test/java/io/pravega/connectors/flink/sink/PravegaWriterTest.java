@@ -213,17 +213,12 @@ public class PravegaWriterTest {
     /**
      * Tests the handling of flushes, which occur upon snapshot and close.
      */
-    @SuppressWarnings("unchecked")
     @Test
     public void testNonTransactionalWriterFlush() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
         final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
-
-        // reset it so previous calls won't take into effect
-        // final static means we can not mock a new eventStreamWriter
-        Mockito.reset(eventStreamWriter);
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -483,8 +478,6 @@ public class PravegaWriterTest {
         } catch (Exception e) {
             Assert.assertTrue(e instanceof IntentionalRuntimeException);
         }
-
-        Mockito.reset(txnEventStreamWriter);
     }
 
     // endregion
@@ -517,13 +510,11 @@ public class PravegaWriterTest {
     }
 
     private static class TestableFlinkPravegaInternalWriter<T> extends FlinkPravegaInternalWriter<T> {
-        // final static these variables to make sure they exist before initialization
-        final static EventStreamWriter<Integer> PRAVEGA_WRITER = mockEventStreamWriter();
-        final static TransactionalEventStreamWriter<Integer> PRAVEGA_TXN_WRITER = mockTxnEventStreamWriter();
-        final static EventStreamClientFactory CLIENT_FACTORY = mockClientFactory(PRAVEGA_WRITER, PRAVEGA_TXN_WRITER);
-
-        // use this mocked executor instead of the original SingleThreadExecutor
-        final ExecutorService executorService = spy(new DirectExecutorService());
+        // use these mocks instead of the original ones
+        EventStreamWriter<Integer> pravegaWriter;
+        TransactionalEventStreamWriter<Integer> pravegaTxnWriter;
+        EventStreamClientFactory clientFactory;
+        ExecutorService executorService;
 
         Transaction<T> trans = mockTransaction();
         UUID txnId = UUID.randomUUID();
@@ -538,7 +529,7 @@ public class PravegaWriterTest {
 
             // they are for the trans inside the PravegaWriter
             Mockito.doReturn(txnId).when(trans).getTxnId();
-            Mockito.doReturn(trans).when(PRAVEGA_TXN_WRITER).beginTxn();
+            Mockito.doReturn(trans).when(pravegaTxnWriter).beginTxn();
             Mockito.doReturn(Transaction.Status.OPEN).when(trans).checkStatus();
 
             // this is for the trans inside PravegaCommitter
@@ -546,19 +537,23 @@ public class PravegaWriterTest {
                 // update the exposed trans with the latest resumed txnId
                 UUID txnId = ans.getArgumentAt(0, UUID.class);
                 Mockito.doReturn(txnId).when(trans).getTxnId();
-                // mock it ready for commit
+                // mock it ready for the commit
                 Mockito.doReturn(Transaction.Status.OPEN).when(trans).checkStatus();
                 return trans;
-            }).when(PRAVEGA_TXN_WRITER).getTxn(any(UUID.class));
+            }).when(pravegaTxnWriter).getTxn(any(UUID.class));
         }
 
         @Override
         protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-            return CLIENT_FACTORY;
+            pravegaWriter = mockEventStreamWriter();
+            pravegaTxnWriter = mockTxnEventStreamWriter();
+            clientFactory = mockClientFactory(pravegaWriter, pravegaTxnWriter);
+            return clientFactory;
         }
 
         @Override
-        protected ExecutorService getExecutorService() {
+        protected ExecutorService createExecutorService() {
+            executorService = spy(new DirectExecutorService());
             return executorService;
         }
     }

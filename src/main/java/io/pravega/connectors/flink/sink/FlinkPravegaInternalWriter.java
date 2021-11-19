@@ -161,7 +161,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         } else {
-            executorService = Executors.newSingleThreadExecutor();
+            executorService = createExecutorService();
             writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
     }
@@ -226,7 +226,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                                 this.notify();
                             }
                         },
-                        getExecutorService()
+                        executorService
                 );
                 break;
             default:
@@ -348,7 +348,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             }
 
             try {
-                getExecutorService().shutdown();
+                executorService.shutdown();
             } catch (Exception e) {
                 exception = ExceptionUtils.firstOrSuppressed(e, exception);
             }
@@ -408,7 +408,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     @VisibleForTesting
-    protected ExecutorService getExecutorService() {
-        return executorService;
+    protected ExecutorService createExecutorService() {
+        return Executors.newSingleThreadExecutor();
     }
 }
