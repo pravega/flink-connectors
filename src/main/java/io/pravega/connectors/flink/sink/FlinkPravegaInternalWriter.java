@@ -160,11 +160,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             }
         }
 
-        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE && !isCheckpointEnabled()) {
-            // Pravega transaction writer (exactly-once) implementation can be used only when checkpoint is enabled
-            throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
-        }
-
         clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
         createInternalWriter(clientFactory);
     }
@@ -181,11 +176,6 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             executorService = Executors.newSingleThreadExecutor();
             writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
-    }
-
-    private boolean isCheckpointEnabled() {
-        return true;
-        // return ((StreamingRuntimeContext) getRuntimeContext()).isCheckpointingEnabled();
     }
 
     public void beginTransaction() {
