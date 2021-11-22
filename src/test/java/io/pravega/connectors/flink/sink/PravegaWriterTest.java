@@ -21,6 +21,8 @@ import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.client.stream.EventWriterConfig;
+import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
@@ -48,7 +50,6 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
@@ -271,7 +272,7 @@ public class PravegaWriterTest {
                 internalWriter.writeError.set(new IntentionalRuntimeException());
                 Mockito.doThrow(new IntentionalRuntimeException()).when(eventStreamWriter).close();
                 Mockito.doThrow(new IntentionalRuntimeException())
-                        .when(((TestableFlinkPravegaInternalWriter<Integer>) internalWriter).executorService)
+                        .when(internalWriter.getExecutorService())
                         .shutdown();
             }
         } catch (IOException e) {
@@ -513,8 +514,6 @@ public class PravegaWriterTest {
         // use these mocks instead of the original ones
         EventStreamWriter<Integer> pravegaWriter;
         TransactionalEventStreamWriter<Integer> pravegaTxnWriter;
-        EventStreamClientFactory clientFactory;
-        ExecutorService executorService;
 
         Transaction<T> trans = mockTransaction();
         UUID txnId = UUID.randomUUID();
@@ -525,7 +524,15 @@ public class PravegaWriterTest {
                                                   PravegaWriterMode writerMode,
                                                   SerializationSchema<T> serializationSchema,
                                                   PravegaEventRouter<T> eventRouter) {
-            super(clientConfig, stream, txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter);
+            super();
+            this.clientConfig = clientConfig;
+            this.stream = stream;
+            this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
+            this.writerMode = writerMode;
+            this.serializationSchema = serializationSchema;
+            this.eventRouter = eventRouter;
+
+            initializeInternalWriter();
 
             // they are for the trans inside the PravegaWriter
             Mockito.doReturn(txnId).when(trans).getTxnId();
@@ -544,17 +551,30 @@ public class PravegaWriterTest {
         }
 
         @Override
-        protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-            pravegaWriter = mockEventStreamWriter();
-            pravegaTxnWriter = mockTxnEventStreamWriter();
-            clientFactory = mockClientFactory(pravegaWriter, pravegaTxnWriter);
-            return clientFactory;
+        protected void initializeInternalWriter() {
+            // use our custom mocked client factory
+            clientFactory = createMockedClientFactory();
+            createInternalWriter(clientFactory);
         }
 
         @Override
-        protected ExecutorService createExecutorService() {
-            executorService = spy(new DirectExecutorService());
-            return executorService;
+        protected void createInternalWriter(EventStreamClientFactory clientFactory) {
+            Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
+            EventWriterConfig writerConfig = EventWriterConfig.builder()
+                    .transactionTimeoutTime(txnLeaseRenewalPeriod)
+                    .build();
+            if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+                transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+            } else {
+                executorService = spy(new DirectExecutorService());
+                writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
+            }
+        }
+
+        private EventStreamClientFactory createMockedClientFactory() {
+            pravegaWriter = mockEventStreamWriter();
+            pravegaTxnWriter = mockTxnEventStreamWriter();
+            return mockClientFactory(pravegaWriter, pravegaTxnWriter);
         }
     }
 

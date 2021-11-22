@@ -57,52 +57,62 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
 
     // Error which will be detected asynchronously and reported to Flink
     @VisibleForTesting
-    volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
+    protected volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
 
     // Used to track confirmation from all writes to ensure guaranteed writes.
     @VisibleForTesting
-    AtomicLong pendingWritesCount = new AtomicLong();
+    protected AtomicLong pendingWritesCount = new AtomicLong();
 
-    private final String writerId = UUID.randomUUID() + "";
+    protected final String writerId = UUID.randomUUID() + "";
 
-    private transient ExecutorService executorService;
+    @VisibleForTesting
+    protected transient ExecutorService executorService;
 
     // ----------- configuration fields -----------
 
     // The Pravega client config.
-    private final ClientConfig clientConfig;
+    @VisibleForTesting
+    protected ClientConfig clientConfig;
 
     // Various timeouts
-    private final long txnLeaseRenewalPeriod;
+    @VisibleForTesting
+    protected long txnLeaseRenewalPeriod;
 
     // The destination stream.
+    @VisibleForTesting
     @SuppressFBWarnings("SE_BAD_FIELD")
-    private final Stream stream;
+    protected Stream stream;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    @VisibleForTesting
+    protected PravegaWriterMode writerMode;
 
-    private final SerializationSchema<T> serializationSchema;
+    @VisibleForTesting
+    protected SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
-    private final PravegaEventRouter<T> eventRouter;
+    @VisibleForTesting
+    protected PravegaEventRouter<T> eventRouter;
 
     // Pravega writer instance
     @Nullable
-    private transient EventStreamWriter<T> writer = null;
+    @VisibleForTesting
+    protected transient EventStreamWriter<T> writer = null;
 
     // Transactional Pravega writer instance
     @Nullable
-    private transient TransactionalEventStreamWriter<T> transactionalWriter = null;
+    @VisibleForTesting
+    protected transient TransactionalEventStreamWriter<T> transactionalWriter = null;
+
+    // Client factory for PravegaWriter instances
+    @Nullable
+    @VisibleForTesting
+    protected transient EventStreamClientFactory clientFactory = null;
 
     // Transaction
     @Nullable
     private transient Transaction<T> transaction = null;
-
-    // Client factory for PravegaWriter instances
-    @Nullable
-    private transient EventStreamClientFactory clientFactory = null;
 
     /**
      * An internal writer that handles the actual writing process.
@@ -133,7 +143,13 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
                 writerId, stream, clientConfig.getControllerURI());
     }
 
-    private void initializeInternalWriter() {
+    @VisibleForTesting
+    public FlinkPravegaInternalWriter() {
+        // This function exists only for testing purpose. DO NOT CALL IT ELSEWHERE!
+    }
+
+    @VisibleForTesting
+    protected void initializeInternalWriter() {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             if (this.transactionalWriter != null) {
                 return;
@@ -149,19 +165,20 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
             throw new UnsupportedOperationException("Enable checkpointing to use the exactly-once writer mode.");
         }
 
-        this.clientFactory = createClientFactory(stream.getScope(), clientConfig);
-        createInternalWriter(this.clientFactory);
+        clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
+        createInternalWriter(clientFactory);
     }
 
-    private void createInternalWriter(EventStreamClientFactory clientFactory) {
+    @VisibleForTesting
+    protected void createInternalWriter(EventStreamClientFactory clientFactory) {
         Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder()
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)
                 .build();
-        if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             transactionalWriter = clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         } else {
-            executorService = createExecutorService();
+            executorService = Executors.newSingleThreadExecutor();
             writer = clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
         }
     }
@@ -403,12 +420,7 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
     }
 
     @VisibleForTesting
-    protected EventStreamClientFactory createClientFactory(String scopeName, ClientConfig clientConfig) {
-        return EventStreamClientFactory.withScope(scopeName, clientConfig);
-    }
-
-    @VisibleForTesting
-    protected ExecutorService createExecutorService() {
-        return Executors.newSingleThreadExecutor();
+    protected ExecutorService getExecutorService() {
+        return executorService;
     }
 }
