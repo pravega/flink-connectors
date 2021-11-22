@@ -86,8 +86,8 @@ public class PravegaWriterTest {
                 MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
                 DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, writerMode,
                 new IntegerSerializationSchema(), FIXED_EVENT_ROUTER);
-        Assert.assertSame(FIXED_EVENT_ROUTER, writer.getEventRouter());
-        Assert.assertEquals(writerMode, writer.getPravegaWriterMode());
+        Assert.assertSame(FIXED_EVENT_ROUTER, writer.eventRouter);
+        Assert.assertEquals(writerMode, writer.writerMode);
     }
 
     /**
@@ -117,7 +117,7 @@ public class PravegaWriterTest {
     public void testNonTransactionalWriterWriting() throws Exception {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.currentWriter.getWriter();
+        final EventStreamWriter<Integer> eventStreamWriter = writer.currentWriter.writer;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -141,7 +141,7 @@ public class PravegaWriterTest {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
-        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
+        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.writer;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -184,7 +184,7 @@ public class PravegaWriterTest {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
-        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
+        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.writer;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -219,7 +219,7 @@ public class PravegaWriterTest {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
-        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
+        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.writer;
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -260,7 +260,7 @@ public class PravegaWriterTest {
         final TestablePravegaWriter<Integer> writer = new TestablePravegaWriter<>(
                 PravegaWriterMode.ATLEAST_ONCE, new IntegerSerializationSchema());
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
-        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.getWriter();
+        final EventStreamWriter<Integer> eventStreamWriter = internalWriter.writer;
 
         try {
             try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
@@ -272,7 +272,7 @@ public class PravegaWriterTest {
                 internalWriter.writeError.set(new IntentionalRuntimeException());
                 Mockito.doThrow(new IntentionalRuntimeException()).when(eventStreamWriter).close();
                 Mockito.doThrow(new IntentionalRuntimeException())
-                        .when(internalWriter.getExecutorService())
+                        .when(internalWriter.executorService)
                         .shutdown();
             }
         } catch (IOException e) {
@@ -463,7 +463,7 @@ public class PravegaWriterTest {
                 PravegaWriterMode.EXACTLY_ONCE, new IntegerSerializationSchema());
         final Transaction<Integer> trans = ((TestableFlinkPravegaInternalWriter<Integer>) writer.currentWriter).trans;
         final FlinkPravegaInternalWriter<Integer> internalWriter = writer.currentWriter;
-        final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = internalWriter.getTransactionalWriter();
+        final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = internalWriter.transactionalWriter;
 
         Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
 

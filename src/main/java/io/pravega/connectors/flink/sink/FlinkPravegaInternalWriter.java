@@ -386,31 +386,4 @@ public class FlinkPravegaInternalWriter<T> implements AutoCloseable {
         assert writerMode == PravegaWriterMode.EXACTLY_ONCE && transaction != null;
         return transaction.getTxnId().toString();
     }
-
-    @VisibleForTesting
-    protected PravegaEventRouter<T> getEventRouter() {
-        return eventRouter;
-    }
-
-    @VisibleForTesting
-    protected PravegaWriterMode getPravegaWriterMode() {
-        return writerMode;
-    }
-
-    @VisibleForTesting
-    @Nullable
-    protected EventStreamWriter<T> getWriter() {
-        return writer;
-    }
-
-    @VisibleForTesting
-    @Nullable
-    protected TransactionalEventStreamWriter<T> getTransactionalWriter() {
-        return transactionalWriter;
-    }
-
-    @VisibleForTesting
-    protected ExecutorService getExecutorService() {
-        return executorService;
-    }
 }
