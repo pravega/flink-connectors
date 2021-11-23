@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.sink;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
@@ -316,6 +317,8 @@ public class PravegaTransactionWriterTest {
             Mockito.doReturn(txnId).when(trans).getTxnId();
             Mockito.doReturn(trans).when(pravegaTxnWriter).beginTxn();
             Mockito.doReturn(Transaction.Status.OPEN).when(trans).checkStatus();
+
+            clientFactory = mock(EventStreamClientFactory.class);
 
             return pravegaTxnWriter;
         }

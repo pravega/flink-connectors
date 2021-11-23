@@ -22,7 +22,6 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
-import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -92,7 +91,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
                               ClientConfig clientConfig,
                               Stream stream,
                               SerializationSchema<T> serializationSchema,
-                              PravegaEventRouter<T> eventRouter){
+                              PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.serializationSchema = serializationSchema;
@@ -106,7 +105,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     @VisibleForTesting
     protected EventStreamWriter<T> initializeInternalWriter() {
         clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
-        Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
+        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder().build();
         executorService = Executors.newSingleThreadExecutor();
         return clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);

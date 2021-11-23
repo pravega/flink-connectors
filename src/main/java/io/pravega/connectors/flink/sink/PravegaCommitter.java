@@ -27,7 +27,6 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
@@ -125,7 +124,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     @VisibleForTesting
     protected TransactionalEventStreamWriter<T> initializeInternalWriter() {
         EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
-        Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
+        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder()
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)
                 .build();

@@ -29,7 +29,6 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Sink;
 import org.apache.flink.api.connector.sink.SinkWriter;
-import org.apache.flink.metrics.Gauge;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -83,7 +82,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
                                     Stream stream,
                                     long txnLeaseRenewalPeriod,
                                     SerializationSchema<T> serializationSchema,
-                                    PravegaEventRouter<T> eventRouter){
+                                    PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -100,7 +99,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     @VisibleForTesting
     protected TransactionalEventStreamWriter<T> initializeInternalWriter() {
         clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
-        Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
+        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder()
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)
                 .build();
@@ -171,7 +170,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
 
         Exception exception = null;
 
-        if (transaction != null){
+        if (transaction != null) {
             try {
                 abortTransaction();
             } catch (Exception e) {
