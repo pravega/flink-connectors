@@ -309,7 +309,7 @@ public class PravegaWriterTest {
             verify(trans).flush();
 
             // trigger the internal process to save the committables
-            testHarness.snapshot(1L, 1L);
+            testHarness.snapshot(1L, 3L);
 
             // call the committer to reconstruct the trans and commit them
             testHarness.notifyOfCompletedCheckpoint(1L);
@@ -393,7 +393,7 @@ public class PravegaWriterTest {
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
             testHarness.prepareSnapshotPreBarrier(1L);
-            testHarness.snapshot(1L, 1L);
+            testHarness.snapshot(1L, 3L);
 
             Mockito.when(trans.checkStatus()).thenThrow(new StatusRuntimeException(Status.NOT_FOUND));
             testHarness.notifyOfCompletedCheckpoint(1L);
@@ -417,7 +417,7 @@ public class PravegaWriterTest {
             testHarness.open();
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
-            testHarness.snapshot(1L, 1L);
+            testHarness.snapshot(1L, 3L);
 
             Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
             Mockito.doThrow(new TxnFailedException()).when(trans).commit();
@@ -443,7 +443,7 @@ public class PravegaWriterTest {
             StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
             testHarness.processElement(e1);
 
-            testHarness.snapshot(1L, 1L);
+            testHarness.snapshot(1L, 3L);
             Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.ABORTED);
             testHarness.notifyOfCompletedCheckpoint(1L);
 
