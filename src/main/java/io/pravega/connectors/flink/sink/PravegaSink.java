@@ -15,7 +15,6 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.AbstractStreamingWriterBuilder;
@@ -29,6 +28,7 @@ import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;

@@ -15,7 +15,6 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
@@ -31,6 +30,7 @@ import org.apache.flink.metrics.MetricGroup;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;

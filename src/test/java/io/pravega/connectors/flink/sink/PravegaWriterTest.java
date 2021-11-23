@@ -15,7 +15,6 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import edu.umd.cs.findbugs.annotations.Nullable;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import io.pravega.client.ClientConfig;
@@ -42,6 +41,7 @@ import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import javax.annotation.Nullable;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Collections;
