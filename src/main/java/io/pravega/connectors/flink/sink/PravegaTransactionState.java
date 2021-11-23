@@ -32,6 +32,10 @@ public class PravegaTransactionState {
         return new PravegaTransactionState(writer.getTransactionId());
     }
 
+    public static <I> PravegaTransactionState of(PravegaTransactionWriter<I> writer) {
+        return new PravegaTransactionState(writer.getTransactionId());
+    }
+
     public String getTransactionId() {
         return transactionId;
     }

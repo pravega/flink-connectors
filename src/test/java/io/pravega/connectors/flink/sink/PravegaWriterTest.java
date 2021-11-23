@@ -592,7 +592,7 @@ public class PravegaWriterTest {
         public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
             committables.forEach(transactionState -> {
                 TestableFlinkPravegaInternalWriter<T> writer = new TestableFlinkPravegaInternalWriter<>(
-                        clientConfig, stream, txnLeaseRenewalPeriod, writerMode,
+                        clientConfig, stream, txnLeaseRenewalPeriod, PravegaWriterMode.ATLEAST_ONCE,
                         serializationSchema, eventRouter);
                 writer.resumeTransaction(transactionState);
                 writer.commitTransaction();

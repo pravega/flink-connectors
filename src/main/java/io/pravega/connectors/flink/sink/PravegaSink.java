@@ -26,6 +26,8 @@ import org.apache.flink.api.connector.sink.GlobalCommitter;
 import org.apache.flink.api.connector.sink.Sink;
 import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
+import org.apache.flink.metrics.Gauge;
+import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
@@ -40,6 +42,9 @@ import java.util.Optional;
  * @param <T>
  */
 public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
+
+    private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
+    private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
     // flag to enable/disable metrics
     private final boolean enableMetrics;
@@ -76,21 +81,41 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     @Override
     public SinkWriter<T, PravegaTransactionState, Void> createWriter(
             InitContext context, List<Void> states) throws IOException {
-        return new PravegaWriter<>(
-                context,
-                enableMetrics,
-                clientConfig,
-                stream,
-                txnLeaseRenewalPeriod,
-                writerMode,
-                serializationSchema,
-                eventRouter);
+        if (enableMetrics) {
+            MetricGroup pravegaWriterMetricGroup = context.metricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
+            pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
+        }
+
+        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            return new PravegaTransactionWriter<>(
+                    context,
+                    clientConfig,
+                    stream,
+                    txnLeaseRenewalPeriod,
+                    serializationSchema,
+                    eventRouter);
+        } else if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+            return new PravegaEventWriter<>(
+                    context,
+                    clientConfig,
+                    stream,
+                    serializationSchema,
+                    eventRouter);
+        } else {
+            throw new UnsupportedOperationException("Not implemented writer mode");
+        }
     }
 
     @Override
     public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
-        return Optional.of(new PravegaCommitter<>(clientConfig, stream,
-                txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter));
+        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            return Optional.of(new PravegaCommitter<>(clientConfig, stream,
+                    txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter));
+        } else if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+            return Optional.empty();
+        } else {
+            throw new UnsupportedOperationException("Not implemented writer mode");
+        }
     }
 
     @Override
@@ -113,10 +138,22 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
         return Optional.empty();
     }
 
+    /**
+     * Gauge for getting the fully qualified stream name information.
+     */
+    private static class StreamNameGauge implements Gauge<String> {
 
-    // ------------------------------------------------------------------------
-    //  builder
-    // ------------------------------------------------------------------------
+        final String stream;
+
+        public StreamNameGauge(String stream) {
+            this.stream = stream;
+        }
+
+        @Override
+        public String getValue() {
+            return stream;
+        }
+    }
 
     public static <T> PravegaSink.Builder<T> builder() {
         return new PravegaSink.Builder<>();
