@@ -28,6 +28,7 @@ import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
 import org.slf4j.Logger;
@@ -61,40 +62,36 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     protected final PravegaEventRouter<T> eventRouter;
     // --------- configurations for creating a TransactionalEventStreamWriter ---------
 
+    @VisibleForTesting
+    protected TransactionalEventStreamWriter<T> transactionalWriter;
+
     /**
      * A Pravega Committer that implements {@link Committer}.
      *
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
-     * @param writerMode            The Pravega writer mode.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaCommitter(ClientConfig clientConfig,
                             Stream stream,
                             long txnLeaseRenewalPeriod,
-                            PravegaWriterMode writerMode,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.stream = stream;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
+        this.transactionalWriter = initializeInternalWriter();
     }
 
     @Override
     public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
         final String writerId = "";
-        committables.forEach(transactionState -> {
-            EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
-            Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
-            EventWriterConfig writerConfig = EventWriterConfig.builder()
-                    .transactionTimeoutTime(txnLeaseRenewalPeriod)
-                    .build();
-            TransactionalEventStreamWriter<T> transactionalWriter = clientFactory
-                    .createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
 
+        committables.forEach(transactionState -> {
+            // TransactionalEventStreamWriter<T> transactionalWriter = initializeInternalWriter();
             Transaction<T> transaction = transactionalWriter
                     .getTxn(UUID.fromString(transactionState.getTransactionId()));
             LOG.info("{} - Transaction resumed with id {}.", writerId, transaction.getTxnId());
@@ -116,11 +113,22 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
                 }
             }
         });
+
         return Collections.emptyList();
     }
 
     @Override
     public void close() throws Exception {
         // do nothing
+    }
+
+    @VisibleForTesting
+    protected TransactionalEventStreamWriter<T> initializeInternalWriter() {
+        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
+        Serializer<T> eventSerializer = new PravegaWriter.FlinkSerializer<>(serializationSchema);
+        EventWriterConfig writerConfig = EventWriterConfig.builder()
+                .transactionTimeoutTime(txnLeaseRenewalPeriod)
+                .build();
+        return clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
     }
 }

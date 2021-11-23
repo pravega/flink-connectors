@@ -131,9 +131,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException, InterruptedException {
         final List<PravegaTransactionState> transactionStates;
         try {
-            if (flush) {
-                flush();
-            }
+            flush();
 
             transactionStates = Collections.singletonList(PravegaTransactionState.of(this));
 

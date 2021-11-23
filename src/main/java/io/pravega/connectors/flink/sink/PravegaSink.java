@@ -110,7 +110,7 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
         if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             return Optional.of(new PravegaCommitter<>(clientConfig, stream,
-                    txnLeaseRenewalPeriod, writerMode, serializationSchema, eventRouter));
+                    txnLeaseRenewalPeriod, serializationSchema, eventRouter));
         } else if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
             return Optional.empty();
         } else {
