@@ -70,6 +70,7 @@ public class PravegaEventWriterTest {
                 new IntegerSerializationSchema());
         assert writer.eventRouter != null;
         Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.eventRouter.getRoutingKey(1));
+        Assert.assertEquals(PravegaWriterMode.ATLEAST_ONCE, writer.writerMode);
         Assert.assertNotNull(writer.writer);
         Assert.assertNotNull(writer.executorService);
         Assert.assertNotNull(writer.clientFactory);
@@ -265,7 +266,7 @@ public class PravegaEventWriterTest {
 
         public TestablePravegaEventWriter(SerializationSchema<T> serializationSchema) {
             super(mock(Sink.InitContext.class), MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
-                    serializationSchema, event -> ROUTING_KEY);
+                    PravegaWriterMode.ATLEAST_ONCE, serializationSchema, event -> ROUTING_KEY);
         }
 
         @Override

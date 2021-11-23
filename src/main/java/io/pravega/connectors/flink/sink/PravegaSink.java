@@ -99,6 +99,7 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
                     context,
                     clientConfig,
                     stream,
+                    writerMode,
                     serializationSchema,
                     eventRouter);
         } else {

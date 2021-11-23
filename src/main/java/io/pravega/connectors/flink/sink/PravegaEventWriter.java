@@ -23,6 +23,7 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Sink;
@@ -71,6 +72,10 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     @SuppressFBWarnings("SE_BAD_FIELD")
     protected Stream stream;
 
+    // The sink's mode of operation. This is used to provide different guarantees for the written events.
+    @VisibleForTesting
+    protected PravegaWriterMode writerMode;
+
     @VisibleForTesting
     protected SerializationSchema<T> serializationSchema;
 
@@ -90,10 +95,12 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
+                              PravegaWriterMode writerMode,
                               SerializationSchema<T> serializationSchema,
                               PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
+        this.writerMode = writerMode;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
@@ -144,7 +151,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
 
     @Override
     public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException, InterruptedException {
-        if (flush) {
+        if (writerMode == PravegaWriterMode.ATLEAST_ONCE || flush) {
             flushAndVerify();
         }
 
