@@ -43,6 +43,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * A Pravega {@link SinkWriter} implementation that is suitable for {@link PravegaWriterMode#BEST_EFFORT}
+ * and {@link PravegaWriterMode#ATLEAST_ONCE}. <p>
+ * Note that the difference between these two modes is {@link PravegaEventWriter#flushAndVerify()}
+ * is called for each checkpoint for the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
+ *
+ * @param <T> The type of the event to be written.
+ */
 public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaEventWriter.class);
 
@@ -92,6 +100,17 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     @VisibleForTesting
     protected transient EventStreamClientFactory clientFactory = null;
 
+    /**
+     * A Pravega writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
+     * {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+     *
+     * @param context               Some runtime info from sink.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param writerMode            The Pravega writer mode.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
@@ -117,7 +136,6 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
         executorService = Executors.newSingleThreadExecutor();
         return clientFactory.createEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
     }
-
 
     @Override
     public void write(T element, Context context) throws IOException, InterruptedException {

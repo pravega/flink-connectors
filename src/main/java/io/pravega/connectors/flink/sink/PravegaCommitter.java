@@ -27,6 +27,7 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
@@ -40,9 +41,10 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * This committer handles the final commit stage for EXACTLY_ONCE writer mode.
- * Internal writers are reconstructed and new transactions are resumed with
- * the Flink preserved committables that contains previous opened transactions.
+ * This committer only works in {@link PravegaWriterMode#EXACTLY_ONCE} and
+ * handles the final commit stage for the transaction. <p>
+ * The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}
+ * which handles by the Flink sink mechanism.
  *
  * @param <T> The type of the event to be written.
  */

@@ -28,6 +28,7 @@ import org.apache.flink.api.connector.sink.SinkWriter;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.metrics.Gauge;
 import org.apache.flink.metrics.MetricGroup;
+import org.apache.flink.streaming.api.datastream.DataStream;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
@@ -37,9 +38,9 @@ import java.util.Optional;
 
 /**
  * Flink sink implementation for writing into pravega storage.
- * The flink pravega writer instance which can be added as a sink to a Flink job.
+ * Can be added as a sink via {@link DataStream#sinkTo} to a Flink job.
  *
- * @param <T>
+ * @param <T> The type of the event to be written.
  */
 public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
 

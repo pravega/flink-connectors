@@ -25,6 +25,7 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Sink;
@@ -39,6 +40,14 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * A Pravega {@link SinkWriter} implementation that is suitable for {@link PravegaWriterMode#EXACTLY_ONCE}. <p>
+ * Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
+ * this writer only deals with the {@link PravegaTransactionWriter#beginTransaction},
+ * {@link PravegaTransactionWriter#write}, and {@link PravegaTransactionWriter#prepareCommit} stage.
+ *
+ * @param <T> The type of the event to be written.
+ */
 public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaTransactionWriter.class);
 
@@ -77,6 +86,16 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     @Nullable
     private transient Transaction<T> transaction = null;
 
+    /**
+     * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
+     *
+     * @param context               Some runtime info from sink.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public PravegaTransactionWriter(Sink.InitContext context,
                                     ClientConfig clientConfig,
                                     Stream stream,

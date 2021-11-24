@@ -22,7 +22,8 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import java.nio.ByteBuffer;
 
 /**
- * Wrap the SerializationSchema to a Pravega compatible Serializer.
+ * Wrap the {@link SerializationSchema} to a Pravega compatible {@link Serializer}.
+ *
  * @param <T> The type of the event.
  */
 @VisibleForTesting
