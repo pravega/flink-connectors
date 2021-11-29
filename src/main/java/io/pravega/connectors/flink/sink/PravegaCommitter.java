@@ -31,6 +31,7 @@ import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
+import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,6 +64,8 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     protected final PravegaEventRouter<T> eventRouter;
     // --------- configurations for creating a TransactionalEventStreamWriter ---------
 
+    @VisibleForTesting
+    protected transient EventStreamClientFactory clientFactory;
     @VisibleForTesting
     protected TransactionalEventStreamWriter<T> transactionalWriter;
 
@@ -120,12 +123,32 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
 
     @Override
     public void close() throws Exception {
-        // do nothing
+        Exception exception = null;
+
+        if (transactionalWriter != null) {
+            try {
+                transactionalWriter.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+        }
+
+        if (clientFactory != null) {
+            try {
+                clientFactory.close();
+            } catch (Exception e) {
+                exception = ExceptionUtils.firstOrSuppressed(e, exception);
+            }
+        }
+
+        if (exception != null) {
+            throw exception;
+        }
     }
 
     @VisibleForTesting
     protected TransactionalEventStreamWriter<T> initializeInternalWriter() {
-        EventStreamClientFactory clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
+        clientFactory = EventStreamClientFactory.withScope(stream.getScope(), clientConfig);
         Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder()
                 .transactionTimeoutTime(txnLeaseRenewalPeriod)

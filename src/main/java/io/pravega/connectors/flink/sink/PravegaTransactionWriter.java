@@ -125,7 +125,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         return clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
     }
 
-    public void beginTransaction() {
+    private void beginTransaction() {
         transaction = transactionalWriter.beginTxn();
         LOG.info("{} - Transaction began with id {}.", writerId, transaction.getTxnId());
     }
