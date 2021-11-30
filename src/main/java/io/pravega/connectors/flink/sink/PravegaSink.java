@@ -53,6 +53,7 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     // The Pravega client config.
     private final ClientConfig clientConfig;
 
+    // The destination stream.
     private final Stream stream;
 
     // Various timeouts
@@ -61,6 +62,7 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
+    // The supplied event serializer.
     private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
