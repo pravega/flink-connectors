@@ -71,11 +71,12 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
                        Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
                        SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.enableMetrics = enableMetrics;
-        this.clientConfig = clientConfig;
-        this.stream = stream;
+        this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
+        this.stream = Preconditions.checkNotNull(stream, "stream");
+        Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
-        this.writerMode = writerMode;
-        this.serializationSchema = serializationSchema;
+        this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
+        this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         this.eventRouter = eventRouter;
     }
 

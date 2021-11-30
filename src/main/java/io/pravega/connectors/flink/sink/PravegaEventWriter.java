@@ -96,7 +96,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     @VisibleForTesting
     protected transient EventStreamWriter<T> writer;
 
-    // Client factory for PravegaWriter instances
+    // Client factory for PravegaEventWriter instances
     @VisibleForTesting
     protected transient EventStreamClientFactory clientFactory = null;
 
