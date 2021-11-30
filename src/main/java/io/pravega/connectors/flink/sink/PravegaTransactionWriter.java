@@ -80,7 +80,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
 
     // Transaction
     @Nullable
-    private transient Transaction<T> transaction = null;
+    private transient Transaction<T> transaction;
 
     /**
      * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
@@ -106,10 +106,10 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         this.transactionalWriter = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
 
-        beginTransaction();
-
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
+
+        this.transaction = beginTransaction();
     }
 
     @VisibleForTesting
@@ -122,9 +122,10 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         return clientFactory.createTransactionalEventWriter(stream.getStreamName(), eventSerializer, writerConfig);
     }
 
-    private void beginTransaction() {
-        transaction = transactionalWriter.beginTxn();
+    private Transaction<T> beginTransaction() {
+        Transaction<T> transaction = transactionalWriter.beginTxn();
         LOG.info("{} - Transaction began with id {}.", writerId, transaction.getTxnId());
+        return transaction;
     }
 
     @Override
@@ -150,7 +151,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
 
             transactionStates = Collections.singletonList(PravegaTransactionState.of(this));
 
-            beginTransaction();
+            transaction = beginTransaction();
         } catch (TxnFailedException e) {
             throw new IOException("", e);
         }
