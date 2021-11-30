@@ -327,7 +327,7 @@ public class PravegaTransactionWriterTest {
     public static class TestablePravegaCommitter<T> extends PravegaCommitter<T> {
         public TestablePravegaCommitter(SerializationSchema<T> serializationSchema) {
             super(MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
-                    DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, serializationSchema, event -> ROUTING_KEY);
+                    DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, serializationSchema);
         }
 
         @Override

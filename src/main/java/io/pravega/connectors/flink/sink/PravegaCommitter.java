@@ -26,7 +26,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -35,7 +34,6 @@ import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
@@ -52,22 +50,18 @@ import java.util.UUID;
 public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaCommitter.class);
 
-    // --------- configurations for creating a TransactionalEventStreamWriter ---------
-    protected final ClientConfig clientConfig;  // The Pravega client config.
-    protected final long txnLeaseRenewalPeriod;
-    // The destination stream.
-    @SuppressFBWarnings("SE_BAD_FIELD")
-    protected final Stream stream;
-    protected final SerializationSchema<T> serializationSchema;
-    // The router used to partition events within a stream, can be null for random routing
-    @Nullable
-    protected final PravegaEventRouter<T> eventRouter;
-    // --------- configurations for creating a TransactionalEventStreamWriter ---------
-
     @VisibleForTesting
     protected transient EventStreamClientFactory clientFactory;
     @VisibleForTesting
     protected TransactionalEventStreamWriter<T> transactionalWriter;
+
+    // --------- configurations for creating a TransactionalEventStreamWriter ---------
+    private final ClientConfig clientConfig;
+    private final long txnLeaseRenewalPeriod;
+    @SuppressFBWarnings("SE_BAD_FIELD")
+    private final Stream stream;
+    private final SerializationSchema<T> serializationSchema;
+    // --------- configurations for creating a TransactionalEventStreamWriter ---------
 
     /**
      * A Pravega Committer that implements {@link Committer}.
@@ -76,17 +70,15 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
      * @param stream                The destination stream.
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
-     * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaCommitter(ClientConfig clientConfig,
                             Stream stream,
                             long txnLeaseRenewalPeriod,
-                            SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+                            SerializationSchema<T> serializationSchema) {
         this.clientConfig = clientConfig;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
         this.stream = stream;
         this.serializationSchema = serializationSchema;
-        this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
     }
 

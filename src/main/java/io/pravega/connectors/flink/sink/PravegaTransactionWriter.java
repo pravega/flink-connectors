@@ -159,21 +159,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         return transactionStates;
     }
 
-    public void abortTransaction() throws UnsupportedOperationException, AssertionError {
-        assert transaction != null;
-
-        final Transaction.Status status = transaction.checkStatus();
-        if (status == Transaction.Status.OPEN) {
-            transaction.abort();
-            LOG.info("{} - Aborted the transaction: {}", writerId, transaction.getTxnId());
-        } else {
-            LOG.warn("{} - Transaction {} has unexpected transaction status {} while aborting",
-                    writerId, transaction.getTxnId(), status);
-        }
-        transaction = null;
-    }
-
-    public void flush() throws TxnFailedException, AssertionError {
+    private void flush() throws TxnFailedException, AssertionError {
         assert transaction != null;
 
         transaction.flush();
@@ -214,6 +200,20 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         if (exception != null) {
             throw exception;
         }
+    }
+
+    private void abortTransaction() throws UnsupportedOperationException, AssertionError {
+        assert transaction != null;
+
+        final Transaction.Status status = transaction.checkStatus();
+        if (status == Transaction.Status.OPEN) {
+            transaction.abort();
+            LOG.info("{} - Aborted the transaction: {}", writerId, transaction.getTxnId());
+        } else {
+            LOG.warn("{} - Transaction {} has unexpected transaction status {} while aborting",
+                    writerId, transaction.getTxnId(), status);
+        }
+        transaction = null;
     }
 
     public String getTransactionId() {
