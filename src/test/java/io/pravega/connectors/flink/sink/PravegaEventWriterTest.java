@@ -68,10 +68,10 @@ public class PravegaEventWriterTest {
     public void testConstructor() {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        assert writer.eventRouter != null;
-        Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.eventRouter.getRoutingKey(1));
-        Assert.assertEquals(PravegaWriterMode.ATLEAST_ONCE, writer.writerMode);
-        Assert.assertNotNull(writer.writer);
+        assert writer.getEventRouter() != null;
+        Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.getEventRouter().getRoutingKey(1));
+        Assert.assertEquals(PravegaWriterMode.ATLEAST_ONCE, writer.getWriterMode());
+        Assert.assertNotNull(writer.getInternalWriter());
         Assert.assertNotNull(writer.executorService);
         Assert.assertNotNull(writer.clientFactory);
     }
@@ -101,7 +101,7 @@ public class PravegaEventWriterTest {
     public void testNonTransactionalWriterWriting() throws Exception {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.writer;
+        final EventStreamWriter<Integer> eventStreamWriter = writer.getInternalWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -124,7 +124,7 @@ public class PravegaEventWriterTest {
     public void testNonTransactionalWriterProcessElementAccounting() throws Exception {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.writer;
+        final EventStreamWriter<Integer> eventStreamWriter = writer.getInternalWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -166,7 +166,7 @@ public class PravegaEventWriterTest {
     public void testNonTransactionalWriterProcessElementErrorHandling() throws Exception {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.writer;
+        final EventStreamWriter<Integer> eventStreamWriter = writer.getInternalWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -200,7 +200,7 @@ public class PravegaEventWriterTest {
     public void testNonTransactionalWriterFlush() throws Exception {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.writer;
+        final EventStreamWriter<Integer> eventStreamWriter = writer.getInternalWriter();
 
         try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =
                      createTestHarness(writer)) {
@@ -240,7 +240,7 @@ public class PravegaEventWriterTest {
     public void testNonTransactionalWriterClose() throws Exception {
         final TestablePravegaEventWriter<Integer> writer = new TestablePravegaEventWriter<>(
                 new IntegerSerializationSchema());
-        final EventStreamWriter<Integer> eventStreamWriter = writer.writer;
+        final EventStreamWriter<Integer> eventStreamWriter = writer.getInternalWriter();
 
         try {
             try (OneInputStreamOperatorTestHarness<Integer, byte[]> testHarness =

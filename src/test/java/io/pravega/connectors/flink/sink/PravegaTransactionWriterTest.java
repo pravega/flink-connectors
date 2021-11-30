@@ -65,10 +65,10 @@ public class PravegaTransactionWriterTest {
     public void testConstructor() {
         final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
                 new IntegerSerializationSchema());
-        assert writer.eventRouter != null;
-        Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.eventRouter.getRoutingKey(1));
+        assert writer.getEventRouter() != null;
+        Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.getEventRouter().getRoutingKey(1));
         // both internal writer and transaction should be set up
-        Assert.assertNotNull(writer.transactionalWriter);
+        Assert.assertNotNull(writer.getInternalWriter());
         Assert.assertNotNull(writer.getTransactionId());
     }
 
@@ -281,7 +281,7 @@ public class PravegaTransactionWriterTest {
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
         final Transaction<Integer> trans = writer.trans;
-        final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = writer.transactionalWriter;
+        final TransactionalEventStreamWriter<Integer> txnEventStreamWriter = writer.getInternalWriter();
 
         Mockito.when(trans.checkStatus()).thenReturn(Transaction.Status.OPEN);
 
@@ -300,7 +300,7 @@ public class PravegaTransactionWriterTest {
     }
 
     public static class TestablePravegaTransactionWriter<T> extends PravegaTransactionWriter<T> {
-        Transaction<T> trans;
+        Transaction<T> trans;  // the mocked transaction that should replace the PravegaTransactionWriter#transaction
         UUID txnId;
 
         public TestablePravegaTransactionWriter(SerializationSchema<T> serializationSchema) {

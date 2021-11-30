@@ -51,36 +51,32 @@ import java.util.UUID;
 public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaTransactionWriter.class);
 
-    protected final String writerId = UUID.randomUUID() + "";
+    // Client factory for PravegaTransactionWriter instances
+    @VisibleForTesting
+    protected transient EventStreamClientFactory clientFactory;
 
     // The Pravega client config.
-    @VisibleForTesting
-    protected ClientConfig clientConfig;
+    private final ClientConfig clientConfig;
 
     // Various timeouts
-    @VisibleForTesting
-    protected long txnLeaseRenewalPeriod;
+    private final long txnLeaseRenewalPeriod;
 
     // The destination stream.
-    @VisibleForTesting
     @SuppressFBWarnings("SE_BAD_FIELD")
-    protected Stream stream;
+    private final Stream stream;
 
-    @VisibleForTesting
-    protected SerializationSchema<T> serializationSchema;
+    // The supplied event serializer.
+    private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
-    @VisibleForTesting
-    protected PravegaEventRouter<T> eventRouter;
+    private final PravegaEventRouter<T> eventRouter;
 
     // Transactional Pravega writer instance
-    @VisibleForTesting
-    protected transient TransactionalEventStreamWriter<T> transactionalWriter;
+    private final transient TransactionalEventStreamWriter<T> transactionalWriter;
 
-    // Client factory for PravegaTransactionWriter instances
-    @VisibleForTesting
-    protected transient EventStreamClientFactory clientFactory = null;
+    // The writer id
+    private final String writerId;
 
     // Transaction
     @Nullable
@@ -108,6 +104,7 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
+        this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
 
         beginTransaction();
 
@@ -221,5 +218,16 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     public String getTransactionId() {
         assert transaction != null;
         return transaction.getTxnId().toString();
+    }
+
+    @VisibleForTesting
+    @Nullable
+    protected PravegaEventRouter<T> getEventRouter() {
+        return eventRouter;
+    }
+
+    @VisibleForTesting
+    protected TransactionalEventStreamWriter<T> getInternalWriter() {
+        return transactionalWriter;
     }
 }

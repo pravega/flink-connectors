@@ -54,8 +54,6 @@ import java.util.concurrent.atomic.AtomicReference;
 public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaEventWriter.class);
 
-    // ----------- Runtime fields ----------------
-
     // Error which will be detected asynchronously and reported to Flink
     @VisibleForTesting
     protected volatile AtomicReference<Throwable> writeError = new AtomicReference<>(null);
@@ -64,41 +62,36 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     @VisibleForTesting
     protected AtomicLong pendingWritesCount = new AtomicLong();
 
-    protected final String writerId = UUID.randomUUID() + "";
-
+    // The async executor
     @VisibleForTesting
     protected transient ExecutorService executorService;
 
-    // ----------- configuration fields -----------
+    // Client factory for PravegaEventWriter instances
+    @VisibleForTesting
+    protected transient EventStreamClientFactory clientFactory;
 
     // The Pravega client config.
-    @VisibleForTesting
-    protected ClientConfig clientConfig;
+    private final ClientConfig clientConfig;
 
     // The destination stream.
-    @VisibleForTesting
     @SuppressFBWarnings("SE_BAD_FIELD")
-    protected Stream stream;
+    private final Stream stream;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    @VisibleForTesting
-    protected PravegaWriterMode writerMode;
+    private final PravegaWriterMode writerMode;
 
-    @VisibleForTesting
-    protected SerializationSchema<T> serializationSchema;
+    // The supplied event serializer.
+    private final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
-    @VisibleForTesting
-    protected PravegaEventRouter<T> eventRouter;
+    private final PravegaEventRouter<T> eventRouter;
 
     // Pravega writer instance
-    @VisibleForTesting
-    protected transient EventStreamWriter<T> writer;
+    private final transient EventStreamWriter<T> writer;
 
-    // Client factory for PravegaEventWriter instances
-    @VisibleForTesting
-    protected transient EventStreamClientFactory clientFactory = null;
+    // The writer id
+    private final String writerId;
 
     /**
      * A Pravega writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
@@ -123,6 +116,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
+        this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
@@ -234,5 +228,21 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
         if (exception != null) {
             throw exception;
         }
+    }
+
+    @VisibleForTesting
+    protected PravegaWriterMode getWriterMode() {
+        return writerMode;
+    }
+
+    @VisibleForTesting
+    @Nullable
+    protected PravegaEventRouter<T> getEventRouter() {
+        return eventRouter;
+    }
+
+    @VisibleForTesting
+    protected EventStreamWriter<T> getInternalWriter() {
+        return writer;
     }
 }
