@@ -84,28 +84,25 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
 
     @Override
     public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
-        final String writerId = "";
-
         committables.forEach(transactionState -> {
-            // TransactionalEventStreamWriter<T> transactionalWriter = initializeInternalWriter();
             Transaction<T> transaction = transactionalWriter
                     .getTxn(UUID.fromString(transactionState.getTransactionId()));
-            LOG.info("{} - Transaction resumed with id {}.", writerId, transaction.getTxnId());
+            LOG.info("Transaction resumed with id {}.", transaction.getTxnId());
 
             try {
                 final Transaction.Status status = transaction.checkStatus();
                 if (status == Transaction.Status.OPEN) {
                     transaction.commit();
-                    LOG.debug("{} - Committed transaction {}.", writerId, transaction.getTxnId());
+                    LOG.info("Committed transaction {}.", transaction.getTxnId());
                 } else {
-                    LOG.warn("{} - Transaction {} has unexpected transaction status {} while committing.",
-                            writerId, transaction.getTxnId(), status);
+                    LOG.warn("Transaction {} has unexpected transaction status {} while committing.",
+                            transaction.getTxnId(), status);
                 }
             } catch (TxnFailedException e) {
-                LOG.error("{} - Transaction {} commit failed.", writerId, transaction.getTxnId());
+                LOG.error("Transaction {} commit failed.", transaction.getTxnId());
             } catch (StatusRuntimeException e) {
                 if (e.getStatus() == Status.NOT_FOUND) {
-                    LOG.error("{} - Transaction {} not found.", writerId, transaction.getTxnId());
+                    LOG.error("Transaction {} not found.", transaction.getTxnId());
                 }
             }
         });
