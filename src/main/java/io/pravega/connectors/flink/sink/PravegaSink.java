@@ -160,8 +160,8 @@ public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Vo
         }
     }
 
-    public static <T> PravegaSink.Builder<T> builder() {
-        return new PravegaSink.Builder<>();
+    public static <T> PravegaSinkBuilder<T> builder() {
+        return new PravegaSinkBuilder<>();
     }
 
     /**
