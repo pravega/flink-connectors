@@ -15,7 +15,6 @@
  */
 package io.pravega.connectors.flink;
 
-import io.pravega.connectors.flink.sink.PravegaSink;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
