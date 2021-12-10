@@ -33,7 +33,7 @@ import org.apache.flink.util.Preconditions;
 public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStreamingWriterBuilder> extends AbstractWriterBuilder<B> {
 
     // the numbers below are picked based on the default max settings in Pravega
-    public static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
+    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
 
     public PravegaWriterMode writerMode;
     public boolean enableWatermark;
@@ -102,24 +102,5 @@ public abstract class AbstractStreamingWriterBuilder<T, B extends AbstractStream
                 txnLeaseRenewalPeriod.toMilliseconds(),
                 enableWatermark,
                 isMetricsEnabled());
-    }
-
-    /**
-     * Create the sink for the current builder state.
-     *
-     * @param serializationSchema the deserialization schema to use.
-     * @param eventRouter the event router to use.
-     * @return An instance of {@link PravegaSink}.
-     */
-    protected PravegaSink<T> createSink(SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        return new PravegaSink<>(
-                isMetricsEnabled(),
-                getPravegaConfig().getClientConfig(),
-                resolveStream(),
-                txnLeaseRenewalPeriod.toMilliseconds(),
-                writerMode,
-                serializationSchema,
-                eventRouter);
     }
 }

@@ -25,6 +25,11 @@ import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
+/**
+ * A builder for {@link PravegaSink}.
+ *
+ * @param <T> the element type.
+ */
 public class PravegaSinkBuilder<T> {
 
     // the numbers below are picked based on the default max settings in Pravega
