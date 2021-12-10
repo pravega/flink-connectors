@@ -33,7 +33,7 @@ import javax.annotation.Nullable;
 public class PravegaSinkBuilder<T> {
 
     // the numbers below are picked based on the default max settings in Pravega
-    private static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
+    protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;

@@ -17,7 +17,6 @@ package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
-import io.pravega.connectors.flink.AbstractStreamingWriterBuilder;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;

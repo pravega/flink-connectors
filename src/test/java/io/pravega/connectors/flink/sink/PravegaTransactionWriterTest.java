@@ -43,7 +43,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
-import static io.pravega.connectors.flink.AbstractStreamingWriterBuilder.DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS;
+import static io.pravega.connectors.flink.sink.PravegaSinkBuilder.DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Mockito.mock;
