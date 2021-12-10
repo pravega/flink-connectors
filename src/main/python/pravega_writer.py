@@ -21,7 +21,6 @@ from typing import Union
 from py4j.java_gateway import JavaObject
 from pyflink.common.serialization import SerializationSchema
 from pyflink.datastream.functions import SinkFunction
-from pyflink.datastream.connectors import Sink
 from pyflink.java_gateway import get_gateway
 from pyflink.util.java_utils import to_j_flink_time
 
@@ -72,7 +71,6 @@ class FlinkPravegaWriter(SinkFunction):
         Args:
             stream (Union[str, Stream]):
                 Add a stream to be written to by the writer.
-                In `scope/stream` format if the type is str.
 
             pravega_config (PravegaConfig):
                 Set the Pravega client configuration, which includes
@@ -125,76 +123,3 @@ class FlinkPravegaWriter(SinkFunction):
 
         super(FlinkPravegaWriter,
               self).__init__(sink_func=j_flink_pravega_writer)
-
-
-class PravegaSink(Sink):
-    """Flink sink implementation for writing into pravega storage."""
-    def __init__(
-        self,
-        stream: Union[str, Stream],
-        pravega_config: PravegaConfig,
-        serialization_schema: SerializationSchema,
-        enable_metrics: bool = True,
-        writer_mode: PravegaWriterMode = PravegaWriterMode.ATLEAST_ONCE,
-        enable_watermark: bool = False,
-        txn_lease_renewal_period: timedelta = timedelta(seconds=30)
-    ) -> None:
-        """Build the `FlinkPravegaWriter` with options.
-
-        NOTE: `withEventRouter` is not supported yet.
-
-        Args:
-            stream (Union[str, Stream]):
-                Add a stream to be written to by the writer.
-                In `scope/stream` format if the type is str.
-
-            pravega_config (PravegaConfig):
-                Set the Pravega client configuration, which includes
-                connection info, security info, and a default scope.
-
-            serialization_schema (SerializationSchema):
-                Sets the serialization schema.
-
-            enable_metrics (bool, optional):
-                Pravega writer metrics. Defaults to True.
-
-            writer_mode (PravegaWriterMode, optional):
-                Sets the writer mode to provide at-least-once or exactly-once
-                guarantees. Defaults to PravegaWriterMode.ATLEAST_ONCE.
-
-            enable_watermark (bool, optional):
-                Enable watermark. Defaults to False.
-
-            txn_lease_renewal_period (timedelta, optional):
-                Sets the transaction lease renewal period.
-                Defaults to 30 seconds on java side.
-
-                When the writer mode is set to EXACTLY_ONCE, transactions are
-                used to persist events to the Pravega stream. The transaction
-                interval corresponds to the Flink checkpoint interval.
-                Throughout that interval, the transaction is kept alive with a
-                lease that is periodically renewed. This configuration setting
-                sets the lease renewal period.
-        """
-        j_builder: JavaObject = get_gateway().jvm \
-            .io.pravega.connectors.flink.sink.PravegaSink.builder()
-
-        # AbstractWriterBuilder
-        j_builder.forStream(stream if type(stream) ==
-                            str else stream._j_stream)
-        j_builder.withPravegaConfig(pravega_config._j_pravega_config)
-        j_builder.enableMetrics(enable_metrics)
-
-        # AbstractStreamingWriterBuilder
-        j_builder.withWriterMode(writer_mode._to_j_pravega_writer_mode())
-        j_builder.enableWatermark(enable_watermark)
-        j_builder.withTxnLeaseRenewalPeriod(
-            to_j_flink_time(txn_lease_renewal_period))
-
-        # PravegaSink.Builder
-        j_builder.withSerializationSchema(
-            serialization_schema._j_serialization_schema)
-
-        j_pravega_sink: JavaObject = j_builder.build()
-
-        super(PravegaSink, self).__init__(sink=j_pravega_sink)

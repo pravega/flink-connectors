@@ -47,9 +47,7 @@ A `StreamCut` object could be constructed from the `from_base64` class method wh
 
 By default, the `FlinkPravegaReader` will pass the `UNBOUNDED` `StreamCut` which let the reader read from the HEAD to the TAIL.
 
-## Source
-
-### FlinkPravegaReader
+## FlinkPravegaReader
 
 Use `FlinkPravegaReader` as a datastream source. Could be added by `env.add_source`.
 
@@ -87,11 +85,9 @@ ds = env.add_source(pravega_reader)
 |event_read_timeout|timedelta|No|None(1 second on java side)|Sets the timeout for the call to read events from Pravega. After the timeout expires (without an event being returned), another call will be made.|
 |max_outstanding_checkpoint_request|int|No|None(3 on java side)|Configures the maximum outstanding checkpoint requests to Pravega.|
 
-## Sink
+## FlinkPravegaWriter
 
-### FlinkPravegaWriter
-
-Use `FlinkPravegaWriter` as a datastream sinkFunction. Could be added by `env.add_sink`.
+Use `FlinkPravegaWriter` as a datastream sink. Could be added by `env.add_sink`.
 
 ```python
 from pyflink.common.serialization import SimpleStringSchema
@@ -109,31 +105,6 @@ pravega_writer = FlinkPravegaWriter(stream=stream,
 
 ds = env.add_sink(pravega_reader)
 ```
-
-### PravegaSink
-
-Use `PravegaSink` as a datastream sink. Could be added by `env.sink_to`.
-
-```python
-from pyflink.common.serialization import SimpleStringSchema
-from pyflink.datastream import StreamExecutionEnvironment
-
-from pravega_config import PravegaConfig
-from pravega_writer import PravegaSink
-
-env = StreamExecutionEnvironment.get_execution_environment()
-
-pravega_config = PravegaConfig(uri=uri, scope=scope)
-pravega_writer = FlinkPravegaWriter(stream=stream,
-                                    pravega_config=pravega_config,
-                                    serialization_schema=SimpleStringSchema())
-
-ds = env.sink_to(pravega_reader)
-```
-
-### Configurations
-
-Both `FlinkPravegaWriter` and `PravegaSink` share the same parameters.
 
 |parameter|type|required|default value|description|
 |-|-|-|-|-|
