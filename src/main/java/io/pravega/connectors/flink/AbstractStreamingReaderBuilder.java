@@ -32,7 +32,7 @@ import java.util.regex.Pattern;
 /**
  * An abstract streaming reader builder.
  *
- * The builder is abstracted to act as the base for both the {@link FlinkPravegaReader} builders.
+ * The builder is abstracted to act as the base for both the {@link FlinkPravegaReader} and {@link FlinkPravegaTableSource} builders.
  *
  * @param <T> the element type.
  * @param <B> the builder type.
@@ -152,6 +152,9 @@ public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStream
 
     /**
      * Builds a {@link FlinkPravegaReader} based on the configuration.
+     *
+     * Note that the {@link FlinkPravegaTableSource} supports both the batch and streaming API, and so creates both
+     * a source function and an input format and then uses one or the other.
      *
      * Be sure to call {@code initialize()} before returning the reader to user code.
      *
