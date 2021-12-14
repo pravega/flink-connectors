@@ -25,6 +25,7 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.common.function.RunnableWithException;
+import io.pravega.connectors.flink.serialization.FlinkSerializer;
 import io.pravega.connectors.flink.utils.DirectExecutorService;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSinkOperatorTestHarness;
@@ -145,7 +146,7 @@ public class FlinkPravegaWriterTest {
     @Test
     public void testFlinkSerializer() {
         IntegerSerializationSchema schema = new IntegerSerializationSchema();
-        FlinkPravegaWriter.FlinkSerializer<Integer> serializer = new FlinkPravegaWriter.FlinkSerializer<>(schema);
+        FlinkSerializer<Integer> serializer = new FlinkSerializer<>(schema);
         Integer val = 42;
         Assert.assertEquals(ByteBuffer.wrap(schema.serialize(val)), serializer.serialize(val));
         try {

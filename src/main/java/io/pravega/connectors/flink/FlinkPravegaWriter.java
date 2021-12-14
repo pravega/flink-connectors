@@ -27,6 +27,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
+import io.pravega.connectors.flink.serialization.FlinkSerializer;
 import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.RuntimeContextInitializationContextAdapters;
@@ -48,7 +49,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -524,26 +524,6 @@ public class FlinkPravegaWriter<T>
     // ------------------------------------------------------------------------
     //  serializer
     // ------------------------------------------------------------------------
-
-    @VisibleForTesting
-    static final class FlinkSerializer<T> implements Serializer<T> {
-
-        private final SerializationSchema<T> serializationSchema;
-
-        FlinkSerializer(SerializationSchema<T> serializationSchema) {
-            this.serializationSchema = serializationSchema;
-        }
-
-        @Override
-        public ByteBuffer serialize(T value) {
-            return ByteBuffer.wrap(serializationSchema.serialize(value));
-        }
-
-        @Override
-        public T deserialize(ByteBuffer serializedValue) {
-            throw new IllegalStateException("deserialize() called within a serializer");
-        }
-    }
 
     // ------------------------------------------------------------------------
     //  State and context classes and serializers
