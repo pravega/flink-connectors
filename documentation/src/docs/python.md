@@ -2,9 +2,9 @@
 
 This Pravega Python DataStream connector provides a data source and data sink for Flink streaming jobs.
 
-Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python). This page only describes the API usage and for parameter concepts please refer to [Configurations](configurations.md) and [Streaming](streaming.md)
+Your Flink streaming jobs could use Pravega as their storage with these [Python API Wrappers](https://github.com/pravega/flink-connectors/tree/master/src/main/python). This page only describes the API usage and for parameter concepts please refer to [Configurations](configurations.md) and [Streaming](streaming.md).
 
-**DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not officially published.**
+**DISCLAIMER: This python wrapper is an IMPLEMENTATION REFERENCE and is not officially supported.**
 
 * [How to use](#How-to-use)
 * [PravegaConfig](#PravegaConfig)
@@ -47,7 +47,9 @@ A `StreamCut` object could be constructed from the `from_base64` class method wh
 
 By default, the `FlinkPravegaReader` will pass the `UNBOUNDED` `StreamCut` which let the reader read from the HEAD to the TAIL.
 
-## FlinkPravegaReader
+## Source
+
+### FlinkPravegaReader
 
 Use `FlinkPravegaReader` as a datastream source. Could be added by `env.add_source`.
 
@@ -85,9 +87,11 @@ ds = env.add_source(pravega_reader)
 |event_read_timeout|timedelta|No|None(1 second on java side)|Sets the timeout for the call to read events from Pravega. After the timeout expires (without an event being returned), another call will be made.|
 |max_outstanding_checkpoint_request|int|No|None(3 on java side)|Configures the maximum outstanding checkpoint requests to Pravega.|
 
-## FlinkPravegaWriter
+## Sink
 
-Use `FlinkPravegaWriter` as a datastream sink. Could be added by `env.add_sink`.
+### FlinkPravegaWriter
+
+Use `FlinkPravegaWriter` as a datastream sinkFunction. Could be added by `env.add_sink`.
 
 ```python
 from pyflink.common.serialization import SimpleStringSchema
@@ -103,9 +107,33 @@ pravega_writer = FlinkPravegaWriter(stream=stream,
                                     pravega_config=pravega_config,
                                     serialization_schema=SimpleStringSchema())
 
-ds = env.add_sink(pravega_reader)
+ds = env.add_sink(pravega_writer)
 ```
 
+### PravegaSink
+
+Use `PravegaSink` as a datastream sink. Could be added by `env.sink_to`.
+
+```python
+from pyflink.common.serialization import SimpleStringSchema
+from pyflink.datastream import StreamExecutionEnvironment
+
+from pravega_config import PravegaConfig
+from pravega_writer import PravegaSink
+
+env = StreamExecutionEnvironment.get_execution_environment()
+
+pravega_config = PravegaConfig(uri=uri, scope=scope)
+pravega_sink = PravegaSink(stream=stream,
+                           pravega_config=pravega_config,
+                           serialization_schema=SimpleStringSchema())
+
+ds = env.sink_to(pravega_sink)
+```
+
+### Configurations
+
+Both `FlinkPravegaWriter` and `PravegaSink` share the same parameters.
 |parameter|type|required|default value|description|
 |-|-|-|-|-|
 |stream|Union[str, Stream]|Yes|N/A|Add a stream to be read by the source, from the earliest available position in the stream.|
