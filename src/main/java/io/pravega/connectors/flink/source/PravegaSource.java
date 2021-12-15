@@ -27,9 +27,7 @@ import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
 import io.pravega.connectors.flink.source.reader.PravegaSplitReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
-import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.annotation.PublicEvolving;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
@@ -39,12 +37,10 @@ import org.apache.flink.api.connector.source.SourceReader;
 import org.apache.flink.api.connector.source.SourceReaderContext;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
-import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.typeutils.ResultTypeQueryable;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
-import org.apache.flink.util.SerializedValue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +48,7 @@ import java.io.IOException;
 import java.util.function.Supplier;
 
 /**
- * The Source implementation of Pravega. Please use a {@link Builder} to construct a {@link
+ * The Source implementation of Pravega. Please use a {@link PravegaSourceBuilder} to construct a {@link
  *  PravegaSource}. The following example shows how to create a PravegaSource emitting records of <code>
  *  Integer</code> type.
  *
@@ -192,71 +188,7 @@ public class PravegaSource<T>
      * @param <T> the element type.
      * @return A new builder of {@link PravegaSource}
      */
-    public static <T> Builder<T> builder() {
-        return new Builder<>();
-    }
-
-    /**
-     * A builder for {@link PravegaSource}.
-     *
-     * @param <T> the element type.
-     */
-    public static class Builder<T> extends AbstractStreamingReaderBuilder<T, Builder<T>> {
-
-        private DeserializationSchema<T> deserializationSchema;
-        private SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
-
-        protected Builder<T> builder() {
-            return this;
-        }
-
-        /**
-         * Sets the deserialization schema.
-         *
-         * @param deserializationSchema The deserialization schema
-         * @return Builder instance.
-         */
-        public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
-            this.deserializationSchema = deserializationSchema;
-            return builder();
-        }
-
-        /**
-         * Sets the timestamp and watermark assigner.
-         *
-         * @param assignerWithTimeWindows The timestamp and watermark assigner.
-         * @return Builder instance.
-         */
-
-        public Builder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
-            try {
-                ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
-                this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
-            } catch (IOException e) {
-                throw new IllegalArgumentException("The given assigner is not serializable", e);
-            }
-            return this;
-        }
-
-        @Override
-        protected DeserializationSchema<T> getDeserializationSchema() {
-            Preconditions.checkState(deserializationSchema != null, "Deserialization schema must not be null.");
-            return deserializationSchema;
-        }
-
-        @Override
-        protected SerializedValue<AssignerWithTimeWindows<T>> getAssignerWithTimeWindows() {
-            return assignerWithTimeWindows;
-        }
-
-        /**
-         * Builds a {@link PravegaSource} based on the configuration.
-         * @throws IllegalStateException if the configuration is invalid.
-         * @return A new {@link PravegaSource} instance.
-         */
-        public PravegaSource<T> build() {
-            PravegaSource<T> source = buildSource();
-            return source;
-        }
+    public static <T> PravegaSourceBuilder<T> builder() {
+        return new PravegaSourceBuilder<>();
     }
 }

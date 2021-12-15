@@ -16,7 +16,6 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.ReaderGroupConfig;
-import io.pravega.connectors.flink.source.PravegaSource;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.annotation.Internal;
@@ -169,19 +168,6 @@ public abstract class AbstractStreamingReaderBuilder<T, B extends AbstractStream
                 readerGroupInfo.getReaderGroupName(),
                 getDeserializationSchema(),
                 getAssignerWithTimeWindows(),
-                this.eventReadTimeout,
-                this.checkpointInitiateTimeout,
-                isMetricsEnabled());
-    }
-
-    protected PravegaSource<T> buildSource() {
-        ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
-        return new PravegaSource<>(
-                getPravegaConfig().getClientConfig(),
-                readerGroupInfo.getReaderGroupConfig(),
-                readerGroupInfo.getReaderGroupScope(),
-                readerGroupInfo.getReaderGroupName(),
-                getDeserializationSchema(),
                 this.eventReadTimeout,
                 this.checkpointInitiateTimeout,
                 isMetricsEnabled());
