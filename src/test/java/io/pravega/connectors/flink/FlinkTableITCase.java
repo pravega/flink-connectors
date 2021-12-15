@@ -19,8 +19,6 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.table.descriptors.Pravega;
 import io.pravega.connectors.flink.utils.SetupUtils;
-import lombok.Data;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -54,6 +52,8 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
 import java.util.Arrays;
@@ -66,8 +66,8 @@ import java.util.concurrent.TimeUnit;
 /**
  * Integration tests for {@link FlinkPravegaTableSource} and {@link FlinkPravegaTableSink}.
  */
-@Slf4j
 public class FlinkTableITCase {
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkTableITCase.class);
 
     /**
      * Sample data.
@@ -80,7 +80,6 @@ public class FlinkTableITCase {
     /**
      * A sample POJO to be written as a Row (category,value).
      */
-    @Data
     public static class SampleRecord implements Serializable {
         public String category;
         public int value;
@@ -96,7 +95,6 @@ public class FlinkTableITCase {
     /**
      * A sample POJO to be written as a Row (category,value,timestamp).
      */
-    @Data
     public static class SampleRecordWithTimestamp implements Serializable {
         public String category;
         public int value;
@@ -108,6 +106,10 @@ public class FlinkTableITCase {
             this.category = record.category;
             this.value = record.value;
             this.timestamp = record.value;
+        }
+
+        public long getTimestamp() {
+            return timestamp;
         }
     }
 
@@ -512,7 +514,7 @@ public class FlinkTableITCase {
         @Override
         public void invoke(SampleRecord value, Context context) throws Exception {
             remainingSamples.remove(value);
-            log.info("processed: {}", value);
+            LOG.info("processed: {}", value);
 
             if (remainingSamples.size() == 0) {
                 throw new TestCompletionException();

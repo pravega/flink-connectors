@@ -21,7 +21,6 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
-import lombok.Data;
 import org.apache.flink.table.api.ValidationException;
 import org.apache.flink.table.descriptors.DescriptorProperties;
 import org.apache.flink.types.Row;
@@ -43,7 +42,6 @@ import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLo
  * @deprecated Internal class for parsing configurations for legacy Table API
  */
 @Deprecated
-@Data
 public final class ConnectorConfigurations {
     private Optional<Boolean> metrics;
 
@@ -79,6 +77,66 @@ public final class ConnectorConfigurations {
     private String routingKey;
 
     private PravegaConfig pravegaConfig;
+
+    public Optional<Boolean> getMetrics() {
+        return metrics;
+    }
+
+    public Optional<String> getUid() {
+        return uid;
+    }
+
+    public Optional<String> getRgScope() {
+        return rgScope;
+    }
+
+    public Optional<String> getRgName() {
+        return rgName;
+    }
+
+    public Optional<Long> getRefreshInterval() {
+        return refreshInterval;
+    }
+
+    public Optional<Long> getEventReadTimeoutInterval() {
+        return eventReadTimeoutInterval;
+    }
+
+    public Optional<Long> getCheckpointInitiateTimeoutInterval() {
+        return checkpointInitiateTimeoutInterval;
+    }
+
+    public List<StreamWithBoundaries> getReaderStreams() {
+        return readerStreams;
+    }
+
+    public Optional<AssignerWithTimeWindows<Row>> getAssignerWithTimeWindows() {
+        return assignerWithTimeWindows;
+    }
+
+    public Stream getWriterStream() {
+        return writerStream;
+    }
+
+    public Optional<PravegaWriterMode> getWriterMode() {
+        return writerMode;
+    }
+
+    public Optional<Long> getTxnLeaseRenewalInterval() {
+        return txnLeaseRenewalInterval;
+    }
+
+    public Optional<Boolean> getWatermark() {
+        return watermark;
+    }
+
+    public String getRoutingKey() {
+        return routingKey;
+    }
+
+    public PravegaConfig getPravegaConfig() {
+        return pravegaConfig;
+    }
 
     public void parseConfigurations(DescriptorProperties descriptorProperties, ConfigurationType configurationType) {
         metrics =  descriptorProperties.getOptionalBoolean(CONNECTOR_METRICS);

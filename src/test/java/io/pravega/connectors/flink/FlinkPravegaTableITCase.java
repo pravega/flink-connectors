@@ -20,7 +20,6 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.table.descriptors.Pravega;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.java.DataSet;
@@ -59,6 +58,8 @@ import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -75,11 +76,12 @@ import static org.junit.Assert.assertTrue;
 /**
  * Integration tests for {@link FlinkPravegaTableSource}
  */
-@Slf4j
 public class FlinkPravegaTableITCase {
 
     // Setup utility.
     protected static final SetupUtils SETUP_UTILS = new SetupUtils();
+
+    private static final Logger LOG = LoggerFactory.getLogger(FlinkPravegaTableITCase.class);
 
     private static final List<Row> RESULTS = new ArrayList<>();
 
@@ -200,7 +202,7 @@ public class FlinkPravegaTableITCase {
             }
         }
 
-        log.info("results: {}", RESULTS);
+        LOG.info("results: {}", RESULTS);
         boolean compare = compare(RESULTS, getExpectedResultsAppend());
         assertTrue("Output does not match expected result", compare);
     }
@@ -248,7 +250,7 @@ public class FlinkPravegaTableITCase {
         DataSet<Row> resultSet = tableEnv.toDataSet(result, Row.class);
 
         List<Row> results = resultSet.collect();
-        log.info("results: {}", results);
+        LOG.info("results: {}", results);
 
         boolean compare = compare(results, getExpectedResultsRetracted());
         assertTrue("Output does not match expected result", compare);
@@ -359,7 +361,7 @@ public class FlinkPravegaTableITCase {
                 row.setField(1, data[currentOffset][1]);
                 row.setField(2, Timestamp.valueOf(data[currentOffset][2]));
 
-                log.info("writing record: {}", row);
+                LOG.info("writing record: {}", row);
                 synchronized (ctx.getCheckpointLock()) {
                     ctx.collect(row);
                     currentOffset++;
@@ -385,10 +387,10 @@ public class FlinkPravegaTableITCase {
 
         @Override
         public void invoke(Tuple2<Boolean, Row> value, Context context) throws Exception {
-            log.info("reading row element: {}", value);
+            LOG.info("reading row element: {}", value);
             Row data = value.f1;
             if (value.f0.booleanValue()) {
-                log.info("adding row element: {}", value);
+                LOG.info("adding row element: {}", value);
                 RESULTS.add(data);
                 count++;
             } else {
@@ -403,7 +405,7 @@ public class FlinkPravegaTableITCase {
             }
 
             if (count == eventCount) {
-                log.info("done processing...");
+                LOG.info("done processing...");
                 throw new SuccessException();
             }
         }
