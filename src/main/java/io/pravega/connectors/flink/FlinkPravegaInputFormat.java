@@ -105,7 +105,9 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
     @Override
     public void closeInputFormat() throws IOException {
         // closing the client factory also closes the batch client connection
-        this.batchClientFactory.close();
+        if (this.batchClientFactory != null) {
+            this.batchClientFactory.close();
+        }
     }
 
     @Override
@@ -175,7 +177,9 @@ public class FlinkPravegaInputFormat<T> extends RichInputFormat<T, PravegaInputS
 
     @Override
     public void close() throws IOException {
-        this.segmentIterator.close();
+        if (this.segmentIterator != null) {
+            this.segmentIterator.close();
+        }
     }
 
     /**
