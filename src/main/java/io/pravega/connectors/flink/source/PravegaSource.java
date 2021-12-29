@@ -20,7 +20,7 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
-import io.pravega.connectors.flink.CheckpointSerializer;
+import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import io.pravega.connectors.flink.source.enumerator.PravegaSplitEnumerator;
 import io.pravega.connectors.flink.source.reader.PravegaRecordEmitter;
 import io.pravega.connectors.flink.source.reader.PravegaSourceReader;
