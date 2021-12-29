@@ -22,6 +22,7 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
+import io.pravega.connectors.flink.serialization.FlinkSerializer;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.io.RichOutputFormat;
@@ -108,7 +109,7 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
 
     @Override
     public void open(int taskNumber, int numTasks) throws IOException {
-        Serializer<T> eventSerializer = new FlinkPravegaWriter.FlinkSerializer<>(serializationSchema);
+        Serializer<T> eventSerializer = new FlinkSerializer<>(serializationSchema);
         EventWriterConfig writerConfig = EventWriterConfig.builder().build();
         clientFactory = createClientFactory(scope, clientConfig);
         pravegaWriter = clientFactory.createEventWriter(stream, eventSerializer, writerConfig);

@@ -25,6 +25,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.impl.CheckpointImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.util.concurrent.Executors;
 import org.junit.Test;
