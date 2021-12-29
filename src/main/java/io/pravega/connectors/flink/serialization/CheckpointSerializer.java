@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package io.pravega.connectors.flink;
+package io.pravega.connectors.flink.serialization;
 
 import io.pravega.client.stream.Checkpoint;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -27,7 +27,7 @@ import java.nio.ByteBuffer;
  * <p>The serializer currently uses {@link java.io.Serializable Java Serialization} to
  * serialize the checkpoint objects.
  */
-class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
+public class CheckpointSerializer implements SimpleVersionedSerializer<Checkpoint> {
 
     private static final int VERSION = 2;
 
