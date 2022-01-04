@@ -21,6 +21,7 @@ import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ReaderGroupNotFoundException;
+import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.runtime.checkpoint.MasterTriggerRestoreHook;
