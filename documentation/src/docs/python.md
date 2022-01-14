@@ -63,10 +63,9 @@ from pravega_reader import FlinkPravegaReader
 env = StreamExecutionEnvironment.get_execution_environment()
 
 pravega_config = PravegaConfig(uri=uri, scope=scope)
-pravega_reader = FlinkPravegaReader(
-    stream=stream,
-    pravega_config=pravega_config,
-    deserialization_schema=SimpleStringSchema())
+pravega_reader = FlinkPravegaReader(stream=stream,
+                                    pravega_config=pravega_config,
+                                    deserialization_schema=SimpleStringSchema())
 
 ds = env.add_source(pravega_reader)
 ```
@@ -91,7 +90,7 @@ ds = env.add_source(pravega_reader)
 
 ### FlinkPravegaWriter
 
-Use `FlinkPravegaWriter` as a datastream sinkFunction. Could be added by `env.add_sink`.
+Use `FlinkPravegaWriter` as a datastream sink. Could be added by `env.add_sink`.
 
 ```python
 from pyflink.common.serialization import SimpleStringSchema
