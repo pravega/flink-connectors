@@ -59,6 +59,15 @@ With such mapping we don't need to rewrite DDLs to create table or manually deal
 
 Users can use SQL DDL or Java/Scala programatically to create and register Pravega Flink Catalog.
 
+To make the integration work in Table API program or SQL in SQL client, user need to include the schema registry serializer dependency jar file 
+other than the connector dependency jar file to the `/lib/` directory in Flink distribution. Alternatively, user can put these dependencies in a dedicated folder, 
+and add them to classpath with the -C or -l option for Table API program or SQL Client respectively.
+
+Schema registry serializer library can be downloaded [here](https://mvnrepository.com/artifact/io.pravega/schemaregistry-serializers/0.3.0).
+
+> **Note:** The default serialization format for catalog is Avro, if you are using default Avro serialization format, you need to download 
+> [Flink Avro](https://mvnrepository.com/artifact/org.apache.flink/flink-avro) library to `/lib/` directory since it is not included in Flink distribution.
+
 #### SQL
 
 ```sql
