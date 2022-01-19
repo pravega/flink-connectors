@@ -56,7 +56,7 @@ import java.util.function.Supplier;
  * PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
  *                     .forStream(streamName)
  *                     .enableMetrics(false)
- *                     .withPravegaConfig(PRAVEGA_CONFIG)
+ *                     .withPravegaConfig(pravegaConfig)
  *                     .withReaderGroupName("flink-reader")
  *                     .withDeserializationSchema(new IntegerDeserializationSchema())
  *                     .build();

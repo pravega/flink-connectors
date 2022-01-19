@@ -24,17 +24,12 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
-import org.apache.flink.api.connector.source.SplitsAssignment;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -66,8 +61,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // The readergroup name to coordinate the parallel readers.
     private final String readerGroupName;
 
-    // Pravega splits list.
-    private final List<PravegaSplit> splits;
+    // The number of Pravega source readers.
+    private int numReaders = 0;
 
     // Pravega checkpoint for enumerator.
     private Checkpoint checkpoint;
@@ -104,10 +99,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         this.readerGroupName = readerGroupName;
         this.clientConfig = clientConfig;
         this.readerGroupConfig = readerGroupConfig;
-        this.splits = new ArrayList<>();
-        for (int i = 0; i < enumContext.currentParallelism(); i++) {
-            splits.add(new PravegaSplit(readerGroupName, i));
-        }
         this.checkpoint = checkpoint;
         this.scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
@@ -139,23 +130,20 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     @Override
     public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
         // the Pravega source pushes splits eagerly, rather than act upon split requests
+        throw new UnsupportedOperationException("Not implemented for Pravega source");
     }
 
-    // check with the current parallelism and update the assignment (always one-to-one mapping)
+    // Check with the current parallelism and add the assignment (always one-to-one mapping).
+    // One Pravega Source reader is mapped to one Pravega Split which represents an EventStreamReader so that
+    // we can just assign the split to reader.
     @Override
     public void addReader(int subtaskId) {
-        if (enumContext.registeredReaders().size() == enumContext.currentParallelism() && splits.size() > 0) {
-            LOG.debug("Adding reader {} to PravegaSplitEnumerator for reader group: {}/{}.",
+        if (numReaders++ < enumContext.currentParallelism()) {
+            LOG.info("Adding reader {} to PravegaSplitEnumerator for reader group: {}/{}.",
                     subtaskId,
                     scope,
                     readerGroupName);
-            int numReaders = enumContext.registeredReaders().size();
-            Map<Integer, List<PravegaSplit>> assignment = new HashMap<>();
-            for (int i = 0; i < numReaders; i++) {
-                assignment.put(i, Collections.singletonList(splits.get(i)));
-            }
-            enumContext.assignSplits(new SplitsAssignment<>(assignment));
-            splits.clear();
+            enumContext.assignSplit(new PravegaSplit(readerGroupName, subtaskId), subtaskId);
         }
     }
 
@@ -185,8 +173,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     }
 
     // This method is called when there is an attempt to locally recover from a failure to assign unassigned splits.
-    // It throws an intentional exception here to trigger a global recovery since Pravega since Pravega
-    // doesn't have a mechanism to recover from partial failure. This will shutdown the reader group,
+    // It throws an intentional exception here to trigger a global recovery since Pravega
+    // doesn't have a mechanism to recover from partial failure. This will shut down the reader group,
     // recreate it and recover it from the latest checkpoint.
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
