@@ -63,13 +63,13 @@ Pravega uses terms such as *streams* and *scopes* for managing streaming data, b
 
 When using Schema Registry serialization, further information is required in order to describe how to map binary data onto table columns. We have introduced an internal format factory `PravegaRegistryFormatFactory`. Currently it supports Json and Avro formats without any additional encryption and compression codecs.
 
-With the help of schema Registry service, it is feasible to map Pravega streams to Flink tables as the following table shows:
+With the help of Schema Registry service, it is feasible to map Pravega streams to Flink tables as the following table shows:
 
-| Flink Catalog terms                  | Pravega terms     |
-|--------------------------------------|-------------------|
-| catalog name (defined in Flink only) | N/A               |
-| database name                        | scope name        |
-| table name                           | stream name       |
+| Flink Catalog terms                  | Pravega terms |
+|--------------------------------------|---------------|
+| catalog name (defined in Flink only) | N/A           |
+| database                             | scope         |
+| table                                | stream        |
 
 With such mapping we don't need to rewrite DDLs to create table or manually deal with many connection parameters to create tables. It lets us clearly separate making the data available from consuming it. That separation improves productivity, security, and compliance when working with data.
 
