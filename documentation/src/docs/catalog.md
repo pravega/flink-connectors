@@ -67,7 +67,6 @@ With the help of Schema Registry service, it is feasible to map Pravega streams 
 
 | Flink Catalog terms                  | Pravega terms |
 |--------------------------------------|---------------|
-| catalog name (defined in Flink only) | N/A           |
 | database                             | scope         |
 | table                                | stream        |
 
