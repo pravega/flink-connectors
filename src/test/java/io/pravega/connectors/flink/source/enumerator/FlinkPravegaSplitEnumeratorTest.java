@@ -76,15 +76,18 @@ public class FlinkPravegaSplitEnumeratorTest {
             context.registerReader(new ReaderInfo(READER1, "location 0"));
             enumerator.addReader(READER1);
 
-            Assert.assertEquals(context.getSplitsAssignmentSequence().size(), 1);
-            Assert.assertEquals(context.getSplitsAssignmentSequence().get(0).assignment().size(), 2);
+            Assert.assertEquals(context.getSplitsAssignmentSequence().size(), 2);
+            Assert.assertEquals(context.getSplitsAssignmentSequence().get(0).assignment().size(), 1);
             Assert.assertEquals(context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).size(), 1);
             Assert.assertEquals(
                     context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getSubtaskId(), READER0);
             Assert.assertEquals(
-                    context.getSplitsAssignmentSequence().get(0).assignment().get(READER1).get(0).getSubtaskId(), READER1);
+                    context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getSubtaskId(), READER1);
             Assert.assertEquals(
                     context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getReaderGroupName(),
+                    readerGroupName);
+            Assert.assertEquals(
+                    context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getReaderGroupName(),
                     readerGroupName);
         }
     }
