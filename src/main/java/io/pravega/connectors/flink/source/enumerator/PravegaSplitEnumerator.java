@@ -151,6 +151,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // this call will be handled in another thread pool instead of the split enumerator thread.
     @Override
     public Checkpoint snapshotState(long chkPtID) throws Exception {
+        ensureScheduledExecutorExists();
+
         final String checkpointName = createCheckpointName(chkPtID);
 
         LOG.info("Initiate checkpoint {}", checkpointName);
@@ -160,7 +162,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
             this.checkpoint = checkpointResult.get(5, TimeUnit.SECONDS);
         } catch (Exception e) {
             LOG.error("Pravega checkpoint met error.", e);
-            this.checkpoint = null;
+            throw e;
         }
 
         return checkpoint;
@@ -168,8 +170,18 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void close() throws IOException {
-        readerGroup.close();
-        readerGroupManager.close();
+        LOG.info("closing reader group Manager");
+        this.readerGroupManager.close();
+
+        // close the reader group properly
+        LOG.info("closing reader group");
+        this.readerGroup.close();
+
+        if (scheduledExecutorService != null ) {
+            LOG.info("Closing Scheduled Executor.");
+            scheduledExecutorService.shutdownNow();
+            scheduledExecutorService = null;
+        }
     }
 
     // This method is called when there is an attempt to locally recover from a failure to assign unassigned splits.
@@ -186,7 +198,20 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         }
     }
 
-    // -------------
+    // ------------------------------------------------------------------------
+    //  utils
+    // ------------------------------------------------------------------------
+
+    private void ensureScheduledExecutorExists() {
+        if (scheduledExecutorService == null) {
+            LOG.info("Creating Scheduled Executor for enumerator");
+            scheduledExecutorService = createScheduledExecutorService();
+        }
+    }
+
+    protected ScheduledExecutorService createScheduledExecutorService() {
+        return Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
+    }
 
     static String createCheckpointName(long checkpointId) {
         return "PVG-CHK-" + checkpointId;
