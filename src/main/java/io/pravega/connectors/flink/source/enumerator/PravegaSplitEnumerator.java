@@ -130,7 +130,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     @Override
     public void handleSplitRequest(int subtaskId, @Nullable String requesterHostname) {
         // the Pravega source pushes splits eagerly, rather than act upon split requests
-        throw new UnsupportedOperationException("Not implemented for Pravega source");
     }
 
     // Check with the current parallelism and add the assignment (always one-to-one mapping).
