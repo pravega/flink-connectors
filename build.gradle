@@ -103,8 +103,9 @@ dependencies {
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java', version: flinkVersion // provided by application
 
-    compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-planner-loader', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-runtime', version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
@@ -127,7 +128,7 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-runtime', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-streaming-java', classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_' + flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
