@@ -1,3 +1,7 @@
+---
+title: Developer's Guide
+---
+
 <!--
 Copyright Pravega Authors.
 
@@ -13,6 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
+import versions from '@site/versions';
 
 # Flink Connector - Dev Guide
 
@@ -22,7 +27,7 @@ Learn how to build your own applications that using Flink connector for Pravega.
 
 To complete this guide, you need:
 
-* JDK 8 or 11 installed with JAVA_HOME configured appropriately
+* JDK 8 or 11 installed with `JAVA_HOME` configured appropriately
 * Pravega running(Check [here](https://pravega.io/docs/latest/getting-started/) to get started with Pravega)
 * Use Gradle or Maven
 
@@ -34,12 +39,12 @@ However, you can go straight to the completed example at [flink-connector-exampl
 
 # Starting Flink
 
-Download Flink release and un-tar it. We use Flink 1.11.2 here.
+<p>Download Flink release and un-tar it. We use Flink {versions.flink} here.</p>
 
-```bash
-$ tar -xzf flink-1.11.2-bin-scala_2.12.tgz
-$ cd flink-1.11.2-bin-scala_2.12
-```
+<pre><code {...{ "className": "language-bash"}}>
+{`$ tar -xzf flink-${versions.flink}-bin-scala_${versions.scala}.tgz
+$ cd flink-${versions.flink}-bin-scala_${versions.scala}`}
+</code></pre>
 
 Start a cluster
 
@@ -66,11 +71,11 @@ You can follow [here](https://ci.apache.org/projects/flink/flink-docs-stable/dev
 
 Add the below snippet to dependencies section of build.gradle in the app directory, connector dependencies should be part of the shadow jar. For flink connector dependency, we need to choose the connector which aligns the Flink major version and Scala version if you use Scala, along with the same Pravega version you run.
 
-```groovy
-compile group 'org.apache.flink', name: 'flink-streaming-java_2.12', version: '1.11.2'
+<pre><code {...{ "className": "language-groovy" }}>
+{`compile group 'org.apache.flink', name: 'flink-streaming-java_${versions.scala}', version: '${versions.flink}'
 
-flinkShadowJar group: 'io.pravega', name: 'pravega-connectors-flink-1.11_2.12', version: '0.9.0'
-```
+flinkShadowJar group: 'io.pravega', name: 'pravega-connectors-flink-${versions['flink-minor']}_${versions.scala}', version: '${versions['flink-connectors']}'`}
+</code></pre>
 
 Define custom configurations `flinkShadowJar`
 
@@ -95,20 +100,20 @@ You can check [maven-quickstart](https://ci.apache.org/projects/flink/flink-docs
 
 Add below dependencies into Maven POM, these dependencies should be part of the shadow jar
 
-```xml
-<dependency>
+<pre><code {...{ "className": "language-xml" }}>
+{`<dependency>
   <groupId>org.apache.flink</groupId>
-  <artifactId>flink-streaming-java_2.12</artifactId>
-  <version>1.11.2</version>
+  <artifactId>flink-streaming-java_${versions.scala}</artifactId>
+  <version>${versions['flink']}</version>
   <scope>provided</scope>
 </dependency>
 
 <dependency>
   <groupId>io.pravega</groupId>
-  <artifactId>pravega-connectors-flink-1.11_2.12</artifactId>
-  <version>0.9.0</version>
-</dependency>
-```
+  <artifactId>pravega-connectors-flink-${versions['flink-minor']}_${versions.scala}</artifactId>
+  <version>${versions['flink-connectors']}</version>
+</dependency>`}
+</code></pre>
 
 Invoke `mvn clean package` to build/package your project. You will find a JAR file that contains your application, plus connectors and libraries that you may have added as dependencies to the application: `target/<artifact-id>-<version>.jar`.
 
@@ -216,4 +221,4 @@ flink run -c <classname> ${your-app}.jar --controller <pravega-controller-uri>
 
 # What’s next?
 
-This guide covered the creation of a application that uses Flink connector to read and wirte from a pravega stream. However, there is much more. We recommend continuing the journey by going through [flink connector documents](https://pravega.io/docs/latest/connectors/flink-connector/) and check other examples on [flink-connector-examples](https://github.com/pravega/pravega-samples/tree/master/flink-connector-examples).
+This guide covered the creation of a application that uses Flink connector to read and wirte from a pravega stream. However, there is much more. We recommend continuing the journey by going through [flink connector documents](overview) and check other examples on [flink-connector-examples](https://github.com/pravega/pravega-samples/tree/master/flink-connector-examples).

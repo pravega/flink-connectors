@@ -1,3 +1,7 @@
+---
+title: Streaming
+---
+
 <!--
 Copyright Pravega Authors.
 
@@ -13,8 +17,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
-# Streaming Connector
 
 The Flink Connector library for Pravega provides a data source and data sink
 for use with the Flink Streaming API. See the below sections for details.

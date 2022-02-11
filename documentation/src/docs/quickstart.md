@@ -1,3 +1,7 @@
+---
+title: Quick Start
+---
+
 <!--
 Copyright Pravega Authors.
 
@@ -13,8 +17,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
-# Getting Started
+import versions from '@site/versions';
 
 ## Creating a Flink Stream Processing Project
 
@@ -31,8 +34,8 @@ Once after the set up, please follow the below instructions to add the **Flink P
 
 To add the Pravega connector dependencies to your project, add the following entry to your project file: (For example, `pom.xml` for Maven)
 
-```xml
-<!-- Before Pravega 0.6 -->
+<pre><code {...{ "className": "language-xml" }}>
+{`<!-- Before Pravega 0.6 -->
 <dependency>
   <groupId>io.pravega</groupId>
   <artifactId>pravega-connectors-flink_2.12</artifactId>
@@ -42,12 +45,13 @@ To add the Pravega connector dependencies to your project, add the following ent
 <!-- Pravega 0.6 and After -->
 <dependency>
   <groupId>io.pravega</groupId>
-  <artifactId>pravega-connectors-flink-1.9_2.12</artifactId>
-  <version>0.6.0</version>
-</dependency>
-```
+  <artifactId>pravega-connectors-flink-${versions['flink-minor']}_${versions.scala}</artifactId>
+  <version>${versions['flink-connectors']}</version>
+</dependency>`}
+</code></pre>
 
-Use appropriate version as necessary. `1.9` is the Flink Major-Minor version. `2.12` is the Scala version. `0.6.0` is the Pravega version.
+<p>Use appropriate version as necessary. <code>{versions['flink-minor']}</code> is the Flink Major-Minor version. <code>{versions.scala}</code> is the Scala version. <code>{versions.pravega}</code> is the Pravega version.</p>
+
 The snapshot versions are published to [`GitHub Packages`](https://github.com/orgs/pravega/packages) repository and the release artifacts are available in [`Maven Central`](https://mvnrepository.com/artifact/io.pravega/pravega-connectors-flink) repository.
 
 Alternatively, we could build and publish the connector artifacts to local maven repository by executing the following command and make use of that version as your application dependency.
