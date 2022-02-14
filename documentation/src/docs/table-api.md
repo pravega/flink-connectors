@@ -82,6 +82,7 @@ WITH (
 | Option                                                 | Required            | Default       | Type         | Description                                                                                                   |
 |--------------------------------------------------------|---------------------|---------------|--------------|---------------------------------------------------------------------------------------------------------------|
 | connector                                              | required            | (none)        | String       | Specify what connector to use, here should be 'pravega'                                                       |
+| scope                                                  | required            | (none)        | String       | Scope name                                                                                                    |
 | controller-uri                                         | required            | (none)        | String       | Pravega controller URI                                                                                        |
 | security.auth-type                                     | optional            | (none)        | String       | Static authentication/authorization type for security                                                         |
 | security.auth-token                                    | optional            | (none)        | String       | Static authentication/authorization token for security                                                        |
@@ -92,6 +93,7 @@ WITH (
 | scan.streams                                           | required for source | (none)        | List<String> | Semicolon-separated list of stream names from which the table is read.                                        |
 | scan.start-streamcuts                                  | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for start streamcuts, begin of the stream if not specified |
 | scan.end-streamcuts                                    | optional            | (none)        | List<String> | Semicolon-separated list of base64 encoded strings for end streamcuts, unbounded end if not specified         |
+| scan.uid                                               | optional            | (none)        | String       | Uid for the table source operator to identify the checkpoint state                                            |
 | scan.reader-group.max-outstanding-checkpoint-request   | optional            | 3             | Integer      | Maximum outstanding checkpoint requests to Pravega                                                            |
 | scan.reader-group.refresh.interval                     | optional            | 3 s           | Duration     | Refresh interval for reader group                                                                             |
 | scan.event-read.timeout.interval                       | optional            | 1 s           | Duration     | Timeout for the call to read events from Pravega                                                              |
