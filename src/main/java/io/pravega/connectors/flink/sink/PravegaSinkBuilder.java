@@ -26,12 +26,11 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 
 /**
- * A builder for {@link PravegaSink}.
+ * A builder for {@link PravegaEventSink} and {@link PravegaTransactionSink}.
  *
  * @param <T> the element type.
  */
 public class PravegaSinkBuilder<T> {
-
     // the numbers below are picked based on the default max settings in Pravega
     protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
 
@@ -45,6 +44,10 @@ public class PravegaSinkBuilder<T> {
     private PravegaEventRouter<T> eventRouter;
 
     PravegaSinkBuilder() {
+    }
+
+    static <T> PravegaSinkBuilder<T> builder() {
+        return new PravegaSinkBuilder<>();
     }
 
     /**
@@ -83,7 +86,7 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * enable/disable pravega sink metrics (default: enabled).
+     * Enable/disable pravega sink metrics (default: enabled).
      *
      * @param enable boolean
      * @return A builder to configure and create a sink.
@@ -154,16 +157,34 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * Create the sink for the current builder state.
+     * Create the EXACTLY_ONCE sink for the current builder state.
      *
-     * @return An instance of {@link PravegaSink}.
+     * @return An instance of {@link PravegaTransactionSink}.
      */
-    public PravegaSink<T> build() {
-        return new PravegaSink<>(
+    public PravegaTransactionSink<T> buildTransactionSink() {
+        Preconditions.checkState(writerMode == PravegaWriterMode.EXACTLY_ONCE,
+                "writerMode must be EXACTLY_ONCE.");
+        return new PravegaTransactionSink<>(
                 enableMetrics,
                 pravegaConfig.getClientConfig(),
                 resolveStream(),
                 txnLeaseRenewalPeriod.toMilliseconds(),
+                serializationSchema,
+                eventRouter);
+    }
+
+    /**
+     * Create the BEST_EFFORT or ATLEAST_ONCE sink for the current builder state.
+     *
+     * @return An instance of {@link PravegaEventSink}.
+     */
+    public PravegaEventSink<T> buildEventSink() {
+        Preconditions.checkState(writerMode == PravegaWriterMode.ATLEAST_ONCE || writerMode == PravegaWriterMode.BEST_EFFORT,
+                "writerMode must be EXACTLY_ONCE.");
+        return new PravegaEventSink<>(
+                enableMetrics,
+                pravegaConfig.getClientConfig(),
+                resolveStream(),
                 writerMode,
                 serializationSchema,
                 eventRouter);

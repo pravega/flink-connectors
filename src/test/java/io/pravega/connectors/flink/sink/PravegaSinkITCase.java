@@ -70,7 +70,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code AT_LEAST_ONCE} mode.
+     * Tests the {@link PravegaEventSink} in {@code AT_LEAST_ONCE} mode.
      */
     @Test
     public void testAtLeastOnceWriter() throws Exception {
@@ -81,14 +81,14 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
-        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaEventSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+                .buildEventSink();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
@@ -99,7 +99,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode.
+     * Tests the {@link PravegaTransactionSink}.
      */
     @Test
     public void testExactlyOnceWriter() throws Exception {
@@ -110,14 +110,14 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+                .buildTransactionSink();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
@@ -128,7 +128,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode without event router.
+     * Tests the {@link PravegaTransactionSink} without event router.
      */
     @Test
     public void testExactlyOnceWriterWithoutEventrouter() throws Exception {
@@ -139,13 +139,13 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+                .buildTransactionSink();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
@@ -156,7 +156,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with a failing mapper.
+     * Tests the {@link PravegaTransactionSink} with a failing mapper.
      */
     @Test
     public void testExactlyOnceWriterWithFailingMapper() throws Exception {
@@ -167,14 +167,14 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+                .buildTransactionSink();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))
@@ -185,7 +185,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with unaligned checkpoint.
+     * Tests the {@link PravegaTransactionSink} with unaligned checkpoint.
      */
     @Test
     public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
@@ -197,14 +197,14 @@ public class PravegaSinkITCase extends AbstractTestBase {
         env.getCheckpointConfig().enableUnalignedCheckpoints();
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        final PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
-                .build();
+                .buildTransactionSink();
 
         env
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE))

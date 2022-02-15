@@ -28,27 +28,31 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink.Sink;
-import org.apache.flink.api.connector.sink.SinkWriter;
+import org.apache.flink.api.connector.sink2.Sink;
+import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * A Pravega {@link SinkWriter} implementation that is suitable for {@link PravegaWriterMode#EXACTLY_ONCE}. <p>
+ * A Pravega {@link TwoPhaseCommittingSink.PrecommittingSinkWriter} implementation that is suitable
+ * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode. <p>
  * Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
  * this writer only deals with the {@link PravegaTransactionWriter#beginTransaction},
  * {@link PravegaTransactionWriter#write}, and {@link PravegaTransactionWriter#prepareCommit} stage.
  *
  * @param <T> The type of the event to be written.
  */
-public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
+public class PravegaTransactionWriter<T>
+        implements TwoPhaseCommittingSink.PrecommittingSinkWriter<T, PravegaTransactionState> {
+
     private static final Logger LOG = LoggerFactory.getLogger(PravegaTransactionWriter.class);
 
     // Client factory for PravegaTransactionWriter instances
@@ -129,6 +133,19 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     }
 
     @Override
+    public Collection<PravegaTransactionState> prepareCommit() throws IOException, InterruptedException {
+        final List<PravegaTransactionState> transactionStates;
+        flush(true);
+
+        transactionStates = Collections.singletonList(PravegaTransactionState.of(this));
+        LOG.info("Committing {} committables.", transactionStates);
+
+        transaction = beginTransaction();
+
+        return transactionStates;
+    }
+
+    @Override
     public void write(T element, Context context) throws IOException, InterruptedException {
         try {
             assert transaction != null;
@@ -144,26 +161,16 @@ public class PravegaTransactionWriter<T> implements SinkWriter<T, PravegaTransac
     }
 
     @Override
-    public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException, InterruptedException {
-        final List<PravegaTransactionState> transactionStates;
-        try {
-            flush();
-
-            transactionStates = Collections.singletonList(PravegaTransactionState.of(this));
-
-            transaction = beginTransaction();
-        } catch (TxnFailedException e) {
-            throw new IOException("", e);
+    public void flush(boolean endOfInput) throws IOException, InterruptedException {
+        if (endOfInput) {
+            try {
+                assert transaction != null;
+                transaction.flush();
+                LOG.info("{} - Flushed the transaction with id: {}", writerId, transaction.getTxnId());
+            } catch (TxnFailedException | AssertionError e) {
+                throw new IOException(e);
+            }
         }
-        LOG.info("Committing {} committables, final commit={}.", transactionStates, flush);
-        return transactionStates;
-    }
-
-    private void flush() throws TxnFailedException, AssertionError {
-        assert transaction != null;
-
-        transaction.flush();
-        LOG.info("{} - Flushed the transaction with id: {}", writerId, transaction.getTxnId());
     }
 
     @Override
