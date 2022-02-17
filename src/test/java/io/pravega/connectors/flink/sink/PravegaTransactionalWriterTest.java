@@ -51,7 +51,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 
-public class PravegaTransactionWriterTest {
+public class PravegaTransactionalWriterTest {
     private static final ClientConfig MOCK_CLIENT_CONFIG = ClientConfig.builder().build();
     private static final String MOCK_SCOPE_NAME = "scope";
     private static final String MOCK_STREAM_NAME = "stream";
@@ -63,7 +63,7 @@ public class PravegaTransactionWriterTest {
      */
     @Test
     public void testConstructor() {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         assert writer.getEventRouter() != null;
         Assert.assertEquals(FIXED_EVENT_ROUTER.getRoutingKey(1), writer.getEventRouter().getRoutingKey(1));
@@ -78,7 +78,7 @@ public class PravegaTransactionWriterTest {
     @Ignore
     @Test
     public void testTransactionalWriterWrite() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -120,7 +120,7 @@ public class PravegaTransactionWriterTest {
      */
     @Test
     public void testTransactionalWriterWriteFail() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -147,7 +147,7 @@ public class PravegaTransactionWriterTest {
      */
     @Test
     public void testTransactionalWriterPrepareCommitFail() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -178,7 +178,7 @@ public class PravegaTransactionWriterTest {
     @Ignore
     @Test
     public void testTransactionalWriterCommitWithUnknownId() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -211,7 +211,7 @@ public class PravegaTransactionWriterTest {
     @Ignore
     @Test
     public void testTransactionalWriterCommitFail() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -246,7 +246,7 @@ public class PravegaTransactionWriterTest {
     @Ignore
     @Test
     public void testTransactionalWriterCommitWithWrongStatus() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -280,7 +280,7 @@ public class PravegaTransactionWriterTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testTransactionalWriterClose() throws Exception {
-        final TestablePravegaTransactionWriter<Integer> writer = new TestablePravegaTransactionWriter<>(
+        final TestablePravegaTransactionalWriter<Integer> writer = new TestablePravegaTransactionalWriter<>(
                 new IntegerSerializationSchema());
         final TestablePravegaCommitter<Integer> committer = new TestablePravegaCommitter<>(
                 new IntegerSerializationSchema());
@@ -303,11 +303,11 @@ public class PravegaTransactionWriterTest {
         }
     }
 
-    public static class TestablePravegaTransactionWriter<T> extends PravegaTransactionWriter<T> {
+    public static class TestablePravegaTransactionalWriter<T> extends PravegaTransactionalWriter<T> {
         Transaction<T> trans;  // the mocked transaction that should replace the PravegaTransactionWriter#transaction
         UUID txnId;
 
-        public TestablePravegaTransactionWriter(SerializationSchema<T> serializationSchema) {
+        public TestablePravegaTransactionalWriter(SerializationSchema<T> serializationSchema) {
             super(mock(Sink.InitContext.class), MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
                     DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS, serializationSchema, event -> ROUTING_KEY);
         }
@@ -350,9 +350,9 @@ public class PravegaTransactionWriterTest {
         return mock(TransactionalEventStreamWriter.class);
     }
 
-    private static PravegaTransactionSink<Integer> mockSink(TwoPhaseCommittingSink.PrecommittingSinkWriter<Integer, PravegaTransactionState> writer,
-                                                            @Nullable PravegaCommitter<Integer> committer) throws IOException {
-        final PravegaTransactionSink<Integer> sink = spy(new PravegaTransactionSink<>(false,
+    private static PravegaTransactionalSink<Integer> mockSink(TwoPhaseCommittingSink.PrecommittingSinkWriter<Integer, PravegaTransactionState> writer,
+                                                              @Nullable PravegaCommitter<Integer> committer) throws IOException {
+        final PravegaTransactionalSink<Integer> sink = spy(new PravegaTransactionalSink<>(false,
                 MOCK_CLIENT_CONFIG, Stream.of(MOCK_SCOPE_NAME, MOCK_STREAM_NAME),
                 DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS,
                 new IntegerSerializationSchema(), FIXED_EVENT_ROUTER));
@@ -371,7 +371,7 @@ public class PravegaTransactionWriterTest {
      * @return A test harness.
      */
     private OneInputStreamOperatorTestHarness<Integer, CommittableMessage<PravegaTransactionState>>
-    createTestHarness(PravegaTransactionWriter<Integer> writer, PravegaCommitter<Integer> committer) throws Exception {
+    createTestHarness(PravegaTransactionalWriter<Integer> writer, PravegaCommitter<Integer> committer) throws Exception {
         return new OneInputStreamOperatorTestHarness<>(
                 new SinkWriterOperatorFactory<>(mockSink(writer, committer)),
                 IntSerializer.INSTANCE);

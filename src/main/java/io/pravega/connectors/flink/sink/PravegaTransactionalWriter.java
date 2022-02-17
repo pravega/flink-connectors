@@ -45,15 +45,15 @@ import java.util.UUID;
  * A Pravega {@link TwoPhaseCommittingSink.PrecommittingSinkWriter} implementation that is suitable
  * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode. <p>
  * Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
- * this writer only deals with the {@link PravegaTransactionWriter#beginTransaction},
- * {@link PravegaTransactionWriter#write}, and {@link PravegaTransactionWriter#prepareCommit} stage.
+ * this writer only deals with the {@link PravegaTransactionalWriter#beginTransaction},
+ * {@link PravegaTransactionalWriter#write}, and {@link PravegaTransactionalWriter#prepareCommit} stage.
  *
  * @param <T> The type of the event to be written.
  */
-public class PravegaTransactionWriter<T>
+public class PravegaTransactionalWriter<T>
         implements TwoPhaseCommittingSink.PrecommittingSinkWriter<T, PravegaTransactionState> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(PravegaTransactionWriter.class);
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaTransactionalWriter.class);
 
     // Client factory for PravegaTransactionWriter instances
     @VisibleForTesting
@@ -96,12 +96,12 @@ public class PravegaTransactionWriter<T>
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
-    public PravegaTransactionWriter(Sink.InitContext context,
-                                    ClientConfig clientConfig,
-                                    Stream stream,
-                                    long txnLeaseRenewalPeriod,
-                                    SerializationSchema<T> serializationSchema,
-                                    PravegaEventRouter<T> eventRouter) {
+    public PravegaTransactionalWriter(Sink.InitContext context,
+                                      ClientConfig clientConfig,
+                                      Stream stream,
+                                      long txnLeaseRenewalPeriod,
+                                      SerializationSchema<T> serializationSchema,
+                                      PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;

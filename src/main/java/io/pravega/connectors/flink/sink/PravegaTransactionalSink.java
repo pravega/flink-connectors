@@ -28,7 +28,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 import java.io.IOException;
 
-public class PravegaTransactionSink<T> implements TwoPhaseCommittingSink<T, PravegaTransactionState> {
+public class PravegaTransactionalSink<T> implements TwoPhaseCommittingSink<T, PravegaTransactionState> {
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
 
@@ -51,9 +51,9 @@ public class PravegaTransactionSink<T> implements TwoPhaseCommittingSink<T, Prav
     @Nullable
     private final PravegaEventRouter<T> eventRouter;
 
-    PravegaTransactionSink(boolean enableMetrics, ClientConfig clientConfig,
-                           Stream stream, long txnLeaseRenewalPeriod,
-                           SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+    PravegaTransactionalSink(boolean enableMetrics, ClientConfig clientConfig,
+                             Stream stream, long txnLeaseRenewalPeriod,
+                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.enableMetrics = enableMetrics;
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
@@ -71,7 +71,7 @@ public class PravegaTransactionSink<T> implements TwoPhaseCommittingSink<T, Prav
             pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
         }
 
-        return new PravegaTransactionWriter<>(
+        return new PravegaTransactionalWriter<>(
                 context,
                 clientConfig,
                 stream,

@@ -26,7 +26,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 
 /**
- * A builder for {@link PravegaEventSink} and {@link PravegaTransactionSink}.
+ * A builder for {@link PravegaEventSink} and {@link PravegaTransactionalSink}.
  *
  * @param <T> the element type.
  */
@@ -159,12 +159,12 @@ public class PravegaSinkBuilder<T> {
     /**
      * Create the EXACTLY_ONCE sink for the current builder state.
      *
-     * @return An instance of {@link PravegaTransactionSink}.
+     * @return An instance of {@link PravegaTransactionalSink}.
      */
-    public PravegaTransactionSink<T> buildTransactionSink() {
+    public PravegaTransactionalSink<T> buildTransactionSink() {
         Preconditions.checkState(writerMode == PravegaWriterMode.EXACTLY_ONCE,
                 "writerMode must be EXACTLY_ONCE.");
-        return new PravegaTransactionSink<>(
+        return new PravegaTransactionalSink<>(
                 enableMetrics,
                 pravegaConfig.getClientConfig(),
                 resolveStream(),

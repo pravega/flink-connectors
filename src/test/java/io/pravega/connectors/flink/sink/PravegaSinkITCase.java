@@ -99,7 +99,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaTransactionSink}.
+     * Tests the {@link PravegaTransactionalSink}.
      */
     @Test
     public void testExactlyOnceWriter() throws Exception {
@@ -110,7 +110,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaTransactionalSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -128,7 +128,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaTransactionSink} without event router.
+     * Tests the {@link PravegaTransactionalSink} without event router.
      */
     @Test
     public void testExactlyOnceWriterWithoutEventrouter() throws Exception {
@@ -139,7 +139,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaTransactionalSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -156,7 +156,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaTransactionSink} with a failing mapper.
+     * Tests the {@link PravegaTransactionalSink} with a failing mapper.
      */
     @Test
     public void testExactlyOnceWriterWithFailingMapper() throws Exception {
@@ -167,7 +167,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaTransactionalSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -185,7 +185,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaTransactionSink} with unaligned checkpoint.
+     * Tests the {@link PravegaTransactionalSink} with unaligned checkpoint.
      */
     @Test
     public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
@@ -197,7 +197,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
         env.getCheckpointConfig().enableUnalignedCheckpoints();
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaTransactionSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaTransactionalSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
