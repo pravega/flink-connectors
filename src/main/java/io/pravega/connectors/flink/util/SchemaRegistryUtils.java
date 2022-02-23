@@ -46,7 +46,7 @@ public class SchemaRegistryUtils {
         } else {
             if (isCredentialsLoadDynamic()) {
                 // dynamic credential, e.g. Keycloak
-                builder.authentication(new PravegaCredentialProvider(pravegaConfig.getClientConfig()));
+                builder.authentication(new PravegaCredentialProvider());
             } else {
                 // no credential
             }
