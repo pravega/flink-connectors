@@ -29,7 +29,7 @@ import org.apache.flink.util.Preconditions;
 
 import java.nio.ByteBuffer;
 
-public class DeserializerFromSchemaRegistry<T> extends AbstractSerializerFromSchemaRegistry<T> {
+public class DeserializerFromSchemaRegistry<T> extends AbstractSerializerFromSchemaRegistry implements Serializer<T> {
 
     private static final long serialVersionUID = 1L;
 

@@ -30,7 +30,7 @@ import org.apache.flink.util.Preconditions;
 
 import java.nio.ByteBuffer;
 
-public class SerializerFromSchemaRegistry<T> extends AbstractSerializerFromSchemaRegistry<T> {
+public class SerializerFromSchemaRegistry<T> extends AbstractSerializerFromSchemaRegistry implements Serializer<T> {
 
     private static final long serialVersionUID = 1L;
 

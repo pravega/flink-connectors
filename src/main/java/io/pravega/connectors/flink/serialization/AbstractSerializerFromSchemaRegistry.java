@@ -16,7 +16,6 @@
 
 package io.pravega.connectors.flink.serialization;
 
-import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
@@ -31,9 +30,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 
-public abstract class AbstractSerializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
+public abstract class AbstractSerializerFromSchemaRegistry implements Serializable {
     private static final Logger LOG = LoggerFactory.getLogger(AbstractSerializerFromSchemaRegistry.class);
 
     private static final long serialVersionUID = 1L;
@@ -75,15 +73,5 @@ public abstract class AbstractSerializerFromSchemaRegistry<T> implements Seriali
                     .registryConfig(schemaRegistryClientConfig)
                     .build();
         }
-    }
-
-    @Override
-    public ByteBuffer serialize(T value) {
-        throw new IllegalStateException("Should never be called.");
-    }
-
-    @Override
-    public T deserialize(ByteBuffer serializedValue) {
-        throw new IllegalStateException("Should never be called.");
     }
 }
