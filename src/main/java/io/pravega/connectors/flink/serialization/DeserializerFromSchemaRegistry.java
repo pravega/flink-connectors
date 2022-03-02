@@ -19,35 +19,43 @@ package io.pravega.connectors.flink.serialization;
 import com.google.protobuf.DynamicMessage;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
+import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.avro.generic.IndexedRecord;
 import org.apache.avro.specific.SpecificRecordBase;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.util.Preconditions;
 
+import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class DeserializerFromSchemaRegistry<T> extends AbstractSerializerFromSchemaRegistry implements Serializer<T> {
+public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    private final PravegaConfig pravegaConfig;
+    private final String group;
     private final Class<T> tClass;
 
     // the Pravega deserializer
     private transient Serializer<T> serializer;
 
     public DeserializerFromSchemaRegistry(PravegaConfig pravegaConfig, String group, Class<T> tClass) {
-        super(pravegaConfig, group);
+        Preconditions.checkNotNull(pravegaConfig.getSchemaRegistryUri());
+        this.pravegaConfig = pravegaConfig;
+        this.group = group;
         this.tClass = tClass;
         this.serializer = null;
     }
 
     @SuppressWarnings("unchecked")
     protected void initialize() {
-        super.open();
-        switch (format) {
+        SerializerConfig serializerConfig = SchemaRegistryUtils.getSerializerConfig(pravegaConfig.getDefaultScope(), group, pravegaConfig);
+
+        switch (SchemaRegistryUtils.getSerializationFormat(pravegaConfig, group)) {
             case Json:
                 serializer = SerializerFactory.jsonDeserializer(serializerConfig, JSONSchema.of(tClass));
                 break;
