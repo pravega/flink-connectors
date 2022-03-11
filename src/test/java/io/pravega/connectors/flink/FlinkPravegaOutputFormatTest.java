@@ -20,6 +20,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.DirectExecutorService;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.junit.Assert;
@@ -27,11 +28,13 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -159,6 +162,44 @@ public class FlinkPravegaOutputFormatTest {
         reset(spyFlinkPravegaOutputFormat);
         spyFlinkPravegaOutputFormat.close();
         verify(clientFactory).close();
+    }
+
+    @Test
+    public void testSchemaRegistrySerialization() throws Exception {
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
+        try {
+            FlinkPravegaOutputFormat.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing default scope"
+        }
+
+        pravegaConfig.withDefaultScope("scope");
+        try {
+            FlinkPravegaOutputFormat.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing Schema Registry URI"
+        }
+
+        pravegaConfig.withSchemaRegistryURI(URI.create("http://localhost:9092"));
+        try {
+            FlinkPravegaOutputFormat.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+        } catch (NotImplementedException e) {
+            // "Not support SerializationFormat.Any"
+        }
     }
 
     private static class FixedEventRouter<T> implements PravegaEventRouter<T> {
