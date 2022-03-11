@@ -23,6 +23,8 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.serialization.FlinkSerializer;
+import io.pravega.connectors.flink.serialization.PravegaSerializationSchema;
+import io.pravega.connectors.flink.serialization.SerializerFromSchemaRegistry;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.io.RichOutputFormat;
@@ -258,6 +260,19 @@ public class FlinkPravegaOutputFormat<T> extends RichOutputFormat<T> {
          */
         public Builder<T> withSerializationSchema(SerializationSchema<T> serializationSchema) {
             this.serializationSchema = serializationSchema;
+            return builder();
+        }
+
+        /**
+         * Sets the serialization schema from schema registry. It supports Json, Avro and Protobuf format.
+         *
+         * @param groupId The group id in schema registry
+         * @param tClass  The class describing the serialized type.
+         * @return Builder instance.
+         */
+        public Builder<T> withSerializationSchemaFromRegistry(String groupId, Class<T> tClass) {
+            this.serializationSchema = new PravegaSerializationSchema<>(
+                    new SerializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 

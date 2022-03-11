@@ -5,7 +5,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *     http://www.apache.org/licenses/LICENSE-2.0
+ * http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,6 +22,7 @@ import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
+import io.pravega.schemaregistry.serializer.protobuf.schemas.ProtobufSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
 import org.apache.avro.generic.IndexedRecord;
@@ -32,7 +33,7 @@ import org.apache.flink.util.Preconditions;
 import java.io.Serializable;
 import java.nio.ByteBuffer;
 
-public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
+public class SerializerFromSchemaRegistry<T> implements Serializer<T>, Serializable {
 
     private static final long serialVersionUID = 1L;
 
@@ -40,10 +41,10 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
     private final String group;
     private final Class<T> tClass;
 
-    // the Pravega deserializer
+    // the Pravega serializer
     private transient Serializer<T> serializer;
 
-    public DeserializerFromSchemaRegistry(PravegaConfig pravegaConfig, String group, Class<T> tClass) {
+    public SerializerFromSchemaRegistry(PravegaConfig pravegaConfig, String group, Class<T> tClass) {
         Preconditions.checkNotNull(pravegaConfig.getSchemaRegistryUri());
         this.pravegaConfig = pravegaConfig;
         this.group = group;
@@ -57,19 +58,21 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
 
         switch (SchemaRegistryUtils.getSerializationFormat(pravegaConfig, group)) {
             case Json:
-                serializer = SerializerFactory.jsonDeserializer(serializerConfig, JSONSchema.of(tClass));
+                serializer = SerializerFactory.jsonSerializer(serializerConfig, JSONSchema.of(tClass));
                 break;
             case Avro:
                 Preconditions.checkArgument(IndexedRecord.class.isAssignableFrom(tClass));
                 if (SpecificRecordBase.class.isAssignableFrom(tClass)) {
-                    serializer = SerializerFactory.avroDeserializer(serializerConfig, AvroSchema.of(tClass));
+                    serializer = SerializerFactory.avroSerializer(serializerConfig, AvroSchema.of(tClass));
                 } else {
-                    serializer = (Serializer<T>) SerializerFactory.avroGenericDeserializer(serializerConfig, null);
+                    serializer = (Serializer<T>) SerializerFactory.avroSerializer(serializerConfig,
+                            AvroSchema.from(SchemaRegistryUtils.getSchemaInfo(pravegaConfig, group)));
                 }
                 break;
             case Protobuf:
                 if (DynamicMessage.class.isAssignableFrom(tClass)) {
-                    serializer = (Serializer<T>) SerializerFactory.protobufGenericDeserializer(serializerConfig, null);
+                    serializer = (Serializer<T>) SerializerFactory.protobufSerializer(serializerConfig,
+                            ProtobufSchema.from(SchemaRegistryUtils.getSchemaInfo(pravegaConfig, group)));
                 } else {
                     throw new UnsupportedOperationException("Only support DynamicMessage in Protobuf");
                 }
@@ -81,14 +84,14 @@ public class DeserializerFromSchemaRegistry<T> implements Serializer<T>, Seriali
 
     @Override
     public ByteBuffer serialize(T value) {
-        throw new NotImplementedException("Not supporting serialize in Deserializer");
+        if (serializer == null) {
+            initialize();
+        }
+        return serializer.serialize(value);
     }
 
     @Override
     public T deserialize(ByteBuffer serializedValue) {
-        if (serializer == null) {
-            initialize();
-        }
-        return serializer.deserialize(serializedValue);
+        throw new NotImplementedException("Not supporting deserialize in Serializer");
     }
 }

@@ -16,13 +16,23 @@
 package io.pravega.connectors.flink.util;
 
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
+import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
+import io.pravega.schemaregistry.contract.data.SchemaInfo;
+import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.shared.credentials.PravegaCredentialProvider;
+import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
+import org.apache.flink.util.FlinkRuntimeException;
 import org.apache.flink.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.isCredentialsLoadDynamic;
 
 public class SchemaRegistryUtils {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaRegistryUtils.class);
 
     /**
      * Gets the schema registry client.
@@ -53,5 +63,59 @@ public class SchemaRegistryUtils {
         }
 
         return builder.build();
+    }
+
+    /**
+     * Get the serialization format for the given group under which the schemas are registered.
+     *
+     * @param pravegaConfig Pravega configuration
+     * @param group the group under which the schemas are registered
+     * @return the serialization format
+     */
+    public static SerializationFormat getSerializationFormat(PravegaConfig pravegaConfig, String group) {
+        try (SchemaRegistryClient schemaRegistryClient = getSchemaRegistryClient(pravegaConfig)) {
+            return schemaRegistryClient.getGroupProperties(group).getSerializationFormat();
+        } catch (Exception e) {
+            LOG.error("Error while closing the schema registry client", e);
+            throw new FlinkRuntimeException(e);
+        }
+    }
+
+    /**
+     * Get the schema info for the given group under which the schemas are registered.
+     *
+     * @param pravegaConfig Pravega configuration
+     * @param group the group under which the schemas are registered
+     * @return the schema info
+     */
+    public static SchemaInfo getSchemaInfo(PravegaConfig pravegaConfig, String group) {
+        try (SchemaRegistryClient schemaRegistryClient = getSchemaRegistryClient(pravegaConfig)) {
+            return schemaRegistryClient.getSchemas(group).get(0).getSchemaInfo();
+        } catch (Exception e) {
+            LOG.error("Error while closing the schema registry client", e);
+            throw new FlinkRuntimeException(e);
+        }
+    }
+
+    /**
+     * Get the serializer config for the given namespace and group.
+     *
+     * @param namespace the namespace
+     * @param group the group under which the schemas are registered
+     * @param pravegaConfig Pravega configuration
+     * @return the serializer config
+     */
+    public static SerializerConfig getSerializerConfig(String namespace, String group, PravegaConfig pravegaConfig) {
+        return SerializerConfig.builder()
+                .namespace(namespace)
+                .groupId(group)
+                .registerSchema(false)
+                .registryConfig(getSchemaRegistryClientConfig(pravegaConfig))
+                .build();
+    }
+
+    private static SchemaRegistryClient getSchemaRegistryClient(PravegaConfig pravegaConfig) {
+        return SchemaRegistryClientFactory.withNamespace(
+                pravegaConfig.getDefaultScope(), getSchemaRegistryClientConfig(pravegaConfig));
     }
 }
