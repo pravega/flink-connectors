@@ -16,6 +16,39 @@ limitations under the License.
 
 # Pravega Catalogs
 
+Pravega Catalog allows for accessing Pravega streams with Flink Table API and SQL Queries.
+
+## Dependencies
+
+In order to use the Pravega Catalog, the following dependencies are required for both projects using a build automation tool (such as Maven or SBT) 
+and SQL Client with SQL JAR bundles.
+
+### Maven dependency
+```xml
+<dependency>
+  <groupId>io.pravega</groupId>
+  <artifactId>pravega-connectors-flink-{flinkVersion}_{flinkScalaVersion}</artifactId>
+  <version>{pravegaVersion}</version>
+</dependency>
+
+<dependency>
+  <groupId>io.pravega</groupId>
+  <artifactId>schemaregistry-serializers</artifactId>
+  <version>{schemaRegistryVersion}</version>
+  <classifier>all</classifier>
+</dependency>
+```
+
+> **Note:** The default serialization format for catalog is Avro, if you are using default Avro serialization format, you need to include
+>  the following dependency for both projects using a build automation tool (such as Maven or SBT) and SQL Client with SQL JAR bundles.
+>```xml
+><dependency>
+>  <groupId>org.apache.flink</groupId>
+>  <artifactId>flink-avro</artifactId>
+>  <version>{flinkVersion}</version>
+></dependency>
+>```
+
 ## General Catalog Introduction
 
 [Flink Catalogs](https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/catalogs/) provide metadata such as databases, tables, partitions, views, functions and information needed to access data stored in a database or other external systems. It provides a unified API for managing metadata and making it accessible from the Table API and SQL Queries.
@@ -30,13 +63,12 @@ Pravega uses terms such as *streams* and *scopes* for managing streaming data, b
 
 When using Schema Registry serialization, further information is required in order to describe how to map binary data onto table columns. We have introduced an internal format factory `PravegaRegistryFormatFactory`. Currently it supports Json and Avro formats without any additional encryption and compression codecs.
 
-With the help of schema registry service, it is feasible to map Pravega streams to Flink tables as the following table shows:
+With the help of Schema Registry service, it is feasible to map Pravega streams to Flink tables as the following table shows:
 
-| Flink Catalog terms                  | Pravega terms     |
-|--------------------------------------|-------------------|
-| catalog name (defined in Flink only) | N/A               |
-| database name                        | scope name        |
-| table name                           | stream name       |
+| Flink Catalog terms                  | Pravega terms |
+|--------------------------------------|---------------|
+| database                             | scope         |
+| table                                | stream        |
 
 With such mapping we don't need to rewrite DDLs to create table or manually deal with many connection parameters to create tables. It lets us clearly separate making the data available from consuming it. That separation improves productivity, security, and compliance when working with data.
 
@@ -57,7 +89,7 @@ With such mapping we don't need to rewrite DDLs to create table or manually deal
 
 ## How to use Pravega Catalog 
 
-Users can use SQL DDL or Java/Scala programatically to create and register Pravega Flink Catalog.
+Users can use SQL DDL or Java/Scala programmatically to create and register Pravega Flink Catalog.
 
 #### SQL
 

@@ -86,7 +86,7 @@ public class PravegaTransactionWriterTest {
 
         Mockito.doAnswer(ans -> {
             // update the exposed trans with the latest resumed txnId
-            UUID txnId = ans.getArgumentAt(0, UUID.class);
+            UUID txnId = ans.getArgument(0, UUID.class);
             Mockito.doReturn(txnId).when(reconstructedTrans).getTxnId();
             // mock it ready for the commit
             Mockito.doReturn(Transaction.Status.OPEN).when(reconstructedTrans).checkStatus();
@@ -184,7 +184,7 @@ public class PravegaTransactionWriterTest {
         Mockito.doAnswer(ans -> {
             final Transaction<Integer> reconstructedTrans = mockTransaction();
             // update the exposed trans with the latest resumed txnId
-            UUID txnId = ans.getArgumentAt(0, UUID.class);
+            UUID txnId = ans.getArgument(0, UUID.class);
             Mockito.doReturn(txnId).when(reconstructedTrans).getTxnId();
             // mock it with unknown id exception
             Mockito.when(reconstructedTrans.checkStatus()).thenThrow(new StatusRuntimeException(Status.NOT_FOUND));
@@ -216,7 +216,7 @@ public class PravegaTransactionWriterTest {
         Mockito.doAnswer(ans -> {
             final Transaction<Integer> reconstructedTrans = mockTransaction();
             // update the exposed trans with the latest resumed txnId
-            UUID txnId = ans.getArgumentAt(0, UUID.class);
+            UUID txnId = ans.getArgument(0, UUID.class);
             Mockito.doReturn(txnId).when(reconstructedTrans).getTxnId();
             // mock it ready for commit
             Mockito.when(reconstructedTrans.checkStatus()).thenReturn(Transaction.Status.OPEN);
@@ -250,7 +250,7 @@ public class PravegaTransactionWriterTest {
 
         Mockito.doAnswer(ans -> {
             // update the exposed trans with the latest resumed txnId
-            UUID txnId = ans.getArgumentAt(0, UUID.class);
+            UUID txnId = ans.getArgument(0, UUID.class);
             Mockito.doReturn(txnId).when(reconstructedTrans).getTxnId();
             // mock the transaction with aborted status
             Mockito.when(reconstructedTrans.checkStatus()).thenReturn(Transaction.Status.ABORTED);

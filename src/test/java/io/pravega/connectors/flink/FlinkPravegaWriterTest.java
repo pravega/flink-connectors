@@ -29,6 +29,7 @@ import io.pravega.connectors.flink.serialization.FlinkSerializer;
 import io.pravega.connectors.flink.utils.DirectExecutorService;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
 import io.pravega.connectors.flink.utils.StreamSinkOperatorTestHarness;
+import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockSerializationSchema;
@@ -38,6 +39,7 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
+import java.net.URI;
 import java.nio.ByteBuffer;
 import java.util.Optional;
 import java.util.UUID;
@@ -48,6 +50,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
 import static io.pravega.connectors.flink.AbstractStreamingWriterBuilder.DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS;
+import static org.junit.Assert.fail;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -469,6 +472,44 @@ public class FlinkPravegaWriterTest {
 
                 verify(trans, never()).commit();
             }
+        }
+    }
+
+    @Test
+    public void testSchemaRegistrySerialization() throws Exception {
+        PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
+        try {
+            FlinkPravegaWriter.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing default scope"
+        }
+
+        pravegaConfig.withDefaultScope("scope");
+        try {
+            FlinkPravegaWriter.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+            fail();
+        } catch (NullPointerException e) {
+            // "missing Schema Registry URI"
+        }
+
+        pravegaConfig.withSchemaRegistryURI(URI.create("http://localhost:9092"));
+        try {
+            FlinkPravegaOutputFormat.<Integer>builder()
+                    .withPravegaConfig(pravegaConfig)
+                    .forStream("stream")
+                    .withSerializationSchemaFromRegistry("stream", Integer.class)
+                    .build();
+        } catch (NotImplementedException e) {
+            // "Not support SerializationFormat.Any"
         }
     }
 
