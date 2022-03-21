@@ -117,6 +117,7 @@ dependencies {
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
     compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
 
+    compileOnly group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
@@ -132,6 +133,7 @@ dependencies {
         transitive = false
     }
     testImplementation group: 'org.mockito', name: 'mockito-inline', version: mockitoVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-connector-test-utils', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
