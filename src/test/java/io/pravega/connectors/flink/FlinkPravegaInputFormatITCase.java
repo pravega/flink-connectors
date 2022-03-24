@@ -18,8 +18,9 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -41,23 +42,22 @@ import java.util.concurrent.TimeUnit;
 
 public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
-    // ------------------------------------------------------------------------
-
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
+
+    // ------------------------------------------------------------------------
 
     /**
      * Verifies that the input format:
@@ -77,12 +77,12 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
         streams.add(streamName1);
         streams.add(streamName2);
 
-        SETUP_UTILS.createTestStream(streamName1, 3);
-        SETUP_UTILS.createTestStream(streamName2, 5);
+        PRAVEGA.operator().createTestStream(streamName1, 3);
+        PRAVEGA.operator().createTestStream(streamName2, 5);
 
         try (
-                final EventStreamWriter<Integer> eventWriter1 = SETUP_UTILS.getIntegerWriter(streamName1);
-                final EventStreamWriter<Integer> eventWriter2 = SETUP_UTILS.getIntegerWriter(streamName2);
+                final EventStreamWriter<Integer> eventWriter1 = PRAVEGA.operator().getIntegerWriter(streamName1);
+                final EventStreamWriter<Integer> eventWriter2 = PRAVEGA.operator().getIntegerWriter(streamName2);
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer1 = new ThrottledIntegerWriter(
@@ -116,7 +116,7 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
                     FlinkPravegaInputFormat.<Integer>builder()
                             .forStream(streamName1)
                             .forStream(streamName2)
-                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                             .withDeserializationSchema(new IntegerDeserializationSchema())
                             .build(),
                     BasicTypeInfo.INT_TYPE_INFO
@@ -139,10 +139,10 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 3);
+        PRAVEGA.operator().createTestStream(streamName, 3);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName);
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -165,7 +165,7 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
             List<Integer> integers = env.createInput(
                     FlinkPravegaInputFormat.<Integer>builder()
                             .forStream(streamName)
-                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                             .withDeserializationSchema(new IntegerDeserializationSchema())
                             .build(),
                     BasicTypeInfo.INT_TYPE_INFO

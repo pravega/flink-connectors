@@ -19,8 +19,9 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.factories.PravegaCatalogFactoryOptions;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -83,9 +84,9 @@ public class PravegaCatalogITCase {
     private static final GenericRecord EVENT = new GenericRecordBuilder(TEST_SCHEMA).set("a", "test").build();
 
     /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
     private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
-            new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
+            new SchemaRegistryUtils(PRAVEGA, SchemaRegistryUtils.DEFAULT_PORT);
 
     private static PravegaCatalog CATALOG = null;
     private static CatalogTable CATALOG_TABLE = null;
@@ -104,7 +105,7 @@ public class PravegaCatalogITCase {
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
         SCHEMA_REGISTRY_UTILS.setupServices();
         init();
         CATALOG.open();
@@ -113,8 +114,8 @@ public class PravegaCatalogITCase {
     @AfterClass
     public static void tearDownPravega() throws Exception {
         CATALOG.close();
-        SETUP_UTILS.stopAllServices();
         SCHEMA_REGISTRY_UTILS.tearDownServices();
+        PRAVEGA.tearDown();
     }
 
     @After
@@ -134,13 +135,13 @@ public class PravegaCatalogITCase {
     public void testCreateCatalogFromFactory() {
         final Map<String, String> options = new HashMap<>();
         options.put(CommonCatalogOptions.CATALOG_TYPE.key(), PravegaCatalogFactoryOptions.IDENTIFIER);
-        options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SETUP_UTILS.getScope());
-        options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
+        options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), PRAVEGA.operator().getScope());
+        options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), PRAVEGA.operator().getControllerUri().toString());
         options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(), SETUP_UTILS.getAuthType());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(), SETUP_UTILS.getAuthToken());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(), String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        options.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(), SETUP_UTILS.getPravegaClientTrustStore());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(), PRAVEGA.operator().getAuthType());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(), PRAVEGA.operator().getAuthToken());
+        options.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(), String.valueOf(PRAVEGA.operator().isEnableHostNameValidation()));
+        options.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(), PRAVEGA.operator().getPravegaClientTrustStore());
 
         final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
@@ -299,26 +300,26 @@ public class PravegaCatalogITCase {
     // ------ utils ------
     private static void init() throws Exception {
         SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
-        SETUP_UTILS.createTestStream(TEST_STREAM, 3);
+        PRAVEGA.operator().createTestStream(TEST_STREAM, 3);
         Map<String, String> properties = new HashMap<>();
         properties.put("connector", "pravega");
-        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("controller-uri", PRAVEGA.operator().getControllerUri().toString());
         properties.put("format", "pravega-registry");
         properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Avro");
-        properties.put("pravega-registry.security.auth-type", SETUP_UTILS.getAuthType());
-        properties.put("pravega-registry.security.auth-token", SETUP_UTILS.getAuthToken());
-        properties.put("pravega-registry.security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        properties.put("pravega-registry.security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
-        properties.put("security.auth-type", SETUP_UTILS.getAuthType());
-        properties.put("security.auth-token", SETUP_UTILS.getAuthToken());
-        properties.put("security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        properties.put("security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
+        properties.put("pravega-registry.security.auth-type", PRAVEGA.operator().getAuthType());
+        properties.put("pravega-registry.security.auth-token", PRAVEGA.operator().getAuthToken());
+        properties.put("pravega-registry.security.validate-hostname", String.valueOf(PRAVEGA.operator().isEnableHostNameValidation()));
+        properties.put("pravega-registry.security.trust-store", PRAVEGA.operator().getPravegaClientTrustStore());
+        properties.put("security.auth-type", PRAVEGA.operator().getAuthType());
+        properties.put("security.auth-token", PRAVEGA.operator().getAuthToken());
+        properties.put("security.validate-hostname", String.valueOf(PRAVEGA.operator().isEnableHostNameValidation()));
+        properties.put("security.trust-store", PRAVEGA.operator().getPravegaClientTrustStore());
 
-        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
-                SETUP_UTILS.getPravegaConfig()
-                        .withDefaultScope(SETUP_UTILS.getScope())
+        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, PRAVEGA.operator().getScope(), properties,
+                PRAVEGA.operator().getPravegaConfig()
+                        .withDefaultScope(PRAVEGA.operator().getScope())
                         .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
                 "Avro");
         CATALOG_TABLE = new CatalogTableImpl(TEST_TABLE_SCHEMA, properties, null);

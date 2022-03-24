@@ -21,8 +21,9 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TimeWindow;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -38,6 +39,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.Timeout;
 
+import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.util.BitSet;
 import java.util.concurrent.CountDownLatch;
@@ -53,41 +55,40 @@ import static org.junit.Assert.assertNull;
  */
 public class FlinkPravegaWriterITCase {
 
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
-
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 10000;
 
     // The maximum time we wait for the checker.
     private static final int WAIT_SECONDS = 30;
 
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+
     // Ensure each test completes within 120 seconds.
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @BeforeClass
-    public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
+    public static void setupPravega() throws Exception {
+        PRAVEGA.startUp();
     }
 
     @AfterClass
-    public static void tearDown() throws Exception {
-        SETUP_UTILS.stopAllServices();
+    public static void tearDownPravega() throws Exception {
+        PRAVEGA.tearDown();
     }
 
     @Test
     public void testEventTimeOrderedWriter() throws Exception {
         StreamExecutionEnvironment execEnv = StreamExecutionEnvironment.createLocalEnvironment();
 
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), "testEventTimeOrderedWriter");
-        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
+        Stream stream = Stream.of(PRAVEGA.operator().getScope(), "testEventTimeOrderedWriter");
+        PRAVEGA.operator().createTestStream(stream.getStreamName(), 1);
 
         DataStreamSource<Integer> dataStream = execEnv
                 .addSource(new ThrottledIntegerGeneratingSource(EVENT_COUNT_PER_SOURCE));
 
         FlinkPravegaWriter<Integer> pravegaSink = FlinkPravegaWriter.<Integer>builder()
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .forStream(stream)
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
@@ -111,7 +112,7 @@ public class FlinkPravegaWriterITCase {
 
         FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -131,7 +132,7 @@ public class FlinkPravegaWriterITCase {
     @Test
     public void testAtLeastOnceWriterWithWatermark() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 1);
+        PRAVEGA.operator().createTestStream(streamName, 1);
 
         StreamExecutionEnvironment env = StreamExecutionEnvironment.createLocalEnvironment()
                 .setParallelism(1)
@@ -141,7 +142,7 @@ public class FlinkPravegaWriterITCase {
 
         FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
                 .enableWatermark(true)
@@ -172,7 +173,7 @@ public class FlinkPravegaWriterITCase {
 
         final FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -202,7 +203,7 @@ public class FlinkPravegaWriterITCase {
 
         final FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -232,7 +233,7 @@ public class FlinkPravegaWriterITCase {
 
         final FlinkPravegaWriter<Integer> sink = FlinkPravegaWriter.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
@@ -269,7 +270,7 @@ public class FlinkPravegaWriterITCase {
     private void writeAndCheckData(String streamName,
                            StreamExecutionEnvironment env,
                            boolean allowDuplicate) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 4);
+        PRAVEGA.operator().createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
         // both writer and checker complete their tasks.
@@ -290,7 +291,7 @@ public class FlinkPravegaWriterITCase {
             // 1. Check if all the events are written to the Pravega stream
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
-            try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
+            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getIntegerReader(streamName)) {
                 final BitSet checker = new BitSet();
 
                 while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {
@@ -335,13 +336,13 @@ public class FlinkPravegaWriterITCase {
      * @param streamName         The Pravega stream name.
      * @throws InterruptedException on interruption.
      */
-    private void checkWatermark(String streamName) throws InterruptedException {
+    private void checkWatermark(String streamName) throws InterruptedException, UnknownHostException {
         // Wait 11 seconds for the Pravega controller to generate TimeWindow
         Thread.sleep(11000);
 
-        EventStreamReader<Integer> consumer = SETUP_UTILS.getIntegerReader(streamName);
+        EventStreamReader<Integer> consumer = PRAVEGA.operator().getIntegerReader(streamName);
         consumer.readNextEvent(1000);
-        TimeWindow timeWindow = consumer.getCurrentTimeWindow(SETUP_UTILS.getStream(streamName));
+        TimeWindow timeWindow = consumer.getCurrentTimeWindow(PRAVEGA.operator().getStream(streamName));
 
         // Assert the TimeWindow proceeds
         Assert.assertNotNull(timeWindow.getUpperTimeBound());

@@ -45,7 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 public class SchemaRegistryUtils {
 
     public static final int DEFAULT_PORT = 10092;
-    private SetupUtils setupUtils;
+    private PravegaTestEnvironment pravegaTestEnvironment;
     private int port;
     private ScheduledExecutorService executor;
     private RestServer restServer;
@@ -53,8 +53,8 @@ public class SchemaRegistryUtils {
 
     private EventStreamClientFactory eventStreamClientFactory;
 
-    public SchemaRegistryUtils(SetupUtils setupUtils, int port) {
-        this.setupUtils = setupUtils;
+    public SchemaRegistryUtils(PravegaTestEnvironment pravega, int port) {
+        this.pravegaTestEnvironment = pravega;
         this.port = port;
         schemaRegistryUri = URI.create("http://localhost:" + port);
     }
@@ -73,7 +73,8 @@ public class SchemaRegistryUtils {
         restServer = new RestServer(service, serviceConfig);
         restServer.startAsync();
         restServer.awaitRunning();
-        eventStreamClientFactory = EventStreamClientFactory.withScope(setupUtils.getScope(), setupUtils.getClientConfig());
+        eventStreamClientFactory = EventStreamClientFactory.withScope(pravegaTestEnvironment.operator().getScope(),
+                pravegaTestEnvironment.operator().getClientConfig());
     }
 
     /**
@@ -99,7 +100,7 @@ public class SchemaRegistryUtils {
     }
 
     public void registerSchema(String stream, Schema schema, SerializationFormat format) {
-        SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(setupUtils.getScope(),
+        SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(pravegaTestEnvironment.operator().getScope(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(schemaRegistryUri).build());
         client.addGroup(stream, new GroupProperties(format,
                 Compatibility.allowAny(),
@@ -119,7 +120,7 @@ public class SchemaRegistryUtils {
                 .schemaRegistryUri(schemaRegistryUri)
                 .build();
         SerializerConfig serializerConfig = SerializerConfig.builder()
-                .namespace(setupUtils.getScope())
+                .namespace(pravegaTestEnvironment.operator().getScope())
                 .groupId(stream)
                 .registerSchema(false)
                 .registryConfig(registryConfig)

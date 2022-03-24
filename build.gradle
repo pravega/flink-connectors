@@ -134,6 +134,7 @@ dependencies {
     }
     testImplementation group: 'org.mockito', name: 'mockito-inline', version: mockitoVersion
     testImplementation group: 'org.apache.flink', name: 'flink-connector-test-utils', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-connector-testing_'+flinkScalaVersion, version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
@@ -144,6 +145,8 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
+
+    testImplementation group: 'org.testcontainers', name: 'testcontainers', version: "1.15.3"
 }
 
 javadoc {

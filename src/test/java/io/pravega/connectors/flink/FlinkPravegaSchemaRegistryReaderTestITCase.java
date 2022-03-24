@@ -17,10 +17,11 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
-import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.User;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
@@ -55,11 +56,9 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         }
     }
 
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
-
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
     protected static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
-            new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
+            new SchemaRegistryUtils(PRAVEGA, SchemaRegistryUtils.DEFAULT_PORT);
 
     private static final Schema SCHEMA = User.SCHEMA$;
     private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("name", "test").build();
@@ -70,15 +69,15 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
 
     @BeforeClass
-    public static void setupServices() throws Exception {
-        SETUP_UTILS.startAllServices();
+    public static void setupServices() {
+        PRAVEGA.startUp();
         SCHEMA_REGISTRY_UTILS.setupServices();
     }
 
     @AfterClass
-    public static void tearDownServices() throws Exception {
-        SETUP_UTILS.stopAllServices();
+    public static void tearDownServices() {
         SCHEMA_REGISTRY_UTILS.tearDownServices();
+        PRAVEGA.tearDown();
     }
 
     @Test
@@ -90,7 +89,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         FlinkPravegaReader<GenericRecord> reader = FlinkPravegaReader.<GenericRecord>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
                 .withDeserializationSchemaFromRegistry(streamName, GenericRecord.class)
                 .build();
 
@@ -122,7 +121,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         FlinkPravegaReader<User> reader = FlinkPravegaReader.<User>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
                 .withDeserializationSchemaFromRegistry(streamName, User.class)
                 .build();
 
@@ -154,7 +153,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         FlinkPravegaReader<MyTest> reader = FlinkPravegaReader.<MyTest>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
                 .withDeserializationSchemaFromRegistry(streamName, MyTest.class)
                 .build();
 
@@ -186,7 +185,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         FlinkPravegaInputFormat<GenericRecord> reader = FlinkPravegaInputFormat.<GenericRecord>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
                 .withDeserializationSchemaFromRegistry(streamName, GenericRecord.class)
                 .build();
 
@@ -198,7 +197,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     // ================================================================================
 
     private void configureAvroPravegaStream(String streamName, AvroSchema schema) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 1);
+        PRAVEGA.operator().createTestStream(streamName, 1);
         SCHEMA_REGISTRY_UTILS.registerSchema(streamName, schema, SerializationFormat.Avro);
     }
 
@@ -209,7 +208,7 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     }
 
     private void configureJsonPravegaStream(String streamName, JSONSchema schema) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 1);
+        PRAVEGA.operator().createTestStream(streamName, 1);
         SCHEMA_REGISTRY_UTILS.registerSchema(streamName, schema, SerializationFormat.Json);
     }
 

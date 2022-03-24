@@ -23,7 +23,8 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.connector.source.ReaderInfo;
 import org.apache.flink.api.connector.source.mocks.MockSplitEnumeratorContext;
@@ -33,6 +34,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.net.UnknownHostException;
 import java.util.Collections;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
@@ -42,27 +44,24 @@ public class FlinkPravegaSplitEnumeratorTest {
 
     private static final int READER0 = 0;
     private static final int READER1 = 1;
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
-    // ------------------------------------------------------------------------
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
 
     @BeforeClass
-    public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
-
+    public static void setupPravega() throws Exception {
+        PRAVEGA.startUp();
     }
 
     @AfterClass
-    public static void tearDown() throws Exception {
-        SETUP_UTILS.stopAllServices();
+    public static void tearDownPravega() throws Exception {
+        PRAVEGA.tearDown();
     }
 
     @Test
     public void testAddReader() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         MockSplitEnumeratorContext<PravegaSplit> context =
                 new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
 
@@ -96,7 +95,7 @@ public class FlinkPravegaSplitEnumeratorTest {
     public void testSnapshotState() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         MockSplitEnumeratorContext<PravegaSplit> context =
                 new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
 
@@ -113,7 +112,7 @@ public class FlinkPravegaSplitEnumeratorTest {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         MockSplitEnumeratorContext<PravegaSplit> context =
                 new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
         try (PravegaSplitEnumerator enumerator = createEnumerator(context, streamName, readerGroupName)) {
@@ -139,7 +138,7 @@ public class FlinkPravegaSplitEnumeratorTest {
     public void testReaderGroup() throws Exception {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         MockSplitEnumeratorContext<PravegaSplit> context =
                 new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
 
@@ -151,24 +150,24 @@ public class FlinkPravegaSplitEnumeratorTest {
             Assert.assertNotNull(readerGroupManager);
             String scope = (String) Whitebox.getInternalState(readerGroupManager, "scope");
             Assert.assertNotNull(scope);
-            Assert.assertEquals(scope, SETUP_UTILS.getScope());
+            Assert.assertEquals(scope, PRAVEGA.operator().getScope());
 
             ReaderGroup readerGroup =
                     (ReaderGroup) Whitebox.getInternalState(enumerator, "readerGroup");
             Assert.assertNotNull(readerGroup);
             Assert.assertEquals(readerGroup.getGroupName(), readerGroupName);
-            Assert.assertEquals(readerGroup.getScope(), SETUP_UTILS.getScope());
+            Assert.assertEquals(readerGroup.getScope(), PRAVEGA.operator().getScope());
         }
     }
 
     private PravegaSplitEnumerator createEnumerator(MockSplitEnumeratorContext<PravegaSplit> enumContext, String streamName,
-                                                    String readerGroupName) {
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
+                                                    String readerGroupName) throws UnknownHostException {
+        Stream stream = Stream.of(PRAVEGA.operator().getScope(), streamName);
         return new PravegaSplitEnumerator(
                 enumContext,
-                SETUP_UTILS.getScope(),
+                PRAVEGA.operator().getScope(),
                 readerGroupName,
-                SETUP_UTILS.getClientConfig(),
+                PRAVEGA.operator().getClientConfig(),
                 ReaderGroupConfig.builder().stream(stream).build(),
                 null);
     }
