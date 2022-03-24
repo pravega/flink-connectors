@@ -61,7 +61,7 @@ public class PravegaContainerProvider implements RuntimeProvider {
         container.copyFileFromContainer("/opt/pravega/conf/ca-cert.crt", clientTrustStorePath);
 
         // Create the operator.
-        String controllerUriPrefix = isTlsEnable("pravega-standalone.conf") ? "tls://" : "tcp://";
+        String controllerUriPrefix = isTlsEnable() ? "tls://" : "tcp://";
         this.operator = new PravegaRuntimeOperator(SCOPE, String.format("%s%s", controllerUriPrefix, container.getControllerUri()), clientTrustStorePath);
         this.operator.initialize();
     }
@@ -92,10 +92,10 @@ public class PravegaContainerProvider implements RuntimeProvider {
         }
     }
 
-    private boolean isTlsEnable(String pravegaConfigFile) {
+    private boolean isTlsEnable() {
         Properties props = new Properties();
 
-        try (InputStream resourceStream = PravegaContainerProvider.class.getClassLoader().getResourceAsStream(pravegaConfigFile)) {
+        try (InputStream resourceStream = PravegaContainerProvider.class.getClassLoader().getResourceAsStream("pravega-standalone.conf")) {
             props.load(resourceStream);
         } catch (IOException e) {
             throw new RuntimeException("fail to read pravega config file", e);

@@ -20,10 +20,9 @@ import io.pravega.connectors.flink.utils.runtime.PravegaContainerProvider;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntimeOperator;
 import org.apache.flink.connectors.test.common.TestResource;
-import org.junit.jupiter.api.extension.Extension;
 
 /**
- * A JUnit 4 {@link Extension} for supporting running a Pravega standalone instance before executing tests.
+ * A test environment for supporting running a Pravega standalone instance before executing tests.
  */
 public class PravegaTestEnvironment implements TestResource {
 

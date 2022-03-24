@@ -22,5 +22,7 @@ package io.pravega.connectors.flink.utils;
  * as well as to provide a central file to use as a key when caching testing Docker files.
  */
 public class DockerImageVersions {
+    // The Pravega docker image version is behind the snapshot version we use for Pravega client side so that
+    // we need to maintain the backwards compatibility of the Pravega client.
     public static final String PRAVEGA = "pravega/pravega:0.10.1";
 }
