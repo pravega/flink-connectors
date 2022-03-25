@@ -90,8 +90,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(
                 env,
                 EnvironmentSettings.newInstance()
-                        // Watermark is only supported in blink planner
-                        .useBlinkPlanner()
                         .inStreamingMode()
                         .build()
         );
@@ -208,8 +206,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(
                 env,
                 EnvironmentSettings.newInstance()
-                        // Watermark is only supported in blink planner
-                        .useBlinkPlanner()
                         .inStreamingMode()
                         .build()
         );
@@ -325,8 +321,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         StreamTableEnvironment tEnv = StreamTableEnvironment.create(
                 env,
                 EnvironmentSettings.newInstance()
-                        // Watermark is only supported in blink planner
-                        .useBlinkPlanner()
                         .inStreamingMode()
                         .build()
         );
