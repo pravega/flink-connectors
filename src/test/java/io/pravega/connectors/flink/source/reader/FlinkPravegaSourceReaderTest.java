@@ -94,7 +94,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
     }
 
     // Pravega doesn't support partial failover recover, so we override this method in test base class
-    @Override
+    @Test
     public void testSnapshot() throws Exception {
 
     }
