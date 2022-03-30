@@ -162,7 +162,7 @@ public class ReaderCheckpointHookTest {
         protected ScheduledExecutorService createScheduledExecutorService() {
             ScheduledExecutorService newScheduledExecutor = mock(ScheduledExecutorService.class);
             when(newScheduledExecutor.schedule(any(Callable.class), anyLong(), any())).thenAnswer(a -> {
-                scheduledCallable = a.getArgumentAt(0, Callable.class);
+                scheduledCallable = a.getArgument(0, Callable.class);
                 return null;
             });
 
