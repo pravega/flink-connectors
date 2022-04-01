@@ -74,7 +74,7 @@ import static org.junit.Assert.assertTrue;
 
 public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String SCOPE = "scope";
-    private static final String CONTROLLER_URI = "dummy";
+    private static final String CONTROLLER_URI = "tcp://dummy:9090";
     private static final String AUTH_TYPE = "basic";
     private static final String AUTH_TOKEN = "token";
 
