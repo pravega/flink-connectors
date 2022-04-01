@@ -132,7 +132,7 @@ public class FlinkPravegaSourceITCase extends AbstractTestBase {
             final PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
                     .forStream(streamName)
                     .enableMetrics(false)
-                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withPravegaClientConfig(SETUP_UTILS.getPravegaClientConfig())
                     .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
