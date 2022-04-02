@@ -32,6 +32,7 @@ import io.pravega.connectors.flink.PravegaOptions;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.shared.security.auth.DefaultCredentials;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -40,7 +41,6 @@ import javax.annotation.concurrent.NotThreadSafe;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -213,15 +213,15 @@ public final class SetupUtils {
                 .withTrustStore(getPathFromResource(CLIENT_TRUST_STORE_FILE));
     }
 
-    public Properties getPravegaClientConfig() {
-        final Properties properties = new Properties();
-        properties.put(PravegaOptions.CONTROLLER_URI, getControllerUri().toString());
-        properties.put(PravegaOptions.DEFAULT_SCOPE, getScope());
-        properties.put(PravegaOptions.USERNAME, PRAVEGA_PASSWORD);
-        properties.put(PravegaOptions.PASSWORD, PRAVEGA_USERNAME);
-        properties.put(PravegaOptions.VALIDATE_HOST_NAME, enableHostNameValidation);
-        properties.put(PravegaOptions.TRUST_STORE, getPathFromResource(CLIENT_TRUST_STORE_FILE));
-        return properties;
+    public Configuration getPravegaClientConfig() {
+        final Configuration pravegaClientConfig = new Configuration();
+        pravegaClientConfig.set(PravegaOptions.CONTROLLER_URI, getControllerUri().toString());
+        pravegaClientConfig.set(PravegaOptions.DEFAULT_SCOPE, getScope());
+        pravegaClientConfig.set(PravegaOptions.USERNAME, PRAVEGA_PASSWORD);
+        pravegaClientConfig.set(PravegaOptions.PASSWORD, PRAVEGA_USERNAME);
+        pravegaClientConfig.set(PravegaOptions.VALIDATE_HOST_NAME, enableHostNameValidation);
+        pravegaClientConfig.set(PravegaOptions.TRUST_STORE, getPathFromResource(CLIENT_TRUST_STORE_FILE));
+        return pravegaClientConfig;
     }
 
     /**

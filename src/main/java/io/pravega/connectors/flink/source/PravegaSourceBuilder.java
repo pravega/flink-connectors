@@ -29,6 +29,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.utils.ParameterTool;
+import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Preconditions;
 import org.apache.flink.util.SerializedValue;
 
@@ -37,7 +38,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.Properties;
 
 import static io.pravega.connectors.flink.PravegaOptions.buildClientConfigFromProperties;
 import static io.pravega.connectors.flink.PravegaOptions.getPropertiesFromEnvironmentAndCommand;
@@ -55,7 +55,7 @@ public class PravegaSourceBuilder<T> {
     /**
      * The internal Pravega client configuration. See {@link PravegaOptions}.
      */
-    private final Properties pravegaClientConfig = new Properties();
+    private final Configuration pravegaClientConfig = new Configuration();
     private final List<Triple<String, StreamCut, StreamCut>> streams = new ArrayList<>(1);
     private boolean enableMetrics = true;
     private Time checkpointInitiateTimeout = Time.seconds(5);
@@ -106,13 +106,13 @@ public class PravegaSourceBuilder<T> {
     }
 
     public PravegaSourceBuilder<T> withEnvironmentAndParameter(@Nullable ParameterTool params) {
-        this.pravegaClientConfig.putAll(getPropertiesFromEnvironmentAndCommand(params));
+        this.pravegaClientConfig.addAll(getPropertiesFromEnvironmentAndCommand(params));
         return this;
     }
 
-    public PravegaSourceBuilder<T> withPravegaClientConfig(Properties pravegaClientConfig) {
+    public PravegaSourceBuilder<T> withPravegaClientConfig(Configuration pravegaClientConfig) {
         Preconditions.checkNotNull(pravegaClientConfig, "pravegaClientConfig");
-        this.pravegaClientConfig.putAll(pravegaClientConfig);
+        this.pravegaClientConfig.addAll(pravegaClientConfig);
         return this;
     }
 
@@ -294,8 +294,8 @@ public class PravegaSourceBuilder<T> {
         String[] split = streamSpec.split("/", 2);
         if (split.length == 1) {
             // unqualified
-            Preconditions.checkState(pravegaClientConfig.containsKey(PravegaOptions.DEFAULT_SCOPE), "The default scope is not configured.");
-            return Stream.of(pravegaClientConfig.getProperty(PravegaOptions.DEFAULT_SCOPE), split[0]);
+            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaOptions.DEFAULT_SCOPE).isPresent(), "The default scope is not configured.");
+            return Stream.of(pravegaClientConfig.get(PravegaOptions.DEFAULT_SCOPE), split[0]);
         } else {
             // qualified
             assert split.length == 2;
@@ -323,8 +323,8 @@ public class PravegaSourceBuilder<T> {
 
         // rgScope
         final String rgScope = Optional.ofNullable(readerGroupScope).orElseGet(() -> {
-            Preconditions.checkState(pravegaClientConfig.containsKey(PravegaOptions.DEFAULT_SCOPE),  "A reader group scope or default scope must be configured");
-            return pravegaClientConfig.getProperty(PravegaOptions.DEFAULT_SCOPE);
+            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaOptions.DEFAULT_SCOPE).isPresent(),  "A reader group scope or default scope must be configured");
+            return pravegaClientConfig.get(PravegaOptions.DEFAULT_SCOPE);
         });
 
         // rgName
