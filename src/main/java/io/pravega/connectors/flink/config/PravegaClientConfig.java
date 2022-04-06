@@ -32,34 +32,22 @@ public final class PravegaClientConfig {
             ConfigOptions.key(CLIENT_PREFIX + "defaultScope")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.")
-                                    .build());
+                    .withDescription("Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.");
     public static final ConfigOption<String> CONTROLLER_URI =
             ConfigOptions.key(CLIENT_PREFIX + "controllerURI")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("Service URL provider for Pravega service.")
-                                    .build());
+                    .withDescription("Service URL provider for Pravega service.");
     public static final ConfigOption<String> USERNAME =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "username")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("The username to access Pravega.")
-                                    .build());
+                    .withDescription("The username to access Pravega.");
     public static final ConfigOption<String> PASSWORD =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "password")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("The password to access Pravega.")
-                                    .build());
+                    .withDescription("The password to access Pravega.");
     public static final ConfigOption<String> TRUST_STORE =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "trustStore")
                     .stringType()
@@ -74,34 +62,27 @@ public final class PravegaClientConfig {
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "validateHostName")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("Whether to enable host name validation or not.")
-                                    .build());
+                    .withDescription("Whether to enable host name validation or not.");
     public static final ConfigOption<Integer> MAX_CONNECTION_PER_SEGMENT_STORE =
             ConfigOptions.key(CLIENT_PREFIX + "maxConnectionsPerSegmentStore")
                     .intType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("An optional property representing whether to enable TLS for client's communication with the Controller.")
-                                    .build());
+                    .withDescription("An optional property representing whether to enable TLS for client's communication with the Controller.");
     public static final ConfigOption<Boolean> ENABLE_TLS_TO_CONTROLLER =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "enableTlsToController")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("Maximum number of connections per Segment store to be used by connection pooling.")
-                                    .build());
+                    .withDescription("Maximum number of connections per Segment store to be used by connection pooling.");
     public static final ConfigOption<Boolean> ENABLE_TLS_TO_SEGMENT_STORE =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "enableTlsToSegmentStore")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription(
-                            Description.builder()
-                                    .text("Maximum number of connections per Segment store to be used by connection pooling.")
-                                    .build());
+                    .withDescription("Maximum number of connections per Segment store to be used by connection pooling.");
+    public static final ConfigOption<String> SCHEMA_REGISTRY_URI =
+            ConfigOptions.key(CLIENT_PREFIX + "schemaRegistryURI")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("Configures the Pravega schema registry URI.");
 
     private PravegaClientConfig() {
         // This is a constant class.

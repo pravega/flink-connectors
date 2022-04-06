@@ -25,7 +25,6 @@ import org.apache.flink.configuration.Configuration;
 import javax.annotation.Nullable;
 import java.net.URI;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Properties;
 import java.util.stream.Stream;
 
@@ -57,27 +56,35 @@ public final class PravegaClientConfigBuilder {
         Properties properties = System.getProperties();
         Map<String, String> env = System.getenv();
 
+        final class EnvOption {
+            final String parameterName;
+            final String propertyName;
+            final String variableName;
+            final ConfigOption<String> configOption;
+
+            EnvOption(String parameterName, String propertyName, String variableName, ConfigOption<String> configOption) {
+                this.parameterName = parameterName;
+                this.propertyName = propertyName;
+                this.variableName = variableName;
+                this.configOption = configOption;
+            }
+        }
+
         Stream
-                .of(PravegaClientConfig.class.getFields())
-                .filter(field -> field.getType().equals(ConfigOption.class))
-                .map(field -> {
-                    try {
-                        return (ConfigOption) field.get(null);
-                    } catch (IllegalAccessException e) {
-                        // Should never happen.
-                        return null;
-                    }
-                })
-                .filter(Objects::nonNull)
+                .of(
+                        new EnvOption("controller", "pravega.controller.uri", "PRAVEGA_CONTROLLER_URI", PravegaClientConfig.CONTROLLER_URI),
+                        new EnvOption("scope", "pravega.scope", "PRAVEGA_SCOPE", PravegaClientConfig.DEFAULT_SCOPE),
+                        new EnvOption("schema-registry", "pravega.schema-registry.uri", "PRAVEGA_SCHEMA_REGISTRY_URI", PravegaClientConfig.SCHEMA_REGISTRY_URI)
+                )
                 .forEach(option -> {
-                    if (params != null && params.has(option.key())) {
-                        pravegaClientConfig.set(option, params.get(option.key()));
+                    if (params != null && params.has(option.parameterName)) {
+                        pravegaClientConfig.set(option.configOption, params.get(option.parameterName));
                     }
-                    if (properties != null && properties.containsKey(option.key())) {
-                        pravegaClientConfig.set(option, properties.getProperty(option.key()));
+                    if (properties != null && properties.containsKey(option.propertyName)) {
+                        pravegaClientConfig.set(option.configOption, properties.getProperty(option.propertyName));
                     }
-                    if (env != null && env.containsKey(option.key())) {
-                        pravegaClientConfig.set(option, env.get(option.key()));
+                    if (env != null && env.containsKey(option.variableName)) {
+                        pravegaClientConfig.set(option.configOption, env.get(option.variableName));
                     }
                 });
 
