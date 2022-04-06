@@ -28,7 +28,7 @@ import io.pravega.client.stream.ScalingPolicy;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.PravegaOptions;
+import io.pravega.connectors.flink.config.PravegaClientConfig;
 import io.pravega.local.InProcPravegaCluster;
 import io.pravega.shared.security.auth.DefaultCredentials;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -215,12 +215,12 @@ public final class SetupUtils {
 
     public Configuration getPravegaClientConfig() {
         final Configuration pravegaClientConfig = new Configuration();
-        pravegaClientConfig.set(PravegaOptions.CONTROLLER_URI, getControllerUri().toString());
-        pravegaClientConfig.set(PravegaOptions.DEFAULT_SCOPE, getScope());
-        pravegaClientConfig.set(PravegaOptions.USERNAME, PRAVEGA_PASSWORD);
-        pravegaClientConfig.set(PravegaOptions.PASSWORD, PRAVEGA_USERNAME);
-        pravegaClientConfig.set(PravegaOptions.VALIDATE_HOST_NAME, enableHostNameValidation);
-        pravegaClientConfig.set(PravegaOptions.TRUST_STORE, getPathFromResource(CLIENT_TRUST_STORE_FILE));
+        pravegaClientConfig.set(PravegaClientConfig.CONTROLLER_URI, getControllerUri().toString());
+        pravegaClientConfig.set(PravegaClientConfig.DEFAULT_SCOPE, getScope());
+        pravegaClientConfig.set(PravegaClientConfig.USERNAME, PRAVEGA_PASSWORD);
+        pravegaClientConfig.set(PravegaClientConfig.PASSWORD, PRAVEGA_USERNAME);
+        pravegaClientConfig.set(PravegaClientConfig.VALIDATE_HOST_NAME, enableHostNameValidation);
+        pravegaClientConfig.set(PravegaClientConfig.TRUST_STORE, getPathFromResource(CLIENT_TRUST_STORE_FILE));
         return pravegaClientConfig;
     }
 

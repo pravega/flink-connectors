@@ -29,7 +29,6 @@ import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.Source;
@@ -45,6 +44,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.function.Supplier;
 
 /**
@@ -85,10 +85,10 @@ public class PravegaSource<T>
     final DeserializationSchema<T> deserializationSchema;
 
     // the timeout for reading events from Pravega
-    final Time eventReadTimeout;
+    final Duration eventReadTimeout;
 
     // the timeout for call that initiates the Pravega checkpoint
-    final Time checkpointInitiateTimeout;
+    final Duration checkpointInitiateTimeout;
 
     // flag to enable/disable metrics
     final boolean enableMetrics;
@@ -110,7 +110,7 @@ public class PravegaSource<T>
     public PravegaSource(ClientConfig clientConfig,
                          ReaderGroupConfig readerGroupConfig, String scope, String readerGroupName,
                          DeserializationSchema<T> deserializationSchema,
-                         Time eventReadTimeout, Time checkpointInitiateTimeout,
+                         Duration eventReadTimeout, Duration checkpointInitiateTimeout,
                          boolean enableMetrics) {
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.readerGroupConfig = Preconditions.checkNotNull(readerGroupConfig, "readerGroupConfig");

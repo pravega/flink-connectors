@@ -20,13 +20,12 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.PravegaOptions;
+import io.pravega.connectors.flink.config.PravegaClientConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.commons.lang3.tuple.Triple;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
@@ -35,12 +34,12 @@ import org.apache.flink.util.SerializedValue;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
-import static io.pravega.connectors.flink.PravegaOptions.buildClientConfigFromProperties;
-import static io.pravega.connectors.flink.PravegaOptions.getPropertiesFromEnvironmentAndCommand;
+import static io.pravega.connectors.flink.config.PravegaClientConfigBuilder.buildClientConfigFromProperties;
+import static io.pravega.connectors.flink.config.PravegaClientConfigBuilder.getConfigFromEnvironmentAndCommand;
 
 /**
  *The @builder class for {@link PravegaSource} to make it easier for the users to construct a {@link
@@ -53,17 +52,14 @@ public class PravegaSourceBuilder<T> {
     private DeserializationSchema<T> deserializationSchema;
     private @Nullable SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
     /**
-     * The internal Pravega client configuration. See {@link PravegaOptions}.
+     * The internal Pravega client configuration. See {@link PravegaClientConfig}.
      */
     private final Configuration pravegaClientConfig = new Configuration();
+    /**
+     * The Pravega source configuration. See {@link PravegaSourceOptions}.
+     */
+    private final Configuration pravegaSourceOptions = new Configuration();
     private final List<Triple<String, StreamCut, StreamCut>> streams = new ArrayList<>(1);
-    private boolean enableMetrics = true;
-    private Time checkpointInitiateTimeout = Time.seconds(5);
-    private Time eventReadTimeout = Time.seconds(1);
-    private @Nullable String readerGroupScope;
-    private @Nullable String readerGroupName;
-    private @Nullable Time readerGroupRefreshTime;
-    private int maxOutstandingCheckpointRequest = 3;
 
     protected PravegaSourceBuilder<T> builder() {
         return this;
@@ -106,24 +102,13 @@ public class PravegaSourceBuilder<T> {
     }
 
     public PravegaSourceBuilder<T> withEnvironmentAndParameter(@Nullable ParameterTool params) {
-        this.pravegaClientConfig.addAll(getPropertiesFromEnvironmentAndCommand(params));
+        this.pravegaClientConfig.addAll(getConfigFromEnvironmentAndCommand(params));
         return this;
     }
 
     public PravegaSourceBuilder<T> withPravegaClientConfig(Configuration pravegaClientConfig) {
         Preconditions.checkNotNull(pravegaClientConfig, "pravegaClientConfig");
         this.pravegaClientConfig.addAll(pravegaClientConfig);
-        return this;
-    }
-
-    /**
-     * enable/disable pravega reader metrics (default: enabled).
-     *
-     * @param enable boolean
-     * @return A builder to configure and create a reader.
-     */
-    public PravegaSourceBuilder<T> enableMetrics(boolean enable) {
-        this.enableMetrics = enable;
         return this;
     }
 
@@ -136,7 +121,8 @@ public class PravegaSourceBuilder<T> {
      * @return A builder to configure and create a streaming reader.
      */
     public PravegaSourceBuilder<T> withReaderGroupScope(String scope) {
-        this.readerGroupScope = Preconditions.checkNotNull(scope);
+        this.pravegaSourceOptions.set(PravegaSourceOptions.READER_GROUP_SCOPE,
+                Preconditions.checkNotNull(scope));
         return this;
     }
 
@@ -147,18 +133,19 @@ public class PravegaSourceBuilder<T> {
      * @return A builder to configure and create a streaming reader.
      */
     public PravegaSourceBuilder<T> withReaderGroupName(String readerGroupName) {
-        this.readerGroupName = Preconditions.checkNotNull(readerGroupName);
+        this.pravegaSourceOptions.set(PravegaSourceOptions.READER_GROUP_NAME,
+                Preconditions.checkNotNull(readerGroupName));
         return this;
     }
 
     /**
-     * Sets the group refresh time, with a default of 1 second.
+     * Sets the group refresh time.
      *
      * @param groupRefreshTime The group refresh time
      * @return A builder to configure and create a streaming reader.
      */
-    public PravegaSourceBuilder<T> withReaderGroupRefreshTime(Time groupRefreshTime) {
-        this.readerGroupRefreshTime = groupRefreshTime;
+    public PravegaSourceBuilder<T> withReaderGroupRefreshTime(Duration groupRefreshTime) {
+        this.pravegaSourceOptions.set(PravegaSourceOptions.READER_GROUP_REFRESH_TIME, groupRefreshTime);
         return this;
     }
 
@@ -168,9 +155,9 @@ public class PravegaSourceBuilder<T> {
      * @param checkpointInitiateTimeout The timeout
      * @return A builder to configure and create a streaming reader.
      */
-    public PravegaSourceBuilder<T> withCheckpointInitiateTimeout(Time checkpointInitiateTimeout) {
-        Preconditions.checkArgument(checkpointInitiateTimeout.getSize() > 0, "timeout must be > 0");
-        this.checkpointInitiateTimeout = checkpointInitiateTimeout;
+    public PravegaSourceBuilder<T> withCheckpointInitiateTimeout(Duration checkpointInitiateTimeout) {
+        Preconditions.checkArgument(checkpointInitiateTimeout.getNano() > 0, "timeout must be > 0");
+        this.pravegaSourceOptions.set(PravegaSourceOptions.CHECKPOINT_INITIATE_TIMEOUT, checkpointInitiateTimeout);
         return this;
     }
 
@@ -181,9 +168,9 @@ public class PravegaSourceBuilder<T> {
      * @param eventReadTimeout The timeout
      * @return A builder to configure and create a streaming reader.
      */
-    public PravegaSourceBuilder<T> withEventReadTimeout(Time eventReadTimeout) {
-        Preconditions.checkArgument(eventReadTimeout.getSize() > 0, "timeout must be > 0");
-        this.eventReadTimeout = eventReadTimeout;
+    public PravegaSourceBuilder<T> withEventReadTimeout(Duration eventReadTimeout) {
+        Preconditions.checkArgument(eventReadTimeout.getNano() > 0, "timeout must be > 0");
+        this.pravegaSourceOptions.set(PravegaSourceOptions.EVENT_READ_TIMEOUT, eventReadTimeout);
         return this;
     }
 
@@ -198,7 +185,7 @@ public class PravegaSourceBuilder<T> {
      * @return A builder to configure and create a streaming reader.
      */
     public PravegaSourceBuilder<T> withMaxOutstandingCheckpointRequest(int maxOutstandingCheckpointRequest) {
-        this.maxOutstandingCheckpointRequest = maxOutstandingCheckpointRequest;
+        this.pravegaSourceOptions.set(PravegaSourceOptions.MAX_OUTSTANDING_CHECKPOINT_REQUEST, maxOutstandingCheckpointRequest);
         return this;
     }
 
@@ -294,8 +281,8 @@ public class PravegaSourceBuilder<T> {
         String[] split = streamSpec.split("/", 2);
         if (split.length == 1) {
             // unqualified
-            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaOptions.DEFAULT_SCOPE).isPresent(), "The default scope is not configured.");
-            return Stream.of(pravegaClientConfig.get(PravegaOptions.DEFAULT_SCOPE), split[0]);
+            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaClientConfig.DEFAULT_SCOPE).isPresent(), "The default scope is not configured.");
+            return Stream.of(pravegaClientConfig.get(PravegaClientConfig.DEFAULT_SCOPE), split[0]);
         } else {
             // qualified
             assert split.length == 2;
@@ -312,23 +299,25 @@ public class PravegaSourceBuilder<T> {
         // rgConfig
         ReaderGroupConfig.ReaderGroupConfigBuilder rgConfigBuilder = ReaderGroupConfig
                 .builder()
-                .maxOutstandingCheckpointRequest(maxOutstandingCheckpointRequest)
+                .maxOutstandingCheckpointRequest(pravegaSourceOptions.get(PravegaSourceOptions.MAX_OUTSTANDING_CHECKPOINT_REQUEST))
                 .disableAutomaticCheckpoints();
-        if (readerGroupRefreshTime != null) {
-            rgConfigBuilder.groupRefreshTimeMillis(readerGroupRefreshTime.toMilliseconds());
-        }
+        pravegaSourceOptions
+                .getOptional(PravegaSourceOptions.READER_GROUP_REFRESH_TIME)
+                .ifPresent(readerGroupRefreshTime -> rgConfigBuilder.groupRefreshTimeMillis(readerGroupRefreshTime.toMillis()));
         Preconditions.checkState(!streams.isEmpty(), "At least one stream must be supplied.");
         streams.forEach(s -> rgConfigBuilder.stream(resolve(s.getLeft()), s.getMiddle(), s.getRight()));
         final ReaderGroupConfig rgConfig = rgConfigBuilder.build();
 
         // rgScope
-        final String rgScope = Optional.ofNullable(readerGroupScope).orElseGet(() -> {
-            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaOptions.DEFAULT_SCOPE).isPresent(),  "A reader group scope or default scope must be configured");
-            return pravegaClientConfig.get(PravegaOptions.DEFAULT_SCOPE);
+        final String rgScope = pravegaSourceOptions.getOptional(PravegaSourceOptions.READER_GROUP_SCOPE).orElseGet(() -> {
+            Preconditions.checkState(pravegaClientConfig.getOptional(PravegaClientConfig.DEFAULT_SCOPE).isPresent(),
+                    "A reader group scope or default scope must be configured");
+            return pravegaClientConfig.get(PravegaClientConfig.DEFAULT_SCOPE);
         });
 
         // rgName
-        final String rgName = Optional.ofNullable(readerGroupName).orElseGet(FlinkPravegaUtils::generateRandomReaderGroupName);
+        final String rgName = pravegaSourceOptions.getOptional(PravegaSourceOptions.READER_GROUP_NAME)
+                .orElseGet(FlinkPravegaUtils::generateRandomReaderGroupName);
         return Triple.of(rgConfig, rgScope, rgName);
     }
 
@@ -348,9 +337,9 @@ public class PravegaSourceBuilder<T> {
                 readerGroupInfo.getMiddle(),
                 readerGroupInfo.getRight(),
                 getDeserializationSchema(),
-                this.eventReadTimeout,
-                this.checkpointInitiateTimeout,
-                this.enableMetrics);
+                pravegaSourceOptions.get(PravegaSourceOptions.EVENT_READ_TIMEOUT),
+                pravegaSourceOptions.get(PravegaSourceOptions.CHECKPOINT_INITIATE_TIMEOUT),
+                false);
     }
 
     /**
