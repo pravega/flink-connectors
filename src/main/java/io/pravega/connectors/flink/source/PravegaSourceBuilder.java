@@ -101,14 +101,148 @@ public class PravegaSourceBuilder<T> {
         return assignerWithTimeWindows;
     }
 
+    /**
+     * Set the Pravega client configuration, which includes connection info, security info, and a default scope
+     * from command line and system environments.
+     *
+     * @param params The command arguments executing the program.
+     * @return Builder instance.
+     */
     public PravegaSourceBuilder<T> withEnvironmentAndParameter(@Nullable ParameterTool params) {
         this.pravegaClientConfig.addAll(getConfigFromEnvironmentAndCommand(params));
         return this;
     }
 
+    /**
+     * Set the Pravega client configuration, which includes connection info, security info, and a default scope.
+     *
+     * @param pravegaClientConfig The configuration to use.
+     * @return Builder instance.
+     */
     public PravegaSourceBuilder<T> withPravegaClientConfig(Configuration pravegaClientConfig) {
         Preconditions.checkNotNull(pravegaClientConfig, "pravegaClientConfig");
         this.pravegaClientConfig.addAll(pravegaClientConfig);
+        return this;
+    }
+
+    /**
+     * Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.
+     *
+     * @param defaultScope The default Scope.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withDefaultScope(String defaultScope) {
+        this.pravegaClientConfig.set(PravegaClientConfig.DEFAULT_SCOPE,
+                Preconditions.checkNotNull(defaultScope));
+        return this;
+    }
+
+    /**
+     * Service URL provider for Pravega service.
+     *
+     * @param controllerURI The controller RPC URI.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withControllerURI(String controllerURI) {
+        this.pravegaClientConfig.set(PravegaClientConfig.CONTROLLER_URI,
+                Preconditions.checkNotNull(controllerURI));
+        return this;
+    }
+
+    /**
+     * The username to access Pravega.
+     *
+     * @param username The username.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withUsername(String username) {
+        this.pravegaClientConfig.set(PravegaClientConfig.USERNAME,
+                Preconditions.checkNotNull(username));
+        return this;
+    }
+
+    /**
+     * The password to access Pravega.
+     *
+     * @param password The password.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withPassword(String password) {
+        this.pravegaClientConfig.set(PravegaClientConfig.PASSWORD,
+                Preconditions.checkNotNull(password));
+        return this;
+    }
+
+    /**
+     * Path to an optional truststore. If this is null or empty, the default JVM trust store is used.
+     * This is currently expected to be a signing certificate for the certification authority.
+     *
+     * @param trustStore Path to an optional truststore.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withTrustStore(String trustStore) {
+        this.pravegaClientConfig.set(PravegaClientConfig.PASSWORD,
+                Preconditions.checkNotNull(trustStore));
+        return this;
+    }
+
+    /**
+     * Whether to enable host name validation or not.
+     *
+     * @param validateHostName Flag to decide whether to enable host name validation or not.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withValidateHostName(Boolean validateHostName) {
+        this.pravegaClientConfig.set(PravegaClientConfig.VALIDATE_HOST_NAME,
+                Preconditions.checkNotNull(validateHostName));
+        return this;
+    }
+
+    /**
+     * Maximum number of connections per Segment store to be used by connection pooling.
+     *
+     * @param maxConnectionsPerSegmentStore Maximum number of connections per Segment store.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withMaxConnectionsPerSegmentStore(Integer maxConnectionsPerSegmentStore) {
+        this.pravegaClientConfig.set(PravegaClientConfig.MAX_CONNECTION_PER_SEGMENT_STORE,
+                Preconditions.checkNotNull(maxConnectionsPerSegmentStore));
+        return this;
+    }
+
+    /**
+     * An optional property representing whether to enable TLS for client's communication with the Controller.
+     *
+     * @param enableTlsToController Flag to decide whether to enable TLS with the Controller or not.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withEnableTlsToController(Boolean enableTlsToController) {
+        this.pravegaClientConfig.set(PravegaClientConfig.ENABLE_TLS_TO_CONTROLLER,
+                Preconditions.checkNotNull(enableTlsToController));
+        return this;
+    }
+
+    /**
+     * An optional property representing whether to enable TLS for client's communication with the Controller.
+     *
+     * @param enableTlsToSegmentStore Flag to decide whether to enable TLS with the Controller or not.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withEnableTlsToSegmentStore(Boolean enableTlsToSegmentStore) {
+        this.pravegaClientConfig.set(PravegaClientConfig.ENABLE_TLS_TO_SEGMENT_STORE,
+                Preconditions.checkNotNull(enableTlsToSegmentStore));
+        return this;
+    }
+
+    /**
+     * Configures the Pravega schema registry URI.
+     *
+     * @param schemaRegistryURI The schema registry URI.
+     * @return Builder instance.
+     */
+    public PravegaSourceBuilder<T> withSchemaRegistryURI(String schemaRegistryURI) {
+        this.pravegaClientConfig.set(PravegaClientConfig.SCHEMA_REGISTRY_URI,
+                Preconditions.checkNotNull(schemaRegistryURI));
         return this;
     }
 
@@ -145,6 +279,7 @@ public class PravegaSourceBuilder<T> {
      * @return A builder to configure and create a streaming reader.
      */
     public PravegaSourceBuilder<T> withReaderGroupRefreshTime(Duration groupRefreshTime) {
+        Preconditions.checkArgument(groupRefreshTime.getNano() > 0, "refreshtime must be > 0");
         this.pravegaSourceOptions.set(PravegaSourceOptions.READER_GROUP_REFRESH_TIME, groupRefreshTime);
         return this;
     }

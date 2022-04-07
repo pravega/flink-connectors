@@ -29,9 +29,15 @@ import java.util.Properties;
 import java.util.stream.Stream;
 
 /**
- * A builder for building the Pravega {@link ClientConfig} instance.
+ * Helper methods for {@link PravegaClientConfig}.
  */
 public final class PravegaClientConfigBuilder {
+    /**
+     * A builder for building the Pravega {@link ClientConfig} instance.
+     *
+     * @param pravegaClientConfig The configuration.
+     * @return A Pravega {@link ClientConfig} instance.
+     */
     public static ClientConfig buildClientConfigFromProperties(Configuration pravegaClientConfig) {
         ClientConfig.ClientConfigBuilder builder = ClientConfig.builder();
         builder.controllerURI(URI.create(pravegaClientConfig.get(PravegaClientConfig.CONTROLLER_URI)));
@@ -50,6 +56,12 @@ public final class PravegaClientConfigBuilder {
         return builder.build();
     }
 
+    /**
+     * Get configuration from command line and system environment.
+     *
+     * @param params Command line params from {@link ParameterTool#fromArgs(String[])}
+     * @return A Pravega client configuration.
+     */
     public static Configuration getConfigFromEnvironmentAndCommand(@Nullable ParameterTool params) {
         Configuration pravegaClientConfig = new Configuration();
 
