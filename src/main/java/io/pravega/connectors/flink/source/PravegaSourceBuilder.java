@@ -22,24 +22,19 @@ import io.pravega.client.stream.StreamCut;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.config.PravegaClientConfig;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.commons.lang3.tuple.Triple;
-import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.apache.flink.api.java.ClosureCleaner;
 import org.apache.flink.api.java.utils.ParameterTool;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.util.Preconditions;
-import org.apache.flink.util.SerializedValue;
 
 import javax.annotation.Nullable;
-import java.io.IOException;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 
-import static io.pravega.connectors.flink.config.PravegaClientConfigBuilder.buildClientConfigFromProperties;
-import static io.pravega.connectors.flink.config.PravegaClientConfigBuilder.getConfigFromEnvironmentAndCommand;
+import static io.pravega.connectors.flink.config.PravegaClientConfigUtils.buildClientConfigFromProperties;
+import static io.pravega.connectors.flink.config.PravegaClientConfigUtils.getConfigFromEnvironmentAndCommand;
 
 /**
  *The @builder class for {@link PravegaSource} to make it easier for the users to construct a {@link
@@ -50,7 +45,6 @@ import static io.pravega.connectors.flink.config.PravegaClientConfigBuilder.getC
 public class PravegaSourceBuilder<T> {
 
     private DeserializationSchema<T> deserializationSchema;
-    private @Nullable SerializedValue<AssignerWithTimeWindows<T>> assignerWithTimeWindows;
     /**
      * The internal Pravega client configuration. See {@link PravegaClientConfig}.
      */
@@ -76,29 +70,9 @@ public class PravegaSourceBuilder<T> {
         return builder();
     }
 
-    /**
-     * Sets the timestamp and watermark assigner.
-     *
-     * @param assignerWithTimeWindows The timestamp and watermark assigner.
-     * @return Builder instance.
-     */
-    public PravegaSourceBuilder<T> withTimestampAssigner(AssignerWithTimeWindows<T> assignerWithTimeWindows) {
-        try {
-            ClosureCleaner.clean(assignerWithTimeWindows, ExecutionConfig.ClosureCleanerLevel.RECURSIVE, true);
-            this.assignerWithTimeWindows = new SerializedValue<>(assignerWithTimeWindows);
-        } catch (IOException e) {
-            throw new IllegalArgumentException("The given assigner is not serializable", e);
-        }
-        return this;
-    }
-
     protected DeserializationSchema<T> getDeserializationSchema() {
         Preconditions.checkState(deserializationSchema != null, "Deserialization schema must not be null.");
         return deserializationSchema;
-    }
-
-    protected SerializedValue<AssignerWithTimeWindows<T>> getAssignerWithTimeWindows() {
-        return assignerWithTimeWindows;
     }
 
     /**
@@ -231,18 +205,6 @@ public class PravegaSourceBuilder<T> {
     public PravegaSourceBuilder<T> withEnableTlsToSegmentStore(Boolean enableTlsToSegmentStore) {
         this.pravegaClientConfig.set(PravegaClientConfig.ENABLE_TLS_TO_SEGMENT_STORE,
                 Preconditions.checkNotNull(enableTlsToSegmentStore));
-        return this;
-    }
-
-    /**
-     * Configures the Pravega schema registry URI.
-     *
-     * @param schemaRegistryURI The schema registry URI.
-     * @return Builder instance.
-     */
-    public PravegaSourceBuilder<T> withSchemaRegistryURI(String schemaRegistryURI) {
-        this.pravegaClientConfig.set(PravegaClientConfig.SCHEMA_REGISTRY_URI,
-                Preconditions.checkNotNull(schemaRegistryURI));
         return this;
     }
 

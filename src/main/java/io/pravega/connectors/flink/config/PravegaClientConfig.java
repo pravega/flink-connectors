@@ -19,6 +19,7 @@ package io.pravega.connectors.flink.config;
 import io.pravega.client.ClientConfig;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
+import org.apache.flink.configuration.description.Description;
 
 /**
  * Details about each configuration could be found at {@link ClientConfig}.
@@ -31,52 +32,64 @@ public final class PravegaClientConfig {
             ConfigOptions.key(CLIENT_PREFIX + "defaultScope")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("Required default scope name.");
+                    .withDescription("Configures the default Pravega scope, to resolve unqualified stream names and to support reader groups.");
     public static final ConfigOption<String> CONTROLLER_URI =
             ConfigOptions.key(CLIENT_PREFIX + "controllerURI")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("Required Pravega controller URI.");
+                    .withDescription(Description.builder()
+                            .text("Configures the Pravega controller RPC URI.")
+                            .linebreak()
+                            .text("This can be of 2 types:")
+                            .linebreak()
+                            .text("1. tcp://ip1:port1,ip2:port2,...")
+                            .linebreak()
+                            .text("This is used if the controller endpoints are static and can be directly accessed.")
+                            .linebreak()
+                            .text("2. pravega://ip1:port1,ip2:port2,...")
+                            .linebreak()
+                            .text("This is used to autodiscovery the controller endpoints from an initial controller list.")
+                            .build());
     public static final ConfigOption<String> USERNAME =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "username")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("Optional username for security.");
+                    .withDescription("Username passed to Pravega for authentication and authorizing the access.");
     public static final ConfigOption<String> PASSWORD =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "password")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("Optional password for security.");
+                    .withDescription("Password passed to Pravega for authentication and authorizing the access.");
     public static final ConfigOption<String> TRUST_STORE =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "trustStore")
                     .stringType()
                     .noDefaultValue()
-                    .withDescription("Optional trust store path for Pravega client.");
+                    .withDescription(Description.builder()
+                            .text("Path to an optional truststore. If this is null or empty, the default JVM trust store is used.")
+                            .linebreak()
+                            .text("This is currently expected to be a signing certificate for the certification authority.")
+                            .build()
+                    );
     public static final ConfigOption<Boolean> VALIDATE_HOST_NAME =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "validateHostName")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription("Optional flag to decide whether to enable host name validation when TLS is enabled.");
+                    .withDescription("Flag to decide whether to validate the hostname on incoming requests.");
     public static final ConfigOption<Integer> MAX_CONNECTION_PER_SEGMENT_STORE =
             ConfigOptions.key(CLIENT_PREFIX + "maxConnectionsPerSegmentStore")
                     .intType()
                     .noDefaultValue()
-                    .withDescription("Optional max number of connections per Segment store to be used by connection pooling.");
+                    .withDescription("Maximum number of connections per Segment store to be used by connection pooling.");
     public static final ConfigOption<Boolean> ENABLE_TLS_TO_CONTROLLER =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "enableTlsToController")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription("Optional flag decide whether to enable TLS for client's communication with the Controller.");
+                    .withDescription("Flag to decide whether to enable TLS for client's communication with the Controller.");
     public static final ConfigOption<Boolean> ENABLE_TLS_TO_SEGMENT_STORE =
             ConfigOptions.key(CLIENT_PREFIX + CLIENT_SECURITY_PREFIX + "enableTlsToSegmentStore")
                     .booleanType()
                     .noDefaultValue()
-                    .withDescription("Optional flag decide whether to enable TLS for client's communication with the Controller.");
-    public static final ConfigOption<String> SCHEMA_REGISTRY_URI =
-            ConfigOptions.key(CLIENT_PREFIX + "schemaRegistryURI")
-                    .stringType()
-                    .noDefaultValue()
-                    .withDescription("Optional Pravega schema registry URI.");
+                    .withDescription("Flag to decide whether to enable TLS for client's communication with the Controller.");
 
     private PravegaClientConfig() {
         // This is a constant class.

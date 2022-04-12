@@ -131,7 +131,12 @@ public class FlinkPravegaSourceITCase extends AbstractTestBase {
             // the Pravega reader
             final PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
                     .forStream(streamName)
-                    .withPravegaClientConfig(SETUP_UTILS.getPravegaClientConfig())
+                    .withControllerURI(SETUP_UTILS.getControllerUri().toString())
+                    .withDefaultScope(SETUP_UTILS.getScope())
+                    .withUsername(SetupUtils.getUsername())
+                    .withPassword(SetupUtils.getPassword())
+                    .withValidateHostName(SETUP_UTILS.isEnableHostNameValidation())
+                    .withTrustStore(SetupUtils.getPathFromResource(SetupUtils.getTrustStoreFile()))
                     .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();

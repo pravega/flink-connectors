@@ -152,13 +152,40 @@ public final class SetupUtils {
     }
 
     /**
-     * Get resources path from resource
+     * Get Username.
+     *
+     * @return Username.
+     */
+    static public String getUsername() {
+        return PRAVEGA_USERNAME;
+    }
+
+    /**
+     * Get Password.
+     *
+     * @return Password.
+     */
+    static public String getPassword() {
+        return PRAVEGA_PASSWORD;
+    }
+
+    /**
+     * Get TrustStoreFile.
+     *
+     * @return TrustStoreFile.
+     */
+    static public String getTrustStoreFile() {
+        return CLIENT_TRUST_STORE_FILE;
+    }
+
+    /**
+     * Get resources path from resource.
      *
      * @param resourceName    Name of the resource.
      *
      * @return Path of the resource file.
      */
-    static String getPathFromResource(String resourceName) {
+    public static String getPathFromResource(String resourceName) {
         return SetupUtils.class.getClassLoader().getResource(resourceName).getPath();
     }
 
