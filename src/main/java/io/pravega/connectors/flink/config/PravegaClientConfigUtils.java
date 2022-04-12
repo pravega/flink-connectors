@@ -41,7 +41,7 @@ public final class PravegaClientConfigUtils {
     public static ClientConfig buildClientConfigFromProperties(Configuration pravegaClientConfig) {
         ClientConfig.ClientConfigBuilder builder = ClientConfig.builder();
         builder.controllerURI(URI.create(pravegaClientConfig.get(PravegaClientConfig.CONTROLLER_URI)));
-        if (isCredentialsLoadDynamic() &&
+        if (!isCredentialsLoadDynamic() &&
                 pravegaClientConfig.getOptional(PravegaClientConfig.USERNAME).isPresent() &&
                 pravegaClientConfig.getOptional(PravegaClientConfig.PASSWORD).isPresent()) {
             builder.credentials(new DefaultCredentials(

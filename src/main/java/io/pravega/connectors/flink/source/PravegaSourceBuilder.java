@@ -155,7 +155,7 @@ public class PravegaSourceBuilder<T> {
      * @return Builder instance.
      */
     public PravegaSourceBuilder<T> withTrustStore(String trustStore) {
-        this.pravegaClientConfig.set(PravegaClientConfig.PASSWORD,
+        this.pravegaClientConfig.set(PravegaClientConfig.TRUST_STORE,
                 Preconditions.checkNotNull(trustStore));
         return this;
     }
