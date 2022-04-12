@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executors;
@@ -74,18 +75,22 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // A long-lived thread pool for scheduling all checkpoint tasks
     private ScheduledExecutorService scheduledExecutorService;
 
+    // Timeout for initiating a checkpoint in Pravega
+    private Duration checkpointInitiateTimeout;
+
     /**
      * Creates a new Pravega Split Enumerator instance which can connect to a
      * Pravega reader group with the pravega stream.
      * The Enumerator is a single instance on Flink jobmanager. It is the "brain" of the source to initialize
      * the reader group when it starts, then discover and assign the subtasks.
      *
-     * @param context              The Pravega Split Enumeratior context.
-     * @param scope                The reader group scope name.
-     * @param readerGroupName      The reader group name.
-     * @param clientConfig         The Pravega client configuration.
-     * @param readerGroupConfig    The Pravega reader group configuration.
-     * @param checkpoint           The Pravega checkpoint.
+     * @param context                       The Pravega Split Enumeratior context.
+     * @param scope                         The reader group scope name.
+     * @param readerGroupName               The reader group name.
+     * @param clientConfig                  The Pravega client configuration.
+     * @param readerGroupConfig             The Pravega reader group configuration.
+     * @param checkpoint                    The Pravega checkpoint.
+     * @param checkpointInitiateTimeout     The timeout for initiating a checkpoint in Pravega
      */
     public PravegaSplitEnumerator(
             SplitEnumeratorContext<PravegaSplit> context,
@@ -93,7 +98,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
             String readerGroupName,
             ClientConfig clientConfig,
             ReaderGroupConfig readerGroupConfig,
-            Checkpoint checkpoint) {
+            Checkpoint checkpoint,
+            Duration checkpointInitiateTimeout) {
         this.enumContext = context;
         this.scope = scope;
         this.readerGroupName = readerGroupName;
@@ -101,6 +107,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         this.readerGroupConfig = readerGroupConfig;
         this.checkpoint = checkpoint;
         this.scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
+        this.checkpointInitiateTimeout = checkpointInitiateTimeout;
     }
 
     // initiate reader group manager, reader group and reset the group to the checkpoint position if checkpoint isn't null
@@ -158,7 +165,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
         try {
-            this.checkpoint = checkpointResult.get(5, TimeUnit.SECONDS);
+            this.checkpoint = checkpointResult.get(checkpointInitiateTimeout.toMillis(), TimeUnit.MILLISECONDS);
         } catch (Exception e) {
             LOG.error("Pravega checkpoint met error.", e);
             throw e;

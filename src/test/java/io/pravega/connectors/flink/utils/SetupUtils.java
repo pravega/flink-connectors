@@ -244,8 +244,8 @@ public final class SetupUtils {
         final Configuration pravegaClientConfig = new Configuration();
         pravegaClientConfig.set(PravegaClientConfig.CONTROLLER_URI, getControllerUri().toString());
         pravegaClientConfig.set(PravegaClientConfig.DEFAULT_SCOPE, getScope());
-        pravegaClientConfig.set(PravegaClientConfig.USERNAME, PRAVEGA_PASSWORD);
-        pravegaClientConfig.set(PravegaClientConfig.PASSWORD, PRAVEGA_USERNAME);
+        pravegaClientConfig.set(PravegaClientConfig.USERNAME, PRAVEGA_USERNAME);
+        pravegaClientConfig.set(PravegaClientConfig.PASSWORD, PRAVEGA_PASSWORD);
         pravegaClientConfig.set(PravegaClientConfig.VALIDATE_HOST_NAME, enableHostNameValidation);
         pravegaClientConfig.set(PravegaClientConfig.TRUST_STORE, getPathFromResource(CLIENT_TRUST_STORE_FILE));
         return pravegaClientConfig;

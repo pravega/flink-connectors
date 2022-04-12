@@ -131,8 +131,8 @@ public class PravegaSource<T>
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
         Supplier<PravegaSplitReader> splitReaderSupplier =
                 () ->
-                        new PravegaSplitReader(scope, clientConfig,
-                                readerGroupName, readerContext.getIndexOfSubtask());
+                        new PravegaSplitReader(scope, clientConfig, readerGroupName,
+                                readerContext.getIndexOfSubtask(), this.eventReadTimeout);
 
         return new PravegaSourceReader<>(
                 splitReaderSupplier,
@@ -150,7 +150,8 @@ public class PravegaSource<T>
                 this.readerGroupName,
                 this.clientConfig,
                 this.readerGroupConfig,
-                null);
+                null,
+                this.checkpointInitiateTimeout);
     }
 
     @Override
@@ -163,7 +164,8 @@ public class PravegaSource<T>
                 this.readerGroupName,
                 this.clientConfig,
                 this.readerGroupConfig,
-                checkpoint);
+                checkpoint,
+                this.checkpointInitiateTimeout);
 
     }
 

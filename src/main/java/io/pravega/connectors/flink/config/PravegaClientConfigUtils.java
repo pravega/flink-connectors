@@ -45,8 +45,8 @@ public final class PravegaClientConfigUtils {
                 pravegaClientConfig.getOptional(PravegaClientConfig.USERNAME).isPresent() &&
                 pravegaClientConfig.getOptional(PravegaClientConfig.PASSWORD).isPresent()) {
             builder.credentials(new DefaultCredentials(
-                    pravegaClientConfig.get(PravegaClientConfig.USERNAME),
-                    pravegaClientConfig.get(PravegaClientConfig.PASSWORD))
+                    pravegaClientConfig.get(PravegaClientConfig.PASSWORD),
+                    pravegaClientConfig.get(PravegaClientConfig.USERNAME))
             );
         }
         pravegaClientConfig.getOptional(PravegaClientConfig.VALIDATE_HOST_NAME).ifPresent(builder::validateHostName);

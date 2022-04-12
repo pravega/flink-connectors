@@ -33,6 +33,7 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.time.Duration;
 import java.util.Collections;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
@@ -170,6 +171,7 @@ public class FlinkPravegaSplitEnumeratorTest {
                 readerGroupName,
                 SETUP_UTILS.getClientConfig(),
                 ReaderGroupConfig.builder().stream(stream).build(),
-                null);
+                null,
+                Duration.ofMillis(5000));
     }
 }

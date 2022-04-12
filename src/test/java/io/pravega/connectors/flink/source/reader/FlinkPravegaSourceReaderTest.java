@@ -39,6 +39,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -129,7 +130,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
         }
         return new PravegaSourceReader<>(
                 () -> new PravegaSplitReader(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig(),
-                        readerGroupName, subtaskId),
+                        readerGroupName, subtaskId, Duration.ofMillis(1000)),
                 emitter,
                 new Configuration(),
                 new TestingReaderContext());

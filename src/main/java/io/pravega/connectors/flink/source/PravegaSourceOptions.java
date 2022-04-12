@@ -26,11 +26,6 @@ import java.util.function.Function;
 public class PravegaSourceOptions {
     public static final String SOURCE_PREFIX = "pravega.source.";
 
-    public static final ConfigOption<Long> READER_TIMEOUT_MS =
-            ConfigOptions.key(SOURCE_PREFIX + "timeout.ms")
-                    .longType()
-                    .defaultValue(1000L)
-                    .withDescription("Optional max time to wait when closing components.");
     public static final ConfigOption<String> READER_GROUP_NAME =
             ConfigOptions.key(SOURCE_PREFIX + "readerGroupName")
                     .stringType()

@@ -22,7 +22,6 @@ import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.TruncatedDataException;
-import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import org.apache.flink.configuration.Configuration;
@@ -36,6 +35,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 
 /**
  * A {@link SplitReader} implementation that reads records from Pravega.
@@ -78,6 +78,11 @@ public class PravegaSplitReader
     private final EventStreamClientFactory eventStreamClientFactory;
 
     /**
+     * Timeout for the call to read events from Pravega.
+     */
+    private final Duration eventReadTimeout;
+
+    /**
      * Creates a new Pravega Split Reader instance which can read event from Pravega stream.
      * The Pravega Split Reader is actually an instance of a {@link EventStreamReader}.
      *
@@ -85,16 +90,19 @@ public class PravegaSplitReader
      * @param clientConfig                      The Pravega client configuration.
      * @param readerGroupName                   The reader group name.
      * @param subtaskId                         The subtaskId of source reader.
+     * @param eventReadTimeout                  The timeout for the call to read events from Pravega.
      */
     public PravegaSplitReader(
             String scope,
             ClientConfig clientConfig,
             String readerGroupName,
-            int subtaskId) {
+            int subtaskId,
+            Duration eventReadTimeout) {
         this.subtaskId = subtaskId;
         this.options = new Configuration();
         this.readerGroupName = readerGroupName;
         this.eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
+        this.eventReadTimeout = eventReadTimeout;
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
@@ -110,8 +118,7 @@ public class PravegaSplitReader
         EventRead<ByteBuffer> eventRead = null;
         do {
             try {
-                eventRead = pravegaReader.readNextEvent(
-                        options.getLong(PravegaSourceOptions.READER_TIMEOUT_MS));
+                eventRead = pravegaReader.readNextEvent(eventReadTimeout.toMillis());
                 LOG.debug("read event: {} on reader {}", eventRead.getEvent(), subtaskId);
             } catch (TruncatedDataException e) {
                 continue;
