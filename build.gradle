@@ -127,7 +127,6 @@ dependencies {
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
         exclude group:  'ch.qos.logback', module: 'logback-classic'
-        exclude group: 'io.netty'
     }
     testImplementation (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
