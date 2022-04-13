@@ -20,6 +20,7 @@ import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
@@ -65,11 +66,13 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
             String checkpointName = record.getCheckpointName();
             checkpointId = Optional.of(getCheckpointId(checkpointName));
             LOG.info("read checkpoint event {} on reader {}", checkpointName, state.getSubtaskId());
-        } else if (record.getEvent() != null) { // collect normal event
+        } else if (record.getEvent() != null) { // collect non-checkpoint event
             try {
                 deserializationSchema.deserialize(FlinkPravegaUtils.byteBufferToArray(record.getEvent()), collector);
-                T event = collector.getRecords().get(collector.getRecords().size() - 1);
-                output.collect(event);
+                for (T event : collector.getRecords()) {
+                    output.collect(event);
+                }
+                collector.reset();
             } catch (Exception e) {
                 throw new IOException("Failed to deserialize event due to", e);
             }
@@ -82,6 +85,7 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
      *
      * @return checkpointId
      */
+    @VisibleForTesting
     public Optional<Long> getAndResetCheckpointId() {
         Optional<Long> chkPt = checkpointId;
         checkpointId = Optional.empty();

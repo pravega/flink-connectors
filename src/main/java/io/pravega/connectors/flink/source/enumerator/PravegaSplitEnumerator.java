@@ -37,7 +37,13 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** The enumerator class for Pravega source. */
+/**
+ * The enumerator class for Pravega source.
+ *
+ * The PravegaSplitEnumerator will assign splits to source readers. Pravega source pushes splits eagerly so that
+ * the enumerator will create a source reader and assign one split(Pravega reader) to it.
+ * One Pravega Source reader is only mapped to one Pravega Split as design.
+ * */
 @Internal
 public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Checkpoint> {
     /** Default thread pool size of the checkpoint scheduler */
@@ -80,6 +86,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     /**
      * Creates a new Pravega Split Enumerator instance which can connect to a
      * Pravega reader group with the pravega stream.
+     *
      * The Enumerator is a single instance on Flink jobmanager. It is the "brain" of the source to initialize
      * the reader group when it starts, then discover and assign the subtasks.
      *
@@ -112,7 +119,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         LOG.info("Starting the PravegaSplitEnumerator for reader group: {}/{}.", this.scope, this.readerGroupName);
 
         if (this.readerGroupManager == null) {
-            LOG.info("Creatomg reader group manager in scope: {}.", scope);
+            LOG.info("Creating reader group manager in scope: {}.", scope);
             this.readerGroupManager = ReaderGroupManager.withScope(scope, clientConfig);
         }
         if (this.readerGroup == null) {

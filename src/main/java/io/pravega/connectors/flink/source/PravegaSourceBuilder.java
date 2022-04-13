@@ -121,7 +121,6 @@ public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, P
      * Builds a {@link PravegaSource}.
      */
     public PravegaSource<T> build() {
-        PravegaSource<T> source = buildSource();
-        return source;
+        return buildSource();
     }
 }

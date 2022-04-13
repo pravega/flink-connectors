@@ -72,7 +72,7 @@ public class PravegaSplitReader
     private final int subtaskId;
 
     /**
-     * Readergroup name of current source.
+     * Reader group name of current source.
      */
     private final String readerGroupName;
 
@@ -99,11 +99,18 @@ public class PravegaSplitReader
         this.options = new Configuration();
         this.readerGroupName = readerGroupName;
         this.eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
-        this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
-                PravegaSplit.splitId(subtaskId),
-                readerGroupName,
-                ReaderConfig.builder().build(),
-                eventStreamClientFactory);
+
+        // create Pravega EventStreamReader
+        try {
+            this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
+                    PravegaSplit.splitId(subtaskId),
+                    readerGroupName,
+                    ReaderConfig.builder().build(),
+                    eventStreamClientFactory);
+        } catch (RuntimeException e) {
+            LOG.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
+            throw e;
+        }
     }
 
     // read one or more event from an EventStreamReader
@@ -136,7 +143,7 @@ public class PravegaSplitReader
         return records.build();
     }
 
-    // get the assigned split
+    // get the assigned split, we will only have one split for one reader as design for Pravega source
     @Override
     public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
         if (splitsChange instanceof SplitsAddition) {
@@ -151,18 +158,25 @@ public class PravegaSplitReader
         }
     }
 
+    // restart the Pravega reader here to unblock the fetch call
     @Override
     public void wakeUp() {
         if (this.pravegaReader != null) {
             LOG.info("Closing Pravega reader.");
             this.pravegaReader.close();
         }
-        LOG.info("Restarting creating Pravega reader.");
-        this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
-                PravegaSplit.splitId(subtaskId),
-                readerGroupName,
-                ReaderConfig.builder().build(),
-                eventStreamClientFactory);
+
+        LOG.info("Recreating Pravega reader.");
+        try {
+            this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
+                    PravegaSplit.splitId(subtaskId),
+                    readerGroupName,
+                    ReaderConfig.builder().build(),
+                    eventStreamClientFactory);
+        } catch (RuntimeException e) {
+            LOG.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
+            throw e;
+        }
     }
 
     @Override

@@ -34,8 +34,8 @@ import java.io.Serializable;
 public class PravegaSplit implements SourceSplit, Serializable {
 
     private static final String PREFIX = "flink-reader";
-    private int subtaskId;
-    private String readerGroupName;
+    private final int subtaskId;
+    private final String readerGroupName;
 
     /**
      * A Pravega Split instance represents an EventStreamReader, but with no operations and keep stateless.
