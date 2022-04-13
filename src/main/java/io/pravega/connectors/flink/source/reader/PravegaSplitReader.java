@@ -25,12 +25,14 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.Configuration;
 import org.apache.flink.connector.base.source.reader.RecordsBySplits;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
+import org.apache.flink.util.ExceptionUtils;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,11 +40,13 @@ import org.slf4j.LoggerFactory;
 import java.nio.ByteBuffer;
 
 /**
- * A {@link SplitReader} implementation that reads records from Pravega.
+ * A {@link SplitReader} implementation that reads records from Pravega. The split assigned to Pravega Split reader
+ * represents a single Pravega EventStreamReader which will read events from Pravega stream accordingly.
  *
  * <p>The returned type are in the format of {@code EventRead(record)}.
  *
  */
+@Internal
 public class PravegaSplitReader
         implements SplitReader<EventRead<ByteBuffer>, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSplitReader.class);
@@ -105,15 +109,17 @@ public class PravegaSplitReader
     // read one or more event from an EventStreamReader
     @Override
     public RecordsWithSplitIds<EventRead<ByteBuffer>> fetch() {
-        LOG.info("Call fetch");
         RecordsBySplits.Builder<EventRead<ByteBuffer>> records = new RecordsBySplits.Builder<>();
         EventRead<ByteBuffer> eventRead = null;
+
+        // main work loop
         do {
             try {
                 eventRead = pravegaReader.readNextEvent(
                         options.getLong(PravegaSourceOptions.READER_TIMEOUT_MS));
                 LOG.debug("read event: {} on reader {}", eventRead.getEvent(), subtaskId);
             } catch (TruncatedDataException e) {
+                // Data is truncated, Force the reader going forward to the next available event
                 continue;
             } catch (IllegalStateException e) {
                 // When catching an IllegalStateException means pravegaReader is closed,
@@ -121,6 +127,8 @@ public class PravegaSplitReader
                 // so that we return an empty RecordsBySplits to stop fetching and not break the recovering.
                 return new RecordsBySplits.Builder<EventRead<ByteBuffer>>().build();
             }
+
+            // push non-empty event to records queue
             if (eventRead.getEvent() != null || eventRead.isCheckpoint()) {
                 records.add(split, eventRead);
             }
@@ -131,20 +139,25 @@ public class PravegaSplitReader
     // get the assigned split
     @Override
     public void handleSplitsChanges(SplitsChange<PravegaSplit> splitsChange) {
-        LOG.info("Call handleSplitsChanges");
         if (splitsChange instanceof SplitsAddition) {
-            // One reader for one split
+            // ensure that one split reader is assigned only one split
             Preconditions.checkArgument(splitsChange.splits().size() == 1);
             this.split = splitsChange.splits().get(0);
+        } else {
+            throw new UnsupportedOperationException(
+                    String.format(
+                            "The SplitChange type of %s is not supported.",
+                            splitsChange.getClass()));
         }
     }
 
     @Override
     public void wakeUp() {
-        LOG.info("Call wakeup");
         if (this.pravegaReader != null) {
+            LOG.info("Closing Pravega reader.");
             this.pravegaReader.close();
         }
+        LOG.info("Restarting creating Pravega reader.");
         this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
                 PravegaSplit.splitId(subtaskId),
                 readerGroupName,
@@ -153,9 +166,38 @@ public class PravegaSplitReader
     }
 
     @Override
-    public void close() {
-        LOG.info("Call close");
-        pravegaReader.close();
-        eventStreamClientFactory.close();
+    public void close() throws Exception {
+        Throwable ex = null;
+
+        if (pravegaReader != null) {
+            try {
+                LOG.info("Closing Pravega reader");
+                pravegaReader.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    LOG.warn("Interrupted while waiting for Pravega reader to close, retrying ...");
+                    pravegaReader.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+
+        if (eventStreamClientFactory != null) {
+            try {
+                LOG.info("Closing Pravega eventStreamClientFactory");
+                eventStreamClientFactory.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    LOG.warn("Interrupted while waiting for eventStreamClientFactory to close, retrying ...");
+                    eventStreamClientFactory.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+        if (ex instanceof Exception) {
+            throw (Exception) ex;
+        }
     }
 }

@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.ExternallyInducedSourceReader;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReader;
@@ -43,6 +44,7 @@ import java.util.function.Supplier;
  *
  * @param <T> The final element type to emit.
  */
+@Internal
 public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<ByteBuffer>, T, PravegaSplit, PravegaSplit>
         implements ExternallyInducedSourceReader<T, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSourceReader.class);
