@@ -102,9 +102,9 @@ public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, P
      * Builds a {@link PravegaSource} based on the configuration.
      *
      * @throws IllegalStateException if the configuration is invalid.
-     * @return an uninitiailized reader as a source function.
+     * @return an uninitialized reader as a source function.
      */
-    private PravegaSource<T> buildSource() {
+    public PravegaSource<T> build() {
         PravegaSourceBuilder.ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
         return new PravegaSource<>(
                 getPravegaConfig().getClientConfig(),
@@ -115,12 +115,5 @@ public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, P
                 this.eventReadTimeout,
                 this.checkpointInitiateTimeout,
                 isMetricsEnabled());
-    }
-
-    /**
-     * Builds a {@link PravegaSource}.
-     */
-    public PravegaSource<T> build() {
-        return buildSource();
     }
 }

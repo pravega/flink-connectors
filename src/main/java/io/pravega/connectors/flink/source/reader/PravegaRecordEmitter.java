@@ -60,13 +60,18 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
         this.deserializationSchema = deserializationSchema;
     }
 
+    /**
+     * Process and emit the records read by Split Reader. If the record to emit is a checkpoint event,
+     * record the checkpoint ID for reporting back to the source reader.
+     *
+     */
     @Override
     public void emitRecord(EventRead<ByteBuffer> record, SourceOutput<T> output, PravegaSplit state) throws Exception {
-        if (record.isCheckpoint()) { // If the record to emit is a checkpoint, record the checkpoint ID for later
+        if (record.isCheckpoint()) {
             String checkpointName = record.getCheckpointName();
             checkpointId = Optional.of(getCheckpointId(checkpointName));
             LOG.info("read checkpoint event {} on reader {}", checkpointName, state.getSubtaskId());
-        } else if (record.getEvent() != null) { // collect non-checkpoint event
+        } else if (record.getEvent() != null) {
             try {
                 deserializationSchema.deserialize(FlinkPravegaUtils.byteBufferToArray(record.getEvent()), collector);
                 for (T event : collector.getRecords()) {

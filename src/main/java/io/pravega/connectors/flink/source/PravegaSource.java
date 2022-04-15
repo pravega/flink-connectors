@@ -50,11 +50,16 @@ import java.util.function.Supplier;
 
 /**
  * The Source implementation of Pravega. Please use a {@link PravegaSourceBuilder} to construct a {@link
- * PravegaSource}. The {@link PravegaSource} has two main components, SplitEnumerator and Reader. The SplitEnumerator
- * will discover the splits(which represent Pravega EventStreamReaders) and assign them to the SourceReaders. The
- * Pravega EventStreamReader assigned will then read the actual data.
+ * PravegaSource}. The {@link PravegaSource} has two main components, {@link PravegaSplitEnumerator} and {@link PravegaSourceReader}.
  *
- * The following example shows how to create a PravegaSource emitting records of <code>
+ * <p>The Split Enumerator will discover the splits(which represent Pravega EventStreamReaders) and then assign them to the Source Readers.
+ * For Pravega, {@link PravegaSplitEnumerator} will assign splits of the same amount as the current parallelism to Source Readers,
+ * while there will be one split assigned per Source Reader only.
+ *
+ * <p>The Source Reader will read the actual data. {@link PravegaSourceReader} encapsulates a Pravega EventStreamReader
+ * from the split assigned by Split Enumerator, which will read events from Pravega stream.
+ *
+ * <p>The following example shows how to create a PravegaSource emitting records of <code>
  * Integer</code> type.
  *
  * <pre>{@code
