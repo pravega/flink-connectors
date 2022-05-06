@@ -18,9 +18,11 @@ package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
+import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
+import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
@@ -72,11 +74,6 @@ public class PravegaSplitReader
     private final int subtaskId;
 
     /**
-     * Reader group name of current source.
-     */
-    private final String readerGroupName;
-
-    /**
      * The supplied event stream client factory from Source Reader.
      */
     private final EventStreamClientFactory eventStreamClientFactory;
@@ -97,7 +94,6 @@ public class PravegaSplitReader
             int subtaskId) {
         this.subtaskId = subtaskId;
         this.options = new Configuration();
-        this.readerGroupName = readerGroupName;
         this.eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
 
         // create Pravega EventStreamReader
