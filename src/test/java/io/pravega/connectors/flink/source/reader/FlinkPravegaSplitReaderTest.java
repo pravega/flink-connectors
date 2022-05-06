@@ -28,7 +28,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
-import org.apache.flink.mock.Whitebox;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,8 +37,6 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
@@ -69,46 +66,6 @@ public class FlinkPravegaSplitReaderTest {
         createReaderGroup(readerGroupName, streamName);
         PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
         assignSplitsAndFetchUntilFinish(reader, split, streamName);
-        reader.close();
-    }
-
-    @Test
-    public void testWakeUp() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(readerGroupName, streamName);
-        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
-        assignSplit(reader, split);
-
-        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
-            AtomicBoolean exit = new AtomicBoolean();
-            Thread t1 =
-                    new Thread(
-                            () -> {
-                                int i = 0;
-                                while (!exit.get()) {
-                                    eventWriter.writeEvent(i++);
-                                }
-                            },
-                            "nonExisting Pravega stream");
-            t1.start();
-
-            AtomicReference<RecordsWithSplitIds<EventRead<ByteBuffer>>> records = new AtomicReference<>();
-            Thread t2 =
-                    new Thread(
-                            () -> records.set(reader.fetch()),
-                            "testWakeUp-thread");
-            t2.start();
-            Thread.sleep(1000);
-
-            reader.wakeUp();
-            Thread.sleep(10);
-            Assert.assertEquals(Whitebox.getInternalState(records.get(), "splitsIterator"), Collections.emptyIterator());
-            exit.set(true);
-            t1.join();
-        }
         reader.close();
     }
 

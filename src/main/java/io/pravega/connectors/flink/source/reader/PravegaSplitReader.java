@@ -158,25 +158,15 @@ public class PravegaSplitReader
         }
     }
 
-    // restart the Pravega reader here to unblock the fetch call
     @Override
     public void wakeUp() {
-        if (this.pravegaReader != null) {
-            LOG.info("Closing Pravega reader.");
-            this.pravegaReader.close();
-        }
-
-        LOG.info("Recreating Pravega reader.");
-        try {
-            this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
-                    PravegaSplit.splitId(subtaskId),
-                    readerGroupName,
-                    ReaderConfig.builder().build(),
-                    eventStreamClientFactory);
-        } catch (RuntimeException e) {
-            LOG.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
-            throw e;
-        }
+        // this method is only called when
+        // 1. Source Reader closes
+        // 2. Split Enumerator assigns splits to Source Reader
+        // for 1, the method close() will be called later
+        // for 2, for Source Reader addSplits() will only be called once from the very beginning
+        // while fetch task hasn't started yet, and it will not be called later
+        // because one Source reader is one-to-one mapped with one split, thus we do nothing here
     }
 
     @Override
