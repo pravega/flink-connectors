@@ -18,11 +18,9 @@ package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
-import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.ReaderConfig;
-import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.connectors.flink.source.PravegaSourceOptions;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
