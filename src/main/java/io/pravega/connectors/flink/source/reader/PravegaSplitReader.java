@@ -54,7 +54,7 @@ public class PravegaSplitReader
     /**
      * Reader that reads event from Pravega stream.
      */
-    private EventStreamReader<ByteBuffer> pravegaReader;
+    private final EventStreamReader<ByteBuffer> pravegaReader;
 
     /**
      * Split that PravegaSplitReader reads.
@@ -92,15 +92,9 @@ public class PravegaSplitReader
             int subtaskId) {
         this.subtaskId = subtaskId;
         this.options = new Configuration();
-        this.eventStreamClientFactory = EventStreamClientFactory.withScope(scope, clientConfig);
-
-        // create Pravega EventStreamReader
+        this.eventStreamClientFactory = createEventStreamClientFactory(scope, clientConfig);
         try {
-            this.pravegaReader = FlinkPravegaUtils.createPravegaReader(
-                    PravegaSplit.splitId(subtaskId),
-                    readerGroupName,
-                    ReaderConfig.builder().build(),
-                    eventStreamClientFactory);
+            this.pravegaReader = createEventStreamReader(PravegaSplit.splitId(subtaskId), readerGroupName);
         } catch (RuntimeException e) {
             LOG.error("Exception occurred while creating a Pravega EventStreamReader to read events", e);
             throw e;
@@ -197,5 +191,24 @@ public class PravegaSplitReader
         if (ex instanceof Exception) {
             throw (Exception) ex;
         }
+    }
+
+    // ------------------------------------------------------------------------
+    //  utility
+    // ------------------------------------------------------------------------
+
+
+    // Create the EventStreamClientFactory for the current configuration.
+    protected EventStreamClientFactory createEventStreamClientFactory(String readerGroupScope, ClientConfig clientConfig) {
+        return EventStreamClientFactory.withScope(readerGroupScope, clientConfig);
+    }
+
+    // Create the EventStreamReader for the current configuration.
+    protected EventStreamReader<ByteBuffer> createEventStreamReader(String readerId, String readerGroupName) {
+        return FlinkPravegaUtils.createPravegaReader(
+                readerId,
+                readerGroupName,
+                ReaderConfig.builder().build(),
+                eventStreamClientFactory);
     }
 }

@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.source.reader;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
@@ -30,7 +31,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
-import org.apache.flink.mock.Whitebox;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -42,7 +42,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.mock;
 
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
@@ -75,22 +75,12 @@ public class FlinkPravegaSplitReaderTest {
         reader.close();
     }
 
-    @Test(expected = Exception.class)
+    @Test
     public void testCloseWithException() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(readerGroupName, streamName);
-        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
-
-        EventStreamReader pravegaReader = spy(EventStreamReader.class);
-        EventStreamClientFactory eventStreamClientFactory = spy(EventStreamClientFactory.class);
-        doThrow(new RuntimeException()).when(pravegaReader).close();
-        doThrow(new RuntimeException()).when(eventStreamClientFactory).close();
-        Whitebox.setInternalState(reader, "pravegaReader", pravegaReader);
-        Whitebox.setInternalState(reader, "eventStreamClientFactory", eventStreamClientFactory);
-        reader.close();
+        PravegaSplitReader reader = createTestableSplitReader();
+        Throwable thrown = Assert.assertThrows("close EventStreamReader failure", RuntimeException.class, reader::close);
+        Assert.assertEquals(thrown.getSuppressed().length, 1);
+        Assert.assertEquals(thrown.getSuppressed()[0].getMessage(), "close EventStreamClientFactory failure");
     }
 
     // ------------------
@@ -138,10 +128,42 @@ public class FlinkPravegaSplitReaderTest {
                 subtaskId);
     }
 
+    private PravegaSplitReader createTestableSplitReader() throws Exception {
+        return new TestablePravegaSplitReader(
+                "scope",
+                null,
+                "rg",
+                1);
+    }
+
     private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {
         ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
         Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
         readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
         readerGroupManager.close();
+    }
+
+    /**
+     * A Pravega split reader subclass for test purposes.
+     */
+    private static class TestablePravegaSplitReader extends PravegaSplitReader {
+
+        protected TestablePravegaSplitReader(String scope, ClientConfig clientConfig, String readerGroupName, int subtaskId) {
+            super(scope, clientConfig, readerGroupName, subtaskId);
+        }
+
+        @Override
+        protected EventStreamClientFactory createEventStreamClientFactory(String readerGroupScope, ClientConfig clientConfig) {
+            EventStreamClientFactory eventStreamClientFactory = mock(EventStreamClientFactory.class);
+            doThrow(new RuntimeException("close EventStreamClientFactory failure")).when(eventStreamClientFactory).close();
+            return eventStreamClientFactory;
+        }
+
+        @Override
+        protected EventStreamReader<ByteBuffer> createEventStreamReader(String readerId, String readerGroupName) {
+            EventStreamReader<ByteBuffer> eventStreamReader = mock(EventStreamReader.class);
+            doThrow(new RuntimeException("close EventStreamReader failure")).when(eventStreamReader).close();
+            return eventStreamReader;
+        }
     }
 }

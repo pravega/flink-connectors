@@ -123,13 +123,10 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         LOG.info("Starting the PravegaSplitEnumerator for reader group: {}/{}.", this.scope, this.readerGroupName);
 
         if (this.readerGroupManager == null) {
-            LOG.info("Creating reader group manager in scope: {}.", scope);
-            this.readerGroupManager = ReaderGroupManager.withScope(scope, clientConfig);
+            this.readerGroupManager = createReaderGroupManager();
         }
         if (this.readerGroup == null) {
-            LOG.info("Creating reader group {} with reader group config: {}", this.readerGroupName, this.readerGroupConfig);
-            this.readerGroupManager.createReaderGroup(this.readerGroupName, this.readerGroupConfig);
-            this.readerGroup = this.readerGroupManager.getReaderGroup(this.readerGroupName);
+            this.readerGroup = createReaderGroup();
         }
         if (this.checkpoint != null) {
             LOG.info("Resetting reader group {} from checkpoint: {}", this.readerGroupName, checkpoint.getName());
@@ -187,8 +184,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     public void close() throws IOException {
         Throwable ex = null;
         if (readerGroupManager != null) {
-            LOG.info("Closing Pravega ReaderGroupManager");
             try {
+                LOG.info("Closing Pravega ReaderGroupManager");
                 readerGroupManager.close();
             } catch (Throwable e) {
                 if (e instanceof InterruptedException) {
@@ -240,6 +237,25 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // ------------------------------------------------------------------------
     //  utils
     // ------------------------------------------------------------------------
+
+    /**
+     * Create the {@link ReaderGroup} for the current configuration.
+     */
+    protected ReaderGroup createReaderGroup() {
+        LOG.info("Creating reader group {} with reader group config: {}", readerGroupName, readerGroupConfig);
+        readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+        return readerGroupManager.getReaderGroup(readerGroupName);
+    }
+
+    /**
+     * Create the {@link ReaderGroupManager} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroupManager}
+     */
+    protected ReaderGroupManager createReaderGroupManager() {
+        LOG.info("Creating reader group manager in scope: {}.", scope);
+        return ReaderGroupManager.withScope(scope, clientConfig);
+    }
 
     private void ensureScheduledExecutorExists() {
         if (scheduledExecutorService == null) {

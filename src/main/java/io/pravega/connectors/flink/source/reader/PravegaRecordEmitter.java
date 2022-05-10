@@ -70,7 +70,7 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
         if (record.isCheckpoint()) {
             String checkpointName = record.getCheckpointName();
             checkpointId = Optional.of(getCheckpointId(checkpointName));
-            LOG.info("read checkpoint event {} on reader {}", checkpointName, state.getSubtaskId());
+            LOG.debug("read checkpoint event {} on reader {}", checkpointName, state.getSubtaskId());
         } else if (record.getEvent() != null) {
             try {
                 deserializationSchema.deserialize(FlinkPravegaUtils.byteBufferToArray(record.getEvent()), collector);
