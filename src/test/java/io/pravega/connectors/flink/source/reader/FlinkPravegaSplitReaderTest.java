@@ -42,7 +42,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 /** Unit tests for {@link PravegaSplitReader}. */

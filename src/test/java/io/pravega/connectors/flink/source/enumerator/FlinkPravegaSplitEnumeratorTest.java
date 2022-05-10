@@ -37,7 +37,6 @@ import java.io.IOException;
 import java.util.Collections;
 
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
