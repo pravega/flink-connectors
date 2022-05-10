@@ -33,7 +33,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Collections;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
 public class FlinkPravegaSplitEnumeratorTest {
@@ -159,6 +163,24 @@ public class FlinkPravegaSplitEnumeratorTest {
             Assert.assertEquals(readerGroup.getGroupName(), readerGroupName);
             Assert.assertEquals(readerGroup.getScope(), SETUP_UTILS.getScope());
         }
+    }
+
+    @Test(expected = IOException.class)
+    public void testCloseWithException() throws Exception {
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        MockSplitEnumeratorContext<PravegaSplit> context =
+                new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
+        PravegaSplitEnumerator enumerator = createEnumerator(context, streamName, readerGroupName);
+
+        ReaderGroupManager rgManager = mock(ReaderGroupManager.class);
+        ReaderGroup rg = mock(ReaderGroup.class);
+        doThrow(new RuntimeException()).when(rgManager).close();
+        doThrow(new RuntimeException()).when(rg).close();
+        Whitebox.setInternalState(enumerator, "readerGroupManager", rgManager);
+        Whitebox.setInternalState(enumerator, "readerGroup", rg);
+        enumerator.close();
     }
 
     private PravegaSplitEnumerator createEnumerator(MockSplitEnumeratorContext<PravegaSplit> enumContext, String streamName,

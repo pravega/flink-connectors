@@ -16,8 +16,10 @@
 
 package io.pravega.connectors.flink.source.reader;
 
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
@@ -28,6 +30,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
+import org.apache.flink.mock.Whitebox;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -37,6 +40,9 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
@@ -66,6 +72,24 @@ public class FlinkPravegaSplitReaderTest {
         createReaderGroup(readerGroupName, streamName);
         PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
         assignSplitsAndFetchUntilFinish(reader, split, streamName);
+        reader.close();
+    }
+
+    @Test(expected = Exception.class)
+    public void testCloseWithException() throws Exception {
+        final String streamName = RandomStringUtils.randomAlphabetic(20);
+        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
+        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
+        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        createReaderGroup(readerGroupName, streamName);
+        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
+
+        EventStreamReader pravegaReader = mock(EventStreamReader.class);
+        EventStreamClientFactory eventStreamClientFactory = mock(EventStreamClientFactory.class);
+        doThrow(new RuntimeException()).when(pravegaReader).close();
+        doThrow(new RuntimeException()).when(eventStreamClientFactory).close();
+        Whitebox.setInternalState(reader, "pravegaReader", pravegaReader);
+        Whitebox.setInternalState(reader, "eventStreamClientFactory", eventStreamClientFactory);
         reader.close();
     }
 
