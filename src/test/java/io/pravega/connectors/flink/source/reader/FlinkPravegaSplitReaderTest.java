@@ -43,6 +43,7 @@ import java.util.Set;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
@@ -84,8 +85,8 @@ public class FlinkPravegaSplitReaderTest {
         createReaderGroup(readerGroupName, streamName);
         PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
 
-        EventStreamReader pravegaReader = mock(EventStreamReader.class);
-        EventStreamClientFactory eventStreamClientFactory = mock(EventStreamClientFactory.class);
+        EventStreamReader pravegaReader = spy(EventStreamReader.class);
+        EventStreamClientFactory eventStreamClientFactory = spy(EventStreamClientFactory.class);
         doThrow(new RuntimeException()).when(pravegaReader).close();
         doThrow(new RuntimeException()).when(eventStreamClientFactory).close();
         Whitebox.setInternalState(reader, "pravegaReader", pravegaReader);

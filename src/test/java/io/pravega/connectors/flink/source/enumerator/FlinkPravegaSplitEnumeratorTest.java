@@ -38,6 +38,7 @@ import java.util.Collections;
 
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
 public class FlinkPravegaSplitEnumeratorTest {
@@ -174,8 +175,8 @@ public class FlinkPravegaSplitEnumeratorTest {
                 new MockSplitEnumeratorContext<>(NUM_SUBTASKS);
         PravegaSplitEnumerator enumerator = createEnumerator(context, streamName, readerGroupName);
 
-        ReaderGroupManager rgManager = mock(ReaderGroupManager.class);
-        ReaderGroup rg = mock(ReaderGroup.class);
+        ReaderGroupManager rgManager = spy(ReaderGroupManager.class);
+        ReaderGroup rg = spy(ReaderGroup.class);
         doThrow(new RuntimeException()).when(rgManager).close();
         doThrow(new RuntimeException()).when(rg).close();
         Whitebox.setInternalState(enumerator, "readerGroupManager", rgManager);
