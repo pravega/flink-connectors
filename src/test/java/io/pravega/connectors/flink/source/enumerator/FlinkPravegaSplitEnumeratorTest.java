@@ -197,7 +197,8 @@ public class FlinkPravegaSplitEnumeratorTest {
     }
 
     /**
-     * A Pravega split enumerator subclass for test purposes.
+     * A Pravega split enumerator subclass for test purposes. This class is used for testing negative cases, including
+     * unsuccessful resources cleanup when closing enumerator, and more future cases can be added through this class.
      */
     private static class TestablePravegaSplitEnumerator extends PravegaSplitEnumerator {
 

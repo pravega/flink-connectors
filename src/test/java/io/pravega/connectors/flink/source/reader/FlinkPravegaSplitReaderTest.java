@@ -129,7 +129,7 @@ public class FlinkPravegaSplitReaderTest {
     }
 
     private PravegaSplitReader createTestableSplitReader() throws Exception {
-        return new TestablePravegaSplitReader(
+        return new BadPravegaSplitReader(
                 "scope",
                 null,
                 "rg",
@@ -144,11 +144,12 @@ public class FlinkPravegaSplitReaderTest {
     }
 
     /**
-     * A Pravega split reader subclass for test purposes.
+     * A Pravega split reader subclass for test purposes. This class is used for testing negative cases, including
+     * unsuccessful resources cleanup when closing split reader, and more future cases can be added through this class.
      */
-    private static class TestablePravegaSplitReader extends PravegaSplitReader {
+    private static class BadPravegaSplitReader extends PravegaSplitReader {
 
-        protected TestablePravegaSplitReader(String scope, ClientConfig clientConfig, String readerGroupName, int subtaskId) {
+        protected BadPravegaSplitReader(String scope, ClientConfig clientConfig, String readerGroupName, int subtaskId) {
             super(scope, clientConfig, readerGroupName, subtaskId);
         }
 
