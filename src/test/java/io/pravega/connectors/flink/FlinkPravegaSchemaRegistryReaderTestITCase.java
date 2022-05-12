@@ -17,6 +17,8 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import io.pravega.connectors.flink.utils.SuccessException;
@@ -86,12 +88,15 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareAvroStream(streamName, AvroSchema.of(SCHEMA));
 
+        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<GenericRecord> reader = FlinkPravegaReader.<GenericRecord>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
-                .withDeserializationSchemaFromRegistry(streamName, GenericRecord.class)
+                .withPravegaConfig(pravegaConfig)
+                .withDeserializationSchema(new PravegaDeserializationSchema<>(
+                        new GenericRecordAvroTypeInfo(SCHEMA),
+                        new DeserializerFromSchemaRegistry<>(pravegaConfig, streamName, GenericRecord.class)))
                 .build();
 
         env.addSource(reader).addSink(new SinkFunction<GenericRecord>() {
@@ -118,12 +123,14 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareAvroStream(streamName, AvroSchema.of(SCHEMA));
 
+        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<User> reader = FlinkPravegaReader.<User>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
-                .withDeserializationSchemaFromRegistry(streamName, User.class)
+                .withPravegaConfig(pravegaConfig)
+                .withDeserializationSchema(new PravegaDeserializationSchema<>(User.class,
+                        new DeserializerFromSchemaRegistry<>(pravegaConfig, streamName, User.class)))
                 .build();
 
         env.addSource(reader).addSink(new SinkFunction<User>() {
@@ -150,12 +157,14 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareJsonStream(streamName, JSONSchema.of(MyTest.class));
 
+        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<MyTest> reader = FlinkPravegaReader.<MyTest>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
-                .withDeserializationSchemaFromRegistry(streamName, MyTest.class)
+                .withPravegaConfig(pravegaConfig)
+                .withDeserializationSchema(new PravegaDeserializationSchema<>(MyTest.class,
+                        new DeserializerFromSchemaRegistry<>(pravegaConfig, streamName, MyTest.class)))
                 .build();
 
         env.addSource(reader).addSink(new SinkFunction<MyTest>() {
