@@ -19,15 +19,43 @@ package io.pravega.connectors.flink.source;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 
+import java.time.Duration;
 import java.util.Properties;
 import java.util.function.Function;
 
 public class PravegaSourceOptions {
-    public static final ConfigOption<Long> READER_TIMEOUT_MS =
-            ConfigOptions.key("reader.timeout.ms")
-                    .longType()
-                    .defaultValue(1000L)
-                    .withDescription("The max time to wait when closing components.");
+    public static final String SOURCE_PREFIX = "pravega.source.";
+
+    public static final ConfigOption<String> READER_GROUP_NAME =
+            ConfigOptions.key(SOURCE_PREFIX + "readerGroupName")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("Required Pravega reader group name.");
+    public static final ConfigOption<String> READER_GROUP_SCOPE =
+            ConfigOptions.key(SOURCE_PREFIX + "readerGroupScope")
+                    .stringType()
+                    .noDefaultValue()
+                    .withDescription("Optional Pravega reader group scope for synchronization purposes.");
+    public static final ConfigOption<Duration> READER_GROUP_REFRESH_TIME =
+            ConfigOptions.key(SOURCE_PREFIX + "readerGroupRefreshTime")
+                    .durationType()
+                    .noDefaultValue()
+                    .withDescription("Optional reader group refresh time.");
+    public static final ConfigOption<Duration> CHECKPOINT_INITIATE_TIMEOUT =
+            ConfigOptions.key(SOURCE_PREFIX + "checkpointInitiateTimeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(5))
+                    .withDescription("Optional timeout for initiating a checkpoint in Pravega.");
+    public static final ConfigOption<Duration> EVENT_READ_TIMEOUT =
+            ConfigOptions.key(SOURCE_PREFIX + "eventReadTimeout")
+                    .durationType()
+                    .defaultValue(Duration.ofSeconds(1))
+                    .withDescription("Optional timeout for the call to read events from Pravega.");
+    public static final ConfigOption<Integer> MAX_OUTSTANDING_CHECKPOINT_REQUEST =
+            ConfigOptions.key(SOURCE_PREFIX + "maxOutstandingCheckpointRequest")
+                    .intType()
+                    .defaultValue(3)
+                    .withDescription("Optional max outstanding checkpoint requests to Pravega.");
 
     public static <T> T getOption(
             Properties props, ConfigOption configOption, Function<String, T> parser) {

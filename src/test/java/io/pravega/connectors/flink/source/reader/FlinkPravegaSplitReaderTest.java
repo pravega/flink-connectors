@@ -35,6 +35,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.nio.ByteBuffer;
+import java.time.Duration;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
@@ -154,7 +155,8 @@ public class FlinkPravegaSplitReaderTest {
                 SETUP_UTILS.getScope(),
                 SETUP_UTILS.getClientConfig(),
                 readerGroupName,
-                subtaskId);
+                subtaskId,
+                Duration.ofMillis(1000));
     }
 
     private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {
