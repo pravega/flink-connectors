@@ -19,6 +19,7 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink.Committer;
 import org.apache.flink.api.connector.sink.GlobalCommitter;
@@ -41,6 +42,7 @@ import java.util.Optional;
  *
  * @param <T> The type of the event to be written.
  */
+@Experimental
 public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
 
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
