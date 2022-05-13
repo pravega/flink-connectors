@@ -35,6 +35,8 @@ import io.pravega.client.stream.TruncatedDataException;
 import io.pravega.client.stream.impl.EventPointerImpl;
 import io.pravega.client.stream.impl.EventReadImpl;
 import io.pravega.client.stream.impl.StreamCutImpl;
+import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
+import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializer;
@@ -352,7 +354,8 @@ public class FlinkPravegaReaderTest {
             FlinkPravegaReader.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
+                    .withDeserializationSchema(new PravegaDeserializationSchema<>(Integer.class,
+                            new DeserializerFromSchemaRegistry<>(pravegaConfig, "stream", Integer.class)))
                     .build();
             fail();
         } catch (NullPointerException e) {
@@ -364,7 +367,8 @@ public class FlinkPravegaReaderTest {
             FlinkPravegaReader.<Integer>builder()
                     .withPravegaConfig(pravegaConfig)
                     .forStream("stream")
-                    .withDeserializationSchemaFromRegistry("stream", Integer.class)
+                    .withDeserializationSchema(new PravegaDeserializationSchema<>(Integer.class,
+                            new DeserializerFromSchemaRegistry<>(pravegaConfig, "stream", Integer.class)))
                     .build();
             fail();
         } catch (NullPointerException e) {
