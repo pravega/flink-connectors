@@ -89,18 +89,6 @@ configurations {
     testImplementation {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
-        resolutionStrategy {
-            force group: 'io.netty', name: 'netty-common', version: nettyVersion
-            force group: 'io.netty', name: 'netty-transport', version: nettyVersion
-            force group: 'io.netty', name: 'netty-handler', version: nettyVersion
-            force group: 'io.netty', name: 'netty-codec', version: nettyVersion
-            force group: 'io.netty', name: 'netty-codec-http', version: nettyVersion
-            force group: 'io.netty', name: 'netty-codec-http2', version: nettyVersion
-            force group: 'io.netty', name: 'netty-codec-socks', version: nettyVersion
-            force group: 'io.netty', name: 'netty-handler-proxy', version: nettyVersion
-            force group: 'io.netty', name: 'netty-transport-native-epoll', version: nettyVersion
-            force group: 'io.netty', name: 'netty-tcnative-boringssl-static', version: nettyVersion
-        }
     }
 }
 
