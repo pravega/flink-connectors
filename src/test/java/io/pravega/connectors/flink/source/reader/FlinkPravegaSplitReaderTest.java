@@ -16,8 +16,11 @@
 
 package io.pravega.connectors.flink.source.reader;
 
+import io.pravega.client.ClientConfig;
+import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.EventRead;
+import io.pravega.client.stream.EventStreamReader;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
@@ -28,7 +31,6 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsAddition;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitsChange;
-import org.apache.flink.mock.Whitebox;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -38,8 +40,9 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 /** Unit tests for {@link PravegaSplitReader}. */
 public class FlinkPravegaSplitReaderTest {
@@ -73,43 +76,15 @@ public class FlinkPravegaSplitReaderTest {
     }
 
     @Test
-    public void testWakeUp() throws Exception {
-        final String streamName = RandomStringUtils.randomAlphabetic(20);
-        final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
-        createReaderGroup(readerGroupName, streamName);
-        PravegaSplitReader reader = createSplitReader(READER0, readerGroupName);
-        assignSplit(reader, split);
-
-        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
-            AtomicBoolean exit = new AtomicBoolean();
-            Thread t1 =
-                    new Thread(
-                            () -> {
-                                int i = 0;
-                                while (!exit.get()) {
-                                    eventWriter.writeEvent(i++);
-                                }
-                            },
-                            "nonExisting Pravega stream");
-            t1.start();
-
-            AtomicReference<RecordsWithSplitIds<EventRead<ByteBuffer>>> records = new AtomicReference<>();
-            Thread t2 =
-                    new Thread(
-                            () -> records.set(reader.fetch()),
-                            "testWakeUp-thread");
-            t2.start();
-            Thread.sleep(1000);
-
-            reader.wakeUp();
-            Thread.sleep(10);
-            Assert.assertEquals(Whitebox.getInternalState(records.get(), "splitsIterator"), Collections.emptyIterator());
-            exit.set(true);
-            t1.join();
-        }
-        reader.close();
+    public void testCloseWithException() throws Exception {
+        PravegaSplitReader reader = new BadPravegaSplitReader(
+                "scope",
+                null,
+                "rg",
+                1);
+        Throwable thrown = Assert.assertThrows("close EventStreamReader failure", RuntimeException.class, reader::close);
+        Assert.assertEquals(thrown.getSuppressed().length, 1);
+        Assert.assertEquals(thrown.getSuppressed()[0].getMessage(), "close EventStreamClientFactory failure");
     }
 
     // ------------------
@@ -162,5 +137,30 @@ public class FlinkPravegaSplitReaderTest {
         Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
         readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
         readerGroupManager.close();
+    }
+
+    /**
+     * A Pravega split reader subclass for test purposes. This class is used for testing negative cases, including
+     * unsuccessful resources cleanup when closing split reader, and more future cases can be added through this class.
+     */
+    private static class BadPravegaSplitReader extends PravegaSplitReader {
+
+        protected BadPravegaSplitReader(String scope, ClientConfig clientConfig, String readerGroupName, int subtaskId) {
+            super(scope, clientConfig, readerGroupName, subtaskId);
+        }
+
+        @Override
+        protected EventStreamClientFactory createEventStreamClientFactory(String readerGroupScope, ClientConfig clientConfig) {
+            EventStreamClientFactory eventStreamClientFactory = mock(EventStreamClientFactory.class);
+            doThrow(new RuntimeException("close EventStreamClientFactory failure")).when(eventStreamClientFactory).close();
+            return eventStreamClientFactory;
+        }
+
+        @Override
+        protected EventStreamReader<ByteBuffer> createEventStreamReader(String readerId, String readerGroupName) {
+            EventStreamReader<ByteBuffer> eventStreamReader = mock(EventStreamReader.class);
+            doThrow(new RuntimeException("close EventStreamReader failure")).when(eventStreamReader).close();
+            return eventStreamReader;
+        }
     }
 }

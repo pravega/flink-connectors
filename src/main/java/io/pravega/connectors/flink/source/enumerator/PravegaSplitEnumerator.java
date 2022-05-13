@@ -22,8 +22,10 @@ import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.SplitEnumerator;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
+import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -35,7 +37,20 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-/** The enumerator class for Pravega source. */
+/**
+ * The enumerator class for Pravega source. It is a single instance on Flink jobmanager.
+ * It is the "brain" of the source to initialize the reader group when it starts, then discover and assign the subtasks.
+ *
+ * <p>The {@link PravegaSplitEnumerator} will assign splits to source readers. Pravega source pushes splits eagerly so that
+ * the enumerator will create a source reader and assign one split(Pravega reader) to it.
+ * One Pravega Source reader is only mapped to one Pravega Split as design.
+ *
+ * <p>We triggers and restores checkpoints on a Pravega ReaderGroup along with Flink checkpoints for dealing with failure.
+ * Due to Pravega's design, we don't have a mechanism to recover from a single reader currently. We will perform a full failover
+ * both when Split Enumerator fails or Source Reader fails. The Split Enumerator will be restored to to its last successful checkpoint.
+ *
+ * */
+@Internal
 public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Checkpoint> {
     /** Default thread pool size of the checkpoint scheduler */
     private static final int DEFAULT_CHECKPOINT_THREAD_POOL_SIZE = 3;
@@ -77,8 +92,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     /**
      * Creates a new Pravega Split Enumerator instance which can connect to a
      * Pravega reader group with the pravega stream.
-     * The Enumerator is a single instance on Flink jobmanager. It is the "brain" of the source to initialize
-     * the reader group when it starts, then discover and assign the subtasks.
+     *
      *
      * @param context              The Pravega Split Enumeratior context.
      * @param scope                The reader group scope name.
@@ -109,14 +123,13 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
         LOG.info("Starting the PravegaSplitEnumerator for reader group: {}/{}.", this.scope, this.readerGroupName);
 
         if (this.readerGroupManager == null) {
-            this.readerGroupManager = ReaderGroupManager.withScope(scope, clientConfig);
+            this.readerGroupManager = createReaderGroupManager();
         }
         if (this.readerGroup == null) {
-            this.readerGroupManager.createReaderGroup(this.readerGroupName, readerGroupConfig);
-            this.readerGroup = this.readerGroupManager.getReaderGroup(this.readerGroupName);
+            this.readerGroup = createReaderGroup();
         }
         if (this.checkpoint != null) {
-            LOG.info("Recover from checkpoint: {}", checkpoint.getName());
+            LOG.info("Resetting reader group {} from checkpoint: {}", this.readerGroupName, checkpoint.getName());
             this.readerGroup.resetReaderGroup(ReaderGroupConfig
                     .builder()
                     .maxOutstandingCheckpointRequest(this.readerGroupConfig.getMaxOutstandingCheckpointRequest())
@@ -154,7 +167,7 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
         final String checkpointName = createCheckpointName(chkPtID);
 
-        LOG.info("Initiate checkpoint {}", checkpointName);
+        LOG.info("Initiate Pravega checkpoint {}", checkpointName);
         final CompletableFuture<Checkpoint> checkpointResult =
                 this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
         try {
@@ -169,12 +182,38 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     @Override
     public void close() throws IOException {
-        LOG.info("closing reader group Manager");
-        this.readerGroupManager.close();
+        Throwable ex = null;
+        if (readerGroupManager != null) {
+            try {
+                LOG.info("Closing Pravega ReaderGroupManager");
+                readerGroupManager.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    LOG.warn("Interrupted while waiting for ReaderGroupManager to close, retrying ...");
+                    readerGroupManager.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
 
-        // close the reader group properly
-        LOG.info("closing reader group");
-        this.readerGroup.close();
+        if (readerGroup != null) {
+            try {
+                LOG.info("Closing Pravega ReaderGroup");
+                readerGroup.close();
+            } catch (Throwable e) {
+                if (e instanceof InterruptedException) {
+                    LOG.warn("Interrupted while waiting for ReaderGroup to close, retrying ...");
+                    readerGroup.close();
+                } else {
+                    ex = ExceptionUtils.firstOrSuppressed(e, ex);
+                }
+            }
+        }
+
+        if (ex instanceof Exception) {
+            throw new IOException(ex);
+        }
 
         if (scheduledExecutorService != null ) {
             LOG.info("Closing Scheduled Executor.");
@@ -189,8 +228,6 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     // recreate it and recover it from the latest checkpoint.
     @Override
     public void addSplitsBack(List<PravegaSplit> splits, int subtaskId) {
-        LOG.info("Call addSplitsBack {} : {}", splits.size(), subtaskId);
-
         if (!isRecovered) {
             isRecovered = true;
             throw new RuntimeException("triggering global failure");
@@ -201,15 +238,30 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
     //  utils
     // ------------------------------------------------------------------------
 
+    /**
+     * Create the {@link ReaderGroup} for the current configuration.
+     */
+    protected ReaderGroup createReaderGroup() {
+        LOG.info("Creating reader group {} with reader group config: {}", readerGroupName, readerGroupConfig);
+        readerGroupManager.createReaderGroup(readerGroupName, readerGroupConfig);
+        return readerGroupManager.getReaderGroup(readerGroupName);
+    }
+
+    /**
+     * Create the {@link ReaderGroupManager} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroupManager}
+     */
+    protected ReaderGroupManager createReaderGroupManager() {
+        LOG.info("Creating reader group manager in scope: {}.", scope);
+        return ReaderGroupManager.withScope(scope, clientConfig);
+    }
+
     private void ensureScheduledExecutorExists() {
         if (scheduledExecutorService == null) {
             LOG.info("Creating Scheduled Executor for enumerator");
-            scheduledExecutorService = createScheduledExecutorService();
+            scheduledExecutorService = Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
         }
-    }
-
-    protected ScheduledExecutorService createScheduledExecutorService() {
-        return Executors.newScheduledThreadPool(DEFAULT_CHECKPOINT_THREAD_POOL_SIZE);
     }
 
     static String createCheckpointName(long checkpointId) {

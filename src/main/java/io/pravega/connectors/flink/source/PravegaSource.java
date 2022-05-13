@@ -28,6 +28,7 @@ import io.pravega.connectors.flink.source.reader.PravegaSplitReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
 import org.apache.flink.annotation.Experimental;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -50,8 +51,17 @@ import java.util.function.Supplier;
 
 /**
  * The Source implementation of Pravega. Please use a {@link PravegaSourceBuilder} to construct a {@link
- *  PravegaSource}. The following example shows how to create a PravegaSource emitting records of <code>
- *  Integer</code> type.
+ * PravegaSource}. The {@link PravegaSource} has two main components, {@link PravegaSplitEnumerator} and {@link PravegaSourceReader}.
+ *
+ * <p>The Split Enumerator will discover the splits(which represent Pravega EventStreamReaders) and then assign them to the Source Readers.
+ * For Pravega, {@link PravegaSplitEnumerator} will assign splits of the same amount as the current parallelism to Source Readers,
+ * while there will be one split assigned per Source Reader only.
+ *
+ * <p>The Source Reader will read the actual data. {@link PravegaSourceReader} encapsulates a Pravega EventStreamReader
+ * from the split assigned by Split Enumerator, which will read events from Pravega stream.
+ *
+ * <p>The following example shows how to create a PravegaSource emitting records of <code>
+ * Integer</code> type.
  *
  * <pre>{@code
  * PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
@@ -129,11 +139,11 @@ public class PravegaSource<T>
         return Boundedness.CONTINUOUS_UNBOUNDED;
     }
 
+    @Internal
     @Override
     public SourceReader<T, PravegaSplit> createReader(SourceReaderContext readerContext) {
         Supplier<PravegaSplitReader> splitReaderSupplier =
-                () ->
-                        new PravegaSplitReader(scope, clientConfig,
+                () -> new PravegaSplitReader(scope, clientConfig,
                                 readerGroupName, readerContext.getIndexOfSubtask());
 
         return new PravegaSourceReader<>(
@@ -143,6 +153,7 @@ public class PravegaSource<T>
                 readerContext);
     }
 
+    @Internal
     @Override
     public SplitEnumerator<PravegaSplit, Checkpoint> createEnumerator(
             SplitEnumeratorContext<PravegaSplit> enumContext) {
@@ -155,10 +166,10 @@ public class PravegaSource<T>
                 null);
     }
 
+    @Internal
     @Override
     public SplitEnumerator<PravegaSplit, Checkpoint> restoreEnumerator(
             SplitEnumeratorContext<PravegaSplit> enumContext, Checkpoint checkpoint) throws IOException {
-        LOG.info("Restore Enumerator called");
         return new PravegaSplitEnumerator(
                 enumContext,
                 this.scope,
@@ -169,11 +180,13 @@ public class PravegaSource<T>
 
     }
 
+    @Internal
     @Override
     public SimpleVersionedSerializer<PravegaSplit> getSplitSerializer() {
         return new PravegaSplitSerializer();
     }
 
+    @Internal
     @Override
     public SimpleVersionedSerializer<Checkpoint> getEnumeratorCheckpointSerializer() {
         return new CheckpointSerializer();

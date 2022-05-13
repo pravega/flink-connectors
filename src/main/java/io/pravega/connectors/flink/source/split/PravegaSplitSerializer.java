@@ -16,11 +16,17 @@
 
 package io.pravega.connectors.flink.source.split;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.InstantiationUtil;
 
 import java.io.IOException;
 
+/**
+ * The {@link org.apache.flink.core.io.SimpleVersionedSerializer serializer} for {@link
+ * PravegaSplit}.
+ */
+@Internal
 public class PravegaSplitSerializer implements SimpleVersionedSerializer<PravegaSplit> {
 
     private static final int VERSION = 1;

@@ -16,12 +16,15 @@
 
 package io.pravega.connectors.flink.source;
 
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ConfigOptions;
 
 import java.util.Properties;
 import java.util.function.Function;
 
+/** Configurations for PravegaSource. */
+@Internal
 public class PravegaSourceOptions {
     public static final ConfigOption<Long> READER_TIMEOUT_MS =
             ConfigOptions.key("reader.timeout.ms")
