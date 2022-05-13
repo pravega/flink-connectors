@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.source;
 
 import io.pravega.connectors.flink.AbstractStreamingReaderBuilder;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
+import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.ExecutionConfig;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.java.ClosureCleaner;
@@ -30,8 +31,25 @@ import java.io.IOException;
  *The @builder class for {@link PravegaSource} to make it easier for the users to construct a {@link
  *  PravegaSource}.
  *
- * @param <T> the element type.
+ * <p>The following example shows the minimum setup to create a PravegaSource that reads the Integer
+ * values from a Pravega Stream.
+ *
+ * <pre>{@code
+ * PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
+ *                     .forStream(streamName)
+ *                     .withPravegaConfig(pravegaConfig)
+ *                     .withReaderGroupName("flink-reader")
+ *                     .withDeserializationSchema(new IntegerDeserializationSchema())
+ *                     .build();
+ * }</pre>
+ *
+ * <p>The stream name, Pravega client configuration, the readerGroup name and the event deserialization schema
+ * are required fields that must be set.
+ *
+ * <p>Check the Java docs of each individual methods to learn more about the settings to build a
+ * PravegaSource.
  */
+@PublicEvolving
 public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, PravegaSourceBuilder<T>> {
 
     private DeserializationSchema<T> deserializationSchema;
@@ -84,9 +102,9 @@ public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, P
      * Builds a {@link PravegaSource} based on the configuration.
      *
      * @throws IllegalStateException if the configuration is invalid.
-     * @return an uninitiailized reader as a source function.
+     * @return an uninitialized reader as a source function.
      */
-    private PravegaSource<T> buildSource() {
+    public PravegaSource<T> build() {
         PravegaSourceBuilder.ReaderGroupInfo readerGroupInfo = buildReaderGroupInfo();
         return new PravegaSource<>(
                 getPravegaConfig().getClientConfig(),
@@ -97,13 +115,5 @@ public class PravegaSourceBuilder<T> extends AbstractStreamingReaderBuilder<T, P
                 this.eventReadTimeout,
                 this.checkpointInitiateTimeout,
                 isMetricsEnabled());
-    }
-
-    /**
-     * Builds a {@link PravegaSource}.
-     */
-    public PravegaSource<T> build() {
-        PravegaSource<T> source = buildSource();
-        return source;
     }
 }

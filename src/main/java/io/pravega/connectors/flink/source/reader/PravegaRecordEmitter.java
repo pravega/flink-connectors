@@ -19,6 +19,8 @@ package io.pravega.connectors.flink.source.reader;
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import org.apache.flink.annotation.Internal;
+import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.connector.source.SourceOutput;
 import org.apache.flink.connector.base.source.reader.RecordEmitter;
@@ -26,12 +28,14 @@ import org.apache.flink.util.Collector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
 /** The {@link RecordEmitter} implementation for {@link PravegaSourceReader}. */
+@Internal
 public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuffer>, T, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaRecordEmitter.class);
 
@@ -56,17 +60,27 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
         this.deserializationSchema = deserializationSchema;
     }
 
+    /**
+     * Process and emit the records read by Split Reader. If the record to emit is a checkpoint event,
+     * record the checkpoint ID for reporting back to the source reader.
+     *
+     */
     @Override
     public void emitRecord(EventRead<ByteBuffer> record, SourceOutput<T> output, PravegaSplit state) throws Exception {
-        // If the record to emit is a checkpoint, record the checkpoint ID for later
         if (record.isCheckpoint()) {
             String checkpointName = record.getCheckpointName();
             checkpointId = Optional.of(getCheckpointId(checkpointName));
-            LOG.info("read checkpoint {} on reader {}", checkpointName, state.getSubtaskId());
+            LOG.debug("read checkpoint event {} on reader {}", checkpointName, state.getSubtaskId());
         } else if (record.getEvent() != null) {
-            deserializationSchema.deserialize(FlinkPravegaUtils.byteBufferToArray(record.getEvent()), collector);
-            T event = collector.getRecords().get(collector.getRecords().size() - 1);
-            output.collect(event);
+            try {
+                deserializationSchema.deserialize(FlinkPravegaUtils.byteBufferToArray(record.getEvent()), collector);
+                for (T event : collector.getRecords()) {
+                    output.collect(event);
+                }
+                collector.reset();
+            } catch (Exception e) {
+                throw new IOException("Failed to deserialize event due to", e);
+            }
         }
     }
 
@@ -76,6 +90,7 @@ public class PravegaRecordEmitter<T> implements RecordEmitter<EventRead<ByteBuff
      *
      * @return checkpointId
      */
+    @VisibleForTesting
     public Optional<Long> getAndResetCheckpointId() {
         Optional<Long> chkPt = checkpointId;
         checkpointId = Optional.empty();
