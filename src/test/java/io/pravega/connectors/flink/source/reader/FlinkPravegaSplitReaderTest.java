@@ -77,7 +77,11 @@ public class FlinkPravegaSplitReaderTest {
 
     @Test
     public void testCloseWithException() throws Exception {
-        PravegaSplitReader reader = createTestableSplitReader();
+        PravegaSplitReader reader = new BadPravegaSplitReader(
+                "scope",
+                null,
+                "rg",
+                1);
         Throwable thrown = Assert.assertThrows("close EventStreamReader failure", RuntimeException.class, reader::close);
         Assert.assertEquals(thrown.getSuppressed().length, 1);
         Assert.assertEquals(thrown.getSuppressed()[0].getMessage(), "close EventStreamClientFactory failure");
@@ -126,14 +130,6 @@ public class FlinkPravegaSplitReaderTest {
                 SETUP_UTILS.getClientConfig(),
                 readerGroupName,
                 subtaskId);
-    }
-
-    private PravegaSplitReader createTestableSplitReader() throws Exception {
-        return new BadPravegaSplitReader(
-                "scope",
-                null,
-                "rg",
-                1);
     }
 
     private static void createReaderGroup(String readerGroupName, String streamName) throws Exception {

@@ -169,7 +169,13 @@ public class FlinkPravegaSplitEnumeratorTest {
 
     @Test
     public void testCloseWithException() throws Exception {
-        PravegaSplitEnumerator enumerator = createTestableEnumerator();
+        PravegaSplitEnumerator enumerator = new BadPravegaSplitEnumerator(
+                null,
+                "scope",
+                "rg",
+                null,
+                null,
+                null);
         enumerator.start();
         Throwable thrown = Assert.assertThrows("close ReaderGroupManager failure", IOException.class, enumerator::close);
     }
@@ -186,23 +192,13 @@ public class FlinkPravegaSplitEnumeratorTest {
                 null);
     }
 
-    private PravegaSplitEnumerator createTestableEnumerator() {
-        return new TestablePravegaSplitEnumerator(
-                null,
-                "scope",
-                "rg",
-                null,
-                null,
-                null);
-    }
-
     /**
      * A Pravega split enumerator subclass for test purposes. This class is used for testing negative cases, including
      * unsuccessful resources cleanup when closing enumerator, and more future cases can be added through this class.
      */
-    private static class TestablePravegaSplitEnumerator extends PravegaSplitEnumerator {
+    private static class BadPravegaSplitEnumerator extends PravegaSplitEnumerator {
 
-        protected TestablePravegaSplitEnumerator(SplitEnumeratorContext<PravegaSplit> context, String scope,
+        protected BadPravegaSplitEnumerator(SplitEnumeratorContext<PravegaSplit> context, String scope,
                                                  String readerGroupName, ClientConfig clientConfig,
                                                  ReaderGroupConfig readerGroupConfig, Checkpoint checkpoint) {
             super(context, scope, readerGroupName, clientConfig, readerGroupConfig, checkpoint);
