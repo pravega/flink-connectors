@@ -67,10 +67,10 @@ public class PravegaDeserializationSchema<T>
             this.typeInfo = TypeInformation.of(typeClass);
         } catch (InvalidTypesException e) {
             throw new IllegalArgumentException(
-                    "Due to Java's type erasure, the generic type information cannot be properly inferred. " + 
-                    "Please pass a 'TypeHint' instead of a class to describe the type. " +
-                    "For example, to describe 'Tuple2<String, String>' as a generic type, use " +
-                    "'new PravegaDeserializationSchema<>(new TypeHint<Tuple2<String, String>>(){}, serializer);'"
+                    "Due to Java's type erasure, the generic type information cannot be properly inferred. " +
+                            "Please pass a 'TypeHint' instead of a class to describe the type. " +
+                            "For example, to describe 'Tuple2<String, String>' as a generic type, use " +
+                            "'new PravegaDeserializationSchema<>(new TypeHint<Tuple2<String, String>>(){}, serializer);'"
             );
         }
     }

@@ -28,6 +28,7 @@ import io.pravega.connectors.flink.source.reader.PravegaSplitReader;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.source.split.PravegaSplitSerializer;
 import org.apache.flink.annotation.Internal;
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.annotation.PublicEvolving;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.time.Time;
@@ -74,6 +75,7 @@ import java.util.function.Supplier;
  *
  * @param <T> the output type of the source.
  */
+@Experimental
 @PublicEvolving
 public class PravegaSource<T>
         implements Source<T, PravegaSplit, Checkpoint>, ResultTypeQueryable<T> {
