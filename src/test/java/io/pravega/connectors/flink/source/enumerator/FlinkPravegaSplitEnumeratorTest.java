@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.source.enumerator;
 
+import io.pravega.client.ClientConfig;
 import io.pravega.client.admin.ReaderGroupManager;
 import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
@@ -26,6 +27,7 @@ import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.SetupUtils;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.connector.source.ReaderInfo;
+import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.connector.source.mocks.MockSplitEnumeratorContext;
 import org.apache.flink.mock.Whitebox;
 import org.junit.AfterClass;
@@ -33,7 +35,11 @@ import org.junit.Assert;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
+import java.io.IOException;
 import java.util.Collections;
+
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 
 /** Unit tests for {@link PravegaSplitEnumerator}. */
 public class FlinkPravegaSplitEnumeratorTest {
@@ -161,6 +167,19 @@ public class FlinkPravegaSplitEnumeratorTest {
         }
     }
 
+    @Test
+    public void testCloseWithException() throws Exception {
+        PravegaSplitEnumerator enumerator = new BadPravegaSplitEnumerator(
+                null,
+                "scope",
+                "rg",
+                null,
+                null,
+                null);
+        enumerator.start();
+        Throwable thrown = Assert.assertThrows("close ReaderGroupManager failure", IOException.class, enumerator::close);
+    }
+
     private PravegaSplitEnumerator createEnumerator(MockSplitEnumeratorContext<PravegaSplit> enumContext, String streamName,
                                                     String readerGroupName) {
         Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
@@ -171,5 +190,32 @@ public class FlinkPravegaSplitEnumeratorTest {
                 SETUP_UTILS.getClientConfig(),
                 ReaderGroupConfig.builder().stream(stream).build(),
                 null);
+    }
+
+    /**
+     * A Pravega split enumerator subclass for test purposes. This class is used for testing negative cases, including
+     * unsuccessful resources cleanup when closing enumerator, and more future cases can be added through this class.
+     */
+    private static class BadPravegaSplitEnumerator extends PravegaSplitEnumerator {
+
+        protected BadPravegaSplitEnumerator(SplitEnumeratorContext<PravegaSplit> context, String scope,
+                                                 String readerGroupName, ClientConfig clientConfig,
+                                                 ReaderGroupConfig readerGroupConfig, Checkpoint checkpoint) {
+            super(context, scope, readerGroupName, clientConfig, readerGroupConfig, checkpoint);
+        }
+
+        @Override
+        protected ReaderGroupManager createReaderGroupManager() {
+            ReaderGroupManager readerGroupManager = mock(ReaderGroupManager.class);
+            doThrow(new RuntimeException("close ReaderGroupManager failure")).when(readerGroupManager).close();
+            return readerGroupManager;
+        }
+
+        @Override
+        protected ReaderGroup createReaderGroup() {
+            ReaderGroup readerGroup = mock(ReaderGroup.class);
+            doThrow(new RuntimeException("close ReaderGroup failure")).when(readerGroup).close();
+            return readerGroup;
+        }
     }
 }

@@ -34,6 +34,7 @@ import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.java.ExecutionEnvironment;
+import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
 import org.junit.AfterClass;
@@ -131,7 +132,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
             @Override
             public void cancel() {
             }
-        }).addSink(writer);
+        }, new GenericRecordAvroTypeInfo(SCHEMA)).addSink(writer);
 
         try {
             env.execute("Schema Registry Read");

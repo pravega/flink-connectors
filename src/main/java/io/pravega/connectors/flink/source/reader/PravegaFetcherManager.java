@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.connector.base.source.reader.RecordsWithSplitIds;
 import org.apache.flink.connector.base.source.reader.fetcher.SingleThreadFetcherManager;
 import org.apache.flink.connector.base.source.reader.splitreader.SplitReader;
@@ -28,6 +29,7 @@ import java.util.function.Supplier;
 /**
  * The SplitFetcherManager for Pravega source.
  */
+@Internal
 public class PravegaFetcherManager<T>
         extends SingleThreadFetcherManager<EventRead<T>, PravegaSplit> {
 

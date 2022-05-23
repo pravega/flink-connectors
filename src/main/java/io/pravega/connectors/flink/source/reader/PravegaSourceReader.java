@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.source.reader;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
+import org.apache.flink.annotation.Internal;
 import org.apache.flink.api.connector.source.ExternallyInducedSourceReader;
 import org.apache.flink.api.connector.source.ReaderOutput;
 import org.apache.flink.api.connector.source.SourceReader;
@@ -40,9 +41,22 @@ import java.util.function.Supplier;
 
 /**
  * A Pravega implementation of {@link SourceReader}.
+ * The {@link PravegaSourceReader} has a default recommended Flink implementation {@link SourceReaderBase}.
+ * It constructs with three major components, {@link PravegaSplitReader}, {@link PravegaFetcherManager}
+ * and {@link PravegaRecordEmitter}.
+ * Each reader will have a single threaded fetcher which will supply the split reader and assign all the splits
+ * assigned by the enumerator to it.
+ *
+ * <p>{@link PravegaSourceReader} will not trigger checkpoints when receiving a trigger message from the checkpoint coordinator,
+ * but when a Pravega checkpoint event is received indicates that a checkpoint should be triggered.
+ *
+ * <p>Due to Pravega's design, we don't have a mechanism to recover from a single reader currently so the failover strategy for
+ * Source Reader is to perform a full failover on Split Enumerator.
+ *
  *
  * @param <T> The final element type to emit.
  */
+@Internal
 public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<ByteBuffer>, T, PravegaSplit, PravegaSplit>
         implements ExternallyInducedSourceReader<T, PravegaSplit> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaSourceReader.class);
@@ -61,11 +75,6 @@ public class PravegaSourceReader<T> extends SourceReaderBase<EventRead<ByteBuffe
 
     /**
      * Creates a new Pravega Source Reader instance.
-     * The PravegaSourceReader has a default recommended Flink implementation {@link SourceReaderBase}.
-     * It constructs with three major components, {@link PravegaSplitReader}, {@link PravegaFetcherManager}
-     * and {@link PravegaRecordEmitter}.
-     * Each reader will have a single threaded fetcher which will supply the split reader and assign all the splits
-     * assigned by the enumerator to it.
      *
      * @param splitReaderSupplier   The Pravega split reader supplier.
      * @param recordEmitter         The Pravega Source reader record emitter.
