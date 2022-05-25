@@ -89,6 +89,18 @@ configurations {
     testImplementation {
         exclude group: 'org.slf4j', module: 'slf4j-log4j12'
         exclude group: 'log4j', module: 'log4j'
+        resolutionStrategy {
+            force group: 'io.netty', name: 'netty-common', version: nettyVersion
+            force group: 'io.netty', name: 'netty-transport', version: nettyVersion
+            force group: 'io.netty', name: 'netty-handler', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-http', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-http2', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-socks', version: nettyVersion
+            force group: 'io.netty', name: 'netty-handler-proxy', version: nettyVersion
+            force group: 'io.netty', name: 'netty-transport-native-epoll', version: nettyVersion
+            force group: 'io.netty', name: 'netty-tcnative-boringssl-static', version: nettyVersion
+        }
     }
 }
 
@@ -103,11 +115,12 @@ dependencies {
     compileOnly group: 'io.pravega', name: 'schemaregistry-serializers', classifier: 'all', version: schemaRegistryVersion
 
     compileOnly group: 'org.slf4j', name: 'slf4j-api', version: slf4jApiVersion // provided by flink-runtime
-    compileOnly group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-streaming-java', version: flinkVersion // provided by application
 
+    compileOnly group: 'org.apache.flink', name: 'flink-table-planner-loader', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-table-runtime', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
-    compileOnly group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, version: flinkVersion // provided by application
-    compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge_'+flinkScalaVersion, version: flinkVersion // provided by application
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
@@ -115,6 +128,7 @@ dependencies {
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
         exclude group:  'ch.qos.logback', module: 'logback-classic'
+        exclude group: 'io.netty'
     }
     testImplementation (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
@@ -123,11 +137,13 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-connector-test-utils', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-test-utils_'+flinkScalaVersion, version: flinkVersion
+    testImplementation (group: 'org.apache.flink', name: 'flink-test-utils', version: flinkVersion) {
+        exclude group:  'org.apache.zookeeper', module: 'zookeeper'
+    }
     testImplementation group: 'org.apache.flink', name: 'flink-runtime', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-table-common', classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-streaming-java_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
-    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_'+flinkScalaVersion, classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-streaming-java', classifier: 'tests', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-table-planner_' + flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion

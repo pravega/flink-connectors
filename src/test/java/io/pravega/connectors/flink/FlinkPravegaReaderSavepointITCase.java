@@ -25,6 +25,7 @@ import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
+import org.apache.flink.core.execution.SavepointFormatType;
 import org.apache.flink.core.testutils.CheckedThread;
 import org.apache.flink.core.testutils.OneShotLatch;
 import org.apache.flink.runtime.client.JobCancellationException;
@@ -122,7 +123,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         ) {
             // the object on which we block while waiting for the checkpoint completion
             final OneShotLatch sync = new OneShotLatch();
-            NotifyingMapper.TO_CALL_ON_COMPLETION.set( sync::trigger );
+            NotifyingMapper.TO_CALL_ON_COMPLETION.set(sync::trigger);
 
             // launch the Flink program from a separate thread
             final CheckedThread flinkRunner = new CheckedThread() {
@@ -144,7 +145,11 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             // since with the short timeouts we configure in these tests, Pravega Checkpoints
             // sometimes don't complete in time, we retry a bit here
             for (int attempt = 1; savepointPath == null && attempt <= 5; attempt++) {
-                savepointPath = MINI_CLUSTER.triggerSavepoint(program1.getJobID(), tmpFolder.newFolder().getAbsolutePath(), false).get();
+                savepointPath = MINI_CLUSTER.triggerSavepoint(
+                        program1.getJobID(),
+                        tmpFolder.newFolder().getAbsolutePath(),
+                        false,
+                        SavepointFormatType.CANONICAL).get();
             }
 
             assertNotNull("Failed to trigger a savepoint", savepointPath);
