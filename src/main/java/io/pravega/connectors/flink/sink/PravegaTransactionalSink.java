@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Committer;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
@@ -28,6 +29,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 import java.io.IOException;
 
+@Experimental
 public class PravegaTransactionalSink<T> implements TwoPhaseCommittingSink<T, PravegaTransactionState> {
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";

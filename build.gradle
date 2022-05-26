@@ -86,8 +86,22 @@ configurations.all {
 
 configurations {
     testImplementation.extendsFrom(compileOnly)
-    testImplementation.exclude group: 'org.slf4j', module: 'slf4j-log4j12'
-    testImplementation.exclude group: 'log4j', module: 'log4j'
+    testImplementation {
+        exclude group: 'org.slf4j', module: 'slf4j-log4j12'
+        exclude group: 'log4j', module: 'log4j'
+        resolutionStrategy {
+            force group: 'io.netty', name: 'netty-common', version: nettyVersion
+            force group: 'io.netty', name: 'netty-transport', version: nettyVersion
+            force group: 'io.netty', name: 'netty-handler', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-http', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-http2', version: nettyVersion
+            force group: 'io.netty', name: 'netty-codec-socks', version: nettyVersion
+            force group: 'io.netty', name: 'netty-handler-proxy', version: nettyVersion
+            force group: 'io.netty', name: 'netty-transport-native-epoll', version: nettyVersion
+            force group: 'io.netty', name: 'netty-tcnative-boringssl-static', version: nettyVersion
+        }
+    }
 }
 
 dependencies {
@@ -106,6 +120,7 @@ dependencies {
     compileOnly group: 'org.apache.flink', name: 'flink-table-planner-loader', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-api-java-bridge', version: flinkVersion // provided by application
     compileOnly group: 'org.apache.flink', name: 'flink-table-runtime', version: flinkVersion // provided by application
+    compileOnly group: 'org.apache.flink', name: 'flink-connector-base', version: flinkVersion
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
@@ -113,13 +128,13 @@ dependencies {
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
         exclude group:  'ch.qos.logback', module: 'logback-classic'
-        exclude group:  'org.apache.zookeeper', module: 'zookeeper'
+        exclude group: 'io.netty'
     }
-    testImplementation group: 'org.apache.zookeeper', name: 'zookeeper', version: '3.5.9'
     testImplementation (group: 'io.pravega', name: 'schemaregistry-server', version: schemaRegistryVersion) {
         transitive = false
     }
-    testImplementation group: 'org.mockito', name: 'mockito-core', version: mockitoVersion
+    testImplementation group: 'org.mockito', name: 'mockito-inline', version: mockitoVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-connector-test-utils', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-core', classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-tests', classifier: 'tests', version: flinkVersion
     testImplementation (group: 'org.apache.flink', name: 'flink-test-utils', version: flinkVersion) {

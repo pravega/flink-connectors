@@ -19,6 +19,7 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
+import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
@@ -28,6 +29,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 import java.io.IOException;
 
+@Experimental
 public class PravegaEventSink<T> implements Sink<T> {
     private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
     private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";

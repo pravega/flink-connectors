@@ -27,8 +27,6 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ReaderGroupNotFoundException;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TruncatedDataException;
-import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
-import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchemaWithMetadata;
 import io.pravega.connectors.flink.watermark.AssignerWithTimeWindows;
 import org.apache.flink.api.common.ExecutionConfig;
@@ -717,20 +715,6 @@ public class FlinkPravegaReader<T>
          */
         public Builder<T> withDeserializationSchema(DeserializationSchema<T> deserializationSchema) {
             this.deserializationSchema = deserializationSchema;
-            return builder();
-        }
-
-        /**
-         * Sets the deserialization schema from schema registry. It supports Json, Avro and Protobuf format.
-         *
-         * @param groupId The group id in schema registry
-         * @param tClass  The class describing the deserialized type.
-         * @return Builder instance.
-         */
-        @SuppressWarnings("unchecked")
-        public Builder<T> withDeserializationSchemaFromRegistry(String groupId, Class<T> tClass) {
-            this.deserializationSchema = new PravegaDeserializationSchema<>(tClass,
-                    new DeserializerFromSchemaRegistry<>(getPravegaConfig(), groupId, tClass));
             return builder();
         }
 
