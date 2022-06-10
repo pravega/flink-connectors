@@ -19,7 +19,8 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
@@ -37,23 +38,22 @@ import java.util.concurrent.TimeUnit;
 
 public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
-    // ------------------------------------------------------------------------
-
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
+
+    // ------------------------------------------------------------------------
 
     /**
      * Verifies the following using DataSet API:
@@ -63,10 +63,10 @@ public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
     @Test
     public void testPravegaOutputFormat() throws Exception {
 
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), "outputFormatDataSet");
-        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
+        Stream stream = Stream.of(PRAVEGA.operator().getScope(), "outputFormatDataSet");
+        PRAVEGA.operator().createTestStream(stream.getStreamName(), 1);
 
-        PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
+        PravegaConfig pravegaConfig = PRAVEGA.operator().getPravegaConfig();
 
         FlinkPravegaOutputFormat<Integer> flinkPravegaOutputFormat = FlinkPravegaOutputFormat.<Integer>builder()
                 .withEventRouter(router -> "fixedKey")
@@ -85,7 +85,7 @@ public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
         DataSet<Integer> integers = env.createInput(
                 FlinkPravegaInputFormat.<Integer>builder()
                         .forStream(stream)
-                        .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                        .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                         .withDeserializationSchema(new IntegerDeserializationSchema())
                         .build(),
                 BasicTypeInfo.INT_TYPE_INFO

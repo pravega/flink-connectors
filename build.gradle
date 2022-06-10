@@ -147,6 +147,7 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
+    testImplementation group: 'org.testcontainers', name: 'testcontainers', version: testcontainersVersion
 }
 
 javadoc {

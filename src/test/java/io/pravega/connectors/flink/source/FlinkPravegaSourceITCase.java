@@ -22,15 +22,15 @@ import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.apache.flink.test.util.AbstractTestBase;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Rule;
@@ -39,28 +39,27 @@ import org.junit.rules.Timeout;
 
 import java.util.concurrent.TimeUnit;
 
-public class FlinkPravegaSourceITCase extends AbstractTestBase {
-
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+public class FlinkPravegaSourceITCase {
 
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
 
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
 
-    // ------------------------------------------------------------------------
-
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
+
+    // ------------------------------------------------------------------------
 
     @Test
     public void testOneSourceOneSegment() throws Exception {
@@ -90,10 +89,10 @@ public class FlinkPravegaSourceITCase extends AbstractTestBase {
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
+        PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName);
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -132,7 +131,7 @@ public class FlinkPravegaSourceITCase extends AbstractTestBase {
             final PravegaSource<Integer> pravegaSource = PravegaSource.<Integer>builder()
                     .forStream(streamName)
                     .enableMetrics(false)
-                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                     .withReaderGroupName(readerGroupName)
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
