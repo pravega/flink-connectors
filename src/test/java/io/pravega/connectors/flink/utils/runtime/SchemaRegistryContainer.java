@@ -29,10 +29,6 @@ import java.util.Base64;
  */
 public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryContainer> {
 
-    private static final String PRAVEGA_USERNAME = "admin";
-    private static final String PRAVEGA_PASSWORD = "1111_aaaa";
-    private static final String PRAVEGA_AUTH_TYPE = "Basic";
-
     private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("pravega/schemaregistry");
     private static final int PORT = 9092;
 
@@ -40,8 +36,6 @@ public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryCont
         super(dockerImageName);
 
         dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
-        withEnv("CONTROLLER_AUTH_METHOD", PRAVEGA_AUTH_TYPE);
-        withEnv("CONTROLLER_AUTH_TOKEN", getAuthToken());
         withNetworkMode("container:" + pravegaContainerId);
         withStartupTimeout(Duration.ofSeconds(90));
         waitingFor(Wait.forLogMessage(".* Starting REST server listening on port.*", 1));
@@ -49,13 +43,5 @@ public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryCont
 
     public String getSchemaRegistryUri() {
         return String.format("http://%s:%d", getHost(), PORT);
-    }
-
-    /**
-     * Fetch the auth token.
-     */
-    public String getAuthToken() {
-        String decoded = PRAVEGA_USERNAME + ":" + PRAVEGA_PASSWORD;
-        return Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
     }
 }

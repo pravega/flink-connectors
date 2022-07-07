@@ -55,11 +55,9 @@ public class PravegaContainerProvider implements PravegaRuntimeProvider {
         // Start the Pravega Container.
         container.start();
         container.followOutput(new Slf4jLogConsumer(LOG).withSeparateOutputStreams());
-        String clientTrustStorePath = String.format("%s.crt", createTempFile());
-        container.copyFileFromContainer("/opt/pravega/conf/ca-cert.crt", clientTrustStorePath);
 
         // Create the operator.
-        this.operator = new PravegaRuntimeOperator(SCOPE, container.getControllerUri(), clientTrustStorePath, container.getContainerId());
+        this.operator = new PravegaRuntimeOperator(SCOPE, container.getControllerUri(), container.getContainerId());
         this.operator.initialize();
     }
 
@@ -77,15 +75,5 @@ public class PravegaContainerProvider implements PravegaRuntimeProvider {
     @Override
     public PravegaRuntimeOperator operator() {
         return operator;
-    }
-
-    private String createTempFile()  {
-        try {
-            Path tempPath = Files.createTempFile("test-", "");
-            tempPath.toFile().deleteOnExit();
-            return tempPath.toFile().getAbsolutePath();
-        } catch (IOException e) {
-            throw new RuntimeException("fail to create temp file", e);
-        }
     }
 }

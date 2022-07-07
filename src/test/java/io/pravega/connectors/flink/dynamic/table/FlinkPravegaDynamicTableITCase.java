@@ -114,10 +114,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
@@ -126,10 +122,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         ")",
                 PRAVEGA.operator().getControllerUri().toString(),
                 PRAVEGA.operator().getScope(),
-                PRAVEGA.operator().getAuthType(),
-                PRAVEGA.operator().getAuthToken(),
-                PRAVEGA.operator().isEnableHostNameValidation(),
-                PRAVEGA.operator().getPravegaClientTrustStore(),
                 "streaming",
                 stream,
                 stream);
@@ -227,10 +219,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
@@ -238,10 +226,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         ")",
                 PRAVEGA.operator().getControllerUri().toString(),
                 PRAVEGA.operator().getScope(),
-                PRAVEGA.operator().getAuthType(),
-                PRAVEGA.operator().getAuthToken(),
-                PRAVEGA.operator().isEnableHostNameValidation(),
-                PRAVEGA.operator().getPravegaClientTrustStore(),
                 "streaming",
                 stream,
                 stream);
@@ -361,10 +345,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                                 "  'connector' = 'pravega', %n" +
                                 "  'controller-uri' = '%s', %n" +
                                 "  'scope' = '%s', %n" +
-                                "  'security.auth-type' = '%s', %n" +
-                                "  'security.auth-token' = '%s', %n" +
-                                "  'security.validate-hostname' = '%s', %n" +
-                                "  'security.trust-store' = '%s', %n" +
                                 "  'scan.execution.type' = '%s', %n" +
                                 "  'scan.streams' = '%s', %n" +
                                 "  'sink.stream' = '%s', %n" +
@@ -372,10 +352,6 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                                 ")",
                         PRAVEGA.operator().getControllerUri().toString(),
                         PRAVEGA.operator().getScope(),
-                        PRAVEGA.operator().getAuthType(),
-                        PRAVEGA.operator().getAuthToken(),
-                        PRAVEGA.operator().isEnableHostNameValidation(),
-                        PRAVEGA.operator().getPravegaClientTrustStore(),
                         "streaming",
                         stream,
                         stream);

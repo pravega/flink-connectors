@@ -135,10 +135,6 @@ public class PravegaCatalogITCase {
         options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SCHEMA_REGISTRY.operator().getScope());
         options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SCHEMA_REGISTRY.operator().getControllerUri().toString());
         options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri().toString());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(), SCHEMA_REGISTRY.operator().getAuthType());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(), SCHEMA_REGISTRY.operator().getAuthToken());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(), String.valueOf(SCHEMA_REGISTRY.operator().isEnableHostNameValidation()));
-        options.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(), SCHEMA_REGISTRY.operator().getPravegaClientTrustStore());
 
         final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
@@ -305,14 +301,6 @@ public class PravegaCatalogITCase {
         properties.put("pravega-registry.uri",
                 SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Avro");
-        properties.put("pravega-registry.security.auth-type", SCHEMA_REGISTRY.operator().getAuthType());
-        properties.put("pravega-registry.security.auth-token", SCHEMA_REGISTRY.operator().getAuthToken());
-        properties.put("pravega-registry.security.validate-hostname", String.valueOf(SCHEMA_REGISTRY.operator().isEnableHostNameValidation()));
-        properties.put("pravega-registry.security.trust-store", SCHEMA_REGISTRY.operator().getPravegaClientTrustStore());
-        properties.put("security.auth-type", SCHEMA_REGISTRY.operator().getAuthType());
-        properties.put("security.auth-token", SCHEMA_REGISTRY.operator().getAuthToken());
-        properties.put("security.validate-hostname", String.valueOf(SCHEMA_REGISTRY.operator().isEnableHostNameValidation()));
-        properties.put("security.trust-store", SCHEMA_REGISTRY.operator().getPravegaClientTrustStore());
 
         CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SCHEMA_REGISTRY.operator().getScope(), properties,
                 SCHEMA_REGISTRY.operator().getPravegaConfig()

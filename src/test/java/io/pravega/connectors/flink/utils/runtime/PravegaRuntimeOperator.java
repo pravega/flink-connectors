@@ -47,18 +47,13 @@ import java.util.UUID;
  * A Pravega cluster operator is used for operating Pravega instance.
  */
 public class PravegaRuntimeOperator implements Serializable, Closeable {
+
     private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(PravegaRuntimeOperator.class);
-    private static final String PRAVEGA_USERNAME = "admin";
-    private static final String PRAVEGA_PASSWORD = "1111_aaaa";
 
     private final URI controllerUri;
 
     private final String scope;
-
-    private final boolean enableHostNameValidation = false;
-
-    private final String pravegaClientTrustStore;
 
     private final PravegaConfig pravegaConfig;
 
@@ -66,17 +61,13 @@ public class PravegaRuntimeOperator implements Serializable, Closeable {
 
     private transient EventStreamClientFactory eventStreamClientFactory;
 
-    public PravegaRuntimeOperator(String scope, String controllerUri, String clientTrustStorePath, String containerId) {
+    public PravegaRuntimeOperator(String scope, String controllerUri, String containerId) {
         this.scope = scope;
         this.controllerUri = URI.create(controllerUri);
-        this.pravegaClientTrustStore = clientTrustStorePath;
         this.containerId = containerId;
         this.pravegaConfig = PravegaConfig.fromDefaults()
                 .withControllerURI(this.controllerUri)
-                .withDefaultScope(this.scope)
-                .withCredentials(new DefaultCredentials(PRAVEGA_PASSWORD, PRAVEGA_USERNAME))
-                .withHostnameValidation(this.enableHostNameValidation)
-                .withTrustStore(this.pravegaClientTrustStore);
+                .withDefaultScope(this.scope);
     }
 
     public void initialize() {
@@ -95,34 +86,14 @@ public class PravegaRuntimeOperator implements Serializable, Closeable {
         return scope;
     }
 
-    public boolean isEnableHostNameValidation() {
-        return enableHostNameValidation;
-    }
-
     public PravegaConfig getPravegaConfig() {
         return pravegaConfig;
     }
-
-    /**
-     * Fetch Pravega client trust store.
-     */
-    public String getPravegaClientTrustStore() {
-        return pravegaClientTrustStore;
-    }
-
 
     public ClientConfig getClientConfig() {
         return this.pravegaConfig.getClientConfig();
     }
 
-    public String getAuthType() {
-        return "Basic";
-    }
-
-    public String getAuthToken() {
-        String decoded = PRAVEGA_USERNAME + ":" + PRAVEGA_PASSWORD;
-        return Base64.getEncoder().encodeToString(decoded.getBytes(StandardCharsets.UTF_8));
-    }
 
     /**
      * Create the test stream.
