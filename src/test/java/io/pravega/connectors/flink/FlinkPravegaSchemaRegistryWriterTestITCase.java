@@ -83,7 +83,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
     }
 
     private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
-            new SchemaRegistryTestEnvironment(PravegaRuntime.CONTAINER, SchemaRegistryRuntime.CONTAINER);
+            new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
     private static final Schema SCHEMA = User.SCHEMA$;
     private static final GenericRecord AVRO_GEN_EVENT = new GenericRecordBuilder(SCHEMA).set("name", "test").build();

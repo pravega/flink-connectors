@@ -85,7 +85,7 @@ public class PravegaCatalogITCase {
 
     /** Setup utility */
     private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
-            new SchemaRegistryTestEnvironment(PravegaRuntime.CONTAINER, SchemaRegistryRuntime.CONTAINER);
+            new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
     private static PravegaCatalog CATALOG = null;
     private static CatalogTable CATALOG_TABLE = null;

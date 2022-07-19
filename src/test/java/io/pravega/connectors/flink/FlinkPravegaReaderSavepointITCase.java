@@ -63,7 +63,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     //  setup
     // ----------------------------------------------------------------------------
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // the flink mini cluster
     private static final MiniCluster MINI_CLUSTER = new MiniCluster(

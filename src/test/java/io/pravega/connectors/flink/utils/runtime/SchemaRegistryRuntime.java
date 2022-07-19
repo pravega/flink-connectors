@@ -16,27 +16,32 @@
 
 package io.pravega.connectors.flink.utils.runtime;
 
-import java.util.function.Supplier;
-
 /**
- * An enum class for providing an operable Schema Registry runtime. We now support only one type of runtime, the
- * container.
+ * An abstraction for different Schema Registry runtimes. Providing the common methods for SchemaRegistryTestEnvironment.
  */
-public enum SchemaRegistryRuntime {
+public interface SchemaRegistryRuntime {
 
     /**
-     * The whole Schema Registry cluster would run in a docker container, provide the full fledged test
-     * backend.
+     * Start up this Schema Registry runtime, block the thread until everytime is ready for this runtime.
+     *
+     * @param pravegaRuntimeOperator    The Pravega runtime operator.
      */
-    CONTAINER(SchemaRegistryContainerProvider::new);
+    void startUp(PravegaRuntimeOperator pravegaRuntimeOperator);
 
-    private final Supplier<SchemaRegistryRuntimeProvider> provider;
+    /** Shutdown this Schema Registry runtime. */
+    void tearDown();
 
-    SchemaRegistryRuntime(Supplier<SchemaRegistryRuntimeProvider> provider) {
-        this.provider = provider;
-    }
+    /**
+     * Return an operator for operating this Schema Registry runtime. This operator predefined a set of
+     * extremely useful methods for Schema Registry. You can easily add new methods in this operator.
+     */
+    SchemaRegistryRuntimeOperator operator();
 
-    public SchemaRegistryRuntimeProvider provider() {
-        return provider.get();
+    /**
+     * Create a Schema Registry instance in docker. We would start a standalone Schema Registry in TestContainers.
+     * This runtime is often used in integration and end-to-end tests.
+     */
+    static SchemaRegistryRuntime container() {
+        return new SchemaRegistryContainerRuntime();
     }
 }

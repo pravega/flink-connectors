@@ -60,7 +60,7 @@ public class FlinkPravegaWriterITCase {
     // The maximum time we wait for the checker.
     private static final int WAIT_SECONDS = 30;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // Ensure each test completes within 120 seconds.
     @Rule

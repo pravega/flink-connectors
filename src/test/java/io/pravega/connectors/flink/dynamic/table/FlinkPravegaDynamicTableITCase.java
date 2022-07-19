@@ -68,7 +68,7 @@ import static org.junit.Assert.assertEquals;
 
 public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);

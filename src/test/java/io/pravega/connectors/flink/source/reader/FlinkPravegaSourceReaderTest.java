@@ -52,7 +52,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
     private static final int NUM_PRAVEGA_SEGMENTS = 4;
     private static final int READER0 = 0;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     private String readerGroupName;
 

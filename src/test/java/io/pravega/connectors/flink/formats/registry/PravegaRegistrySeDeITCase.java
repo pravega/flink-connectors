@@ -116,7 +116,7 @@ public class PravegaRegistrySeDeITCase {
 
     /** Setup utility */
     private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
-            new SchemaRegistryTestEnvironment(PravegaRuntime.CONTAINER, SchemaRegistryRuntime.CONTAINER);
+            new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
     @BeforeClass
     public static void setupPravega() throws Exception {

@@ -42,7 +42,7 @@ import java.util.concurrent.TimeUnit;
 
 public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);

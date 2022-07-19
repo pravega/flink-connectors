@@ -65,7 +65,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 100;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @Rule
     public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);

@@ -20,6 +20,7 @@ import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -37,32 +38,35 @@ import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.URI;
 
-public class SchemaRegistryRuntimeOperator implements Serializable, Closeable {
-    private static final long serialVersionUID = 1L;
-    private static final Logger LOG = LoggerFactory.getLogger(PravegaRuntimeOperator.class);
+/**
+ * A Schema Registry operator is used for operating Schema Registry instance.
+ */
+public class SchemaRegistryRuntimeOperator implements Closeable {
+
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaRegistryRuntimeOperator.class);
 
     private final PravegaRuntimeOperator pravegaOperator;
     private final URI schemaRegistryUri;
-
-    private transient EventStreamClientFactory eventStreamClientFactory;
+    private final EventStreamClientFactory eventStreamClientFactory;
 
     public SchemaRegistryRuntimeOperator(PravegaRuntimeOperator pravegaOperator, String schemaRegistryUri) {
         this.pravegaOperator = pravegaOperator;
         this.schemaRegistryUri = URI.create(schemaRegistryUri);
-    }
-
-    public void initialize() {
         eventStreamClientFactory = EventStreamClientFactory.withScope(pravegaOperator.getScope(),
                 pravegaOperator.getClientConfig());
     }
 
-    public URI getSchemaRegistryUri() {
-        return schemaRegistryUri;
-    }
-
+    /**
+     * Create a stream writer for writing Integer events with serializer from Schema Registry.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     *
+     * @return Stream writer instance.
+     */
     public EventStreamWriter<Object> getWriter(String stream, Schema schema, SerializationFormat format) {
         return eventStreamClientFactory.createEventWriter(
                 stream,
@@ -70,6 +74,13 @@ public class SchemaRegistryRuntimeOperator implements Serializable, Closeable {
                 EventWriterConfig.builder().build());
     }
 
+    /**
+     * Register the schema to the Schema Registry service.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     */
     public void registerSchema(String stream, Schema schema, SerializationFormat format) {
         SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(pravegaOperator.getScope(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(schemaRegistryUri).build());
@@ -85,6 +96,16 @@ public class SchemaRegistryRuntimeOperator implements Serializable, Closeable {
         }
     }
 
+    /**
+     * Create a serializer for the schema.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     *
+     * @return A Serializer Implementation that can be used in {@link EventStreamWriter} or
+     * {@link TransactionalEventStreamWriter}.
+     */
     @SuppressWarnings("unchecked")
     public Serializer<Object> getSerializerFromRegistry(String stream, Schema<?> schema, SerializationFormat format) {
         SchemaRegistryClientConfig registryConfig = SchemaRegistryClientConfig.builder()
@@ -109,10 +130,18 @@ public class SchemaRegistryRuntimeOperator implements Serializable, Closeable {
         }
     }
 
+    /** Return the Schema Registry URI for this Schema Registry runtime. */
+    public URI getSchemaRegistryUri() {
+        return schemaRegistryUri;
+    }
+
     @Override
     public void close() throws IOException {
         if (eventStreamClientFactory != null) {
             eventStreamClientFactory.close();
+        }
+        if (pravegaOperator != null) {
+            pravegaOperator.close();
         }
     }
 }

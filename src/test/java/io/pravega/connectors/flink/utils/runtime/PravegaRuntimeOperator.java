@@ -30,73 +30,36 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.utils.IntegerSerializer;
-import io.pravega.shared.security.auth.DefaultCredentials;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Closeable;
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
 import java.util.UUID;
 
 /**
  * A Pravega cluster operator is used for operating Pravega instance.
  */
-public class PravegaRuntimeOperator implements Serializable, Closeable {
+public class PravegaRuntimeOperator implements Closeable {
 
-    private static final long serialVersionUID = 1L;
     private static final Logger LOG = LoggerFactory.getLogger(PravegaRuntimeOperator.class);
 
     private final URI controllerUri;
-
     private final String scope;
-
-    private final PravegaConfig pravegaConfig;
-
     private final String containerId;
-
-    private transient EventStreamClientFactory eventStreamClientFactory;
+    private final EventStreamClientFactory eventStreamClientFactory;
 
     public PravegaRuntimeOperator(String scope, String controllerUri, String containerId) {
         this.scope = scope;
         this.controllerUri = URI.create(controllerUri);
         this.containerId = containerId;
-        this.pravegaConfig = PravegaConfig.fromDefaults()
-                .withControllerURI(this.controllerUri)
-                .withDefaultScope(this.scope);
-    }
-
-    public void initialize() {
         this.eventStreamClientFactory = EventStreamClientFactory.withScope(this.scope, getClientConfig());
     }
 
-    public String getContainerId() {
-        return containerId;
-    }
-
-    public URI getControllerUri() {
-        return controllerUri;
-    }
-
-    public String getScope() {
-        return scope;
-    }
-
-    public PravegaConfig getPravegaConfig() {
-        return pravegaConfig;
-    }
-
-    public ClientConfig getClientConfig() {
-        return this.pravegaConfig.getClientConfig();
-    }
-
-
     /**
-     * Create the test stream.
+     * Create the test stream with the given segment number.
      *
      * @param streamName     Name of the test stream.
      * @param numSegments    Number of segments to be created for this stream.
@@ -119,7 +82,7 @@ public class PravegaRuntimeOperator implements Serializable, Closeable {
     }
 
     /**
-     * Get the stream.
+     * Return the stream instance.
      *
      * @param streamName     Name of the test stream.
      *
@@ -169,6 +132,32 @@ public class PravegaRuntimeOperator implements Serializable, Closeable {
                 readerGroup,
                 new IntegerSerializer(),
                 ReaderConfig.builder().build());
+    }
+
+    /** Return the controller URI for this Pravega runtime. */
+    public URI getControllerUri() {
+        return controllerUri;
+    }
+
+    /** Return the generated scope of this Pravega runtime. It is used in tests. */
+    public String getScope() {
+        return scope;
+    }
+
+    /** The configuration for this Pravega runtime. */
+    public PravegaConfig getPravegaConfig() {
+        return PravegaConfig.fromDefaults()
+                .withControllerURI(this.controllerUri)
+                .withDefaultScope(this.scope);
+    }
+
+    /** The client configuration for this Pravega runtime. */
+    public ClientConfig getClientConfig() {
+        return getPravegaConfig().getClientConfig();
+    }
+
+    public String getContainerId() {
+        return containerId;
     }
 
     @Override

@@ -16,7 +16,6 @@
 
 package io.pravega.connectors.flink.utils;
 
-import io.pravega.connectors.flink.utils.runtime.PravegaContainerProvider;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntimeOperator;
 import org.apache.flink.connector.testframe.TestResource;
@@ -26,23 +25,26 @@ import org.apache.flink.connector.testframe.TestResource;
  */
 public class PravegaTestEnvironment implements TestResource {
 
-    private final PravegaContainerProvider provider;
+    private final PravegaRuntime runtime;
 
     public PravegaTestEnvironment(PravegaRuntime runtime) {
-        this.provider = (PravegaContainerProvider) runtime.provider();
+        this.runtime = runtime;
     }
 
+    /** Start up the test resource. */
     @Override
     public void startUp() {
-        provider.startUp();
+        runtime.startUp();
     }
 
+    /** Tear down the test resource. */
     @Override
     public void tearDown() {
-        provider.tearDown();
+        runtime.tearDown();
     }
 
+    /** Get a common supported set of method for operating Pravega which is in container. */
     public PravegaRuntimeOperator operator() {
-        return provider.operator();
+        return runtime.operator();
     }
 }

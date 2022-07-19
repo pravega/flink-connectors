@@ -16,27 +16,28 @@
 
 package io.pravega.connectors.flink.utils.runtime;
 
-import java.util.function.Supplier;
-
 /**
- * An enum class for providing an operable Pravega runtime. We now support only one type of runtime, the
- * container.
+ * An abstraction for different Pravega runtimes. Providing the common methods for PravegaTestEnvironment.
  */
-public enum PravegaRuntime {
+public interface PravegaRuntime {
+
+    /** Start up this Pravega runtime, block the thread until everytime is ready for this runtime. */
+    void startUp();
+
+    /** Shutdown this Pravega runtime. */
+    void tearDown();
 
     /**
-     * The whole Pravega cluster would run in a docker container, provide the full fledged test
-     * backend.
+     * Return an operator for operating this Pravega runtime. This operator predefined a set of
+     * extremely useful methods for Pravega. You can easily add new methods in this operator.
      */
-    CONTAINER(PravegaContainerProvider::new);
+    PravegaRuntimeOperator operator();
 
-    private final Supplier<PravegaRuntimeProvider> provider;
-
-    PravegaRuntime(Supplier<PravegaRuntimeProvider> provider) {
-        this.provider = provider;
-    }
-
-    public PravegaRuntimeProvider provider() {
-        return provider.get();
+    /**
+     * Create a Pravega instance in docker. We would start a standalone Pravega in TestContainers.
+     * This runtime is often used in integration and end-to-end tests.
+     */
+    static PravegaRuntime container() {
+        return new PravegaContainerRuntime();
     }
 }

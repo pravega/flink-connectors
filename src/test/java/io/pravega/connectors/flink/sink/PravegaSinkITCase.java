@@ -48,7 +48,7 @@ import static org.junit.Assert.assertNull;
 
 public class PravegaSinkITCase extends AbstractTestBase {
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 10000;

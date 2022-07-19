@@ -44,7 +44,7 @@ public class FlinkPravegaSourceITCase {
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);

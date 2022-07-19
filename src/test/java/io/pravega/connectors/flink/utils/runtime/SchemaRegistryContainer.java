@@ -20,9 +20,7 @@ import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.utility.DockerImageName;
 
-import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.Base64;
 
 /**
  * This container wraps Pravega Schema Registry running in standalone mode.
@@ -32,13 +30,12 @@ public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryCont
     private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("pravega/schemaregistry");
     private static final int PORT = 9092;
 
-    public SchemaRegistryContainer(final DockerImageName dockerImageName, String pravegaContainerId) {
+    public SchemaRegistryContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
 
         dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
-        withNetworkMode("container:" + pravegaContainerId);
         withStartupTimeout(Duration.ofSeconds(90));
-        waitingFor(Wait.forLogMessage(".* Starting REST server listening on port.*", 1));
+        waitingFor(Wait.forLogMessage(".*Started listener bound to.*", 1));
     }
 
     public String getSchemaRegistryUri() {

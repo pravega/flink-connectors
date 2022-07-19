@@ -43,10 +43,12 @@ public class PravegaContainer extends GenericContainer<PravegaContainer> {
         dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
         addFixedExposedPort(CONTROLLER_PORT, CONTROLLER_PORT);
         addFixedExposedPort(SEGMENT_STORE_PORT, SEGMENT_STORE_PORT);
-        addFixedExposedPort(SCHEMA_REGISTRY_PORT, SCHEMA_REGISTRY_PORT);
         withStartupTimeout(Duration.ofSeconds(90));
         withCommand("standalone");
         waitingFor(Wait.forLogMessage(".* Pravega Sandbox is running locally now.*", 1));
+
+        // expose port for the SR container that connects to the same network as Pravega container
+        addFixedExposedPort(SCHEMA_REGISTRY_PORT, SCHEMA_REGISTRY_PORT);
     }
 
     public String getControllerUri() {

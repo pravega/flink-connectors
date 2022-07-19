@@ -52,7 +52,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     //Ensure each test completes within 180 seconds.
     @Rule

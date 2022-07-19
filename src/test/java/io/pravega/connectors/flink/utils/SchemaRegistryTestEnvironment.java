@@ -17,7 +17,6 @@
 package io.pravega.connectors.flink.utils;
 
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
-import io.pravega.connectors.flink.utils.runtime.SchemaRegistryContainerProvider;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntimeOperator;
 
@@ -26,26 +25,29 @@ import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntimeOperator;
  */
 public class SchemaRegistryTestEnvironment extends PravegaTestEnvironment {
 
-    private final SchemaRegistryContainerProvider schemaRegistryProvider;
+    private final SchemaRegistryRuntime schemaRegistryRuntime;
 
     public SchemaRegistryTestEnvironment(PravegaRuntime pravegaRuntime, SchemaRegistryRuntime schemaRegistryRuntime) {
         super(pravegaRuntime);
-        this.schemaRegistryProvider = (SchemaRegistryContainerProvider) schemaRegistryRuntime.provider();
+        this.schemaRegistryRuntime = schemaRegistryRuntime;
     }
 
+    /** Start up the test resource. */
     @Override
     public void startUp() {
         super.startUp();
-        schemaRegistryProvider.startUp(super.operator());
+        schemaRegistryRuntime.startUp(super.operator());
     }
 
+    /** Tear down the test resource. */
     @Override
     public void tearDown() {
         super.tearDown();
-        schemaRegistryProvider.tearDown();
+        schemaRegistryRuntime.tearDown();
     }
 
+    /** Get a common supported set of method for operating Schema Registry which is in container. */
     public SchemaRegistryRuntimeOperator schemaRegistryOperator() {
-        return schemaRegistryProvider.operator();
+        return schemaRegistryRuntime.operator();
     }
 }

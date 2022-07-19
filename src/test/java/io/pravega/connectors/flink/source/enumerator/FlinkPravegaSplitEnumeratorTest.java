@@ -50,7 +50,7 @@ public class FlinkPravegaSplitEnumeratorTest {
     private static final int READER0 = 0;
     private static final int READER1 = 1;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @BeforeClass
     public static void setupPravega() throws Exception {

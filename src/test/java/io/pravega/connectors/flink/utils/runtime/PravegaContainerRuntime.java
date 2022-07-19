@@ -16,64 +16,70 @@
 
 package io.pravega.connectors.flink.utils.runtime;
 
+import io.pravega.connectors.flink.utils.DockerImageVersions;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.testcontainers.containers.BindMode;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-import static io.pravega.connectors.flink.utils.DockerImageVersions.PRAVEGA;
+import static org.apache.flink.util.Preconditions.checkNotNull;
 
 /**
- * {@link PravegaRuntimeProvider} implementation, use the TestContainers as the backend. We would
+ * {@link PravegaContainerRuntime} implementation, use the TestContainers as the backend. We would
  * start a Pravega container by this provider.
  */
-public class PravegaContainerProvider implements PravegaRuntimeProvider {
-    private static final Logger LOG = LoggerFactory.getLogger(PravegaContainerProvider.class);
+public class PravegaContainerRuntime implements PravegaRuntime {
+
+    private static final Logger LOG = LoggerFactory.getLogger(PravegaContainerRuntime.class);
     private static final String SCOPE = RandomStringUtils.randomAlphabetic(20);
 
     /**
-     * Create a Pravega container provider by a predefined version, in DockerImageVersions.
+     * Create a Pravega container provider by a predefined version, in DockerImageVersions. this constance {@link
+     * DockerImageVersions#PRAVEGA} should be bumped after the new Pravega release.
      */
-    private final PravegaContainer container = new PravegaContainer(DockerImageName.parse(PRAVEGA));
+    private final PravegaContainer container = new PravegaContainer(DockerImageName.parse(DockerImageVersions.PRAVEGA));
 
-    private PravegaRuntimeOperator operator = null;
+    private final AtomicBoolean started = new AtomicBoolean(false);
+
+    private PravegaRuntimeOperator operator;
 
     @Override
     public void startUp() {
-        // Prepare Pravega Container.
-        container.withClasspathResourceMapping(
-                "pravega-standalone.conf",
-                "/opt/pravega/conf/standalone-config.properties",
-                BindMode.READ_ONLY);
+        boolean haveStartedBefore = started.compareAndSet(false, true);
+        if (!haveStartedBefore) {
+            LOG.warn("You have started the Pravega Container. We will skip this execution.");
+            return;
+        }
 
         // Start the Pravega Container.
         container.start();
+        // Append the output to this runtime logger. Used for local debug purpose.
         container.followOutput(new Slf4jLogConsumer(LOG).withSeparateOutputStreams());
 
         // Create the operator.
         this.operator = new PravegaRuntimeOperator(SCOPE, container.getControllerUri(), container.getContainerId());
-        this.operator.initialize();
     }
 
     @Override
-    public void tearDown() throws IllegalStateException {
+    public void tearDown() {
         try {
-            operator.close();
-            this.operator = null;
+            if (operator != null) {
+                operator.close();
+                this.operator = null;
+            }
+            container.stop();
+            started.compareAndSet(true, false);
         } catch (IOException e) {
             throw new IllegalStateException(e);
         }
-        container.stop();
     }
 
     @Override
     public PravegaRuntimeOperator operator() {
-        return operator;
+        return checkNotNull(operator, "You should start this Pravega container first.");
     }
 }

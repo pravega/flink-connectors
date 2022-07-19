@@ -51,7 +51,7 @@ public class FlinkPravegaSplitReaderTest {
     private static final int READER0 = 0;
     private static final int NUM_EVENTS = 100;
 
-    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.CONTAINER);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @BeforeClass
     public static void setupPravega() throws Exception {
