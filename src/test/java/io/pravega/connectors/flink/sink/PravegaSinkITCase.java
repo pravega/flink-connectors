@@ -19,6 +19,7 @@ import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.FailingMapper;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
@@ -253,7 +254,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
             // 1. Check if all the events are written to the Pravega stream
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
-            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getIntegerReader(streamName)) {
+            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getReader(streamName, new IntegerSerializer())) {
                 final BitSet checker = new BitSet();
 
                 while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {

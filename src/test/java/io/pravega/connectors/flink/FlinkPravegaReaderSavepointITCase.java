@@ -18,6 +18,7 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
@@ -109,7 +110,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         final JobGraph program1 = getFlinkJob(sourceParallelism, streamName, numElements);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(

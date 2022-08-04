@@ -23,6 +23,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -80,7 +81,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
         PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(readerGroupName, streamName);
         try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, true);
-             final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName)) {
+             final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
@@ -109,7 +110,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
         PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(readerGroupName, streamName);
 
-        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName)) {
+        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }

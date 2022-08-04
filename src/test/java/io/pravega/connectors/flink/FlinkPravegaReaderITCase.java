@@ -19,6 +19,7 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
@@ -95,7 +96,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         PRAVEGA.operator().createTestStream(streamName, 4);
         try (
-                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -172,7 +173,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
         PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(

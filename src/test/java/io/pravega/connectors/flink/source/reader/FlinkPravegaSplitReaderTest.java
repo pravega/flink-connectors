@@ -26,6 +26,7 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
@@ -94,7 +95,7 @@ public class FlinkPravegaSplitReaderTest {
         assignSplit(reader, split);
         RecordsWithSplitIds<EventRead<ByteBuffer>> recordsBySplitIds;
         EventRead<ByteBuffer> eventRead;
-        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getIntegerWriter(streamName)) {
+        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
             int numEvents = 0;
             Set<String> finishedSplits = new HashSet<>();
             for (int i = 0; i < NUM_EVENTS; i++) {

@@ -21,7 +21,8 @@ import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntimeOperator;
 
 /**
- * A test environment for supporting running a Schema Registry service before executing tests.
+ * A test environment for supporting running a Pravega standalone instance
+ * and a Schema Registry service before executing tests via extending {@link PravegaTestEnvironment}.
  */
 public class SchemaRegistryTestEnvironment extends PravegaTestEnvironment {
 

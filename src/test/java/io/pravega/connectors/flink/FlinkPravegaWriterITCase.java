@@ -21,6 +21,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.TimeWindow;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.FailingMapper;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
@@ -290,7 +291,7 @@ public class FlinkPravegaWriterITCase {
             // 1. Check if all the events are written to the Pravega stream
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
-            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getIntegerReader(streamName)) {
+            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getReader(streamName, new IntegerSerializer())) {
                 final BitSet checker = new BitSet();
 
                 while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {
@@ -339,7 +340,7 @@ public class FlinkPravegaWriterITCase {
         // Wait 11 seconds for the Pravega controller to generate TimeWindow
         Thread.sleep(11000);
 
-        EventStreamReader<Integer> consumer = PRAVEGA.operator().getIntegerReader(streamName);
+        EventStreamReader<Integer> consumer = PRAVEGA.operator().getReader(streamName, new IntegerSerializer());
         consumer.readNextEvent(1000);
         TimeWindow timeWindow = consumer.getCurrentTimeWindow(PRAVEGA.operator().getStream(streamName));
 

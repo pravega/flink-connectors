@@ -22,6 +22,8 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.time.Duration;
 
+import static io.pravega.connectors.flink.utils.runtime.SchemaRegistryContainer.SCHEMA_REGISTRY_PORT;
+
 /**
  * This container wraps Pravega running in standalone mode.
  */
@@ -31,7 +33,6 @@ public class PravegaContainer extends GenericContainer<PravegaContainer> {
     private static final String DEFAULT_TAG = "0.11.0";
     private static final int CONTROLLER_PORT = 9090;
     private static final int SEGMENT_STORE_PORT = 12345;
-    private static final int SCHEMA_REGISTRY_PORT = 9092;
 
     public PravegaContainer() {
         this(DEFAULT_IMAGE_NAME.withTag(DEFAULT_TAG));

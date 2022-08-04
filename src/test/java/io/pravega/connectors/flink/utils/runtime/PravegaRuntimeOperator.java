@@ -26,10 +26,10 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.ReaderConfig;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ScalingPolicy;
+import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamConfiguration;
 import io.pravega.connectors.flink.PravegaConfig;
-import io.pravega.connectors.flink.utils.IntegerSerializer;
 import org.apache.flink.util.Preconditions;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -95,43 +95,33 @@ public class PravegaRuntimeOperator implements Closeable {
     /**
      * Create a stream writer for writing Integer events.
      *
+     * @param <T>           The type of event that this serializes.
      * @param streamName    Name of the test stream.
+     * @param serializer    The Serializer for the writer.
      *
      * @return Stream writer instance.
      */
-    public EventStreamWriter<Integer> getIntegerWriter(final String streamName) {
+    public <T> EventStreamWriter<T> getWriter(final String streamName, Serializer<T> serializer) {
         Preconditions.checkNotNull(streamName);
+        Preconditions.checkNotNull(serializer);
 
-        return eventStreamClientFactory.createEventWriter(
-                streamName,
-                new IntegerSerializer(),
-                EventWriterConfig.builder().build());
+        return createEventWriter(streamName, serializer);
     }
 
     /**
      * Create a stream reader for reading Integer events.
      *
+     * @param <T>           The type of event that this serializes.
      * @param streamName    Name of the test stream.
+     * @param serializer    The Serializer for the reader.
      *
      * @return Stream reader instance.
      */
-    public EventStreamReader<Integer> getIntegerReader(final String streamName) {
+    public <T> EventStreamReader<T> getReader(final String streamName, Serializer<T> serializer) {
         Preconditions.checkNotNull(streamName);
+        Preconditions.checkNotNull(serializer);
 
-        final String readerGroup = "testReaderGroup" + this.scope + streamName;
-
-        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig())) {
-            readerGroupManager.createReaderGroup(
-                    readerGroup,
-                    ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
-        }
-
-        final String readerGroupId = UUID.randomUUID().toString();
-        return eventStreamClientFactory.createReader(
-                readerGroupId,
-                readerGroup,
-                new IntegerSerializer(),
-                ReaderConfig.builder().build());
+        return createEventReader(streamName, serializer);
     }
 
     /** Return the controller URI for this Pravega runtime. */
@@ -165,5 +155,31 @@ public class PravegaRuntimeOperator implements Closeable {
         if (eventStreamClientFactory != null) {
             eventStreamClientFactory.close();
         }
+    }
+
+    // --------------------------- Private Methods -----------------------------
+
+    private <T> EventStreamWriter<T> createEventWriter(String streamName, Serializer<T> serializer) {
+        return eventStreamClientFactory.createEventWriter(
+                streamName,
+                serializer,
+                EventWriterConfig.builder().build());
+    }
+
+    private <T> EventStreamReader<T> createEventReader(String streamName, Serializer<T> serializer) {
+        final String readerGroup = "testReaderGroup" + this.scope + streamName;
+
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(this.scope, getClientConfig())) {
+            readerGroupManager.createReaderGroup(
+                    readerGroup,
+                    ReaderGroupConfig.builder().stream(Stream.of(this.scope, streamName)).build());
+        }
+
+        final String readerGroupId = UUID.randomUUID().toString();
+        return eventStreamClientFactory.createReader(
+                readerGroupId,
+                readerGroup,
+                serializer,
+                ReaderConfig.builder().build());
     }
 }

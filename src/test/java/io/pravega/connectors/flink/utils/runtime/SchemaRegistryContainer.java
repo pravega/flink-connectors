@@ -27,8 +27,8 @@ import java.time.Duration;
  */
 public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryContainer> {
 
+    static final int SCHEMA_REGISTRY_PORT = 9092;
     private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("pravega/schemaregistry");
-    private static final int PORT = 9092;
 
     public SchemaRegistryContainer(final DockerImageName dockerImageName) {
         super(dockerImageName);
@@ -39,6 +39,6 @@ public class SchemaRegistryContainer extends GenericContainer<SchemaRegistryCont
     }
 
     public String getSchemaRegistryUri() {
-        return String.format("http://%s:%d", getHost(), PORT);
+        return String.format("http://%s:%d", getHost(), SCHEMA_REGISTRY_PORT);
     }
 }
