@@ -92,7 +92,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
         PRAVEGA.operator().createTestStream(sideStream, 1);
 
         final int threshold = NUM_STREAM_ELEMENTS / 20;
-        try (final EventStreamWriter<Integer> writer = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
+        try (final EventStreamWriter<Integer> writer = PRAVEGA.operator().getWriter(sideStream, new IntegerSerializer())) {
             for (int i = 1; i <= threshold; i++) {
                 writer.writeEvent(1).get();
             }
