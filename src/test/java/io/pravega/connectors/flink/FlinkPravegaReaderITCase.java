@@ -19,10 +19,12 @@ import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.watermark.LowerBoundAssigner;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -48,11 +50,10 @@ import java.util.concurrent.TimeUnit;
  */
 public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
-
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 10000;
+
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     //Ensure each test completes within 180 seconds.
     @Rule
@@ -60,12 +61,12 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     @Test
@@ -93,9 +94,9 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
     public void testWatermark() throws Exception {
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 4);
+        PRAVEGA.operator().createTestStream(streamName, 4);
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -118,7 +119,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                     .forStream(streamName)
                     .enableMetrics(false)
-                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .withTimestampAssigner(new LowerBoundAssigner<Integer>() {
                         @Override
@@ -169,10 +170,10 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
+        PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -211,7 +212,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                     .forStream(streamName)
                     .enableMetrics(false)
-                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 

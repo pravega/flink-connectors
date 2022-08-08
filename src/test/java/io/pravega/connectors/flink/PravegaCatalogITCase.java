@@ -19,8 +19,9 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.factories.PravegaCatalogFactoryOptions;
-import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.SchemaRegistryTestEnvironment;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
+import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -83,9 +84,8 @@ public class PravegaCatalogITCase {
     private static final GenericRecord EVENT = new GenericRecordBuilder(TEST_SCHEMA).set("a", "test").build();
 
     /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
-    private static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
-            new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
+    private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
+            new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
     private static PravegaCatalog CATALOG = null;
     private static CatalogTable CATALOG_TABLE = null;
@@ -104,8 +104,7 @@ public class PravegaCatalogITCase {
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
-        SCHEMA_REGISTRY_UTILS.setupServices();
+        SCHEMA_REGISTRY.startUp();
         init();
         CATALOG.open();
     }
@@ -113,8 +112,7 @@ public class PravegaCatalogITCase {
     @AfterClass
     public static void tearDownPravega() throws Exception {
         CATALOG.close();
-        SETUP_UTILS.stopAllServices();
-        SCHEMA_REGISTRY_UTILS.tearDownServices();
+        SCHEMA_REGISTRY.tearDown();
     }
 
     @After
@@ -134,13 +132,9 @@ public class PravegaCatalogITCase {
     public void testCreateCatalogFromFactory() {
         final Map<String, String> options = new HashMap<>();
         options.put(CommonCatalogOptions.CATALOG_TYPE.key(), PravegaCatalogFactoryOptions.IDENTIFIER);
-        options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SETUP_UTILS.getScope());
-        options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SETUP_UTILS.getControllerUri().toString());
-        options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TYPE.key(), SETUP_UTILS.getAuthType());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_AUTH_TOKEN.key(), SETUP_UTILS.getAuthToken());
-        options.put(PravegaCatalogFactoryOptions.SECURITY_VALIDATE_HOSTNAME.key(), String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        options.put(PravegaCatalogFactoryOptions.SECURITY_TRUST_STORE.key(), SETUP_UTILS.getPravegaClientTrustStore());
+        options.put(PravegaCatalogFactoryOptions.DEFAULT_DATABASE.key(), SCHEMA_REGISTRY.operator().getScope());
+        options.put(PravegaCatalogFactoryOptions.CONTROLLER_URI.key(), SCHEMA_REGISTRY.operator().getControllerUri().toString());
+        options.put(PravegaCatalogFactoryOptions.SCHEMA_REGISTRY_URI.key(), SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri().toString());
 
         final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
@@ -298,38 +292,30 @@ public class PravegaCatalogITCase {
 
     // ------ utils ------
     private static void init() throws Exception {
-        SCHEMA_REGISTRY_UTILS.registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
-        SETUP_UTILS.createTestStream(TEST_STREAM, 3);
+        SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
+        SCHEMA_REGISTRY.operator().createTestStream(TEST_STREAM, 3);
         Map<String, String> properties = new HashMap<>();
         properties.put("connector", "pravega");
-        properties.put("controller-uri", SETUP_UTILS.getControllerUri().toString());
+        properties.put("controller-uri", SCHEMA_REGISTRY.operator().getControllerUri().toString());
         properties.put("format", "pravega-registry");
         properties.put("pravega-registry.uri",
-                SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri().toString());
+                SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri().toString());
         properties.put("pravega-registry.format", "Avro");
-        properties.put("pravega-registry.security.auth-type", SETUP_UTILS.getAuthType());
-        properties.put("pravega-registry.security.auth-token", SETUP_UTILS.getAuthToken());
-        properties.put("pravega-registry.security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        properties.put("pravega-registry.security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
-        properties.put("security.auth-type", SETUP_UTILS.getAuthType());
-        properties.put("security.auth-token", SETUP_UTILS.getAuthToken());
-        properties.put("security.validate-hostname", String.valueOf(SETUP_UTILS.isEnableHostNameValidation()));
-        properties.put("security.trust-store", SETUP_UTILS.getPravegaClientTrustStore());
 
-        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SETUP_UTILS.getScope(), properties,
-                SETUP_UTILS.getPravegaConfig()
-                        .withDefaultScope(SETUP_UTILS.getScope())
-                        .withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()),
+        CATALOG = new PravegaCatalog(TEST_CATALOG_NAME, SCHEMA_REGISTRY.operator().getScope(), properties,
+                SCHEMA_REGISTRY.operator().getPravegaConfig()
+                        .withDefaultScope(SCHEMA_REGISTRY.operator().getScope())
+                        .withSchemaRegistryURI(SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri()),
                 "Avro");
         CATALOG_TABLE = new CatalogTableImpl(TEST_TABLE_SCHEMA, properties, null);
-        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
+        EventStreamWriter<Object> writer = SCHEMA_REGISTRY.schemaRegistryOperator().getWriter(TEST_STREAM, AvroSchema.of(TEST_SCHEMA), SerializationFormat.Avro);
         writer.writeEvent(EVENT).join();
         writer.close();
     }
 
     private static void registerAvroSchema(String scope, String stream) throws Exception {
         SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(scope,
-                SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()).build());
+                SchemaRegistryClientConfig.builder().schemaRegistryUri(SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri()).build());
         SchemaInfo schemaInfo = AvroSchema.of(TEST_SCHEMA).getSchemaInfo();
         client.addSchema(stream, schemaInfo);
         client.close();

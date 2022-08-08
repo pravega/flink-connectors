@@ -18,10 +18,12 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -62,8 +64,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     //  setup
     // ----------------------------------------------------------------------------
 
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // the flink mini cluster
     private static final MiniCluster MINI_CLUSTER = new MiniCluster(
@@ -81,14 +82,14 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     @BeforeClass
     public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
         MINI_CLUSTER.start();
     }
 
     @AfterClass
-    public static void tearDown() throws Exception {
+    public static void tearDown() {
         MINI_CLUSTER.closeAsync();
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     // ----------------------------------------------------------------------------
@@ -103,13 +104,13 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
+        PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
 
         // we create two independent Flink jobs (that come from the same program)
         final JobGraph program1 = getFlinkJob(sourceParallelism, streamName, numElements);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -208,7 +209,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withDeserializationSchema(new IntegerDeserializationSchema())
                 .uid("my_reader_name")
                 .build();

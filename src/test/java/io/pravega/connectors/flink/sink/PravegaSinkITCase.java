@@ -19,8 +19,10 @@ import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.FailingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -47,8 +49,7 @@ import static org.junit.Assert.assertNull;
 
 public class PravegaSinkITCase extends AbstractTestBase {
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 10000;
@@ -61,12 +62,12 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     /**
@@ -83,7 +84,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -112,7 +113,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -141,7 +142,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
@@ -169,7 +170,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -199,7 +200,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         final PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -232,7 +233,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     private static void writeAndCheckData(String streamName,
                                           StreamExecutionEnvironment env,
                                           boolean allowDuplicate) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 4);
+        PRAVEGA.operator().createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
         // both writer and checker complete their tasks.
@@ -253,7 +254,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
             // 1. Check if all the events are written to the Pravega stream
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
-            try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
+            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getReader(streamName, new IntegerSerializer())) {
                 final BitSet checker = new BitSet();
 
                 while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {

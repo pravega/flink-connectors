@@ -26,8 +26,9 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -66,22 +67,20 @@ import static io.pravega.connectors.flink.utils.TestUtils.readLines;
 import static org.junit.Assert.assertEquals;
 
 public class FlinkPravegaDynamicTableITCase extends TestLogger {
-    /**
-     * Setup utility
-     */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     @Rule
     public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
 
     @BeforeClass
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
     @AfterClass
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     @Test
@@ -99,7 +98,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         final String createTable = String.format(
                 "CREATE TABLE pravega ( %n" +
@@ -115,22 +114,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
                         "  'sink.routing-key.field.name' = 'currency', %n" +
                         "  'format' = 'json' %n" +
                         ")",
-                SETUP_UTILS.getControllerUri().toString(),
-                SETUP_UTILS.getScope(),
-                SETUP_UTILS.getAuthType(),
-                SETUP_UTILS.getAuthToken(),
-                SETUP_UTILS.isEnableHostNameValidation(),
-                SETUP_UTILS.getPravegaClientTrustStore(),
+                PRAVEGA.operator().getControllerUri().toString(),
+                PRAVEGA.operator().getScope(),
                 "streaming",
                 stream,
                 stream);
@@ -215,7 +206,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         final String createTable = String.format(
                 "CREATE TABLE users ( %n" +
@@ -228,21 +219,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
                         "  'format' = 'json' %n" +
                         ")",
-                SETUP_UTILS.getControllerUri().toString(),
-                SETUP_UTILS.getScope(),
-                SETUP_UTILS.getAuthType(),
-                SETUP_UTILS.getAuthToken(),
-                SETUP_UTILS.isEnableHostNameValidation(),
-                SETUP_UTILS.getPravegaClientTrustStore(),
+                PRAVEGA.operator().getControllerUri().toString(),
+                PRAVEGA.operator().getScope(),
                 "streaming",
                 stream,
                 stream);
@@ -295,13 +278,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         }
 
         // create a reader via pravega
-        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig())) {
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig())) {
             readerGroupManager.createReaderGroup(
                     "group",
-                    ReaderGroupConfig.builder().stream(Stream.of(SETUP_UTILS.getScope(), stream)).build());
+                    ReaderGroupConfig.builder().stream(Stream.of(PRAVEGA.operator().getScope(), stream)).build());
         }
         final String readerGroupId = UUID.randomUUID().toString();
-        EventStreamReader<TestUser> consumer = EventStreamClientFactory.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig()).createReader(
+        EventStreamReader<TestUser> consumer = EventStreamClientFactory.withScope(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig()).createReader(
                 readerGroupId,
                 "group",
                 new JsonSerializer<>(TestUser.class),
@@ -330,7 +313,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         // ---------- Write the Debezium json into Pravega -------------------
         List<String> lines = readLines("debezium-data-schema-exclude.txt");
@@ -339,7 +322,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         FlinkPravegaWriter<String> pravegaSink = FlinkPravegaWriter.<String>builder()
                 .forStream(stream)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(serSchema)
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -362,21 +345,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                                 "  'connector' = 'pravega', %n" +
                                 "  'controller-uri' = '%s', %n" +
                                 "  'scope' = '%s', %n" +
-                                "  'security.auth-type' = '%s', %n" +
-                                "  'security.auth-token' = '%s', %n" +
-                                "  'security.validate-hostname' = '%s', %n" +
-                                "  'security.trust-store' = '%s', %n" +
                                 "  'scan.execution.type' = '%s', %n" +
                                 "  'scan.streams' = '%s', %n" +
                                 "  'sink.stream' = '%s', %n" +
                                 "  'format' = 'debezium-json' %n" +
                                 ")",
-                        SETUP_UTILS.getControllerUri().toString(),
-                        SETUP_UTILS.getScope(),
-                        SETUP_UTILS.getAuthType(),
-                        SETUP_UTILS.getAuthToken(),
-                        SETUP_UTILS.isEnableHostNameValidation(),
-                        SETUP_UTILS.getPravegaClientTrustStore(),
+                        PRAVEGA.operator().getControllerUri().toString(),
+                        PRAVEGA.operator().getScope(),
                         "streaming",
                         stream,
                         stream);
