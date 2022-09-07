@@ -49,25 +49,22 @@ import org.apache.flink.table.catalog.exceptions.DatabaseNotExistException;
 import org.apache.flink.table.catalog.exceptions.TableAlreadyExistException;
 import org.apache.flink.table.catalog.exceptions.TableNotExistException;
 import org.apache.flink.table.factories.FactoryUtil;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SuppressWarnings("checkstyle:StaticVariableName")
+@Timeout(value = 120)
 public class PravegaCatalogITCase {
     private static final Schema TEST_SCHEMA = SchemaBuilder
             .record("MyTest")
@@ -90,9 +87,6 @@ public class PravegaCatalogITCase {
     private static PravegaCatalog CATALOG = null;
     private static CatalogTable CATALOG_TABLE = null;
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
     private final String db1 = "db1";
     private final String t1 = "t1";
     private final String t2 = "t2";
@@ -102,20 +96,20 @@ public class PravegaCatalogITCase {
 
     // ------------------------------------------------------------------------
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         SCHEMA_REGISTRY.startUp();
         init();
         CATALOG.open();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         CATALOG.close();
         SCHEMA_REGISTRY.tearDown();
     }
 
-    @After
+    @AfterEach
     public void cleanup() throws Exception {
         if (CATALOG.tableExists(path1)) {
             CATALOG.dropTable(path1, true);
@@ -138,68 +132,72 @@ public class PravegaCatalogITCase {
 
         final Catalog actualCatalog = FactoryUtil.createCatalog(TEST_CATALOG_NAME, options, null, Thread.currentThread().getContextClassLoader());
 
-        assertTrue(actualCatalog instanceof PravegaCatalog);
-        assertEquals(((PravegaCatalog) actualCatalog).getName(), CATALOG.getName());
-        assertEquals(((PravegaCatalog) actualCatalog).getDefaultDatabase(), CATALOG.getDefaultDatabase());
-        assertEquals(Whitebox.getInternalState(actualCatalog, "properties"),
-                Whitebox.getInternalState(CATALOG, "properties"));
+        assertThat(actualCatalog instanceof PravegaCatalog).isTrue();
+        assertThat(((PravegaCatalog) actualCatalog).getName()).isEqualTo(CATALOG.getName());
+        assertThat(((PravegaCatalog) actualCatalog).getDefaultDatabase()).isEqualTo(CATALOG.getDefaultDatabase());
+        assertThat(Whitebox.getInternalState(actualCatalog, "properties"))
+                .isEqualTo(Whitebox.getInternalState(CATALOG, "properties"));
     }
 
     @Test
     public void testCreateDb() throws Exception {
-        assertFalse(CATALOG.databaseExists(db1));
+        assertThat(CATALOG.databaseExists(db1)).isFalse();
         CATALOG.createDatabase(db1, catalogDb, false);
 
-        assertTrue(CATALOG.databaseExists(db1));
+        assertThat(CATALOG.databaseExists(db1)).isTrue();
         CatalogTestUtil.checkEquals(catalogDb, CATALOG.getDatabase(db1));
     }
 
-    @Test(expected = DatabaseAlreadyExistException.class)
+    @Test
     public void testCreateDbAlreadyExist() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.createDatabase(db1, catalogDb, false);
+        assertThatThrownBy(() -> CATALOG.createDatabase(db1, catalogDb, false))
+                .isInstanceOf(DatabaseAlreadyExistException.class);
     }
 
     @Test
     public void testCreateDbAlreadyExistIgnore() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
         List<String> dbs = CATALOG.listDatabases();
-        assertEquals(2, dbs.size());
+        assertThat(dbs.size()).isEqualTo(2);
         CATALOG.createDatabase(db1, catalogDb, true);
         dbs = CATALOG.listDatabases();
-        assertEquals(2, dbs.size());
+        assertThat(dbs.size()).isEqualTo(2);
     }
 
-    @Test(expected = DatabaseNotExistException.class)
+    @Test
     public void testGetDbNotExist() throws Exception {
-        CATALOG.getDatabase("nonexistent");
+        assertThatThrownBy(() -> CATALOG.getDatabase("nonexistent"))
+                .isInstanceOf(DatabaseNotExistException.class);
     }
 
     @Test
     public void testDropDb() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        assertTrue(CATALOG.databaseExists(db1));
+        assertThat(CATALOG.databaseExists(db1)).isTrue();
         CATALOG.dropDatabase(db1, false, true);
-        assertFalse(CATALOG.databaseExists(db1));
+        assertThat(CATALOG.databaseExists(db1)).isFalse();
     }
 
-    @Test(expected = DatabaseNotExistException.class)
+    @Test
     public void testDropDbNotExist() throws Exception {
-        CATALOG.dropDatabase(db1, false, false);
+        assertThatThrownBy(() -> CATALOG.dropDatabase(db1, false, false))
+                .isInstanceOf(DatabaseNotExistException.class);
     }
 
-    @Test(expected = DatabaseNotEmptyException.class)
+    @Test
     public void testDropDbNotEmpty() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
         CATALOG.createTable(path1, CATALOG_TABLE, false);
-        CATALOG.dropDatabase(db1, true, false);
+        assertThatThrownBy(() -> CATALOG.dropDatabase(db1, true, false))
+                .isInstanceOf(DatabaseNotEmptyException.class);
     }
 
     @Test
     public void testDbExists() throws Exception {
-        assertFalse(CATALOG.databaseExists("nonexistent"));
+        assertThat(CATALOG.databaseExists("nonexistent")).isFalse();
         CATALOG.createDatabase(db1, catalogDb, false);
-        assertTrue(CATALOG.databaseExists(db1));
+        assertThat(CATALOG.databaseExists(db1)).isTrue();
     }
 
     // ------ tables ------
@@ -210,23 +208,25 @@ public class PravegaCatalogITCase {
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
         CatalogTable actual = (CatalogTable) CATALOG.getTable(path1);
-        Assert.assertEquals(CATALOG_TABLE.getClass(), actual.getClass());
-        Assert.assertEquals(CATALOG_TABLE.getSchema(), actual.getSchema());
-        Assert.assertEquals(CATALOG_TABLE.getOptions(), actual.getOptions());
+        assertThat(actual.getClass()).isEqualTo(CATALOG_TABLE.getClass());
+        assertThat(actual.getSchema()).isEqualTo(CATALOG_TABLE.getSchema());
+        assertThat(actual.getOptions()).isEqualTo(CATALOG_TABLE.getOptions());
     }
 
-    @Test(expected = DatabaseNotExistException.class)
+    @Test
     public void testCreateTableDbNotExist() throws Exception {
-        assertFalse(CATALOG.databaseExists(db1));
-        CATALOG.createTable(path1, CATALOG_TABLE, false);
+        assertThat(CATALOG.databaseExists(db1)).isFalse();
+        assertThatThrownBy(() -> CATALOG.createTable(path1, CATALOG_TABLE, false))
+                .isInstanceOf(DatabaseNotExistException.class);
     }
 
-    @Test(expected = TableAlreadyExistException.class)
+    @Test
     public void testCreateTableAlreadyExist() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
-        CATALOG.createTable(path1, CATALOG_TABLE, false);
+        assertThatThrownBy(() -> CATALOG.createTable(path1, CATALOG_TABLE, false))
+                .isInstanceOf(TableAlreadyExistException.class);
     }
 
     @Test
@@ -237,15 +237,17 @@ public class PravegaCatalogITCase {
         CATALOG.createTable(path1, CATALOG_TABLE, true);
     }
 
-    @Test(expected = TableNotExistException.class)
+    @Test
     public void testGetTableNotExist() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        CATALOG.getTable(path1);
+        assertThatThrownBy(() -> CATALOG.getTable(path1))
+                .isInstanceOf(TableNotExistException.class);
     }
 
-    @Test(expected = TableNotExistException.class)
+    @Test
     public void testGetTableDbNotExist() throws Exception {
-        CATALOG.getTable(path1);
+        assertThatThrownBy(() -> CATALOG.getTable(path1))
+                .isInstanceOf(TableNotExistException.class);
     }
 
     @Test
@@ -253,16 +255,17 @@ public class PravegaCatalogITCase {
         CATALOG.createDatabase(db1, catalogDb, false);
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
-        assertTrue(CATALOG.tableExists(path1));
+        assertThat(CATALOG.tableExists(path1)).isTrue();
 
         CATALOG.dropTable(path1, false);
 
-        assertFalse(CATALOG.tableExists(path1));
+        assertThat(CATALOG.tableExists(path1)).isFalse();
     }
 
-    @Test(expected = TableNotExistException.class)
+    @Test
     public void testDropTableNotExist() throws Exception {
-        CATALOG.dropTable(path1, false);
+        assertThatThrownBy(() -> CATALOG.dropTable(path1, false))
+                .isInstanceOf(TableNotExistException.class);
     }
 
     @Test
@@ -278,16 +281,16 @@ public class PravegaCatalogITCase {
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         CATALOG.createTable(path2, CATALOG_TABLE, false);
 
-        assertEquals(2, CATALOG.listTables(db1).size());
+        assertThat(CATALOG.listTables(db1).size()).isEqualTo(2);
     }
 
     @Test
     public void testTableExists() throws Exception {
         CATALOG.createDatabase(db1, catalogDb, false);
-        assertFalse(CATALOG.tableExists(path1));
+        assertThat(CATALOG.tableExists(path1)).isFalse();
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
-        assertTrue(CATALOG.tableExists(path1));
+        assertThat(CATALOG.tableExists(path1)).isTrue();
     }
 
     // ------ utils ------

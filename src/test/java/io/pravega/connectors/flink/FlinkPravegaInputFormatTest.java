@@ -26,12 +26,13 @@ import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.io.DefaultInputSplitAssigner;
 import org.apache.flink.api.common.io.InputFormat;
 import org.apache.flink.api.common.serialization.DeserializationSchema;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.Iterator;
 
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -78,27 +79,31 @@ public class FlinkPravegaInputFormatTest {
     /**
      * Testing the builder for missing configurations.
      */
-    @Test (expected = IllegalStateException.class)
+    @Test
     public void testBuilderForMissingDeSerializationSchema() {
         doReturn(clientConfig).when(pravegaConfig).getClientConfig();
         doReturn(stream).when(pravegaConfig).resolve(anyString());
-        FlinkPravegaInputFormat.<String>builder()
-                .withPravegaConfig(pravegaConfig)
-                .forStream(stream)
-                .build();
+        assertThatThrownBy(
+                () -> FlinkPravegaInputFormat.<String>builder()
+                        .withPravegaConfig(pravegaConfig)
+                        .forStream(stream)
+                        .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     /**
      * Testing the builder for missing configurations.
      */
-    @Test (expected = IllegalStateException.class)
+    @Test
     public void testBuilderForMissingStream() {
         doReturn(clientConfig).when(pravegaConfig).getClientConfig();
         doReturn(stream).when(pravegaConfig).resolve(anyString());
-        FlinkPravegaInputFormat.<String>builder()
-                .withDeserializationSchema(deserializationSchema)
-                .withPravegaConfig(pravegaConfig)
-                .build();
+        assertThatThrownBy(
+                () -> FlinkPravegaInputFormat.<String>builder()
+                        .withDeserializationSchema(deserializationSchema)
+                        .withPravegaConfig(pravegaConfig)
+                        .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     /**
@@ -113,7 +118,7 @@ public class FlinkPravegaInputFormatTest {
                     .forStream("stream")
                     .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing default scope"
         }
@@ -125,7 +130,7 @@ public class FlinkPravegaInputFormatTest {
                     .forStream("stream")
                     .withDeserializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing Schema Registry URI"
         }

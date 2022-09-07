@@ -32,14 +32,14 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.eventtime.WatermarkStrategy;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.concurrent.TimeUnit;
 
+@Timeout(value = 120, unit = TimeUnit.MINUTES)
 public class FlinkPravegaSourceITCase {
 
     // Number of events to produce into the test stream.
@@ -47,15 +47,12 @@ public class FlinkPravegaSourceITCase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }

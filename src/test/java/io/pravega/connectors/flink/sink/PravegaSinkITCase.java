@@ -30,12 +30,10 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -44,9 +42,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
+@Timeout(value = 120, unit = TimeUnit.MINUTES)
 public class PravegaSinkITCase extends AbstractTestBase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
@@ -57,15 +56,12 @@ public class PravegaSinkITCase extends AbstractTestBase {
     // The maximum time we wait for the checker.
     private static final int WAIT_SECONDS = 30;
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -243,7 +239,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
             try {
                 env.execute();
             } catch (Exception e) {
-                Assert.fail("Error while writing to Pravega");
+                fail("Error while writing to Pravega");
             } finally {
                 latch.countDown();
             }
@@ -263,7 +259,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
                     if (event != null) {
                         if (!allowDuplicate) {
-                            assertFalse("found a duplicate", checker.get(event));
+                            assertThat(checker.get(event)).as("found a duplicate").isFalse();
                         }
                         checker.set(event);
                     }
@@ -271,7 +267,8 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
                 if (!allowDuplicate) {
                     // No more events should be there
-                    assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                    assertThat(reader.readNextEvent(1000).getEvent())
+                            .as("too many elements written").isNull();
                 }
 
                 // Notify that the checker is complete
@@ -285,7 +282,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         boolean wait = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
         if (!wait) {
-            Assert.fail("Read/Write operations taking more time to complete");
+            fail("Read/Write operations taking more time to complete");
         }
         executorService.shutdown();
         if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {

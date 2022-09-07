@@ -38,21 +38,22 @@ import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.TestLogger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-import static org.junit.Assert.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for {@link FlinkPravegaReader} focused on savepoint integration.
  */
+@Timeout(value = 120)
 public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     // Number of events to produce into the test stream.
@@ -73,20 +74,16 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
                     .setNumSlotsPerTaskManager(PARALLELISM)
                     .build());
 
-    //Ensure each test completes within 120 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    @TempDir
+    private Path tmpFolder;
 
-    @Rule
-    public final TemporaryFolder tmpFolder = new TemporaryFolder();
-
-    @BeforeClass
+    @BeforeAll
     public static void setup() throws Exception {
         PRAVEGA.startUp();
         MINI_CLUSTER.start();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDown() {
         MINI_CLUSTER.closeAsync();
         PRAVEGA.tearDown();
@@ -148,12 +145,12 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             for (int attempt = 1; savepointPath == null && attempt <= 5; attempt++) {
                 savepointPath = MINI_CLUSTER.triggerSavepoint(
                         program1.getJobID(),
-                        tmpFolder.newFolder().getAbsolutePath(),
+                        Files.createTempDirectory(tmpFolder.toString()).toString(),
                         false,
                         SavepointFormatType.CANONICAL).get();
             }
 
-            assertNotNull("Failed to trigger a savepoint", savepointPath);
+            assertThat(savepointPath).as("Failed to trigger a savepoint").isNotNull();
 
             // now cancel the job and relaunch a new one
             MINI_CLUSTER.cancelJob(program1.getJobID());
@@ -203,7 +200,8 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
         // checkpoint to files (but aggregate state below 1 MB) and don't to any async checkpoints
         env.getCheckpointConfig().setCheckpointStorage(
-                new FileSystemCheckpointStorage(tmpFolder.newFolder().toURI(), 1024 * 1024));
+                new FileSystemCheckpointStorage(
+                        Files.createTempDirectory(tmpFolder.toString()).toFile().toURI(), 1024 * 1024));
 
         // the Pravega reader
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()

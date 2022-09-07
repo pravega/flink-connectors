@@ -19,16 +19,31 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntimeOperator;
 import org.apache.flink.connector.testframe.TestResource;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 /**
  * A test environment for supporting running a Pravega standalone instance before executing tests.
  */
-public class PravegaTestEnvironment implements TestResource {
+public class PravegaTestEnvironment implements BeforeAllCallback, AfterAllCallback, TestResource {
 
     private final PravegaRuntime runtime;
 
     public PravegaTestEnvironment(PravegaRuntime runtime) {
         this.runtime = runtime;
+    }
+
+    /** JUnit 5 Extension setup method. */
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+        runtime.startUp();
+    }
+
+    /** JUnit 5 Extension shutdown method. */
+    @Override
+    public void afterAll(ExtensionContext context) throws Exception {
+        runtime.tearDown();
     }
 
     /** Start up the test resource. */

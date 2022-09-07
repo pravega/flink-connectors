@@ -148,6 +148,8 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
     testImplementation group: 'org.testcontainers', name: 'testcontainers', version: testcontainersVersion
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: junit5Version
+    testImplementation group: 'org.assertj', name: 'assertj-core', version: assertjVersion
 }
 
 javadoc {
@@ -171,4 +173,5 @@ def getProjectVersion() {
 // for e.g., to use standalone Pravega for running the system test "./gradlew clean build -Dpravega.uri=tcp://localhost:9090"
 test {
     systemProperties = System.properties
+    useJUnitPlatform()
 }

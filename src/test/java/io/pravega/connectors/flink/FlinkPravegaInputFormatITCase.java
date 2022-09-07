@@ -29,31 +29,28 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 120)
 public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -124,10 +121,10 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
             );
 
             // verify that all events were read
-            Assert.assertEquals(numElements1 + numElements2, integers.collect().size());
+            assertThat(integers.collect().size()).isEqualTo(numElements1 + numElements2);
 
             // this verifies that the input format allows multiple passes
-            Assert.assertEquals(numElements1 + numElements2, integers.collect().size());
+            assertThat(integers.collect().size()).isEqualTo(numElements1 + numElements2);
         }
     }
 
@@ -173,8 +170,8 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
             ).map(new FailOnceMapper(numElements / 2)).collect();
 
             // verify that the job did fail, and all events were still read
-            Assert.assertTrue(FailOnceMapper.hasFailed());
-            Assert.assertEquals(numElements, integers.size());
+            assertThat(FailOnceMapper.hasFailed()).isTrue();
+            assertThat(integers.size()).isEqualTo(numElements);
 
             FailOnceMapper.reset();
         }

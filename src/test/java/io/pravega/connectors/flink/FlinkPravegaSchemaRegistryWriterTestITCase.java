@@ -38,16 +38,16 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.source.SourceFunction;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 180)
 public class FlinkPravegaSchemaRegistryWriterTestITCase {
 
     private static class MyTest {
@@ -90,16 +90,12 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
     private static final User AVRO_SPEC_EVENT = User.newBuilder().setName("test").build();
     private static final MyTest JSON_EVENT = new MyTest("test");
 
-    //Ensure each test completes within 180 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupServices() throws Exception {
         SCHEMA_REGISTRY.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownServices() throws Exception {
         SCHEMA_REGISTRY.tearDown();
     }
@@ -141,7 +137,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
         final EventRead<GenericRecord> eventRead = reader.readNextEvent(1000);
         final GenericRecord event = eventRead.getEvent();
 
-        Assert.assertEquals(event, AVRO_GEN_EVENT);
+        assertThat(event).isEqualTo(AVRO_GEN_EVENT);
     }
 
     @Test
@@ -181,7 +177,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
         final EventRead<User> eventRead = reader.readNextEvent(1000);
         final User event = eventRead.getEvent();
 
-        Assert.assertEquals(event, AVRO_SPEC_EVENT);
+        assertThat(event).isEqualTo(AVRO_SPEC_EVENT);
     }
 
     @Test
@@ -221,7 +217,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
         final EventRead<MyTest> eventRead = reader.readNextEvent(1000);
         final MyTest event = eventRead.getEvent();
 
-        Assert.assertEquals(event, JSON_EVENT);
+        assertThat(event).isEqualTo(JSON_EVENT);
     }
 
     @Test
@@ -251,7 +247,7 @@ public class FlinkPravegaSchemaRegistryWriterTestITCase {
         final EventRead<GenericRecord> eventRead = reader.readNextEvent(1000);
         final GenericRecord event = eventRead.getEvent();
 
-        Assert.assertEquals(event, AVRO_GEN_EVENT);
+        assertThat(event).isEqualTo(AVRO_GEN_EVENT);
     }
 
     // ================================================================================

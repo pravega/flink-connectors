@@ -33,12 +33,10 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.datastream.DataStreamSource;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -47,12 +45,13 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Integration tests for {@link FlinkPravegaWriter}.
  */
+@Timeout(value = 120)
 public class FlinkPravegaWriterITCase {
 
     // Number of events to generate for each of the tests.
@@ -63,16 +62,12 @@ public class FlinkPravegaWriterITCase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    // Ensure each test completes within 120 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -95,7 +90,7 @@ public class FlinkPravegaWriterITCase {
                 .build();
 
         FlinkPravegaUtils.writeToPravegaInEventTimeOrder(dataStream, pravegaSink, 1);
-        Assert.assertNotNull(execEnv.getExecutionPlan());
+        assertThat(execEnv.getExecutionPlan()).isNotNull();
     }
 
     /**
@@ -280,7 +275,7 @@ public class FlinkPravegaWriterITCase {
             try {
                 env.execute();
             } catch (Exception e) {
-                Assert.fail("Error while writing to Pravega");
+                fail("Error while writing to Pravega");
             } finally {
                 latch.countDown();
             }
@@ -300,7 +295,7 @@ public class FlinkPravegaWriterITCase {
 
                     if (event != null) {
                         if (!allowDuplicate) {
-                            assertFalse("found a duplicate", checker.get(event));
+                            assertThat(checker.get(event)).as("found a duplicate").isFalse();
                         }
                         checker.set(event);
                     }
@@ -308,7 +303,8 @@ public class FlinkPravegaWriterITCase {
 
                 if (!allowDuplicate) {
                     // No more events should be there
-                    assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                    assertThat(reader.readNextEvent(1000).getEvent())
+                            .as("too many elements written").isNull();
                 }
 
                 // Notify that the checker is complete
@@ -322,7 +318,7 @@ public class FlinkPravegaWriterITCase {
 
         boolean wait = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
         if (!wait) {
-            Assert.fail("Read/Write operations taking more time to complete");
+            fail("Read/Write operations taking more time to complete");
         }
         executorService.shutdown();
         if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {
@@ -345,7 +341,7 @@ public class FlinkPravegaWriterITCase {
         TimeWindow timeWindow = consumer.getCurrentTimeWindow(PRAVEGA.operator().getStream(streamName));
 
         // Assert the TimeWindow proceeds
-        Assert.assertNotNull(timeWindow.getUpperTimeBound());
-        Assert.assertTrue(timeWindow.getUpperTimeBound() > 0);
+        assertThat(timeWindow.getUpperTimeBound()).isNotNull();
+        assertThat(timeWindow.getUpperTimeBound() > 0).isTrue();
     }
 }

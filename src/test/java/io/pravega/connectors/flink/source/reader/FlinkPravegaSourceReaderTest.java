@@ -35,16 +35,17 @@ import org.apache.flink.connector.testutils.source.reader.SourceReaderTestBase;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderContext;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderOutput;
 import org.apache.flink.core.io.InputStatus;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Unit tests for {@link PravegaSourceReader}. */
 public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSplit> {
@@ -57,12 +58,12 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
 
     private String readerGroupName;
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -90,7 +91,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
             ReaderOutput<Integer> output = new TestingReaderOutput<>();
 
             InputStatus status = reader.pollNext(output);
-            Assert.assertEquals(status, InputStatus.NOTHING_AVAILABLE);
+            assertThat(status).isEqualTo(InputStatus.NOTHING_AVAILABLE);
         }
     }
 

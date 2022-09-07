@@ -46,9 +46,9 @@ import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.types.Row;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -84,8 +84,7 @@ import static org.apache.flink.table.api.DataTypes.TIME;
 import static org.apache.flink.table.api.DataTypes.TIMESTAMP;
 import static org.apache.flink.table.api.DataTypes.TIMESTAMP_WITH_LOCAL_TIME_ZONE;
 import static org.apache.flink.table.api.DataTypes.TINYINT;
-import static org.junit.Assert.assertArrayEquals;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Intergration Test for Pravega Registry serialization and deserialization schema. */
 @SuppressWarnings("checkstyle:StaticVariableName")
@@ -118,12 +117,12 @@ public class PravegaRegistrySeDeITCase {
     private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
             new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         SCHEMA_REGISTRY.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         SCHEMA_REGISTRY.tearDown();
     }
@@ -222,7 +221,7 @@ public class PravegaRegistrySeDeITCase {
         RowData rowData = deserializationSchema.deserialize(input);
         byte[] output = serializationSchema.serialize(rowData);
 
-        assertArrayEquals(input, output);
+        assertThat(output).isEqualTo(input);
 
         avroCatalog.close();
     }
@@ -347,7 +346,7 @@ public class PravegaRegistrySeDeITCase {
 
         RowData rowData = deserializationSchema.deserialize(serializedJson);
         Row actual = convertToExternal(rowData, jsonDataType);
-        assertEquals(expected, actual);
+        assertThat(actual).isEqualTo(expected);
 
         // test serialization
         PravegaRegistryRowDataSerializationSchema serializationSchema =
@@ -359,7 +358,7 @@ public class PravegaRegistrySeDeITCase {
         serializationSchema.open(null);
 
         byte[] actualBytes = serializationSchema.serialize(rowData);
-        assertEquals(new String(serializedJson), new String(actualBytes));
+        assertThat(new String(actualBytes)).isEqualTo(new String(serializedJson));
 
         jsonCatalog.close();
     }
