@@ -45,7 +45,6 @@ import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -145,7 +144,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             for (int attempt = 1; savepointPath == null && attempt <= 5; attempt++) {
                 savepointPath = MINI_CLUSTER.triggerSavepoint(
                         program1.getJobID(),
-                        Files.createTempDirectory(tmpFolder.toString()).toString(),
+                        tmpFolder.toFile().getAbsolutePath(),
                         false,
                         SavepointFormatType.CANONICAL).get();
             }
@@ -201,7 +200,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
         // checkpoint to files (but aggregate state below 1 MB) and don't to any async checkpoints
         env.getCheckpointConfig().setCheckpointStorage(
                 new FileSystemCheckpointStorage(
-                        Files.createTempDirectory(tmpFolder.toString()).toFile().toURI(), 1024 * 1024));
+                       tmpFolder.toFile().toURI(), 1024 * 1024));
 
         // the Pravega reader
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
