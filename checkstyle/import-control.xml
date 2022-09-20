@@ -16,6 +16,7 @@
     <allow pkg="io.pravega"/>
     <allow pkg="org.apache"/>
     <allow pkg="edu.umd.cs.findbugs"/>
+    <allow pkg="org.assertj"/>
 
     <!-- test dependencies -->
     <allow pkg="org.mockito"/>

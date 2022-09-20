@@ -38,18 +38,17 @@ import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Test case that validates the following.
@@ -60,6 +59,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * 6. Flink restart strategy should kick in and the reader hook should reinitialize the state of the readers to beginning position
  * 7. Validate and make sure that we are not missing any events.
  */
+@Timeout(value = 180)
 public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
 
     // Number of events to produce into the test stream.
@@ -67,15 +67,12 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -132,7 +129,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
             } catch (Exception e) {
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
                     log.error("testReaderState failed with exception", e);
-                    Assert.fail();
+                    fail(null);
                 }
             }
         }

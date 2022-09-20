@@ -42,14 +42,13 @@ import org.apache.flink.table.runtime.connector.source.ScanRuntimeProviderContex
 import org.apache.flink.table.runtime.typeutils.InternalTypeInfo;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.util.TestLogger;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Tests for the {@link PravegaRegistryFormatFactory}. */
 public class PravegaRegistryFormatFactoryTest extends TestLogger {
@@ -97,7 +96,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
         final Map<String, String> options = getAllOptions();
 
         final DynamicTableSource actualSource = createTableSource(options);
-        assertTrue(actualSource instanceof TestDynamicTableFactory.DynamicTableSourceMock);
+        assertThat(actualSource instanceof TestDynamicTableFactory.DynamicTableSourceMock).isTrue();
         TestDynamicTableFactory.DynamicTableSourceMock sourceMock =
                 (TestDynamicTableFactory.DynamicTableSourceMock) actualSource;
 
@@ -105,7 +104,7 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                 sourceMock.valueFormat.createRuntimeDecoder(
                         ScanRuntimeProviderContext.INSTANCE, RESOLVED_SCHEMA.toPhysicalRowDataType());
 
-        assertEquals(expectedDeser, actualDeser);
+        assertThat(actualDeser).isEqualTo(expectedDeser);
 
         final PravegaRegistryRowDataSerializationSchema expectedSer =
                 new PravegaRegistryRowDataSerializationSchema(
@@ -119,14 +118,14 @@ public class PravegaRegistryFormatFactoryTest extends TestLogger {
                         ENCODE_DECIMAL_AS_PLAIN_NUMBER);
 
         final DynamicTableSink actualSink = createTableSink(options);
-        assertTrue(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock);
+        assertThat(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock).isTrue();
         TestDynamicTableFactory.DynamicTableSinkMock sinkMock =
                 (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
 
         SerializationSchema<RowData> actualSer =
                 sinkMock.valueFormat.createRuntimeEncoder(null, RESOLVED_SCHEMA.toPhysicalRowDataType());
 
-        assertEquals(expectedSer, actualSer);
+        assertThat(actualSer).isEqualTo(expectedSer);
     }
 
     // ------------------------------------------------------------------------

@@ -59,9 +59,7 @@ import org.apache.flink.table.runtime.connector.source.ScanRuntimeProviderContex
 import org.apache.flink.table.types.DataType;
 import org.apache.flink.table.utils.TableSchemaUtils;
 import org.apache.flink.util.TestLogger;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.net.URI;
@@ -72,9 +70,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import static org.apache.flink.core.testutils.FlinkMatchers.containsCause;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.apache.flink.core.testutils.FlinkAssertions.anyCauseMatches;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
     private static final String SCOPE = "scope";
@@ -143,9 +141,6 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
             Collections.emptyList(),
             null);
 
-    @Rule
-    public ExpectedException thrown = ExpectedException.none();
-
     @Test
     public void testStreamingTableSource() {
         // prepare parameters for Pravega table source
@@ -184,7 +179,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         // expect the source to be constructed successfully
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertThat(actualPravegaSource).isEqualTo(expectedPravegaSource);
     }
 
     @Test
@@ -229,7 +224,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         // expect the source to be constructed successfully
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertThat(actualPravegaSource).isEqualTo(expectedPravegaSource);
     }
 
     @Test
@@ -272,7 +267,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertThat(actualPravegaSource).isEqualTo(expectedPravegaSource);
     }
 
     @Test
@@ -297,10 +292,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         ScanTableSource.ScanRuntimeProvider provider =
                 source.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
-        assertTrue(provider instanceof SourceFunctionProvider);
+        assertThat(provider instanceof SourceFunctionProvider).isTrue();
         final SourceFunctionProvider sourceFunctionProvider = (SourceFunctionProvider) provider;
         final SourceFunction<RowData> sourceFunction = sourceFunctionProvider.createSourceFunction();
-        assertTrue(sourceFunction instanceof FlinkPravegaReader);
+        assertThat(sourceFunction instanceof FlinkPravegaReader).isTrue();
     }
 
     @Test
@@ -340,7 +335,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSource actualPravegaSource = (FlinkPravegaDynamicTableSource) actualSource;
-        assertEquals(actualPravegaSource, expectedPravegaSource);
+        assertThat(actualPravegaSource).isEqualTo(expectedPravegaSource);
     }
 
     @Test
@@ -366,10 +361,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         ScanTableSource.ScanRuntimeProvider provider =
                 source.getScanRuntimeProvider(ScanRuntimeProviderContext.INSTANCE);
-        assertTrue(provider instanceof InputFormatProvider);
+        assertThat(provider instanceof InputFormatProvider).isTrue();
         final InputFormatProvider inputFormatProvider = (InputFormatProvider) provider;
         final InputFormat<RowData, ?> sourceFunction = inputFormatProvider.createInputFormat();
-        assertTrue(sourceFunction instanceof FlinkPravegaInputFormat);
+        assertThat(sourceFunction instanceof FlinkPravegaInputFormat).isTrue();
     }
 
     @Test
@@ -403,7 +398,7 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false,
                 NAME
         );
-        assertEquals(expectedSink, actualSink);
+        assertThat(actualSink).isEqualTo(expectedSink);
     }
 
     @Test
@@ -440,10 +435,10 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
 
         DynamicTableSink.SinkRuntimeProvider provider =
                 sink.getSinkRuntimeProvider(new SinkRuntimeProviderContext(false));
-        assertTrue(provider instanceof SinkFunctionProvider);
+        assertThat(provider instanceof SinkFunctionProvider).isTrue();
         final SinkFunctionProvider sinkFunctionProvider = (SinkFunctionProvider) provider;
         final SinkFunction<RowData> sinkFunction = sinkFunctionProvider.createSinkFunction();
-        assertTrue(sinkFunction instanceof FlinkPravegaWriter);
+        assertThat(sinkFunction instanceof FlinkPravegaWriter).isTrue();
     }
 
     // --------------------------------------------------------------------------------------------
@@ -464,15 +459,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'scan.execution.type'. "
-                + "Supported values are ['streaming', 'batch'].")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSource(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "Unsupported value 'abc' for 'scan.execution.type'. "
+                                + "Supported values are ['streaming', 'batch']."));
     }
 
     @Test
@@ -490,15 +488,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("'scan.reader-group.max-outstanding-checkpoint-request'" +
-                " requires a positive integer, received -1")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSource(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "'scan.reader-group.max-outstanding-checkpoint-request'" +
+                                " requires a positive integer, received -1"));
     }
 
     @Test
@@ -516,14 +517,17 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("'scan.streams' is required but missing")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSource(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "'scan.streams' is required but missing"));
     }
 
     @Test
@@ -542,15 +546,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("Start stream cuts are not matching the number of streams," +
-                " having 1, expected 2")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSource(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "Start stream cuts are not matching the number of streams," +
+                                " having 1, expected 2"));
     }
 
     @Test
@@ -569,15 +576,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSourceCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SOURCE_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("End stream cuts are not matching the number of streams," +
-                " having 1, expected 2")));
-        FactoryUtil.createTableSource(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSource(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "End stream cuts are not matching the number of streams," +
+                                " having 1, expected 2"));
     }
 
     @Test
@@ -595,15 +605,18 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SINK_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("Unsupported value 'abc' for 'sink.semantic'. "
-                + "Supported values are ['at-least-once', 'exactly-once', 'best-effort'].")));
-        FactoryUtil.createTableSink(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSink(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "Unsupported value 'abc' for 'sink.semantic'. "
+                                + "Supported values are ['at-least-once', 'exactly-once', 'best-effort']."));
     }
 
     @Test
@@ -621,14 +634,17 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
         CatalogTable catalogTable = createPravegaSinkCatalogTable(modifiedOptions);
         ResolvedCatalogTable resolvedCatalogTable = new ResolvedCatalogTable(catalogTable, SINK_SCHEMA);
 
-        thrown.expect(ValidationException.class);
-        thrown.expect(containsCause(new ValidationException("'sink.stream' is required but missing")));
-        FactoryUtil.createTableSink(null,
-                objectIdentifier,
-                resolvedCatalogTable,
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
+        assertThatThrownBy(
+                () -> FactoryUtil.createTableSink(null,
+                        objectIdentifier,
+                        resolvedCatalogTable,
+                        new Configuration(),
+                        Thread.currentThread().getContextClassLoader(),
+                        false))
+                .isInstanceOf(ValidationException.class)
+                .satisfies(anyCauseMatches(
+                        ValidationException.class,
+                        "'sink.stream' is required but missing"));
     }
 
     // --------------------------------------------------------------------------------------------

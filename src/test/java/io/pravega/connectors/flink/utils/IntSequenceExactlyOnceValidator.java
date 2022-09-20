@@ -18,13 +18,14 @@ package io.pravega.connectors.flink.utils;
 import org.apache.flink.api.java.tuple.Tuple2;
 import org.apache.flink.streaming.api.checkpoint.ListCheckpointed;
 import org.apache.flink.streaming.api.functions.sink.RichSinkFunction;
-import org.junit.Assert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.BitSet;
 import java.util.Collections;
 import java.util.List;
+
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * A sink function that validates that in a sequence of integers, each integer occurs
@@ -57,11 +58,11 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
     public void invoke(Integer value, Context context) throws Exception {
         numElementsSoFar++;
         if (numElementsSoFar > numElementsTotal) {
-            Assert.fail("Received more elements than expected");
+            fail("Received more elements than expected");
         }
 
         if (duplicateChecker.get(value)) {
-            Assert.fail("Received a duplicate: " + value);
+            fail("Received a duplicate: " + value);
         }
         duplicateChecker.set(value);
 
@@ -73,7 +74,7 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
     @Override
     public void close() throws Exception {
         if (numElementsSoFar < numElementsTotal) {
-            Assert.fail("Missing elements, only received " + numElementsSoFar);
+            fail("Missing elements, only received " + numElementsSoFar);
         }
     }
 
@@ -91,11 +92,11 @@ public class IntSequenceExactlyOnceValidator extends RichSinkFunction<Integer>
     @Override
     public void restoreState(List<Tuple2<Integer, BitSet>> state) throws Exception {
         if (state.isEmpty()) {
-            Assert.fail("Function was restored without state - no checkpoint completed before.");
+            fail("Function was restored without state - no checkpoint completed before.");
         }
 
         if (state.size() > 1) {
-            Assert.fail("Function was restored with multiple states. unexpected scale-in");
+            fail("Function was restored with multiple states. unexpected scale-in");
         }
 
         Tuple2<Integer, BitSet> s = state.get(0);

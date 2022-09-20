@@ -36,18 +36,17 @@ import org.apache.flink.streaming.api.windowing.time.Time;
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow;
 import org.apache.flink.test.util.AbstractTestBase;
 import org.apache.flink.util.Collector;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-import java.util.concurrent.TimeUnit;
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Integration tests for {@link FlinkPravegaReader}.
  */
+@Timeout(value = 180)
 public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     // Number of events to produce into the test stream.
@@ -55,16 +54,12 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    //Ensure each test completes within 180 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -154,7 +149,7 @@ public class FlinkPravegaReaderITCase extends AbstractTestBase {
                 }
 
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
-                    Assert.fail("Unexpected error occurred in the test. " + ExceptionUtils.getRootCauseMessage(e));
+                    fail("Unexpected error occurred in the test. " + ExceptionUtils.getRootCauseMessage(e));
                 }
             }
 

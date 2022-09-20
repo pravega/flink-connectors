@@ -31,14 +31,16 @@ import org.apache.flink.api.connector.source.ReaderInfo;
 import org.apache.flink.api.connector.source.SplitEnumeratorContext;
 import org.apache.flink.api.connector.source.mocks.MockSplitEnumeratorContext;
 import org.apache.flink.mock.Whitebox;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.util.Collections;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 
@@ -52,12 +54,12 @@ public class FlinkPravegaSplitEnumeratorTest {
 
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
         PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
         PRAVEGA.tearDown();
     }
@@ -80,19 +82,19 @@ public class FlinkPravegaSplitEnumeratorTest {
             context.registerReader(new ReaderInfo(READER1, "location 0"));
             enumerator.addReader(READER1);
 
-            Assert.assertEquals(context.getSplitsAssignmentSequence().size(), 2);
-            Assert.assertEquals(context.getSplitsAssignmentSequence().get(0).assignment().size(), 1);
-            Assert.assertEquals(context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).size(), 1);
-            Assert.assertEquals(
-                    context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getSubtaskId(), READER0);
-            Assert.assertEquals(
-                    context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getSubtaskId(), READER1);
-            Assert.assertEquals(
-                    context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getReaderGroupName(),
-                    readerGroupName);
-            Assert.assertEquals(
-                    context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getReaderGroupName(),
-                    readerGroupName);
+            assertThat(context.getSplitsAssignmentSequence().size()).isEqualTo(2);
+            assertThat(context.getSplitsAssignmentSequence().get(0).assignment().size()).isEqualTo(1);
+            assertThat(context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).size()).isEqualTo(1);
+            assertThat(context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getSubtaskId())
+                    .isEqualTo(READER0);
+            assertThat(context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getSubtaskId())
+                    .isEqualTo(READER1);
+            assertThat(
+                    context.getSplitsAssignmentSequence().get(0).assignment().get(READER0).get(0).getReaderGroupName())
+                    .isEqualTo(readerGroupName);
+            assertThat(
+                    context.getSplitsAssignmentSequence().get(1).assignment().get(READER1).get(0).getReaderGroupName())
+                    .isEqualTo(readerGroupName);
         }
     }
 
@@ -109,7 +111,7 @@ public class FlinkPravegaSplitEnumeratorTest {
         enumerator.start();
 
         final Checkpoint checkpoint = enumerator.snapshotState(0);
-        Assert.assertNotNull(checkpoint);
+        assertThat(checkpoint).isNotNull();
     }
 
     @Test
@@ -132,9 +134,9 @@ public class FlinkPravegaSplitEnumeratorTest {
 
             try {
                 enumerator.addSplitsBack(Collections.singletonList(split), READER0);
-                Assert.fail("Expected a RuntimeException to be thrown");
+                fail("Expected a RuntimeException to be thrown");
             } catch (RuntimeException e) {
-                Assert.assertEquals(e.getMessage(), "triggering global failure");
+                assertThat(e.getMessage()).isEqualTo("triggering global failure");
             }
         }
     }
@@ -152,16 +154,16 @@ public class FlinkPravegaSplitEnumeratorTest {
 
             ReaderGroupManager readerGroupManager =
                     (ReaderGroupManager) Whitebox.getInternalState(enumerator, "readerGroupManager");
-            Assert.assertNotNull(readerGroupManager);
+            assertThat(readerGroupManager).isNotNull();
             String scope = (String) Whitebox.getInternalState(readerGroupManager, "scope");
-            Assert.assertNotNull(scope);
-            Assert.assertEquals(scope, PRAVEGA.operator().getScope());
+            assertThat(scope).isNotNull();
+            assertThat(scope).isEqualTo(PRAVEGA.operator().getScope());
 
             ReaderGroup readerGroup =
                     (ReaderGroup) Whitebox.getInternalState(enumerator, "readerGroup");
-            Assert.assertNotNull(readerGroup);
-            Assert.assertEquals(readerGroup.getGroupName(), readerGroupName);
-            Assert.assertEquals(readerGroup.getScope(), PRAVEGA.operator().getScope());
+            assertThat(readerGroup).isNotNull();
+            assertThat(readerGroup.getGroupName()).isEqualTo(readerGroupName);
+            assertThat(readerGroup.getScope()).isEqualTo(PRAVEGA.operator().getScope());
         }
     }
 
@@ -175,7 +177,8 @@ public class FlinkPravegaSplitEnumeratorTest {
                 null,
                 null);
         enumerator.start();
-        Throwable thrown = Assert.assertThrows("close ReaderGroupManager failure", IOException.class, enumerator::close);
+        assertThatThrownBy(enumerator::close).isInstanceOf(IOException.class)
+                .hasMessageContaining("close ReaderGroupManager failure");
     }
 
     private PravegaSplitEnumerator createEnumerator(MockSplitEnumeratorContext<PravegaSplit> enumContext, String streamName,

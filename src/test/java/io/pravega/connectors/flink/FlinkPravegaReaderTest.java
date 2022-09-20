@@ -60,8 +60,7 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockDeserializationSchema;
 import org.apache.flink.streaming.util.TestHarnessUtil;
 import org.apache.flink.util.SerializedValue;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.stubbing.Answer;
 
 import java.io.IOException;
@@ -78,11 +77,8 @@ import static io.pravega.connectors.flink.FlinkPravegaReader.PRAVEGA_READER_METR
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_METRICS_GROUP;
 import static io.pravega.connectors.flink.FlinkPravegaReader.READER_GROUP_NAME_METRICS_GAUGE;
 import static io.pravega.connectors.flink.FlinkPravegaReader.UNREAD_BYTES_METRICS_GAUGE;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -127,8 +123,8 @@ public class FlinkPravegaReaderTest {
         TestableFlinkPravegaReader<Integer> reader = createReader();
         reader.initialize();
 
-        assertNotNull(reader.eventStreamClientFactory);
-        assertNotNull(reader.readerGroupManager);
+        assertThat(reader.eventStreamClientFactory).isNotNull();
+        assertThat(reader.readerGroupManager).isNotNull();
         verify(reader.readerGroupManager).createReaderGroup(GROUP_NAME, reader.readerGroupConfig);
     }
 
@@ -149,7 +145,7 @@ public class FlinkPravegaReaderTest {
                 createTestHarness(reader);
 
         testHarness.open();
-        Assert.assertTrue(schema.isOpenCalled());
+        assertThat(schema.isOpenCalled()).isTrue();
     }
 
     /**
@@ -267,16 +263,16 @@ public class FlinkPravegaReaderTest {
             // verify that the event stream was read until the end of stream
             verify(reader.eventStreamReader, times(2)).readNextEvent(anyLong());
             Queue<Object> actual = testHarness.getOutput();
-            assertEquals(actual.size(), 1);
+            assertThat(actual.size()).isEqualTo(1);
 
             // verify that the event contains the right value and EventPointer information
             @SuppressWarnings("unchecked")
             IntegerWithEventPointer output = ((StreamRecord<IntegerWithEventPointer>) actual.peek()).getValue();
-            assertEquals(output.getValue(), 1);
+            assertThat(output.getValue()).isEqualTo(1);
 
             EventPointer outputEventPointer = EventPointer.fromBytes(ByteBuffer.wrap(
                     output.getEventPointerBytes()));
-            assertEquals(outputEventPointer, evts.getEventPointer(1));
+            assertThat(outputEventPointer).isEqualTo(evts.getEventPointer(1));
         }
 
         verify(reader.readerGroupManager).close();
@@ -357,7 +353,7 @@ public class FlinkPravegaReaderTest {
                     .withDeserializationSchema(new PravegaDeserializationSchema<>(Integer.class,
                             new DeserializerFromSchemaRegistry<>(pravegaConfig, "stream", Integer.class)))
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing default scope"
         }
@@ -370,7 +366,7 @@ public class FlinkPravegaReaderTest {
                     .withDeserializationSchema(new PravegaDeserializationSchema<>(Integer.class,
                             new DeserializerFromSchemaRegistry<>(pravegaConfig, "stream", Integer.class)))
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing Schema Registry URI"
         }
@@ -381,7 +377,7 @@ public class FlinkPravegaReaderTest {
      */
     private void validateMetricGroup(String prefix, String metric, MetricGroup readerGroupMetricGroup) {
         String expectedValue = prefix.concat(".").concat(metric);
-        Assert.assertTrue(metric, expectedValue.equals(readerGroupMetricGroup.getMetricIdentifier(metric)));
+        assertThat(expectedValue.equals(readerGroupMetricGroup.getMetricIdentifier(metric))).as(metric).isTrue();
     }
 
     /**
@@ -405,7 +401,7 @@ public class FlinkPravegaReaderTest {
 
             // run the source, which should return upon cancellation
             testHarness.run();
-            assertFalse(reader.running);
+            assertThat(reader.running).isFalse();
         }
     }
 
@@ -501,17 +497,17 @@ public class FlinkPravegaReaderTest {
 
         FlinkPravegaReader<Integer> reader = builder.buildSourceFunction();
 
-        assertNotNull(reader.hookUid);
-        assertNotNull(reader.clientConfig);
-        assertEquals(-1L, reader.readerGroupConfig.getAutomaticCheckpointIntervalMillis());
-        assertEquals(MAX_OUTSTANDING_CHECKPOINT_REQUEST, reader.readerGroupConfig.getMaxOutstandingCheckpointRequest());
-        assertEquals(GROUP_REFRESH_TIME.toMilliseconds(), reader.readerGroupConfig.getGroupRefreshTimeMillis());
-        assertEquals(GROUP_NAME, reader.readerGroupName);
-        assertEquals(Collections.singletonMap(SAMPLE_STREAM, SAMPLE_CUT), reader.readerGroupConfig.getStartingStreamCuts());
-        assertEquals(DESERIALIZATION_SCHEMA, reader.deserializationSchema);
-        assertEquals(DESERIALIZATION_SCHEMA.getProducedType(), reader.getProducedType());
-        assertNotNull(reader.eventReadTimeout);
-        assertNotNull(reader.checkpointInitiateTimeout);
+        assertThat(reader.hookUid).isNotNull();
+        assertThat(reader.clientConfig).isNotNull();
+        assertThat(reader.readerGroupConfig.getAutomaticCheckpointIntervalMillis()).isEqualTo(-1L);
+        assertThat(reader.readerGroupConfig.getMaxOutstandingCheckpointRequest()).isEqualTo(MAX_OUTSTANDING_CHECKPOINT_REQUEST);
+        assertThat(reader.readerGroupConfig.getGroupRefreshTimeMillis()).isEqualTo(GROUP_REFRESH_TIME.toMilliseconds());
+        assertThat(reader.readerGroupName).isEqualTo(GROUP_NAME);
+        assertThat(reader.readerGroupConfig.getStartingStreamCuts()).isEqualTo(Collections.singletonMap(SAMPLE_STREAM, SAMPLE_CUT));
+        assertThat(reader.deserializationSchema).isEqualTo(DESERIALIZATION_SCHEMA);
+        assertThat(reader.getProducedType()).isEqualTo(DESERIALIZATION_SCHEMA.getProducedType());
+        assertThat(reader.eventReadTimeout).isNotNull();
+        assertThat(reader.checkpointInitiateTimeout).isNotNull();
     }
 
     @Test
@@ -526,7 +522,7 @@ public class FlinkPravegaReaderTest {
         FlinkPravegaReader<Integer> reader;
         try {
             builder.buildSourceFunction();
-            fail();
+            fail(null);
         } catch (IllegalStateException e) {
             // "missing reader group scope"
         }
@@ -534,12 +530,12 @@ public class FlinkPravegaReaderTest {
         // default scope
         config.withDefaultScope(SAMPLE_SCOPE);
         reader = builder.buildSourceFunction();
-        assertEquals(SAMPLE_SCOPE, reader.readerGroupScope);
+        assertThat(reader.readerGroupScope).isEqualTo(SAMPLE_SCOPE);
 
         // explicit scope
         builder.withReaderGroupScope("myscope");
         reader = builder.buildSourceFunction();
-        assertEquals("myscope", reader.readerGroupScope);
+        assertThat(reader.readerGroupScope).isEqualTo("myscope");
     }
 
     @Test
@@ -549,7 +545,7 @@ public class FlinkPravegaReaderTest {
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
         FlinkPravegaReader<Integer> reader = builder.buildSourceFunction();
 
-        Assert.assertTrue(AbstractStreamingReaderBuilder.isReaderGroupNameAutoGenerated(reader.readerGroupName));
+        assertThat(AbstractStreamingReaderBuilder.isReaderGroupNameAutoGenerated(reader.readerGroupName)).isTrue();
     }
 
     @Test
@@ -579,9 +575,9 @@ public class FlinkPravegaReaderTest {
                 .forStream(SAMPLE_STREAM, SAMPLE_CUT, StreamCut.UNBOUNDED);
         String uid4 = builder4.generateUid();
 
-        assertEquals(uid1, uid2);
-        assertNotEquals(uid1, uid3);
-        assertNotEquals(uid1, uid4);
+        assertThat(uid2).isEqualTo(uid1);
+        assertThat(uid3).isNotEqualTo(uid1);
+        assertThat(uid4).isNotEqualTo(uid1);
     }
 
     // endregion

@@ -23,8 +23,7 @@ import io.pravega.connectors.flink.utils.DirectExecutorService;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.flink.api.common.io.OutputFormat;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -32,9 +31,9 @@ import java.net.URI;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
@@ -73,37 +72,41 @@ public class FlinkPravegaOutputFormatTest {
                 .withPravegaConfig(pravegaConfig)
                 .forStream(stream)
                 .build();
-        assertEquals(stream.getScope(), outputFormat.getScope());
-        assertEquals(stream.getStreamName(), outputFormat.getStream());
-        assertEquals(serializationSchema, outputFormat.getSerializationSchema());
-        assertEquals(eventRouter, outputFormat.getEventRouter());
+        assertThat(outputFormat.getScope()).isEqualTo(stream.getScope());
+        assertThat(outputFormat.getStream()).isEqualTo(stream.getStreamName());
+        assertThat(outputFormat.getSerializationSchema()).isEqualTo(serializationSchema);
+        assertThat(outputFormat.getEventRouter()).isEqualTo(eventRouter);
     }
 
     /**
      * Testing the builder for right configurations.
      * Should fail since we don't pass {@link SerializationSchema}
      */
-    @Test(expected = NullPointerException.class)
+    @Test
     public void testBuilderForFailure1() {
         PravegaConfig pravegaConfig = mock(PravegaConfig.class);
-        FlinkPravegaOutputFormat.<String>builder()
-                .withEventRouter(eventRouter)
-                .withPravegaConfig(pravegaConfig)
-                .forStream(stream)
-                .build();
+        assertThatThrownBy(
+                () -> FlinkPravegaOutputFormat.<String>builder()
+                        .withEventRouter(eventRouter)
+                        .withPravegaConfig(pravegaConfig)
+                        .forStream(stream)
+                        .build())
+                .isInstanceOf(NullPointerException.class);
     }
 
     /**
      * Testing the builder for right configurations.
      * Should fail since we don't pass {@link Stream}
      */
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testBuilderForFailure2() {
-        FlinkPravegaOutputFormat.<String>builder()
-                .withEventRouter(eventRouter)
-                .withSerializationSchema(serializationSchema)
-                .withPravegaConfig(pravegaConfig)
-                .build();
+        assertThatThrownBy(
+                () -> FlinkPravegaOutputFormat.<String>builder()
+                        .withEventRouter(eventRouter)
+                        .withSerializationSchema(serializationSchema)
+                        .withPravegaConfig(pravegaConfig)
+                        .build())
+                .isInstanceOf(IllegalStateException.class);
     }
 
     /**
@@ -133,7 +136,7 @@ public class FlinkPravegaOutputFormatTest {
 
         // test writeRecord success
         spyFlinkPravegaOutputFormat.writeRecord("test-1");
-        assertEquals(1, spyFlinkPravegaOutputFormat.getPendingWritesCount().get());
+        assertThat(spyFlinkPravegaOutputFormat.getPendingWritesCount().get()).isEqualTo(1);
         writeFuture.complete(null);
 
         // test writeRecord induce failure
@@ -144,17 +147,17 @@ public class FlinkPravegaOutputFormatTest {
         try {
             spyFlinkPravegaOutputFormat.writeRecord("test-3");
         } catch (Exception e) {
-            Assert.assertTrue(e instanceof IOException);
-            assertTrue(spyFlinkPravegaOutputFormat.isErrorOccurred());
-            assertEquals("test simulated", e.getCause().getMessage());
-            assertEquals(0, spyFlinkPravegaOutputFormat.getPendingWritesCount().get());
+            assertThat(e instanceof IOException).isTrue();
+            assertThat(spyFlinkPravegaOutputFormat.isErrorOccurred()).isTrue();
+            assertThat(e.getCause().getMessage()).isEqualTo("test simulated");
+            assertThat(spyFlinkPravegaOutputFormat.getPendingWritesCount().get()).isEqualTo(0);
         }
 
         // test close error
         try {
             spyFlinkPravegaOutputFormat.close();
         } catch (Exception e) {
-            Assert.assertTrue(e instanceof IOException);
+            assertThat(e instanceof IOException).isTrue();
         }
 
         // test close
@@ -173,7 +176,7 @@ public class FlinkPravegaOutputFormatTest {
                     .forStream("stream")
                     .withSerializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing default scope"
         }
@@ -185,7 +188,7 @@ public class FlinkPravegaOutputFormatTest {
                     .forStream("stream")
                     .withSerializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing Schema Registry URI"
         }

@@ -23,9 +23,9 @@ import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.KeyedOneInputStreamOperatorTestHarness;
 import org.apache.flink.streaming.util.ProcessFunctionTestHarnesses;
 import org.apache.flink.streaming.util.TestHarnessUtil;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -40,7 +40,7 @@ public class EventTimeOrderingFunctionTest {
     private EventTimeOrderingFunction<Tuple2<String, Long>> function;
     private KeyedOneInputStreamOperatorTestHarness<String, Tuple2<String, Long>, Tuple2<String, Long>> testHarness;
 
-    @Before
+    @BeforeEach
     public void before() throws Exception {
         function = new EventTimeOrderingFunction<>(TypeInformation.of(new TypeHint<Tuple2<String, Long>>() {
         }));
@@ -48,7 +48,7 @@ public class EventTimeOrderingFunctionTest {
         testHarness.open();
     }
 
-    @After
+    @AfterEach
     public void after() throws Exception {
         testHarness.close();
         function.close();

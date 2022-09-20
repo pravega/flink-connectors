@@ -20,7 +20,7 @@ import io.pravega.client.stream.Stream;
 import io.pravega.shared.security.auth.Credentials;
 import io.pravega.shared.security.auth.DefaultCredentials;
 import org.apache.flink.api.java.utils.ParameterTool;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.net.URI;
 import java.util.Collections;
@@ -28,11 +28,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Unit tests for {@link PravegaConfig}.
@@ -48,27 +45,28 @@ public class PravegaConfigTest {
     public void testStreamResolve() {
         // test parsing logic
         PravegaConfig config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope1"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
-        assertEquals("scope1", config.getDefaultScope());
+        assertThat(config.getDefaultScope()).isEqualTo("scope1");
         Stream expectedStream = Stream.of("scope1/stream1");
-        assertEquals(expectedStream, config.resolve("stream1"));
-        assertEquals(expectedStream, config.resolve("scope1/stream1"));
-        assertNotEquals(expectedStream, config.resolve("scope2/stream1"));
+        assertThat(config.resolve("stream1")).isEqualTo(expectedStream);
+        assertThat(config.resolve("scope1/stream1")).isEqualTo(expectedStream);
+        assertThat(config.resolve("scope2/stream1")).isNotEqualTo(expectedStream);
 
         // test that no default scope is needed when using qualified stream names
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
-        assertNull(config.getDefaultScope());
-        assertEquals(expectedStream, config.resolve("scope1/stream1"));
+        assertThat(config.getDefaultScope()).isNull();
+        assertThat(config.resolve("scope1/stream1")).isEqualTo(expectedStream);
 
         // test an application-level default scope
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withDefaultScope(expectedStream.getScope());
-        assertEquals(expectedStream, config.resolve("stream1"));
+        assertThat(config.resolve("stream1")).isEqualTo(expectedStream);
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void testStreamResolveWithoutDefaultScope() {
         PravegaConfig config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
-        config.resolve("stream1");
+        assertThatThrownBy(() -> config.resolve("stream1"))
+                .isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -77,19 +75,19 @@ public class PravegaConfigTest {
 
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withDefaultScope("scope1");
-        assertEquals("scope1", config.getDefaultScope());
+        assertThat(config.getDefaultScope()).isEqualTo("scope1");
 
         config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withDefaultScope("scope1");
-        assertEquals("scope2", config.getDefaultScope());
+        assertThat(config.getDefaultScope()).isEqualTo("scope2");
 
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withScope("scope1");
-        assertEquals("scope1", config.getDefaultScope());
+        assertThat(config.getDefaultScope()).isEqualTo("scope1");
 
         config = new PravegaConfig(properties(PravegaConfig.SCOPE_PARAM, "scope2"), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
                 .withScope("scope1");
-        assertEquals("scope1", config.getDefaultScope());
+        assertThat(config.getDefaultScope()).isEqualTo("scope1");
     }
 
     @Test
@@ -98,10 +96,14 @@ public class PravegaConfigTest {
         Map<String, String> variables = variables(PravegaConfig.CONTROLLER_PARAM, "variable1");
         ParameterTool parameters = parameters(PravegaConfig.CONTROLLER_PARAM, "parameter1");
 
-        assertEquals(Optional.of("parameter1"), PravegaConfig.CONTROLLER_PARAM.resolve(parameters, properties, variables));
-        assertEquals(Optional.of("property1"), PravegaConfig.CONTROLLER_PARAM.resolve(null, properties, variables));
-        assertEquals(Optional.of("variable1"), PravegaConfig.CONTROLLER_PARAM.resolve(null, null, variables));
-        assertEquals(Optional.empty(), PravegaConfig.CONTROLLER_PARAM.resolve(null, null, null));
+        assertThat(PravegaConfig.CONTROLLER_PARAM.resolve(parameters, properties, variables))
+                .isEqualTo(Optional.of("parameter1"));
+        assertThat(PravegaConfig.CONTROLLER_PARAM.resolve(null, properties, variables))
+                .isEqualTo(Optional.of("property1"));
+        assertThat(PravegaConfig.CONTROLLER_PARAM.resolve(null, null, variables))
+                .isEqualTo(Optional.of("variable1"));
+        assertThat(PravegaConfig.CONTROLLER_PARAM.resolve(null, null, null))
+                .isEqualTo(Optional.empty());
     }
 
     @Test
@@ -109,8 +111,8 @@ public class PravegaConfigTest {
         // default controller URI
         PravegaConfig config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()));
         ClientConfig clientConfig = config.getClientConfig();
-        assertEquals(URI.create("tcp://localhost:9090"), clientConfig.getControllerURI());
-        assertTrue(clientConfig.isValidateHostName());
+        assertThat(clientConfig.getControllerURI()).isEqualTo(URI.create("tcp://localhost:9090"));
+        assertThat(clientConfig.isValidateHostName()).isTrue();
 
         // explicitly-configured controller URI
         config = new PravegaConfig(new Properties(), Collections.emptyMap(), ParameterTool.fromMap(Collections.emptyMap()))
@@ -119,9 +121,9 @@ public class PravegaConfigTest {
                 .withHostnameValidation(false);
 
         clientConfig = config.getClientConfig();
-        assertEquals(URI.create("tcp://localhost:9090"), clientConfig.getControllerURI());
-        assertEquals(TEST_CREDENTIALS, clientConfig.getCredentials());
-        assertFalse(clientConfig.isValidateHostName());
+        assertThat(clientConfig.getControllerURI()).isEqualTo(URI.create("tcp://localhost:9090"));
+        assertThat(clientConfig.getCredentials()).isEqualTo(TEST_CREDENTIALS);
+        assertThat(clientConfig.isValidateHostName()).isFalse();
     }
 
     // helpers

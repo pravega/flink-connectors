@@ -19,6 +19,7 @@ package io.pravega.connectors.flink.utils;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntimeOperator;
+import org.junit.jupiter.api.extension.ExtensionContext;
 
 /**
  * A test environment for supporting running a Pravega standalone instance
@@ -31,6 +32,18 @@ public class SchemaRegistryTestEnvironment extends PravegaTestEnvironment {
     public SchemaRegistryTestEnvironment(PravegaRuntime pravegaRuntime, SchemaRegistryRuntime schemaRegistryRuntime) {
         super(pravegaRuntime);
         this.schemaRegistryRuntime = schemaRegistryRuntime;
+    }
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws Exception {
+        super.beforeAll(context);
+        schemaRegistryRuntime.startUp(super.operator());
+    }
+
+    @Override
+    public void afterAll(ExtensionContext context) throws Exception {
+        super.afterAll(context);
+        schemaRegistryRuntime.tearDown();
     }
 
     /** Start up the test resource. */

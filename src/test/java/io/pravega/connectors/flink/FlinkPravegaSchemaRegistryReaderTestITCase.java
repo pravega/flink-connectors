@@ -36,16 +36,16 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 180)
 public class FlinkPravegaSchemaRegistryReaderTestITCase {
 
     private static class MyTest {
@@ -65,16 +65,12 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
     private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("name", "test").build();
     private static final MyTest JSON_EVENT = new MyTest("test");
 
-    //Ensure each test completes within 180 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupServices() {
         SCHEMA_REGISTRY.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownServices() {
         SCHEMA_REGISTRY.tearDown();
     }
@@ -200,8 +196,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
                 .build();
 
         List<GenericRecord> result = env.createInput(reader, new GenericRecordAvroTypeInfo(SCHEMA)).collect();
-        Assert.assertEquals(result.size(), 1);
-        Assert.assertEquals(result.get(0), AVRO_EVENT);
+        assertThat(result.size()).isEqualTo(1);
+        assertThat(result.get(0)).isEqualTo(AVRO_EVENT);
     }
 
     // ================================================================================

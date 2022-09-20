@@ -34,8 +34,7 @@ import org.apache.flink.api.common.typeutils.base.IntSerializer;
 import org.apache.flink.streaming.runtime.streamrecord.StreamRecord;
 import org.apache.flink.streaming.util.MockSerializationSchema;
 import org.apache.flink.util.ExceptionUtils;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.io.IOException;
@@ -50,7 +49,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.Future;
 
 import static io.pravega.connectors.flink.AbstractStreamingWriterBuilder.DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS;
-import static org.junit.Assert.fail;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 import static org.mockito.Matchers.anyObject;
 import static org.mockito.Matchers.anyString;
 import static org.mockito.Mockito.mock;
@@ -82,9 +82,9 @@ public class FlinkPravegaWriterTest {
         PravegaEventRouter<Integer> eventRouter = new FixedEventRouter<>();
         PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
         FlinkPravegaWriter<Integer> sinkFunction = spySinkFunction(mockClientFactory(pravegaWriter), eventRouter, true, writerMode);
-        Assert.assertSame(eventRouter, sinkFunction.getEventRouter());
-        Assert.assertEquals(writerMode, sinkFunction.getPravegaWriterMode());
-        Assert.assertTrue(sinkFunction.getEnableWatermark());
+        assertThat(sinkFunction.getEventRouter()).isSameAs(eventRouter);
+        assertThat(sinkFunction.getPravegaWriterMode()).isEqualTo(writerMode);
+        assertThat(sinkFunction.getEnableWatermark()).isTrue();
     }
 
     // endregion
@@ -108,10 +108,10 @@ public class FlinkPravegaWriterTest {
                 Mockito.doThrow(new IntentionalRuntimeException()).when(pravegaWriter).close();
                 Mockito.doThrow(new IntentionalRuntimeException()).when(clientFactory).close();
             }
-            Assert.fail();
+            fail(null);
         } catch (IntentionalRuntimeException e) {
-            Assert.assertTrue(e.getSuppressed().length == 1);
-            Assert.assertTrue(e.getSuppressed()[0] instanceof IntentionalRuntimeException);
+            assertThat(e.getSuppressed().length == 1).isTrue();
+            assertThat(e.getSuppressed()[0] instanceof IntentionalRuntimeException).isTrue();
         }
 
         verify(clientFactory).close();
@@ -138,7 +138,7 @@ public class FlinkPravegaWriterTest {
         StreamSinkOperatorTestHarness<Integer> testHarness = createTestHarness(sinkFunction);
 
         testHarness.open();
-        Assert.assertTrue(schema.isOpenCalled());
+        assertThat(schema.isOpenCalled()).isTrue();
     }
 
     // endregion
@@ -151,10 +151,10 @@ public class FlinkPravegaWriterTest {
         IntegerSerializationSchema schema = new IntegerSerializationSchema();
         FlinkSerializer<Integer> serializer = new FlinkSerializer<>(schema);
         Integer val = 42;
-        Assert.assertEquals(ByteBuffer.wrap(schema.serialize(val)), serializer.serialize(val));
+        assertThat(serializer.serialize(val)).isEqualTo(ByteBuffer.wrap(schema.serialize(val)));
         try {
             serializer.deserialize(ByteBuffer.wrap(schema.serialize(val)));
-            Assert.fail("expected an exception");
+            fail("expected an exception");
         } catch (IllegalStateException e) {
             // expected
         }
@@ -194,22 +194,22 @@ public class FlinkPravegaWriterTest {
                 CompletableFuture<Void> e1Future = context.prepareWrite();
                 StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
                 testHarness.processElement(e1);
-                Assert.assertEquals(1, context.sinkFunction.pendingWritesCount.get());
+                assertThat(context.sinkFunction.pendingWritesCount.get()).isEqualTo(1);
 
                 CompletableFuture<Void> e2Future = context.prepareWrite();
                 StreamRecord<Integer> e2 = new StreamRecord<>(2, 2L);
                 testHarness.processElement(e2);
-                Assert.assertEquals(2, context.sinkFunction.pendingWritesCount.get());
+                assertThat(context.sinkFunction.pendingWritesCount.get()).isEqualTo(2);
 
                 CompletableFuture<Void> e3Future = context.prepareWrite();
                 StreamRecord<Integer> e3 = new StreamRecord<>(3, 3L);
                 testHarness.processElement(e3);
-                Assert.assertEquals(3, context.sinkFunction.pendingWritesCount.get());
+                assertThat(context.sinkFunction.pendingWritesCount.get()).isEqualTo(3);
 
                 e1Future.complete(null);
                 e2Future.completeExceptionally(new IntentionalRuntimeException());
                 e3Future.complete(null);
-                Assert.assertEquals(0, context.sinkFunction.pendingWritesCount.get());
+                assertThat(context.sinkFunction.pendingWritesCount.get()).isEqualTo(0);
 
                 // clear the error for test simplicity
                 context.sinkFunction.writeError.set(null);
@@ -230,12 +230,12 @@ public class FlinkPravegaWriterTest {
                 StreamRecord<Integer> e1 = new StreamRecord<>(1, 1L);
                 testHarness.processElement(e1);
                 e1Future.completeExceptionally(new IntentionalRuntimeException());
-                Assert.assertNotNull(context.sinkFunction.writeError.get());
+                assertThat(context.sinkFunction.writeError.get()).isNotNull();
 
                 StreamRecord<Integer> e2 = new StreamRecord<>(2, 2L);
                 try {
                     testHarness.processElement(e2);
-                    Assert.fail("expected an IOException due to a prior write error");
+                    fail("expected an IOException due to a prior write error");
                 } catch (IOException e) {
                     // expected
                 }
@@ -259,7 +259,7 @@ public class FlinkPravegaWriterTest {
                 context.sinkFunction.pendingWritesCount.incrementAndGet();
                 Future<Void> flushFuture = runAsync(context.sinkFunction::flushAndVerify);
                 Thread.sleep(1000);
-                Assert.assertFalse(flushFuture.isDone());
+                assertThat(flushFuture.isDone()).isFalse();
 
                 // allow the flush to complete
                 synchronized (context.sinkFunction) {
@@ -272,7 +272,7 @@ public class FlinkPravegaWriterTest {
                 context.sinkFunction.writeError.set(new IntentionalRuntimeException());
                 try {
                     context.sinkFunction.flushAndVerify();
-                    Assert.fail("expected an IOException due to a prior write error");
+                    fail("expected an IOException due to a prior write error");
                 } catch (IOException e) {
                     // expected
                 }
@@ -297,11 +297,11 @@ public class FlinkPravegaWriterTest {
                     Mockito.doThrow(new IntentionalRuntimeException()).when(context.pravegaWriter).close();
                     Mockito.doThrow(new IntentionalRuntimeException()).when(context.executorService).shutdown();
                 }
-                Assert.fail("expected an exception");
+                fail("expected an exception");
             } catch (IOException e) {
-                Assert.assertEquals(2, e.getSuppressed().length);
-                Assert.assertTrue(e.getSuppressed()[0] instanceof IntentionalRuntimeException);
-                Assert.assertTrue(e.getSuppressed()[1] instanceof IntentionalRuntimeException);
+                assertThat(e.getSuppressed().length).isEqualTo(2);
+                assertThat(e.getSuppressed()[0] instanceof IntentionalRuntimeException).isTrue();
+                assertThat(e.getSuppressed()[1] instanceof IntentionalRuntimeException).isTrue();
             }
         }
     }
@@ -324,15 +324,15 @@ public class FlinkPravegaWriterTest {
                 // take another snapshot, expecting it to fail
                 try {
                     testHarness.snapshot(2L, 2L);
-                    Assert.fail("expected an exception due to a prior write error");
+                    fail("expected an exception due to a prior write error");
                 } catch (Exception ex) {
-                    Assert.assertNotNull(ex.getCause());
+                    assertThat(ex.getCause()).isNotNull();
                     Optional<IOException> exCause = ExceptionUtils.findSerializedThrowable(ex, IOException.class,
                             ClassLoader.getSystemClassLoader());
                     Optional<IntentionalRuntimeException> exRootCause = ExceptionUtils.findSerializedThrowable(ex.getCause(),
                             IntentionalRuntimeException.class, ClassLoader.getSystemClassLoader());
-                    Assert.assertTrue(exCause.isPresent());
-                    Assert.assertTrue(exRootCause.isPresent());
+                    assertThat(exCause.isPresent()).isTrue();
+                    assertThat(exRootCause.isPresent()).isTrue();
                 }
 
                 // clear the error for test simplicity
@@ -355,7 +355,7 @@ public class FlinkPravegaWriterTest {
                 // open the sink, expecting an initial transaction
                 context.prepareTransaction();
                 testHarness.open();
-                Assert.assertNotNull(context.pravegaTxnWriter);
+                assertThat(context.pravegaTxnWriter).isNotNull();
                 verify(context.pravegaTxnWriter).beginTxn();
             }
         }
@@ -376,10 +376,10 @@ public class FlinkPravegaWriterTest {
                     Mockito.doThrow(new IntentionalRuntimeException()).when(trans).abort();
                     Mockito.doThrow(new IntentionalRuntimeException()).when(context.pravegaTxnWriter).close();
                 }
-                Assert.fail("expected an exception");
+                fail("expected an exception");
             } catch (IntentionalRuntimeException e) {
-                Assert.assertEquals(1, e.getSuppressed().length);
-                Assert.assertTrue(e.getSuppressed()[0] instanceof IntentionalRuntimeException);
+                assertThat(e.getSuppressed().length).isEqualTo(1);
+                assertThat(e.getSuppressed()[0] instanceof IntentionalRuntimeException).isTrue();
             }
 
             // verify that the transaction was aborted and the writer closed
@@ -484,7 +484,7 @@ public class FlinkPravegaWriterTest {
                     .forStream("stream")
                     .withSerializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing default scope"
         }
@@ -496,7 +496,7 @@ public class FlinkPravegaWriterTest {
                     .forStream("stream")
                     .withSerializationSchemaFromRegistry("stream", Integer.class)
                     .build();
-            fail();
+            fail(null);
         } catch (NullPointerException e) {
             // "missing Schema Registry URI"
         }
