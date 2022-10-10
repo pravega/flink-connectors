@@ -240,6 +240,8 @@ public class PravegaSplitEnumerator implements SplitEnumerator<PravegaSplit, Che
 
     /**
      * Create the {@link ReaderGroup} for the current configuration.
+     *
+     * @return An instance of {@link ReaderGroup}
      */
     protected ReaderGroup createReaderGroup() {
         LOG.info("Creating reader group {} with reader group config: {}", readerGroupName, readerGroupConfig);
