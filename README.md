@@ -34,14 +34,15 @@ The connectors can be used to build end-to-end stream processing pipelines (see 
 The [master](https://github.com/pravega/flink-connectors) branch will always have the most recent
 supported versions of Flink and Pravega.
 
-| Git Branch | Pravega Version | Flink Version | Status | Artifact Link |
-|-------------------------------------------------------------------------------------|------|------|-------------------|----------------------------------------------------------------------------------------|
-| [master](https://github.com/pravega/flink-connectors)                               | 0.11 | 1.14 | Under Development | https://github.com/pravega/flink-connectors/packages/1076644|
-| [r0.11-flink1.13](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.13) | 0.11 | 1.13 | Under Development | https://github.com/pravega/flink-connectors/packages/910737 |
-| [r0.11-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.12) | 0.11 | 1.12 | Under Development | https://github.com/pravega/flink-connectors/packages/887087 |
-| [r0.10](https://github.com/pravega/flink-connectors/tree/r0.10)                     | 0.10 | 1.13 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.13_2.12/0.10.1/  |
-| [r0.10-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.12) | 0.10 | 1.12 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.12_2.12/0.10.1/    |
-| [r0.10-flink1.11](https://github.com/pravega/flink-connectors/tree/r0.10-flink1.11) | 0.10 | 1.11 | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.11_2.12/0.10.1/    |
+| Git Branch                                                                          | Pravega Version | Flink Version | Status            | Artifact Link                                                                        |
+|-------------------------------------------------------------------------------------|-----------------|---------------|-------------------|--------------------------------------------------------------------------------------|
+| [master](https://github.com/pravega/flink-connectors)                               | 0.13            | 1.15          | Under Development | https://github.com/pravega/flink-connectors/packages/1441637                         |
+| [r0.12](https://github.com/pravega/flink-connectors/tree/r0.12)                     | 0.12            | 1.15          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.15_2.12/0.12.0/ |
+| [r0.12-flink1.14](https://github.com/pravega/flink-connectors/tree/r0.12-flink1.14) | 0.12            | 1.14          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.14_2.12/0.12.0/ |
+| [r0.12-flink1.13](https://github.com/pravega/flink-connectors/tree/r0.12-flink1.13) | 0.12            | 1.13          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.13_2.12/0.12.0/ |
+| [r0.11](https://github.com/pravega/flink-connectors/tree/r0.11)                     | 0.11            | 1.14          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.14_2.12/0.11.0/ |
+| [r0.11-flink1.13](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.13) | 0.11            | 1.13          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.13_2.12/0.11.0/ |
+| [r0.11-flink1.12](https://github.com/pravega/flink-connectors/tree/r0.11-flink1.12) | 0.11            | 1.12          | Released          | https://repo1.maven.org/maven2/io/pravega/pravega-connectors-flink-1.12_2.12/0.11.0/ |
 
 ## How to build
 
