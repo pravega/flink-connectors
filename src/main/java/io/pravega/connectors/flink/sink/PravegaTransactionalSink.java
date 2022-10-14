@@ -59,17 +59,15 @@ public class PravegaTransactionalSink<T>
      * It will create a {@link PravegaTransactionalWriter} on demand with following parameters.
      * We can use {@link PravegaSinkBuilder} to build such a sink.
      *
-     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
      * @param txnLeaseRenewalPeriod THe transaction timeout after any operations.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
-    PravegaTransactionalSink(boolean enableMetrics, ClientConfig clientConfig,
-                             Stream stream, long txnLeaseRenewalPeriod,
+    PravegaTransactionalSink(ClientConfig clientConfig, Stream stream, long txnLeaseRenewalPeriod,
                              SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        super(enableMetrics, clientConfig, stream, serializationSchema, eventRouter);
+        super(clientConfig, stream, serializationSchema, eventRouter);
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
     }
@@ -77,8 +75,6 @@ public class PravegaTransactionalSink<T>
     @Override
     public TwoPhaseCommittingSink.PrecommittingSinkWriter<T, PravegaTransactionState>
     createWriter(InitContext context) throws IOException {
-        registerMetrics(enableMetrics, context);
-
         return new PravegaTransactionalWriter<>(
                 context,
                 clientConfig,

@@ -77,7 +77,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0));
 
-        PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -106,7 +106,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -135,7 +135,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -163,7 +163,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .enableCheckpointing(1000, CheckpointingMode.EXACTLY_ONCE);
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
@@ -193,7 +193,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
         env.getCheckpointConfig().enableUnalignedCheckpoints();
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())

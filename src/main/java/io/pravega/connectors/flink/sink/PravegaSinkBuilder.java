@@ -36,7 +36,6 @@ public class PravegaSinkBuilder<T> {
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;
-    private boolean enableMetrics = true;
     private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
     private Time txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     private SerializationSchema<T> serializationSchema;
@@ -44,10 +43,6 @@ public class PravegaSinkBuilder<T> {
     private PravegaEventRouter<T> eventRouter;
 
     PravegaSinkBuilder() {
-    }
-
-    static <T> PravegaSinkBuilder<T> builder() {
-        return new PravegaSinkBuilder<>();
     }
 
     /**
@@ -82,17 +77,6 @@ public class PravegaSinkBuilder<T> {
      */
     public PravegaSinkBuilder<T> forStream(final Stream stream) {
         this.stream = stream.getScopedName();
-        return this;
-    }
-
-    /**
-     * Enable/disable pravega sink metrics (default: enabled).
-     *
-     * @param enable boolean
-     * @return A builder to configure and create a sink.
-     */
-    public PravegaSinkBuilder<T> enableMetrics(boolean enable) {
-        this.enableMetrics = enable;
         return this;
     }
 
@@ -165,7 +149,6 @@ public class PravegaSinkBuilder<T> {
     public PravegaSink<T> build() {
         if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
             return new PravegaEventSink<>(
-                    enableMetrics,
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
                     writerMode,
@@ -173,7 +156,6 @@ public class PravegaSinkBuilder<T> {
                     eventRouter);
         } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
-                    enableMetrics,
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
                     txnLeaseRenewalPeriod.toMilliseconds(),

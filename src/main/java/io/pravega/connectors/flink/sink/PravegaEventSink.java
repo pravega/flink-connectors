@@ -46,24 +46,21 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
      * It will create a {@link PravegaEventWriter} on demand with following parameters.
      * We can use {@link PravegaSinkBuilder} to build such a sink.
      *
-     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
      * @param writerMode            The writer mode of the sink.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
-    public PravegaEventSink(boolean enableMetrics, ClientConfig clientConfig,
+    public PravegaEventSink(ClientConfig clientConfig,
                             Stream stream, PravegaWriterMode writerMode,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        super(enableMetrics, clientConfig, stream, serializationSchema, eventRouter);
+        super(clientConfig, stream, serializationSchema, eventRouter);
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
     }
 
     @Override
     public SinkWriter<T> createWriter(InitContext context) throws IOException {
-        registerMetrics(enableMetrics, context);
-
         return new PravegaEventWriter<>(
                 context,
                 clientConfig,
