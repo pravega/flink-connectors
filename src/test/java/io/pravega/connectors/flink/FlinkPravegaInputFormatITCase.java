@@ -18,8 +18,10 @@ package io.pravega.connectors.flink;
 
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.functions.RichMapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -27,37 +29,33 @@ import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 120)
 public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    @BeforeAll
+    public static void setupPravega() throws Exception {
+        PRAVEGA.startUp();
+    }
+
+    @AfterAll
+    public static void tearDownPravega() throws Exception {
+        PRAVEGA.tearDown();
+    }
 
     // ------------------------------------------------------------------------
-
-    @BeforeClass
-    public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
-    }
-
-    @AfterClass
-    public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
-    }
 
     /**
      * Verifies that the input format:
@@ -77,12 +75,12 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
         streams.add(streamName1);
         streams.add(streamName2);
 
-        SETUP_UTILS.createTestStream(streamName1, 3);
-        SETUP_UTILS.createTestStream(streamName2, 5);
+        PRAVEGA.operator().createTestStream(streamName1, 3);
+        PRAVEGA.operator().createTestStream(streamName2, 5);
 
         try (
-                final EventStreamWriter<Integer> eventWriter1 = SETUP_UTILS.getIntegerWriter(streamName1);
-                final EventStreamWriter<Integer> eventWriter2 = SETUP_UTILS.getIntegerWriter(streamName2);
+                final EventStreamWriter<Integer> eventWriter1 = PRAVEGA.operator().getWriter(streamName1, new IntegerSerializer());
+                final EventStreamWriter<Integer> eventWriter2 = PRAVEGA.operator().getWriter(streamName2, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer1 = new ThrottledIntegerWriter(
@@ -116,17 +114,17 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
                     FlinkPravegaInputFormat.<Integer>builder()
                             .forStream(streamName1)
                             .forStream(streamName2)
-                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                             .withDeserializationSchema(new IntegerDeserializationSchema())
                             .build(),
                     BasicTypeInfo.INT_TYPE_INFO
             );
 
             // verify that all events were read
-            Assert.assertEquals(numElements1 + numElements2, integers.collect().size());
+            assertThat(integers.collect().size()).isEqualTo(numElements1 + numElements2);
 
             // this verifies that the input format allows multiple passes
-            Assert.assertEquals(numElements1 + numElements2, integers.collect().size());
+            assertThat(integers.collect().size()).isEqualTo(numElements1 + numElements2);
         }
     }
 
@@ -139,10 +137,10 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, 3);
+        PRAVEGA.operator().createTestStream(streamName, 3);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -165,15 +163,15 @@ public class FlinkPravegaInputFormatITCase extends AbstractTestBase {
             List<Integer> integers = env.createInput(
                     FlinkPravegaInputFormat.<Integer>builder()
                             .forStream(streamName)
-                            .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                            .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                             .withDeserializationSchema(new IntegerDeserializationSchema())
                             .build(),
                     BasicTypeInfo.INT_TYPE_INFO
             ).map(new FailOnceMapper(numElements / 2)).collect();
 
             // verify that the job did fail, and all events were still read
-            Assert.assertTrue(FailOnceMapper.hasFailed());
-            Assert.assertEquals(numElements, integers.size());
+            assertThat(FailOnceMapper.hasFailed()).isTrue();
+            assertThat(integers.size()).isEqualTo(numElements);
 
             FailOnceMapper.reset();
         }

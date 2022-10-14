@@ -28,18 +28,14 @@ import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.util.concurrent.Executors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Matchers.any;
 import static org.mockito.Matchers.anyLong;
 import static org.mockito.Matchers.anyString;
@@ -58,8 +54,8 @@ public class ReaderCheckpointHookTest {
         ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
         ClientConfig clientConfig = mock(ClientConfig.class);
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
-        assertEquals(HOOK_UID, hook.getIdentifier());
-        assertTrue(hook.createCheckpointDataSerializer() instanceof CheckpointSerializer);
+        assertThat(hook.getIdentifier()).isEqualTo(HOOK_UID);
+        assertThat(hook.createCheckpointDataSerializer() instanceof CheckpointSerializer).isTrue();
     }
 
     @Test
@@ -71,14 +67,14 @@ public class ReaderCheckpointHookTest {
 
         when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
-        assertNotNull(checkpointFuture);
+        assertThat(checkpointFuture).isNotNull();
         verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
 
         // complete the checkpoint promise
         Checkpoint expectedCheckpoint = mock(Checkpoint.class);
         checkpointPromise.complete(expectedCheckpoint);
-        assertTrue(checkpointFuture.isDone());
-        assertSame(expectedCheckpoint, checkpointFuture.get());
+        assertThat(checkpointFuture.isDone()).isTrue();
+        assertThat(checkpointFuture.get()).isSameAs(expectedCheckpoint);
     }
 
     @Test
@@ -91,12 +87,12 @@ public class ReaderCheckpointHookTest {
         when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
 
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
-        assertNotNull(checkpointFuture);
+        assertThat(checkpointFuture).isNotNull();
         verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
 
         // invoke the timeout callback
         hook.invokeScheduledCallables();
-        assertTrue(checkpointFuture.isCancelled());
+        assertThat(checkpointFuture.isCancelled()).isTrue();
     }
 
     @Test
@@ -116,7 +112,7 @@ public class ReaderCheckpointHookTest {
         hook.close();
         verify(hook.readerGroup).close();
         verify(hook.readerGroupManager).close();
-        assertNull(hook.getScheduledExecutorService());
+        assertThat(hook.getScheduledExecutorService()).isNull();
     }
 
     @Test

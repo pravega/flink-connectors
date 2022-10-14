@@ -228,7 +228,7 @@ public class PravegaCatalog extends AbstractCatalog {
         }
 
         try {
-            streamManager.deleteScope(name, cascade);
+            streamManager.deleteScopeRecursive(name);
         } catch (DeleteScopeFailedException e) {
             throw new CatalogException(String.format("Failed to drop database %s", name));
         }

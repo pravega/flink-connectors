@@ -19,7 +19,7 @@ import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.impl.JavaSerializer;
 import io.pravega.connectors.flink.PravegaCollector;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.io.Serializable;
@@ -27,8 +27,7 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.Random;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class PravegaSerializationTest {
 
@@ -39,7 +38,7 @@ public class PravegaSerializationTest {
 
         String input = "Testing input";
         byte[] serialized = serializer.serialize(input);
-        assertEquals(input, deserializer.deserialize(serialized));
+        assertThat(deserializer.deserialize(serialized)).isEqualTo(input);
     }
 
     @Test
@@ -52,10 +51,10 @@ public class PravegaSerializationTest {
 
         PravegaCollector<String> pravegaCollector = new PravegaCollector<>(deserializer);
         deserializer.deserialize(serialized, pravegaCollector);
-        assertEquals(1, pravegaCollector.getRecords().size());
+        assertThat(pravegaCollector.getRecords().size()).isEqualTo(1);
 
         String deserialized = pravegaCollector.getRecords().poll();
-        assertEquals(input, deserialized);
+        assertThat(deserialized).isEqualTo(input);
     }
 
     @Test
@@ -82,7 +81,7 @@ public class PravegaSerializationTest {
             final long value = rnd.nextLong();
 
             byte[] serialized = flinkSerializer.serialize(value);
-            assertEquals(value, ByteBuffer.wrap(serialized).getLong());
+            assertThat(ByteBuffer.wrap(serialized).getLong()).isEqualTo(value);
         }
     }
 
@@ -97,10 +96,10 @@ public class PravegaSerializationTest {
             final long value = rnd.nextLong();
 
             byte[] serialized = flinkSerializer.serialize(value);
-            assertEquals(value, ByteBuffer.wrap(serialized).getLong());
+            assertThat(ByteBuffer.wrap(serialized).getLong()).isEqualTo(value);
 
             // make sure we avoid copies where possible
-            assertTrue(serialized == pravegaSerializer.array);
+            assertThat(serialized == pravegaSerializer.array).isTrue();
         }
     }
 
@@ -168,7 +167,7 @@ public class PravegaSerializationTest {
         final JsonSerializer<TestEvent> jsonSerializer = new JsonSerializer<>(TestEvent.class);
         TestEvent testEvent = new TestEvent("key1", 1);
         ByteBuffer serializedBytes = jsonSerializer.serialize(testEvent);
-        assertEquals(testEvent, jsonSerializer.deserialize(serializedBytes));
+        assertThat(jsonSerializer.deserialize(serializedBytes)).isEqualTo(testEvent);
     }
 
     // ------------------------------------------------------------------------

@@ -17,14 +17,14 @@ package io.pravega.connectors.flink;
 
 import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.typeinfo.TypeInformation;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.Random;
 
 import static io.pravega.connectors.flink.util.FlinkPravegaUtils.byteBufferToArray;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class FlinkSerializerWrapperTest {
 
@@ -66,7 +66,7 @@ public class FlinkSerializerWrapperTest {
             buffer.flip();
 
             long deserialized = deserializationSchema.deserialize(byteBufferToArray(buffer));
-            assertEquals(value, deserialized);
+            assertThat(deserialized).isEqualTo(value);
         }
     }
 

@@ -19,41 +19,38 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializationSchema;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.flink.api.common.typeinfo.BasicTypeInfo;
 import org.apache.flink.api.java.DataSet;
 import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 120)
 public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    @BeforeAll
+    public static void setupPravega() throws Exception {
+        PRAVEGA.startUp();
+    }
+
+    @AfterAll
+    public static void tearDownPravega() throws Exception {
+        PRAVEGA.tearDown();
+    }
 
     // ------------------------------------------------------------------------
-
-    @BeforeClass
-    public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
-    }
-
-    @AfterClass
-    public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
-    }
 
     /**
      * Verifies the following using DataSet API:
@@ -63,10 +60,10 @@ public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
     @Test
     public void testPravegaOutputFormat() throws Exception {
 
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), "outputFormatDataSet");
-        SETUP_UTILS.createTestStream(stream.getStreamName(), 1);
+        Stream stream = Stream.of(PRAVEGA.operator().getScope(), "outputFormatDataSet");
+        PRAVEGA.operator().createTestStream(stream.getStreamName(), 1);
 
-        PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig();
+        PravegaConfig pravegaConfig = PRAVEGA.operator().getPravegaConfig();
 
         FlinkPravegaOutputFormat<Integer> flinkPravegaOutputFormat = FlinkPravegaOutputFormat.<Integer>builder()
                 .withEventRouter(router -> "fixedKey")
@@ -85,14 +82,14 @@ public class FlinkPravegaOutputFormatITCase extends AbstractTestBase {
         DataSet<Integer> integers = env.createInput(
                 FlinkPravegaInputFormat.<Integer>builder()
                         .forStream(stream)
-                        .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                        .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                         .withDeserializationSchema(new IntegerDeserializationSchema())
                         .build(),
                 BasicTypeInfo.INT_TYPE_INFO
         );
 
         // verify that all events were read
-        Assert.assertEquals(2, integers.collect().size());
+        assertThat(integers.collect().size()).isEqualTo(2);
     }
 
 

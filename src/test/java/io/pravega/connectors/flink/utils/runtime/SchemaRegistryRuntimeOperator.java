@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
-package io.pravega.connectors.flink.utils;
+package io.pravega.connectors.flink.utils.runtime;
 
 import io.pravega.client.EventStreamClientFactory;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
+import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
@@ -32,65 +33,40 @@ import io.pravega.schemaregistry.serializer.protobuf.schemas.ProtobufSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
 import io.pravega.schemaregistry.serializer.shared.schemas.Schema;
 import io.pravega.schemaregistry.serializers.SerializerFactory;
-import io.pravega.schemaregistry.server.rest.RestServer;
-import io.pravega.schemaregistry.server.rest.ServiceConfig;
-import io.pravega.schemaregistry.service.SchemaRegistryService;
-import io.pravega.schemaregistry.storage.SchemaStore;
-import io.pravega.schemaregistry.storage.SchemaStoreFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.Closeable;
+import java.io.IOException;
 import java.net.URI;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 
-public class SchemaRegistryUtils {
+/**
+ * A Schema Registry operator is used for operating Schema Registry instance.
+ */
+public class SchemaRegistryRuntimeOperator implements Closeable {
 
-    public static final int DEFAULT_PORT = 10092;
-    private SetupUtils setupUtils;
-    private int port;
-    private ScheduledExecutorService executor;
-    private RestServer restServer;
-    private URI schemaRegistryUri;
+    private static final Logger LOG = LoggerFactory.getLogger(SchemaRegistryRuntimeOperator.class);
 
-    private EventStreamClientFactory eventStreamClientFactory;
+    private final PravegaRuntimeOperator pravegaOperator;
+    private final URI schemaRegistryUri;
+    private final EventStreamClientFactory eventStreamClientFactory;
 
-    public SchemaRegistryUtils(SetupUtils setupUtils, int port) {
-        this.setupUtils = setupUtils;
-        this.port = port;
-        schemaRegistryUri = URI.create("http://localhost:" + port);
+    public SchemaRegistryRuntimeOperator(PravegaRuntimeOperator pravegaOperator, String schemaRegistryUri) {
+        this.pravegaOperator = pravegaOperator;
+        this.schemaRegistryUri = URI.create(schemaRegistryUri);
+        eventStreamClientFactory = EventStreamClientFactory.withScope(pravegaOperator.getScope(),
+                pravegaOperator.getClientConfig());
     }
 
     /**
-     * Start Pravega schema registry services required for the test deployment.
+     * Create a stream writer for writing Integer events with serializer from Schema Registry.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     *
+     * @return Stream writer instance.
      */
-    public void setupServices() {
-        executor = Executors.newScheduledThreadPool(10);
-
-        ServiceConfig serviceConfig = ServiceConfig.builder().port(port).build();
-        SchemaStore store = SchemaStoreFactory.createInMemoryStore(executor);
-
-        SchemaRegistryService service = new SchemaRegistryService(store, executor);
-
-        restServer = new RestServer(service, serviceConfig);
-        restServer.startAsync();
-        restServer.awaitRunning();
-        eventStreamClientFactory = EventStreamClientFactory.withScope(setupUtils.getScope(), setupUtils.getClientConfig());
-    }
-
-    /**
-     * Stop Pravega schema registry server and release all resources.
-     */
-    public void tearDownServices() {
-        restServer.stopAsync();
-        restServer.awaitTerminated();
-        executor.shutdownNow();
-        eventStreamClientFactory.close();
-    }
-
-
-    public URI getSchemaRegistryUri() {
-        return schemaRegistryUri;
-    }
-
     public EventStreamWriter<Object> getWriter(String stream, Schema schema, SerializationFormat format) {
         return eventStreamClientFactory.createEventWriter(
                 stream,
@@ -98,8 +74,15 @@ public class SchemaRegistryUtils {
                 EventWriterConfig.builder().build());
     }
 
+    /**
+     * Register the schema to the Schema Registry service.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     */
     public void registerSchema(String stream, Schema schema, SerializationFormat format) {
-        SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(setupUtils.getScope(),
+        SchemaRegistryClient client = SchemaRegistryClientFactory.withNamespace(pravegaOperator.getScope(),
                 SchemaRegistryClientConfig.builder().schemaRegistryUri(schemaRegistryUri).build());
         client.addGroup(stream, new GroupProperties(format,
                 Compatibility.allowAny(),
@@ -113,13 +96,23 @@ public class SchemaRegistryUtils {
         }
     }
 
+    /**
+     * Create a serializer for the schema.
+     *
+     * @param stream    Name of the test stream.
+     * @param schema    Schema for the writer.
+     * @param format    Serialization format for serializer.
+     *
+     * @return A Serializer Implementation that can be used in {@link EventStreamWriter} or
+     * {@link TransactionalEventStreamWriter}.
+     */
     @SuppressWarnings("unchecked")
     public Serializer<Object> getSerializerFromRegistry(String stream, Schema<?> schema, SerializationFormat format) {
         SchemaRegistryClientConfig registryConfig = SchemaRegistryClientConfig.builder()
                 .schemaRegistryUri(schemaRegistryUri)
                 .build();
         SerializerConfig serializerConfig = SerializerConfig.builder()
-                .namespace(setupUtils.getScope())
+                .namespace(pravegaOperator.getScope())
                 .groupId(stream)
                 .registerSchema(false)
                 .registryConfig(registryConfig)
@@ -134,6 +127,21 @@ public class SchemaRegistryUtils {
                 return SerializerFactory.protobufSerializer(serializerConfig, (ProtobufSchema) schema);
             default:
                 return SerializerFactory.genericDeserializer(serializerConfig);
+        }
+    }
+
+    /** Return the Schema Registry URI for this Schema Registry runtime. */
+    public URI getSchemaRegistryUri() {
+        return schemaRegistryUri;
+    }
+
+    @Override
+    public void close() throws IOException {
+        if (eventStreamClientFactory != null) {
+            eventStreamClientFactory.close();
+        }
+        if (pravegaOperator != null) {
+            pravegaOperator.close();
         }
     }
 }

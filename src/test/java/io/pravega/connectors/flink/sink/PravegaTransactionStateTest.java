@@ -15,9 +15,9 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -29,7 +29,7 @@ public class PravegaTransactionStateTest {
     public void testInit() {
         PravegaTransactionalWriter<Integer> writer = mockPravegaTransactionWriter();
         PravegaTransactionState transactionState = PravegaTransactionState.of(writer);
-        Assert.assertEquals(transactionState.getTransactionId(), TRANSACTION_ID);
+        assertThat(transactionState.getTransactionId()).isEqualTo(TRANSACTION_ID);
     }
 
     @SuppressWarnings("unchecked")

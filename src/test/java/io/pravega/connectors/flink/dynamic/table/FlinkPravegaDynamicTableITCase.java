@@ -26,8 +26,9 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.FlinkPravegaWriter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.serialization.JsonSerializer;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -45,11 +46,10 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.data.StringData;
 import org.apache.flink.table.planner.factories.TestValuesTableFactory;
 import org.apache.flink.util.TestLogger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.io.Serializable;
 import java.nio.ByteBuffer;
@@ -59,29 +59,24 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static io.pravega.connectors.flink.utils.TestUtils.readLines;
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
+@Timeout(value = 120)
 public class FlinkPravegaDynamicTableITCase extends TestLogger {
-    /**
-     * Setup utility
-     */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     @Test
@@ -99,7 +94,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         final String createTable = String.format(
                 "CREATE TABLE pravega ( %n" +
@@ -115,22 +110,14 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
                         "  'sink.routing-key.field.name' = 'currency', %n" +
                         "  'format' = 'json' %n" +
                         ")",
-                SETUP_UTILS.getControllerUri().toString(),
-                SETUP_UTILS.getScope(),
-                SETUP_UTILS.getAuthType(),
-                SETUP_UTILS.getAuthToken(),
-                SETUP_UTILS.isEnableHostNameValidation(),
-                SETUP_UTILS.getPravegaClientTrustStore(),
+                PRAVEGA.operator().getControllerUri().toString(),
+                PRAVEGA.operator().getScope(),
                 "streaming",
                 stream,
                 stream);
@@ -215,7 +202,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         final String createTable = String.format(
                 "CREATE TABLE users ( %n" +
@@ -228,21 +215,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                         "  'connector' = 'pravega', %n" +
                         "  'controller-uri' = '%s', %n" +
                         "  'scope' = '%s', %n" +
-                        "  'security.auth-type' = '%s', %n" +
-                        "  'security.auth-token' = '%s', %n" +
-                        "  'security.validate-hostname' = '%s', %n" +
-                        "  'security.trust-store' = '%s', %n" +
                         "  'scan.execution.type' = '%s', %n" +
                         "  'scan.streams' = '%s', %n" +
                         "  'sink.stream' = '%s', %n" +
                         "  'format' = 'json' %n" +
                         ")",
-                SETUP_UTILS.getControllerUri().toString(),
-                SETUP_UTILS.getScope(),
-                SETUP_UTILS.getAuthType(),
-                SETUP_UTILS.getAuthToken(),
-                SETUP_UTILS.isEnableHostNameValidation(),
-                SETUP_UTILS.getPravegaClientTrustStore(),
+                PRAVEGA.operator().getControllerUri().toString(),
+                PRAVEGA.operator().getScope(),
                 "streaming",
                 stream,
                 stream);
@@ -279,8 +258,8 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // ---------- Assert everything is what we expected -------------------
 
         // test all rows have an additional event pointer field
-        assertEquals(3, TestingSinkFunction.ROWS.stream()
-                .filter(rowData -> rowData.getArity() == 4).count());
+        assertThat(TestingSinkFunction.ROWS.stream().filter(rowData -> rowData.getArity() == 4).count())
+                .isEqualTo(3);
 
         // test that all rows returned is what we insert, except for the event pointer field as the value is unknown
         List<GenericRowData> expected = Arrays.asList(
@@ -289,19 +268,22 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                 GenericRowData.of(StringData.fromString("yiming"), 12345678, null, false)
         );
         for (int i = 0; i < 3; ++i) {
-            assertEquals(expected.get(i).getString(0).toString(), TestingSinkFunction.ROWS.get(i).getString(0).toString());
-            assertEquals(expected.get(i).getInt(1), TestingSinkFunction.ROWS.get(i).getInt(1));
-            assertEquals(expected.get(i).getBoolean(3), TestingSinkFunction.ROWS.get(i).getBoolean(3));
+            assertThat(TestingSinkFunction.ROWS.get(i).getString(0).toString())
+                    .isEqualTo(expected.get(i).getString(0).toString());
+            assertThat(TestingSinkFunction.ROWS.get(i).getInt(1))
+                    .isEqualTo(expected.get(i).getInt(1));
+            assertThat(TestingSinkFunction.ROWS.get(i).getBoolean(3))
+                    .isEqualTo(expected.get(i).getBoolean(3));
         }
 
         // create a reader via pravega
-        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig())) {
+        try (ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig())) {
             readerGroupManager.createReaderGroup(
                     "group",
-                    ReaderGroupConfig.builder().stream(Stream.of(SETUP_UTILS.getScope(), stream)).build());
+                    ReaderGroupConfig.builder().stream(Stream.of(PRAVEGA.operator().getScope(), stream)).build());
         }
         final String readerGroupId = UUID.randomUUID().toString();
-        EventStreamReader<TestUser> consumer = EventStreamClientFactory.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig()).createReader(
+        EventStreamReader<TestUser> consumer = EventStreamClientFactory.withScope(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig()).createReader(
                 readerGroupId,
                 "group",
                 new JsonSerializer<>(TestUser.class),
@@ -309,9 +291,9 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // test that the data read from pravega are the same with the data read from flink
         for (RowData rowDataFromFlink : TestingSinkFunction.ROWS) {
             TestUser rowDataFromPravega = consumer.fetchEvent(EventPointer.fromBytes(ByteBuffer.wrap(rowDataFromFlink.getBinary(2))));
-            assertEquals(rowDataFromPravega.getName(), rowDataFromFlink.getString(0).toString());
-            assertEquals(rowDataFromPravega.getPhone(), rowDataFromFlink.getInt(1));
-            assertEquals(rowDataFromPravega.getVip(), rowDataFromFlink.getBoolean(3));
+            assertThat(rowDataFromPravega.getName()).isEqualTo(rowDataFromFlink.getString(0).toString());
+            assertThat(rowDataFromPravega.getPhone()).isEqualTo(rowDataFromFlink.getInt(1));
+            assertThat(rowDataFromPravega.getVip()).isEqualTo(rowDataFromFlink.getBoolean(3));
         }
     }
 
@@ -330,7 +312,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         env.setParallelism(1);
 
         final String stream = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(stream, 1);
+        PRAVEGA.operator().createTestStream(stream, 1);
 
         // ---------- Write the Debezium json into Pravega -------------------
         List<String> lines = readLines("debezium-data-schema-exclude.txt");
@@ -339,7 +321,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
 
         FlinkPravegaWriter<String> pravegaSink = FlinkPravegaWriter.<String>builder()
                 .forStream(stream)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(serSchema)
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -362,21 +344,13 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
                                 "  'connector' = 'pravega', %n" +
                                 "  'controller-uri' = '%s', %n" +
                                 "  'scope' = '%s', %n" +
-                                "  'security.auth-type' = '%s', %n" +
-                                "  'security.auth-token' = '%s', %n" +
-                                "  'security.validate-hostname' = '%s', %n" +
-                                "  'security.trust-store' = '%s', %n" +
                                 "  'scan.execution.type' = '%s', %n" +
                                 "  'scan.streams' = '%s', %n" +
                                 "  'sink.stream' = '%s', %n" +
                                 "  'format' = 'debezium-json' %n" +
                                 ")",
-                        SETUP_UTILS.getControllerUri().toString(),
-                        SETUP_UTILS.getScope(),
-                        SETUP_UTILS.getAuthType(),
-                        SETUP_UTILS.getAuthToken(),
-                        SETUP_UTILS.isEnableHostNameValidation(),
-                        SETUP_UTILS.getPravegaClientTrustStore(),
+                        PRAVEGA.operator().getControllerUri().toString(),
+                        PRAVEGA.operator().getScope(),
                         "streaming",
                         stream,
                         stream);
@@ -478,7 +452,7 @@ public class FlinkPravegaDynamicTableITCase extends TestLogger {
         // timeout, assert again
         List<String> actual = TestValuesTableFactory.getResults(sinkName);
         Collections.sort(actual);
-        assertEquals(expected, actual);
+        assertThat(actual).isEqualTo(expected);
     }
 
     private static final class TestingSinkFunction implements SinkFunction<RowData> {

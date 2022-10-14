@@ -19,8 +19,10 @@ import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.FailingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.ThrottledIntegerGeneratingSource;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
@@ -28,12 +30,10 @@ import org.apache.flink.api.common.time.Time;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.nio.ByteBuffer;
 import java.util.BitSet;
@@ -42,11 +42,12 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.fail;
 
+@Timeout(value = 120, unit = TimeUnit.MINUTES)
 public class PravegaSinkITCase extends AbstractTestBase {
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // Number of events to generate for each of the tests.
     private static final int EVENT_COUNT_PER_SOURCE = 10000;
@@ -54,17 +55,14 @@ public class PravegaSinkITCase extends AbstractTestBase {
     // The maximum time we wait for the checker.
     private static final int WAIT_SECONDS = 30;
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.MINUTES);
-
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     /**
@@ -81,7 +79,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
@@ -110,7 +108,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -139,7 +137,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
@@ -167,7 +165,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -197,7 +195,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         PravegaSink<Integer> pravegaSink = PravegaSinkBuilder.<Integer>builder()
                 .forStream(streamName)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
                 .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
@@ -230,7 +228,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     private static void writeAndCheckData(String streamName,
                                           StreamExecutionEnvironment env,
                                           boolean allowDuplicate) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 4);
+        PRAVEGA.operator().createTestStream(streamName, 4);
 
         // A synchronization aid that allows the program to wait until
         // both writer and checker complete their tasks.
@@ -240,7 +238,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
             try {
                 env.execute();
             } catch (Exception e) {
-                Assert.fail("Error while writing to Pravega");
+                fail("Error while writing to Pravega");
             } finally {
                 latch.countDown();
             }
@@ -251,7 +249,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
             // 1. Check if all the events are written to the Pravega stream
             // 2. (Optional, controlled by allowDuplicate) Check if there is a duplication
             // 3. Check there is no more events
-            try (EventStreamReader<Integer> reader = SETUP_UTILS.getIntegerReader(streamName)) {
+            try (EventStreamReader<Integer> reader = PRAVEGA.operator().getReader(streamName, new IntegerSerializer())) {
                 final BitSet checker = new BitSet();
 
                 while (checker.nextClearBit(1) <= EVENT_COUNT_PER_SOURCE) {
@@ -260,7 +258,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
                     if (event != null) {
                         if (!allowDuplicate) {
-                            assertFalse("found a duplicate", checker.get(event));
+                            assertThat(checker.get(event)).as("found a duplicate").isFalse();
                         }
                         checker.set(event);
                     }
@@ -268,7 +266,8 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
                 if (!allowDuplicate) {
                     // No more events should be there
-                    assertNull("too many elements written", reader.readNextEvent(1000).getEvent());
+                    assertThat(reader.readNextEvent(1000).getEvent())
+                            .as("too many elements written").isNull();
                 }
 
                 // Notify that the checker is complete
@@ -282,7 +281,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
 
         boolean wait = latch.await(WAIT_SECONDS, TimeUnit.SECONDS);
         if (!wait) {
-            Assert.fail("Read/Write operations taking more time to complete");
+            fail("Read/Write operations taking more time to complete");
         }
         executorService.shutdown();
         if (!executorService.awaitTermination(10, TimeUnit.SECONDS)) {

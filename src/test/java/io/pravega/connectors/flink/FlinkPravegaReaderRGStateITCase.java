@@ -28,27 +28,27 @@ import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
 import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.IntentionalException;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.functions.MapFunction;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+
+import static org.assertj.core.api.Assertions.fail;
 
 /**
  * Test case that validates the following.
@@ -59,25 +59,22 @@ import java.util.concurrent.atomic.AtomicReference;
  * 6. Flink restart strategy should kick in and the reader hook should reinitialize the state of the readers to beginning position
  * 7. Validate and make sure that we are not missing any events.
  */
+@Timeout(value = 180)
 public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
-
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
 
     // Number of events to produce into the test stream.
     private static final int NUM_STREAM_ELEMENTS = 100;
 
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
-    @BeforeClass
+    @BeforeAll
     public static void setupPravega() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
     }
 
-    @AfterClass
+    @AfterAll
     public static void tearDownPravega() throws Exception {
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     @Test
@@ -88,18 +85,18 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String sideStream = RandomStringUtils.randomAlphabetic(20);
 
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
-        SETUP_UTILS.createTestStream(sideStream, 1);
+        PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
+        PRAVEGA.operator().createTestStream(sideStream, 1);
 
         final int threshold = NUM_STREAM_ELEMENTS / 20;
-        try (final EventStreamWriter<Integer> writer = SETUP_UTILS.getIntegerWriter(sideStream)) {
+        try (final EventStreamWriter<Integer> writer = PRAVEGA.operator().getWriter(sideStream, new IntegerSerializer())) {
             for (int i = 1; i <= threshold; i++) {
                 writer.writeEvent(1).get();
             }
             writer.writeEvent(2).get();
         }
 
-        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
              // create the producer that writes to the stream
              final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
                      eventWriter,
@@ -118,13 +115,13 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
 
             final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                     .forStream(streamName)
-                    .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                    .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                     .withDeserializationSchema(new IntegerDeserializationSchema())
                     .build();
 
             env
                     .addSource(pravegaSource)
-                    .map(new Mapper<>(SETUP_UTILS.getScope(), sideStream, SETUP_UTILS.getControllerUri().toString(), SETUP_UTILS.getClientConfig()))
+                    .map(new Mapper<>(PRAVEGA.operator().getScope(), sideStream, PRAVEGA.operator().getControllerUri().toString(), PRAVEGA.operator().getClientConfig()))
                     .addSink(new IntSequenceExactlyOnceValidator(NUM_STREAM_ELEMENTS));
 
             try {
@@ -132,7 +129,7 @@ public class FlinkPravegaReaderRGStateITCase extends AbstractTestBase {
             } catch (Exception e) {
                 if (!(ExceptionUtils.getRootCause(e) instanceof SuccessException)) {
                     log.error("testReaderState failed with exception", e);
-                    Assert.fail();
+                    fail(null);
                 }
             }
         }

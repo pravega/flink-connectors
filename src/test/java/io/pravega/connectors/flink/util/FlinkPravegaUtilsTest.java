@@ -15,15 +15,15 @@
  */
 package io.pravega.connectors.flink.util;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class FlinkPravegaUtilsTest {
 
     @Test
     public void testGetReaderName() {
         String testStr = new String(new char[256]).replace('\0', 'a');
-        assertTrue(FlinkPravegaUtils.getReaderName(testStr, 1, 1).length() < 256);
+        assertThat(FlinkPravegaUtils.getReaderName(testStr, 1, 1).length() < 256).isTrue();
     }
 }

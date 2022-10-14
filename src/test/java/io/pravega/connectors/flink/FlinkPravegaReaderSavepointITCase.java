@@ -18,10 +18,12 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.utils.IntSequenceExactlyOnceValidator;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.NotifyingMapper;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.ThrottledIntegerWriter;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
@@ -36,21 +38,21 @@ import org.apache.flink.runtime.minicluster.MiniClusterConfiguration;
 import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.util.TestLogger;
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.TemporaryFolder;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
-import java.util.concurrent.TimeUnit;
+import java.nio.file.Path;
 
-import static org.junit.Assert.assertNotNull;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests for {@link FlinkPravegaReader} focused on savepoint integration.
  */
+@Timeout(value = 120)
 public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
     // Number of events to produce into the test stream.
@@ -62,8 +64,7 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
     //  setup
     // ----------------------------------------------------------------------------
 
-    // Setup utility.
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // the flink mini cluster
     private static final MiniCluster MINI_CLUSTER = new MiniCluster(
@@ -72,23 +73,19 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
                     .setNumSlotsPerTaskManager(PARALLELISM)
                     .build());
 
-    //Ensure each test completes within 120 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(120, TimeUnit.SECONDS);
+    @TempDir
+    private Path tmpFolder;
 
-    @Rule
-    public final TemporaryFolder tmpFolder = new TemporaryFolder();
-
-    @BeforeClass
+    @BeforeAll
     public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
+        PRAVEGA.startUp();
         MINI_CLUSTER.start();
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
+    @AfterAll
+    public static void tearDown() {
         MINI_CLUSTER.closeAsync();
-        SETUP_UTILS.stopAllServices();
+        PRAVEGA.tearDown();
     }
 
     // ----------------------------------------------------------------------------
@@ -103,13 +100,13 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
         // set up the stream
         final String streamName = RandomStringUtils.randomAlphabetic(20);
-        SETUP_UTILS.createTestStream(streamName, numPravegaSegments);
+        PRAVEGA.operator().createTestStream(streamName, numPravegaSegments);
 
         // we create two independent Flink jobs (that come from the same program)
         final JobGraph program1 = getFlinkJob(sourceParallelism, streamName, numElements);
 
         try (
-                final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName);
+                final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer());
 
                 // create the producer that writes to the stream
                 final ThrottledIntegerWriter producer = new ThrottledIntegerWriter(
@@ -147,12 +144,12 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
             for (int attempt = 1; savepointPath == null && attempt <= 5; attempt++) {
                 savepointPath = MINI_CLUSTER.triggerSavepoint(
                         program1.getJobID(),
-                        tmpFolder.newFolder().getAbsolutePath(),
+                        tmpFolder.toFile().getAbsolutePath(),
                         false,
                         SavepointFormatType.CANONICAL).get();
             }
 
-            assertNotNull("Failed to trigger a savepoint", savepointPath);
+            assertThat(savepointPath).as("Failed to trigger a savepoint").isNotNull();
 
             // now cancel the job and relaunch a new one
             MINI_CLUSTER.cancelJob(program1.getJobID());
@@ -202,13 +199,14 @@ public class FlinkPravegaReaderSavepointITCase extends TestLogger {
 
         // checkpoint to files (but aggregate state below 1 MB) and don't to any async checkpoints
         env.getCheckpointConfig().setCheckpointStorage(
-                new FileSystemCheckpointStorage(tmpFolder.newFolder().toURI(), 1024 * 1024));
+                new FileSystemCheckpointStorage(
+                       tmpFolder.toFile().toURI(), 1024 * 1024));
 
         // the Pravega reader
         final FlinkPravegaReader<Integer> pravegaSource = FlinkPravegaReader.<Integer>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig())
+                .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withDeserializationSchema(new IntegerDeserializationSchema())
                 .uid("my_reader_name")
                 .build();

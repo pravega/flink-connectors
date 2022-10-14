@@ -16,13 +16,12 @@
 package io.pravega.connectors.flink;
 
 import io.pravega.client.batch.SegmentRange;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class PravegaInputSplitTest {
 
@@ -42,7 +41,7 @@ public class PravegaInputSplitTest {
     PravegaInputSplit mockSplitNullSegmentRange2;
 
 
-    @Before
+    @BeforeEach
     public void setupMocks() throws Exception {
         MockitoAnnotations.initMocks(this);
     }
@@ -53,10 +52,10 @@ public class PravegaInputSplitTest {
         PravegaInputSplit split2 = new PravegaInputSplit(12345, range1);
 
         // compare one to itself
-        assertTrue(split1.equals(split1));
+        assertThat(split1.equals(split1)).isTrue();
 
         // compare one to the other
-        assertTrue(split1.equals(split2));
+        assertThat(split1.equals(split2)).isTrue();
 
     }
 
@@ -66,14 +65,14 @@ public class PravegaInputSplitTest {
 
         PravegaInputSplit split1 = new PravegaInputSplit(12345, range1);
         PravegaInputSplit split2 = new PravegaInputSplit(12345, range2);
-        assertFalse(split1.equals(split2));
+        assertThat(split1.equals(split2)).isFalse();
 
         PravegaInputSplit split3 = new PravegaInputSplit(12345, range1);
         PravegaInputSplit split4 = new PravegaInputSplit(67890, range1);
-        assertFalse(split3.equals(split4));
+        assertThat(split3.equals(split4)).isFalse();
 
         String str = "dummy";
-        assertFalse(split3.equals(str));
+        assertThat(split3).isNotEqualTo(str);
 
     }
 

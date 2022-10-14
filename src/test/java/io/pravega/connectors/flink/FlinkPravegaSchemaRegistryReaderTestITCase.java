@@ -19,10 +19,11 @@ package io.pravega.connectors.flink;
 import io.pravega.client.stream.EventStreamWriter;
 import io.pravega.connectors.flink.serialization.DeserializerFromSchemaRegistry;
 import io.pravega.connectors.flink.serialization.PravegaDeserializationSchema;
-import io.pravega.connectors.flink.utils.SchemaRegistryUtils;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.SchemaRegistryTestEnvironment;
 import io.pravega.connectors.flink.utils.SuccessException;
 import io.pravega.connectors.flink.utils.User;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
+import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
 import io.pravega.schemaregistry.serializer.json.schemas.JSONSchema;
@@ -35,16 +36,16 @@ import org.apache.flink.api.java.ExecutionEnvironment;
 import org.apache.flink.formats.avro.typeutils.GenericRecordAvroTypeInfo;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.streaming.api.functions.sink.SinkFunction;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.Timeout;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
+@Timeout(value = 180)
 public class FlinkPravegaSchemaRegistryReaderTestITCase {
 
     private static class MyTest {
@@ -57,30 +58,21 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         }
     }
 
-    // Setup utility.
-    protected static final SetupUtils SETUP_UTILS = new SetupUtils();
-
-    protected static final SchemaRegistryUtils SCHEMA_REGISTRY_UTILS =
-            new SchemaRegistryUtils(SETUP_UTILS, SchemaRegistryUtils.DEFAULT_PORT);
+    private static final SchemaRegistryTestEnvironment SCHEMA_REGISTRY =
+            new SchemaRegistryTestEnvironment(PravegaRuntime.container(), SchemaRegistryRuntime.container());
 
     private static final Schema SCHEMA = User.SCHEMA$;
     private static final GenericRecord AVRO_EVENT = new GenericRecordBuilder(SCHEMA).set("name", "test").build();
     private static final MyTest JSON_EVENT = new MyTest("test");
 
-    //Ensure each test completes within 180 seconds.
-    @Rule
-    public final Timeout globalTimeout = new Timeout(180, TimeUnit.SECONDS);
-
-    @BeforeClass
-    public static void setupServices() throws Exception {
-        SETUP_UTILS.startAllServices();
-        SCHEMA_REGISTRY_UTILS.setupServices();
+    @BeforeAll
+    public static void setupServices() {
+        SCHEMA_REGISTRY.startUp();
     }
 
-    @AfterClass
-    public static void tearDownServices() throws Exception {
-        SETUP_UTILS.stopAllServices();
-        SCHEMA_REGISTRY_UTILS.tearDownServices();
+    @AfterAll
+    public static void tearDownServices() {
+        SCHEMA_REGISTRY.tearDown();
     }
 
     @Test
@@ -88,7 +80,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareAvroStream(streamName, AvroSchema.of(SCHEMA));
 
-        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+        final PravegaConfig pravegaConfig = SCHEMA_REGISTRY.operator().getPravegaConfig().withSchemaRegistryURI(
+                SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<GenericRecord> reader = FlinkPravegaReader.<GenericRecord>builder()
                 .forStream(streamName)
@@ -123,7 +116,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareAvroStream(streamName, AvroSchema.of(SCHEMA));
 
-        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+        final PravegaConfig pravegaConfig = SCHEMA_REGISTRY.operator().getPravegaConfig().withSchemaRegistryURI(
+                SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<User> reader = FlinkPravegaReader.<User>builder()
                 .forStream(streamName)
@@ -157,7 +151,8 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         prepareJsonStream(streamName, JSONSchema.of(MyTest.class));
 
-        final PravegaConfig pravegaConfig = SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri());
+        final PravegaConfig pravegaConfig = SCHEMA_REGISTRY.operator().getPravegaConfig().withSchemaRegistryURI(
+                SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri());
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         FlinkPravegaReader<MyTest> reader = FlinkPravegaReader.<MyTest>builder()
                 .forStream(streamName)
@@ -195,36 +190,37 @@ public class FlinkPravegaSchemaRegistryReaderTestITCase {
         FlinkPravegaInputFormat<GenericRecord> reader = FlinkPravegaInputFormat.<GenericRecord>builder()
                 .forStream(streamName)
                 .enableMetrics(false)
-                .withPravegaConfig(SETUP_UTILS.getPravegaConfig().withSchemaRegistryURI(SCHEMA_REGISTRY_UTILS.getSchemaRegistryUri()))
+                .withPravegaConfig(SCHEMA_REGISTRY.operator().getPravegaConfig().withSchemaRegistryURI(
+                        SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri()))
                 .withDeserializationSchemaFromRegistry(streamName, GenericRecord.class)
                 .build();
 
         List<GenericRecord> result = env.createInput(reader, new GenericRecordAvroTypeInfo(SCHEMA)).collect();
-        Assert.assertEquals(result.size(), 1);
-        Assert.assertEquals(result.get(0), AVRO_EVENT);
+        assertThat(result.size()).isEqualTo(1);
+        assertThat(result.get(0)).isEqualTo(AVRO_EVENT);
     }
 
     // ================================================================================
 
     private void configureAvroPravegaStream(String streamName, AvroSchema schema) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 1);
-        SCHEMA_REGISTRY_UTILS.registerSchema(streamName, schema, SerializationFormat.Avro);
+        SCHEMA_REGISTRY.operator().createTestStream(streamName, 1);
+        SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(streamName, schema, SerializationFormat.Avro);
     }
 
     private void prepareAvroStream(String streamName, AvroSchema schema) throws Exception {
         configureAvroPravegaStream(streamName, schema);
-        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(streamName, schema, SerializationFormat.Avro);
+        EventStreamWriter<Object> writer = SCHEMA_REGISTRY.schemaRegistryOperator().getWriter(streamName, schema, SerializationFormat.Avro);
         writer.writeEvent(AVRO_EVENT).join();
     }
 
     private void configureJsonPravegaStream(String streamName, JSONSchema schema) throws Exception {
-        SETUP_UTILS.createTestStream(streamName, 1);
-        SCHEMA_REGISTRY_UTILS.registerSchema(streamName, schema, SerializationFormat.Json);
+        SCHEMA_REGISTRY.operator().createTestStream(streamName, 1);
+        SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(streamName, schema, SerializationFormat.Json);
     }
 
     private void prepareJsonStream(String streamName, JSONSchema schema) throws Exception {
         configureJsonPravegaStream(streamName, schema);
-        EventStreamWriter<Object> writer = SCHEMA_REGISTRY_UTILS.getWriter(streamName, schema, SerializationFormat.Json);
+        EventStreamWriter<Object> writer = SCHEMA_REGISTRY.schemaRegistryOperator().getWriter(streamName, schema, SerializationFormat.Json);
         writer.writeEvent(JSON_EVENT).join();
     }
 }

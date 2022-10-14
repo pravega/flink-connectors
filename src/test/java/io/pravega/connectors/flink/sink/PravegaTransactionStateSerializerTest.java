@@ -15,11 +15,11 @@
  */
 package io.pravega.connectors.flink.sink;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
 
-import static org.junit.Assert.assertEquals;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class PravegaTransactionStateSerializerTest {
 
@@ -30,6 +30,6 @@ public class PravegaTransactionStateSerializerTest {
         final String transactionId = "00000000-0000-0000-0000-000000000001";
         final PravegaTransactionState transactionState = new PravegaTransactionState(transactionId);
         final byte[] serialized = SERIALIZER.serialize(transactionState);
-        assertEquals(transactionState, SERIALIZER.deserialize(1, serialized));
+        assertThat(SERIALIZER.deserialize(1, serialized)).isEqualTo(transactionState);
     }
 }

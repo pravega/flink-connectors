@@ -23,7 +23,9 @@ import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.source.split.PravegaSplit;
 import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.IntegerDeserializationSchema;
-import io.pravega.connectors.flink.utils.SetupUtils;
+import io.pravega.connectors.flink.utils.IntegerSerializer;
+import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
+import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.connector.source.Boundedness;
 import org.apache.flink.api.connector.source.ReaderOutput;
@@ -33,16 +35,17 @@ import org.apache.flink.connector.testutils.source.reader.SourceReaderTestBase;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderContext;
 import org.apache.flink.connector.testutils.source.reader.TestingReaderOutput;
 import org.apache.flink.core.io.InputStatus;
-import org.junit.AfterClass;
-import org.junit.Assert;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 /** Unit tests for {@link PravegaSourceReader}. */
 public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSplit> {
@@ -51,19 +54,18 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
     private static final int NUM_PRAVEGA_SEGMENTS = 4;
     private static final int READER0 = 0;
 
-    /** Setup utility */
-    private static final SetupUtils SETUP_UTILS = new SetupUtils();
+    private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     private String readerGroupName;
 
-    @BeforeClass
-    public static void setup() throws Exception {
-        SETUP_UTILS.startAllServices();
+    @BeforeAll
+    public static void setupPravega() throws Exception {
+        PRAVEGA.startUp();
     }
 
-    @AfterClass
-    public static void tearDown() throws Exception {
-        SETUP_UTILS.stopAllServices();
+    @AfterAll
+    public static void tearDownPravega() throws Exception {
+        PRAVEGA.tearDown();
     }
 
     protected int getNumSplits() {
@@ -77,10 +79,10 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         final PravegaSplit split = new PravegaSplit(readerGroupName, READER0);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(readerGroupName, streamName);
         try (final SourceReader<Integer, PravegaSplit> reader = createReader(readerGroupName, READER0, true);
-             final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+             final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
@@ -89,7 +91,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
             ReaderOutput<Integer> output = new TestingReaderOutput<>();
 
             InputStatus status = reader.pollNext(output);
-            Assert.assertEquals(status, InputStatus.NOTHING_AVAILABLE);
+            assertThat(status).isEqualTo(InputStatus.NOTHING_AVAILABLE);
         }
     }
 
@@ -106,10 +108,10 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
         final String streamName = RandomStringUtils.randomAlphabetic(20);
         final String readerGroupName = FlinkPravegaUtils.generateRandomReaderGroupName();
         setReaderGroupName(readerGroupName);
-        SETUP_UTILS.createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
+        PRAVEGA.operator().createTestStream(streamName, NUM_PRAVEGA_SEGMENTS);
         createReaderGroup(readerGroupName, streamName);
 
-        try (final EventStreamWriter<Integer> eventWriter = SETUP_UTILS.getIntegerWriter(streamName)) {
+        try (final EventStreamWriter<Integer> eventWriter = PRAVEGA.operator().getWriter(streamName, new IntegerSerializer())) {
             for (int i = 0; i < NUM_RECORDS_PER_SPLIT; i++) {
                 eventWriter.writeEvent(i);
             }
@@ -128,7 +130,7 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
             emitter = new PravegaRecordEmitter<>(new IntegerDeserializationSchema());
         }
         return new PravegaSourceReader<>(
-                () -> new PravegaSplitReader(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig(),
+                () -> new PravegaSplitReader(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig(),
                         readerGroupName, subtaskId),
                 emitter,
                 new Configuration(),
@@ -161,8 +163,8 @@ public class FlinkPravegaSourceReaderTest extends SourceReaderTestBase<PravegaSp
     }
 
     private static void createReaderGroup(String readerGroupName, String streamName) {
-        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(SETUP_UTILS.getScope(), SETUP_UTILS.getClientConfig());
-        Stream stream = Stream.of(SETUP_UTILS.getScope(), streamName);
+        ReaderGroupManager readerGroupManager = ReaderGroupManager.withScope(PRAVEGA.operator().getScope(), PRAVEGA.operator().getClientConfig());
+        Stream stream = Stream.of(PRAVEGA.operator().getScope(), streamName);
         readerGroupManager.createReaderGroup(readerGroupName, ReaderGroupConfig.builder().stream(stream).disableAutomaticCheckpoints().build());
         readerGroupManager.close();
     }
