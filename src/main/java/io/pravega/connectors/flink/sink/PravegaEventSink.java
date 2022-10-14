@@ -21,55 +21,48 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
-import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.Preconditions;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 
+/**
+ * A Pravega sink for {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+ *
+ * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaEventSink}.
+ *
+ * <p>{@link PravegaEventWriter} spawned by this sink is the only class responsible for writing all incoming events.
+ * In short, it calls {@link io.pravega.client.stream.EventStreamWriter#writeEvent} and fails the task if there is an error.
+ *
+ * @param <T> The type of the event to be written.
+ */
 @Experimental
-public class PravegaEventSink<T> implements Sink<T> {
-    private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
-    private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
-
-    // flag to enable/disable metrics
-    private final boolean enableMetrics;
-
-    // The Pravega client config.
-    private final ClientConfig clientConfig;
-
-    // The destination stream.
-    private final Stream stream;
-
+public class PravegaEventSink<T> extends PravegaSink<T> {
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
     private final PravegaWriterMode writerMode;
 
-    // The supplied event serializer.
-    private final SerializationSchema<T> serializationSchema;
-
-    // The router used to partition events within a stream, can be null for random routing
-    @Nullable
-    private final PravegaEventRouter<T> eventRouter;
-
+    /**
+     * Creates a new Pravega Event Sink instance which can be added as a sink to a Flink job.
+     * It will create a {@link PravegaEventWriter} on demand with following parameters.
+     * We can use {@link PravegaSinkBuilder} to build such a sink.
+     *
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param writerMode            The writer mode of the sink.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     public PravegaEventSink(boolean enableMetrics, ClientConfig clientConfig,
                             Stream stream, PravegaWriterMode writerMode,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        this.enableMetrics = enableMetrics;
-        this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
-        this.stream = Preconditions.checkNotNull(stream, "stream");
+        super(enableMetrics, clientConfig, stream, serializationSchema, eventRouter);
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
-        this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        this.eventRouter = eventRouter;
     }
 
     @Override
     public SinkWriter<T> createWriter(InitContext context) throws IOException {
-        if (enableMetrics) {
-            MetricGroup pravegaWriterMetricGroup = context.metricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
-            pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
-        }
+        registerMetrics(enableMetrics, context);
 
         return new PravegaEventWriter<>(
                 context,

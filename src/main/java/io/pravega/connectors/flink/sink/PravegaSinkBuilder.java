@@ -157,36 +157,30 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * Create the EXACTLY_ONCE sink for the current builder state.
+     * Builds a {@link PravegaSink} based on the configuration.
      *
-     * @return An instance of {@link PravegaTransactionalSink}.
+     * @throws IllegalStateException if the configuration is invalid.
+     * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
-    public PravegaTransactionalSink<T> buildTransactionSink() {
-        Preconditions.checkState(writerMode == PravegaWriterMode.EXACTLY_ONCE,
-                "writerMode must be EXACTLY_ONCE.");
-        return new PravegaTransactionalSink<>(
-                enableMetrics,
-                pravegaConfig.getClientConfig(),
-                resolveStream(),
-                txnLeaseRenewalPeriod.toMilliseconds(),
-                serializationSchema,
-                eventRouter);
-    }
-
-    /**
-     * Create the BEST_EFFORT or ATLEAST_ONCE sink for the current builder state.
-     *
-     * @return An instance of {@link PravegaEventSink}.
-     */
-    public PravegaEventSink<T> buildEventSink() {
-        Preconditions.checkState(writerMode == PravegaWriterMode.ATLEAST_ONCE || writerMode == PravegaWriterMode.BEST_EFFORT,
-                "writerMode must be EXACTLY_ONCE.");
-        return new PravegaEventSink<>(
-                enableMetrics,
-                pravegaConfig.getClientConfig(),
-                resolveStream(),
-                writerMode,
-                serializationSchema,
-                eventRouter);
+    public PravegaSink<T> build() {
+        if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+            return new PravegaEventSink<>(
+                    enableMetrics,
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    writerMode,
+                    serializationSchema,
+                    eventRouter);
+        } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            return new PravegaTransactionalSink<>(
+                    enableMetrics,
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    txnLeaseRenewalPeriod.toMilliseconds(),
+                    serializationSchema,
+                    eventRouter);
+        } else {
+            throw new IllegalStateException("Failed to build Pravega sink with unknown write mode: " + writerMode);
+        }
     }
 }

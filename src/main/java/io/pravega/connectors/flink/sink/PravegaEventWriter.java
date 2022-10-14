@@ -43,8 +43,9 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A Pravega {@link org.apache.flink.api.connector.sink2.SinkWriter} implementation that is suitable for
- * {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE}. <p>
- * Note that the difference between these two modes is that {@link PravegaEventWriter#flushAndVerify()}
+ * {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE}.
+ *
+ * <p>Note that the difference between these two modes is that {@link PravegaEventWriter#flushAndVerify()}
  * is called for each checkpoint in the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
  *
  * @param <T> The type of the event to be written.

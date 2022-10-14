@@ -17,61 +17,67 @@ package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
+import io.pravega.client.stream.Transaction;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Committer;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
-import org.apache.flink.metrics.MetricGroup;
 import org.apache.flink.util.Preconditions;
 
-import javax.annotation.Nullable;
 import java.io.IOException;
 
+/**
+ * A Pravega sink for {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
+ *
+ * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaTransactionalSink}.
+ *
+ * <p>{@link PravegaTransactionalSink} has two main components, {@link PravegaTransactionalWriter}
+ * and {@link PravegaCommitter}.
+ *
+ * <p>The transactional writer will create transaction on initialization and after each checkpoint.
+ * For every event, it will call {@link Transaction#writeEvent}. {@link Transaction#flush} will be
+ * called before next checkpoint to make sure all events are acknowledged by Pravega.
+ * Note it will not commit transactions but let {@link PravegaCommitter} to do this.
+ *
+ * <p>The committer will use the transactions provided by the transactional writer and commit them.
+ * If there is an error during commit, it will log the error and throw the failed transaction away.
+ *
+ * @param <T> The type of the event to be written.
+ */
 @Experimental
-public class PravegaTransactionalSink<T> implements TwoPhaseCommittingSink<T, PravegaTransactionState> {
-    private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
-    private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
-
-    // flag to enable/disable metrics
-    private final boolean enableMetrics;
-
-    // The Pravega client config.
-    private final ClientConfig clientConfig;
-
-    // The destination stream.
-    private final Stream stream;
-
-    // Various timeouts
+public class PravegaTransactionalSink<T>
+        extends PravegaSink<T>
+        implements TwoPhaseCommittingSink<T, PravegaTransactionState> {
+    // Transaction timeouts
     private final long txnLeaseRenewalPeriod;
 
-    // The supplied event serializer.
-    private final SerializationSchema<T> serializationSchema;
-
-    // The router used to partition events within a stream, can be null for random routing
-    @Nullable
-    private final PravegaEventRouter<T> eventRouter;
-
+    /**
+     * Creates a new Pravega Transactional Sink instance which can be added as a sink to a Flink job.
+     * It will create a {@link PravegaTransactionalWriter} on demand with following parameters.
+     * We can use {@link PravegaSinkBuilder} to build such a sink.
+     *
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param txnLeaseRenewalPeriod THe transaction timeout after any operations.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
     PravegaTransactionalSink(boolean enableMetrics, ClientConfig clientConfig,
                              Stream stream, long txnLeaseRenewalPeriod,
                              SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        this.enableMetrics = enableMetrics;
-        this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
-        this.stream = Preconditions.checkNotNull(stream, "stream");
+        super(enableMetrics, clientConfig, stream, serializationSchema, eventRouter);
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
-        this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
-        this.eventRouter = eventRouter;
     }
 
     @Override
     public TwoPhaseCommittingSink.PrecommittingSinkWriter<T, PravegaTransactionState>
     createWriter(InitContext context) throws IOException {
-        if (enableMetrics) {
-            MetricGroup pravegaWriterMetricGroup = context.metricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
-            pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
-        }
+        registerMetrics(enableMetrics, context);
 
         return new PravegaTransactionalWriter<>(
                 context,

@@ -63,7 +63,7 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     // --------- configurations for creating a TransactionalEventStreamWriter ---------
 
     /**
-     * A Pravega Committer that implements {@link org.apache.flink.api.connector.sink2.Committer}.
+     * A Pravega Committer that implements {@link Committer}.
      *
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
