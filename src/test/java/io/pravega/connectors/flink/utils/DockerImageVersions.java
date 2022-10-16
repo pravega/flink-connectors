@@ -24,6 +24,6 @@ package io.pravega.connectors.flink.utils;
 public class DockerImageVersions {
     // The Pravega and Schema Registry docker image version is behind the snapshot version so that
     // we need to maintain the backwards compatibility of these two docker images.
-    public static final String PRAVEGA = "pravega/pravega:0.11.0";
-    public static final String SCHEMA_REGISTRY = "pravega/schemaregistry:0.4.0";
+    public static final String PRAVEGA = "pravega/pravega:0.12.0";
+    public static final String SCHEMA_REGISTRY = "pravega/schemaregistry:0.5.0";
 }
