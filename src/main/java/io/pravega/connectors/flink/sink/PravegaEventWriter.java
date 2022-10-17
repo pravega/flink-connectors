@@ -26,16 +26,14 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink.Sink;
-import org.apache.flink.api.connector.sink.SinkWriter;
+import org.apache.flink.api.connector.sink2.Sink;
+import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -44,14 +42,15 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * A Pravega {@link SinkWriter} implementation that is suitable for {@link PravegaWriterMode#BEST_EFFORT}
- * and {@link PravegaWriterMode#ATLEAST_ONCE}. <p>
- * Note that the difference between these two modes is {@link PravegaEventWriter#flushAndVerify()}
- * is called for each checkpoint for the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
+ * A Pravega {@link org.apache.flink.api.connector.sink2.SinkWriter} implementation that is suitable for
+ * {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE}.
+ *
+ * <p>Note that the difference between these two modes is that {@link PravegaEventWriter#flushAndVerify()}
+ * is called for each checkpoint in the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
  *
  * @param <T> The type of the event to be written.
  */
-public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionState, Void> {
+public class PravegaEventWriter<T> implements SinkWriter<T> {
     private static final Logger LOG = LoggerFactory.getLogger(PravegaEventWriter.class);
 
     // Error which will be detected asynchronously and reported to Flink
@@ -94,7 +93,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     private final String writerId;
 
     /**
-     * A Pravega writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
+     * A Pravega non-transactional writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
      * {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
      *
      * @param context               Some runtime info from sink.
@@ -162,12 +161,10 @@ public class PravegaEventWriter<T> implements SinkWriter<T, PravegaTransactionSt
     }
 
     @Override
-    public List<PravegaTransactionState> prepareCommit(boolean flush) throws IOException, InterruptedException {
-        if (writerMode == PravegaWriterMode.ATLEAST_ONCE || flush) {
+    public void flush(boolean endOfInput) throws IOException, InterruptedException {
+        if (writerMode == PravegaWriterMode.ATLEAST_ONCE) {
             flushAndVerify();
         }
-
-        return new ArrayList<>();
     }
 
     @VisibleForTesting

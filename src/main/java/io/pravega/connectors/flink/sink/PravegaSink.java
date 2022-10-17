@@ -21,146 +21,60 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink.Committer;
-import org.apache.flink.api.connector.sink.GlobalCommitter;
-import org.apache.flink.api.connector.sink.Sink;
-import org.apache.flink.api.connector.sink.SinkWriter;
-import org.apache.flink.core.io.SimpleVersionedSerializer;
-import org.apache.flink.metrics.Gauge;
-import org.apache.flink.metrics.MetricGroup;
-import org.apache.flink.streaming.api.datastream.DataStream;
+import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
 
 /**
- * Flink sink implementation for writing into pravega storage.
- * Can be added as a sink via {@link DataStream#sinkTo} to a Flink job.
+ * Pravega Sink writes data into a Pravega stream. It supports all writer mode
+ * described by {@link PravegaWriterMode}.
+ *
+ * <p>For {@link PravegaWriterMode#ATLEAST_ONCE} and {@link PravegaWriterMode#ATLEAST_ONCE},
+ * a {@link PravegaEventSink} will be returned after {@link PravegaSinkBuilder#build()}.
+ *
+ * <p>For {@link PravegaWriterMode#EXACTLY_ONCE}, a {@link PravegaTransactionalSink}
+ * will be returned after {@link PravegaSinkBuilder#build()}.
  *
  * @param <T> The type of the event to be written.
  */
 @Experimental
-public class PravegaSink<T> implements Sink<T, PravegaTransactionState, Void, Void> {
-
-    private static final String PRAVEGA_WRITER_METRICS_GROUP = "PravegaWriter";
-    private static final String SCOPED_STREAM_METRICS_GAUGE = "stream";
-
-    // flag to enable/disable metrics
-    private final boolean enableMetrics;
-
+public abstract class PravegaSink<T> implements Sink<T> {
     // The Pravega client config.
-    private final ClientConfig clientConfig;
+    final ClientConfig clientConfig;
 
     // The destination stream.
-    private final Stream stream;
-
-    // Various timeouts
-    private final long txnLeaseRenewalPeriod;
-
-    // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    final Stream stream;
 
     // The supplied event serializer.
-    private final SerializationSchema<T> serializationSchema;
+    final SerializationSchema<T> serializationSchema;
 
     // The router used to partition events within a stream, can be null for random routing
     @Nullable
-    private final PravegaEventRouter<T> eventRouter;
+    final PravegaEventRouter<T> eventRouter;
 
-    public PravegaSink(boolean enableMetrics, ClientConfig clientConfig,
-                       Stream stream, long txnLeaseRenewalPeriod, PravegaWriterMode writerMode,
-                       SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        this.enableMetrics = enableMetrics;
+    /**
+     * Set common parameters for {@link PravegaEventSink} and {@link PravegaTransactionalSink}.
+     *
+     * @param clientConfig          The Pravega client configuration.
+     * @param stream                The destination stream.
+     * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
+     * @param eventRouter           The implementation to extract the partition key from the event.
+     */
+    PravegaSink(ClientConfig clientConfig, Stream stream,
+                SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
-        Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
-        this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
-        this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");
         this.eventRouter = eventRouter;
     }
 
-    @Override
-    public SinkWriter<T, PravegaTransactionState, Void> createWriter(
-            InitContext context, List<Void> states) throws IOException {
-        if (enableMetrics) {
-            MetricGroup pravegaWriterMetricGroup = context.metricGroup().addGroup(PRAVEGA_WRITER_METRICS_GROUP);
-            pravegaWriterMetricGroup.gauge(SCOPED_STREAM_METRICS_GAUGE, new StreamNameGauge(stream.getScopedName()));
-        }
-
-        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-            return new PravegaTransactionWriter<>(
-                    context,
-                    clientConfig,
-                    stream,
-                    txnLeaseRenewalPeriod,
-                    serializationSchema,
-                    eventRouter);
-        } else if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            return new PravegaEventWriter<>(
-                    context,
-                    clientConfig,
-                    stream,
-                    writerMode,
-                    serializationSchema,
-                    eventRouter);
-        } else {
-            throw new UnsupportedOperationException("Not implemented writer mode");
-        }
-    }
-
-    @Override
-    public Optional<Committer<PravegaTransactionState>> createCommitter() throws IOException {
-        if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
-            return Optional.of(new PravegaCommitter<>(clientConfig,
-                    stream, txnLeaseRenewalPeriod, serializationSchema));
-        } else if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            return Optional.empty();
-        } else {
-            throw new UnsupportedOperationException("Not implemented writer mode");
-        }
-    }
-
-    @Override
-    public Optional<GlobalCommitter<PravegaTransactionState, Void>> createGlobalCommitter() throws IOException {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<SimpleVersionedSerializer<PravegaTransactionState>> getCommittableSerializer() {
-        return Optional.of(new PravegaTransactionStateSerializer());
-    }
-
-    @Override
-    public Optional<SimpleVersionedSerializer<Void>> getGlobalCommittableSerializer() {
-        return Optional.empty();
-    }
-
-    @Override
-    public Optional<SimpleVersionedSerializer<Void>> getWriterStateSerializer() {
-        return Optional.empty();
-    }
-
+    // --------------- configurations -------------------------------
     /**
-     * Gauge for getting the fully qualified stream name information.
+     * Gets a builder for {@link PravegaSink} to read Pravega streams using the Flink streaming API.
+     * @param <T> the element type.
+     * @return A new builder of {@link PravegaSink}
      */
-    private static class StreamNameGauge implements Gauge<String> {
-
-        final String stream;
-
-        public StreamNameGauge(String stream) {
-            this.stream = stream;
-        }
-
-        @Override
-        public String getValue() {
-            return stream;
-        }
-    }
-
     public static <T> PravegaSinkBuilder<T> builder() {
         return new PravegaSinkBuilder<>();
     }

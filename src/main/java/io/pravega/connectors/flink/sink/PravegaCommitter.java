@@ -29,20 +29,20 @@ import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
-import org.apache.flink.api.connector.sink.Committer;
+import org.apache.flink.api.connector.sink2.Committer;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
+import java.util.Collection;
 import java.util.UUID;
 
 /**
- * This committer only works in {@link PravegaWriterMode#EXACTLY_ONCE} and
- * handles the final commit stage for the transaction. <p>
- * The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}
+ * This committer only works under {@link PravegaWriterMode#EXACTLY_ONCE} and
+ * handles the final commit stage for the transaction.
+ *
+ * <p>The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}
  * which handles by the Flink sink mechanism.
  *
  * @param <T> The type of the event to be written.
@@ -83,8 +83,8 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
     }
 
     @Override
-    public List<PravegaTransactionState> commit(List<PravegaTransactionState> committables) throws IOException {
-        committables.forEach(transactionState -> {
+    public void commit(Collection<CommitRequest<PravegaTransactionState>> committables) throws IOException, InterruptedException {
+        committables.stream().map(CommitRequest::getCommittable).forEach(transactionState -> {
             Transaction<T> transaction = transactionalWriter
                     .getTxn(UUID.fromString(transactionState.getTransactionId()));
             LOG.info("Transaction resumed with id {}.", transaction.getTxnId());
@@ -106,8 +106,6 @@ public class PravegaCommitter<T> implements Committer<PravegaTransactionState> {
                 }
             }
         });
-
-        return Collections.emptyList();
     }
 
     @Override
