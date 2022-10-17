@@ -43,8 +43,9 @@ import java.util.UUID;
 
 /**
  * A Pravega {@link TwoPhaseCommittingSink.PrecommittingSinkWriter} implementation that is suitable
- * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode. <p>
- * Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
+ * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode.
+ *
+ * <p>Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
  * this writer only deals with the {@link PravegaTransactionalWriter#beginTransaction},
  * {@link PravegaTransactionalWriter#write}, and {@link PravegaTransactionalWriter#prepareCommit} stage.
  *

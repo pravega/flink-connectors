@@ -39,9 +39,10 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * This committer only works in {@link PravegaWriterMode#EXACTLY_ONCE} and
- * handles the final commit stage for the transaction. <p>
- * The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}
+ * This committer only works under {@link PravegaWriterMode#EXACTLY_ONCE} and
+ * handles the final commit stage for the transaction.
+ *
+ * <p>The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}
  * which handles by the Flink sink mechanism.
  *
  * @param <T> The type of the event to be written.

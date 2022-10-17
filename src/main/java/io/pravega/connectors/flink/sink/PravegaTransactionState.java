@@ -19,7 +19,7 @@ import java.util.Objects;
 
 /**
  * This class holds the necessary information to construct a new {@link PravegaTransactionalWriter}
- * to commit transactions in {@link PravegaCommitter}.
+ * when transactions need to committed in {@link PravegaCommitter}.
  */
 public class PravegaTransactionState {
     private final String transactionId;

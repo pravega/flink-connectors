@@ -37,10 +37,10 @@ import java.io.IOException;
  * <p>{@link PravegaTransactionalSink} has two main components, {@link PravegaTransactionalWriter}
  * and {@link PravegaCommitter}.
  *
- * <p>The transactional writer will create transaction on initialization and after each checkpoint.
+ * <p>The transactional writer will create a transaction on initialization and after each checkpoint.
  * For every event, it will call {@link Transaction#writeEvent}. {@link Transaction#flush} will be
  * called before next checkpoint to make sure all events are acknowledged by Pravega.
- * Note it will not commit transactions but let {@link PravegaCommitter} to do this.
+ * Note it will not commit transactions and let {@link PravegaCommitter} to do this.
  *
  * <p>The committer will use the transactions provided by the transactional writer and commit them.
  * If there is an error during commit, it will log the error and throw the failed transaction away.
