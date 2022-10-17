@@ -27,14 +27,14 @@ public class PravegaTransactionStateTest {
 
     @Test
     public void testInit() {
-        PravegaTransactionWriter<Integer> writer = mockPravegaTransactionWriter();
+        PravegaTransactionalWriter<Integer> writer = mockPravegaTransactionWriter();
         PravegaTransactionState transactionState = PravegaTransactionState.of(writer);
         assertThat(transactionState.getTransactionId()).isEqualTo(TRANSACTION_ID);
     }
 
     @SuppressWarnings("unchecked")
-    private <T> PravegaTransactionWriter<T> mockPravegaTransactionWriter() {
-        PravegaTransactionWriter<T> writer = mock(PravegaTransactionWriter.class);
+    private <T> PravegaTransactionalWriter<T> mockPravegaTransactionWriter() {
+        PravegaTransactionalWriter<T> writer = mock(PravegaTransactionalWriter.class);
         when(writer.getTransactionId()).thenReturn(TRANSACTION_ID);
         return writer;
     }

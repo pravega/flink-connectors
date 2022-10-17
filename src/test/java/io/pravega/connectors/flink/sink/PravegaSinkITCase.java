@@ -47,7 +47,6 @@ import static org.assertj.core.api.Assertions.fail;
 
 @Timeout(value = 120, unit = TimeUnit.MINUTES)
 public class PravegaSinkITCase extends AbstractTestBase {
-
     private static final PravegaTestEnvironment PRAVEGA = new PravegaTestEnvironment(PravegaRuntime.container());
 
     // Number of events to generate for each of the tests.
@@ -67,7 +66,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code AT_LEAST_ONCE} mode.
+     * Tests the {@link PravegaEventSink} in {@code AT_LEAST_ONCE} mode.
      */
     @Test
     public void testAtLeastOnceWriter() throws Exception {
@@ -96,7 +95,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode.
+     * Tests the {@link PravegaTransactionalSink}.
      */
     @Test
     public void testExactlyOnceWriter() throws Exception {
@@ -125,7 +124,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode without event router.
+     * Tests the {@link PravegaTransactionalSink} without event router.
      */
     @Test
     public void testExactlyOnceWriterWithoutEventrouter() throws Exception {
@@ -153,7 +152,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with a failing mapper.
+     * Tests the {@link PravegaTransactionalSink} with a failing mapper.
      */
     @Test
     public void testExactlyOnceWriterWithFailingMapper() throws Exception {
@@ -182,7 +181,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
     }
 
     /**
-     * Tests the {@link PravegaSink} in {@code EXACTLY_ONCE} mode with unaligned checkpoint.
+     * Tests the {@link PravegaTransactionalSink} with unaligned checkpoint.
      */
     @Test
     public void testExactlyOnceWithUnalignedCheckpointWriter() throws Exception {
@@ -194,7 +193,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
         env.getCheckpointConfig().enableUnalignedCheckpoints();
         env.setRestartStrategy(RestartStrategies.fixedDelayRestart(1, 0L));
 
-        final PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
+        PravegaSink<Integer> pravegaSink = PravegaSink.<Integer>builder()
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())

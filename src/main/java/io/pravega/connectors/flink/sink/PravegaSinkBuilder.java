@@ -26,18 +26,16 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 
 /**
- * A builder for {@link PravegaSink}.
+ * A builder for {@link PravegaEventSink} and {@link PravegaTransactionalSink}.
  *
  * @param <T> the element type.
  */
 public class PravegaSinkBuilder<T> {
-
     // the numbers below are picked based on the default max settings in Pravega
     protected static final long DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS = 600000; // 600 seconds
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;
-    private boolean enableMetrics = true;
     private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
     private Time txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     private SerializationSchema<T> serializationSchema;
@@ -79,17 +77,6 @@ public class PravegaSinkBuilder<T> {
      */
     public PravegaSinkBuilder<T> forStream(final Stream stream) {
         this.stream = stream.getScopedName();
-        return this;
-    }
-
-    /**
-     * enable/disable pravega sink metrics (default: enabled).
-     *
-     * @param enable boolean
-     * @return A builder to configure and create a sink.
-     */
-    public PravegaSinkBuilder<T> enableMetrics(boolean enable) {
-        this.enableMetrics = enable;
         return this;
     }
 
@@ -154,18 +141,28 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * Create the sink for the current builder state.
+     * Builds a {@link PravegaSink} based on the configuration.
      *
-     * @return An instance of {@link PravegaSink}.
+     * @throws IllegalStateException if the configuration is invalid.
+     * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
     public PravegaSink<T> build() {
-        return new PravegaSink<>(
-                enableMetrics,
-                pravegaConfig.getClientConfig(),
-                resolveStream(),
-                txnLeaseRenewalPeriod.toMilliseconds(),
-                writerMode,
-                serializationSchema,
-                eventRouter);
+        if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+            return new PravegaEventSink<>(
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    writerMode,
+                    serializationSchema,
+                    eventRouter);
+        } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+            return new PravegaTransactionalSink<>(
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    txnLeaseRenewalPeriod.toMilliseconds(),
+                    serializationSchema,
+                    eventRouter);
+        } else {
+            throw new IllegalStateException("Failed to build Pravega sink with unknown write mode: " + writerMode);
+        }
     }
 }

@@ -18,8 +18,8 @@ package io.pravega.connectors.flink.sink;
 import java.util.Objects;
 
 /**
- * This class holds the necessary information to construct a new {@link PravegaTransactionWriter}
- * to commit transactions in {@link PravegaCommitter}.
+ * This class holds the necessary information to construct a new {@link PravegaTransactionalWriter}
+ * when transactions need to committed in {@link PravegaCommitter}.
  */
 public class PravegaTransactionState {
     private final String transactionId;
@@ -28,7 +28,7 @@ public class PravegaTransactionState {
         this.transactionId = transactionId;
     }
 
-    public static <I> PravegaTransactionState of(PravegaTransactionWriter<I> writer) {
+    public static <I> PravegaTransactionState of(PravegaTransactionalWriter<I> writer) {
         return new PravegaTransactionState(writer.getTransactionId());
     }
 
