@@ -30,7 +30,7 @@ import static io.pravega.connectors.flink.utils.runtime.SchemaRegistryContainer.
 public class PravegaContainer extends GenericContainer<PravegaContainer> {
 
     private static final DockerImageName DEFAULT_IMAGE_NAME = DockerImageName.parse("pravega/pravega");
-    private static final String DEFAULT_TAG = "0.11.0";
+    private static final String DEFAULT_TAG = "0.12.0";
     private static final int CONTROLLER_PORT = 9090;
     private static final int SEGMENT_STORE_PORT = 12345;
 
