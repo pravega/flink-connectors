@@ -27,7 +27,15 @@ buildscript {
         classpath group: 'org.hidetake', name: 'gradle-ssh-plugin', version: gradleSshPluginVersion
         classpath "ru.vyarus:gradle-mkdocs-plugin:${gradleMkdocsPluginVersion}"
         classpath "org.ajoberstar.grgit:grgit-gradle:${gradleGitPluginVersion}"
+        classpath "org.ajoberstar.grgit:grgit-core:${gradleGitPluginVersion}"
         classpath "gradle.plugin.com.github.spotbugs.snom:spotbugs-gradle-plugin:${spotbugsPluginVersion}"
+    }
+    // Specifically force the version for GrGit plugin required modules to prevent downloading the most recent release.
+    configurations.all {
+        resolutionStrategy {
+            force "org.ajoberstar.grgit:grgit-gradle:" + gradleGitPluginVersion
+            force "org.ajoberstar.grgit:grgit-core:" + gradleGitPluginVersion
+        }
     }
 }
 plugins {
