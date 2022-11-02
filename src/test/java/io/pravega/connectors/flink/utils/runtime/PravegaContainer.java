@@ -45,6 +45,7 @@ public class PravegaContainer extends GenericContainer<PravegaContainer> {
         addFixedExposedPort(CONTROLLER_PORT, CONTROLLER_PORT);
         addFixedExposedPort(SEGMENT_STORE_PORT, SEGMENT_STORE_PORT);
         withStartupTimeout(Duration.ofSeconds(90));
+        withEnv("HOST_IP", getHost());
         withCommand("standalone");
         waitingFor(Wait.forLogMessage(".* Pravega Sandbox is running locally now.*", 1));
 
