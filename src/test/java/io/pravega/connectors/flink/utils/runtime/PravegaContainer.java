@@ -42,10 +42,10 @@ public class PravegaContainer extends GenericContainer<PravegaContainer> {
         super(dockerImageName);
 
         dockerImageName.assertCompatibleWith(DEFAULT_IMAGE_NAME);
-        addEnv("HOST_IP", getHost());
         addFixedExposedPort(CONTROLLER_PORT, CONTROLLER_PORT);
         addFixedExposedPort(SEGMENT_STORE_PORT, SEGMENT_STORE_PORT);
         withStartupTimeout(Duration.ofSeconds(90));
+        withEnv("HOST_IP", getHost());
         withCommand("standalone");
         waitingFor(Wait.forLogMessage(".* Pravega Sandbox is running locally now.*", 1));
 
