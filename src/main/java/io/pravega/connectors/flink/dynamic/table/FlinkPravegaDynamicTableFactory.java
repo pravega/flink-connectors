@@ -19,7 +19,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
-import org.apache.flink.table.api.TableSchema;
+import org.apache.flink.table.catalog.ResolvedSchema;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -31,12 +31,31 @@ import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.utils.TableSchemaUtils;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.*;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.CONTROLLER_URI;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_END_STREAMCUTS;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_EVENT_READ_TIMEOUT_INTERVAL;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_EXECUTION_TYPE;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_MAX_OUTSTANDING_CHECKPOINT_REQUEST;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_NAME;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_REFRESH_INTERVAL;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_START_STREAMCUTS;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_STREAMS;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_UID;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCOPE;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_AUTH_TOKEN;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_AUTH_TYPE;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_TRUST_STORE;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_VALIDATE_HOSTNAME;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_ENABLE_WATERMARK_PROPAGATION;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_ROUTINGKEY_FIELD_NAME;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_SEMANTIC;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_STREAM;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_TXN_LEASE_RENEWAL_INTERVAL;
 
 public class FlinkPravegaDynamicTableFactory implements
         DynamicTableSourceFactory,
@@ -63,7 +82,7 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSourceOptions(tableOptions);
 
-        DataType producedDataType = context.getCatalogTable().getSchema().toPhysicalRowDataType();
+        DataType producedDataType = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSource(
                 producedDataType,
@@ -94,10 +113,12 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSinkOptions(tableOptions);
 
-        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(context.getCatalogTable().getSchema());
+        ResolvedSchema resolvedSchema = context.getCatalogTable().getResolvedSchema();
+        final DataType physicalDatatype = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSink(
-                tableSchema,
+                physicalDatatype,
+                resolvedSchema,
                 encodingFormat,
                 PravegaOptionsUtil.getPravegaConfig(tableOptions),
                 PravegaOptionsUtil.getSinkStream(tableOptions),

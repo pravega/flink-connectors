@@ -59,6 +59,8 @@ public class PravegaSchemaUtils {
                 AvroSchema avroSchema = AvroSchema.from(schemaInfo);
 
                 schemaString = avroSchema.getSchema().toString();
+
+
                 dataType = TypeConversions.fromLegacyInfoToDataType(AvroSchemaConverter.convertToTypeInfo(schemaString));
                 break;
 
@@ -66,13 +68,14 @@ public class PravegaSchemaUtils {
                 throw new NotImplementedException("Not supporting serialization format");
         }
 
+        return
         return DataTypeUtils.expandCompositeTypeToSchema(dataType);
     }
 
-    public static SchemaInfo tableSchemaToSchemaInfo(TableSchema tableSchema, SerializationFormat serializationFormat) {
+    public static SchemaInfo tableSchemaToSchemaInfo(org.apache.flink.table.api.Schema tableSchema, SerializationFormat serializationFormat) {
         switch (serializationFormat) {
             case Avro:
-                Schema schema = AvroSchemaConverter.convertToSchema(tableSchema.toRowDataType().getLogicalType());
+                Schema schema = AvroSchemaConverter.convertToSchema(tableSchema.);
                 AvroSchema avroSchema = AvroSchema.of(schema);
                 return avroSchema.getSchemaInfo();
             case Json:

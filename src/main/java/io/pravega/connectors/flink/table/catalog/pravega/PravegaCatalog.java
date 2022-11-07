@@ -35,6 +35,7 @@ import io.pravega.schemaregistry.contract.data.Compatibility;
 import io.pravega.schemaregistry.contract.data.GroupProperties;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
+import org.apache.flink.table.api.Schema;
 import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.catalog.AbstractCatalog;
 import org.apache.flink.table.catalog.CatalogBaseTable;
@@ -43,6 +44,7 @@ import org.apache.flink.table.catalog.CatalogDatabaseImpl;
 import org.apache.flink.table.catalog.CatalogFunction;
 import org.apache.flink.table.catalog.CatalogPartition;
 import org.apache.flink.table.catalog.CatalogPartitionSpec;
+import org.apache.flink.table.catalog.CatalogTable;
 import org.apache.flink.table.catalog.CatalogTableImpl;
 import org.apache.flink.table.catalog.ObjectPath;
 import org.apache.flink.table.catalog.ResolvedSchema;
@@ -297,7 +299,9 @@ public class PravegaCatalog extends AbstractCatalog {
                         PravegaRegistryFormatFactory.IDENTIFIER, PravegaRegistryOptions.GROUP_ID.key()),
                 stream);
 
-        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
+        return CatalogTable.of(Schema.newBuilder().fromResolvedSchema(resolvedSchema).build(),
+                "", Collections.emptyList(), properties);
+//        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
     }
 
     @Override
@@ -356,7 +360,7 @@ public class PravegaCatalog extends AbstractCatalog {
                 true));
 
         SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(
-                table.getSchema(), serializationFormat);
+                table.getUnresolvedSchema(), serializationFormat);
         schemaRegistryClient.addSchema(stream, schemaInfo);
     }
 
