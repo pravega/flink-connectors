@@ -389,7 +389,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSink expectedSink = new FlinkPravegaDynamicTableSink(
-                TableSchemaUtils.getPhysicalSchema(TableSchema.fromResolvedSchema(SINK_SCHEMA)),
+                SINK_SCHEMA.toPhysicalRowDataType(),
+                SINK_SCHEMA,
                 encodingFormat,
                 getTestPravegaConfig(),
                 Stream.of(SCOPE, STREAM3),
@@ -423,7 +424,8 @@ public class FlinkPravegaDynamicTableFactoryTest extends TestLogger {
                 false);
 
         final FlinkPravegaDynamicTableSink sink = new FlinkPravegaDynamicTableSink(
-                TableSchemaUtils.getPhysicalSchema(TableSchema.fromResolvedSchema(SINK_SCHEMA)),
+                SINK_SCHEMA.toPhysicalRowDataType(),
+                SINK_SCHEMA,
                 encodingFormat,
                 getTestPravegaConfig(),
                 Stream.of(SCOPE, STREAM3),

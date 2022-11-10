@@ -301,7 +301,6 @@ public class PravegaCatalog extends AbstractCatalog {
 
         return CatalogTable.of(Schema.newBuilder().fromResolvedSchema(resolvedSchema).build(),
                 "", Collections.emptyList(), properties);
-//        return new CatalogTableImpl(TableSchema.fromResolvedSchema(resolvedSchema), properties, "");
     }
 
     @Override
@@ -360,7 +359,7 @@ public class PravegaCatalog extends AbstractCatalog {
                 true));
 
         SchemaInfo schemaInfo = PravegaSchemaUtils.tableSchemaToSchemaInfo(
-                table.getUnresolvedSchema(), serializationFormat);
+                table.getSchema(), serializationFormat);
         schemaRegistryClient.addSchema(stream, schemaInfo);
     }
 

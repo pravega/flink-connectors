@@ -33,7 +33,6 @@ import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -41,8 +40,10 @@ import static org.apache.flink.util.Preconditions.checkArgument;
 
 public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
-    // Consumed data type of the table
+    // Schema to configure routing key.
     private final ResolvedSchema resolvedSchema;
+
+    // Data type to configure the formats.
     private final DataType physicalDataType;
 
     // Sink format for encoding records to Pravega
@@ -73,7 +74,8 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
      * <p>Each row is written to a Pravega stream with a routing key based on the {@code routingKeyFieldName}.
      * The specified field must of type {@code STRING}.
      *
-     * @param resolvedSchema                   The table schema
+     * @param physicalDataType              The data type to config the formats
+     * @param resolvedSchema                The resolved schema
      * @param encodingFormat                sink format for encoding records to Pravega
      * @param pravegaConfig                 Pravega connection configuration
      * @param stream                        Pravega sink stream
@@ -91,8 +93,8 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
                                         long txnLeaseRenewalIntervalMillis,
                                         boolean enableWatermarkPropagation,
                                         @Nullable String routingKeyFieldName) {
-        this.physicalDataType = Preconditions.checkNotNull(physicalDataType, "Table schema must not be null.");
-        this.resolvedSchema = resolvedSchema;
+        this.physicalDataType = Preconditions.checkNotNull(physicalDataType, "Physical data type must not be null.");
+        this.resolvedSchema = Preconditions.checkNotNull(resolvedSchema, "Resolved schema must not be null");
         this.encodingFormat = Preconditions.checkNotNull(encodingFormat, "Encoding format must not be null.");
         this.pravegaConfig = Preconditions.checkNotNull(pravegaConfig, "Pravega config must not be null.");
         this.stream = Preconditions.checkNotNull(stream, "Stream must not be null.");
@@ -184,7 +186,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
         public RowDataBasedRouter(String routingKeyFieldName, ResolvedSchema resolvedSchema) {
             List<String> fieldNames = resolvedSchema.getColumnNames();
-            int keyIndex = Arrays.asList(fieldNames).indexOf(routingKeyFieldName);
+            int keyIndex = fieldNames.indexOf(routingKeyFieldName);
 
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");

@@ -35,27 +35,7 @@ import org.apache.flink.table.types.DataType;
 import java.util.HashSet;
 import java.util.Set;
 
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.CONTROLLER_URI;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_END_STREAMCUTS;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_EVENT_READ_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_EXECUTION_TYPE;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_CHECKPOINT_INITIATE_TIMEOUT_INTERVAL;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_MAX_OUTSTANDING_CHECKPOINT_REQUEST;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_NAME;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_READER_GROUP_REFRESH_INTERVAL;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_START_STREAMCUTS;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_STREAMS;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCAN_UID;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SCOPE;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_AUTH_TOKEN;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_AUTH_TYPE;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_TRUST_STORE;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SECURITY_VALIDATE_HOSTNAME;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_ENABLE_WATERMARK_PROPAGATION;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_ROUTINGKEY_FIELD_NAME;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_SEMANTIC;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_STREAM;
-import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.SINK_TXN_LEASE_RENEWAL_INTERVAL;
+import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.*;
 
 public class FlinkPravegaDynamicTableFactory implements
         DynamicTableSourceFactory,
@@ -82,10 +62,10 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSourceOptions(tableOptions);
 
-        DataType producedDataType = context.getPhysicalRowDataType();
+        DataType physicalDataType = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 PravegaOptionsUtil.getReaderGroupName(tableOptions),
                 PravegaOptionsUtil.getPravegaConfig(tableOptions),
@@ -113,7 +93,7 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSinkOptions(tableOptions);
 
-        ResolvedSchema resolvedSchema = context.getCatalogTable().getResolvedSchema();
+        final ResolvedSchema resolvedSchema = context.getCatalogTable().getResolvedSchema();
         final DataType physicalDatatype = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSink(
