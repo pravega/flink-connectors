@@ -157,6 +157,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
         return txnLeaseRenewalIntervalMillis == that.txnLeaseRenewalIntervalMillis &&
                 enableWatermarkPropagation == that.enableWatermarkPropagation &&
                 physicalDataType.equals(that.physicalDataType) &&
+                resolvedSchema.equals(that.resolvedSchema) &&
                 encodingFormat.equals(that.encodingFormat) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 stream.equals(that.stream) &&
@@ -168,6 +169,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
     public int hashCode() {
         return Objects.hash(
                 physicalDataType,
+                resolvedSchema,
                 encodingFormat,
                 pravegaConfig,
                 stream,
