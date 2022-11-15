@@ -208,8 +208,7 @@ public class PravegaCatalogITCase {
         CATALOG.createTable(path1, CATALOG_TABLE, false);
         registerAvroSchema(db1, t1);
         CatalogTable actual = (CatalogTable) CATALOG.getTable(path1);
-        assertThat(actual.getClass()).isEqualTo(CATALOG_TABLE.getClass());
-        assertThat(actual.getSchema()).isEqualTo(CATALOG_TABLE.getSchema());
+        assertThat(actual.getUnresolvedSchema()).isEqualTo(CATALOG_TABLE.getUnresolvedSchema());
         assertThat(actual.getOptions()).isEqualTo(CATALOG_TABLE.getOptions());
     }
 
