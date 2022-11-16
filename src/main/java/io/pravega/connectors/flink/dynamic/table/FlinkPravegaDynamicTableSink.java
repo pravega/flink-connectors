@@ -22,7 +22,7 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
-import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -33,17 +33,20 @@ import org.apache.flink.table.types.logical.LogicalTypeRoot;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.IntStream;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
 public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
-    // Schema to configure routing key.
-    private final ResolvedSchema resolvedSchema;
 
-    // Data type to configure the formats.
+    // Columns in schema to configure routing key.
+    private final List<Column> columns;
+
+    // Physical Data type to configure the formats.
     private final DataType physicalDataType;
 
     // Sink format for encoding records to Pravega
@@ -75,7 +78,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
      * The specified field must of type {@code STRING}.
      *
      * @param physicalDataType              The data type to config the formats
-     * @param resolvedSchema                The resolved schema
+     * @param columns                       Column list in the resolved schema
      * @param encodingFormat                sink format for encoding records to Pravega
      * @param pravegaConfig                 Pravega connection configuration
      * @param stream                        Pravega sink stream
@@ -85,7 +88,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
      * @param routingKeyFieldName           field name as Pravega routing key
      */
     public FlinkPravegaDynamicTableSink(DataType physicalDataType,
-                                        ResolvedSchema resolvedSchema,
+                                        List<Column> columns,
                                         EncodingFormat<SerializationSchema<RowData>> encodingFormat,
                                         PravegaConfig pravegaConfig,
                                         Stream stream,
@@ -94,7 +97,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
                                         boolean enableWatermarkPropagation,
                                         @Nullable String routingKeyFieldName) {
         this.physicalDataType = Preconditions.checkNotNull(physicalDataType, "Physical data type must not be null.");
-        this.resolvedSchema = Preconditions.checkNotNull(resolvedSchema, "Resolved schema must not be null");
+        this.columns = Preconditions.checkNotNull(columns, "Columns must not be null");
         this.encodingFormat = Preconditions.checkNotNull(encodingFormat, "Encoding format must not be null.");
         this.pravegaConfig = Preconditions.checkNotNull(pravegaConfig, "Pravega config must not be null.");
         this.stream = Preconditions.checkNotNull(stream, "Stream must not be null.");
@@ -120,7 +123,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
                 .withTxnLeaseRenewalPeriod(Time.milliseconds(txnLeaseRenewalIntervalMillis));
 
         if (routingKeyFieldName != null) {
-            writerBuilder.withEventRouter(new RowDataBasedRouter(routingKeyFieldName, resolvedSchema));
+            writerBuilder.withEventRouter(new RowDataBasedRouter(routingKeyFieldName, columns, physicalDataType));
         }
 
         return SinkFunctionProvider.of(writerBuilder.build());
@@ -130,7 +133,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
     public DynamicTableSink copy() {
         return new FlinkPravegaDynamicTableSink(
                 this.physicalDataType,
-                this.resolvedSchema,
+                this.columns,
                 this.encodingFormat,
                 this.pravegaConfig,
                 this.stream,
@@ -157,7 +160,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
         return txnLeaseRenewalIntervalMillis == that.txnLeaseRenewalIntervalMillis &&
                 enableWatermarkPropagation == that.enableWatermarkPropagation &&
                 physicalDataType.equals(that.physicalDataType) &&
-                resolvedSchema.equals(that.resolvedSchema) &&
+                columns.equals(that.columns) &&
                 encodingFormat.equals(that.encodingFormat) &&
                 pravegaConfig.equals(that.pravegaConfig) &&
                 stream.equals(that.stream) &&
@@ -169,7 +172,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
     public int hashCode() {
         return Objects.hash(
                 physicalDataType,
-                resolvedSchema,
+                columns,
                 encodingFormat,
                 pravegaConfig,
                 stream,
@@ -186,14 +189,16 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
         private final int keyIndex;
 
-        public RowDataBasedRouter(String routingKeyFieldName, ResolvedSchema resolvedSchema) {
-            List<String> fieldNames = resolvedSchema.getColumnNames();
-            int keyIndex = fieldNames.indexOf(routingKeyFieldName);
+        public RowDataBasedRouter(String routingKeyFieldName, List<Column> columns, DataType physicalDataType) {
+            List<Column> physicalColumns = new ArrayList<>(columns);
+            physicalColumns.removeIf(column -> !column.isPhysical());
+            int keyIndex = IntStream.range(0, physicalColumns.size() - 1).filter(
+                    index -> physicalColumns.get(index).getName().equals(routingKeyFieldName)).findFirst().orElse(-1);
 
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");
 
-            List<DataType> fieldTypes = resolvedSchema.getColumnDataTypes();
+            List<DataType> fieldTypes = physicalDataType.getChildren();
             LogicalTypeRoot logicalTypeRoot = fieldTypes.get(keyIndex).getLogicalType().getTypeRoot();
 
             checkArgument(LogicalTypeRoot.CHAR == logicalTypeRoot || LogicalTypeRoot.VARCHAR == logicalTypeRoot,

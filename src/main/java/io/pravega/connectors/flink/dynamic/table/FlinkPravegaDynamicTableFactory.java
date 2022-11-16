@@ -19,7 +19,7 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
-import org.apache.flink.table.catalog.ResolvedSchema;
+import org.apache.flink.table.catalog.Column;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -33,6 +33,7 @@ import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import static io.pravega.connectors.flink.dynamic.table.PravegaOptions.*;
@@ -93,12 +94,12 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSinkOptions(tableOptions);
 
-        final ResolvedSchema resolvedSchema = context.getCatalogTable().getResolvedSchema();
+        final List<Column> columns = context.getCatalogTable().getResolvedSchema().getColumns();
         final DataType physicalDatatype = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSink(
                 physicalDatatype,
-                resolvedSchema,
+                columns,
                 encodingFormat,
                 PravegaOptionsUtil.getPravegaConfig(tableOptions),
                 PravegaOptionsUtil.getSinkStream(tableOptions),
