@@ -35,7 +35,6 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.IntStream;
 
 import static org.apache.flink.util.Preconditions.checkArgument;
 
@@ -182,8 +181,7 @@ public class FlinkPravegaDynamicTableSink implements DynamicTableSink {
 
             final RowType rowType = (RowType) physicalDataType.getLogicalType();
             final List<String> fieldNames = rowType.getFieldNames();
-            int keyIndex = IntStream.range(0, fieldNames.size()).filter(
-                    i -> fieldNames.get(i).equals(routingKeyFieldName)).findFirst().orElse(-1);
+            int keyIndex = fieldNames.indexOf(routingKeyFieldName);
             checkArgument(keyIndex >= 0,
                     "Key field '" + routingKeyFieldName + "' not found");
 
