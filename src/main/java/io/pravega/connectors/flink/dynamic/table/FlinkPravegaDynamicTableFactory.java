@@ -19,7 +19,6 @@ import org.apache.flink.api.common.serialization.DeserializationSchema;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.configuration.ConfigOption;
 import org.apache.flink.configuration.ReadableConfig;
-import org.apache.flink.table.api.TableSchema;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
 import org.apache.flink.table.connector.sink.DynamicTableSink;
@@ -31,7 +30,6 @@ import org.apache.flink.table.factories.DynamicTableSourceFactory;
 import org.apache.flink.table.factories.FactoryUtil;
 import org.apache.flink.table.factories.SerializationFormatFactory;
 import org.apache.flink.table.types.DataType;
-import org.apache.flink.table.utils.TableSchemaUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -63,10 +61,10 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSourceOptions(tableOptions);
 
-        DataType producedDataType = context.getCatalogTable().getSchema().toPhysicalRowDataType();
+        final DataType physicalDataType = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSource(
-                producedDataType,
+                physicalDataType,
                 decodingFormat,
                 PravegaOptionsUtil.getReaderGroupName(tableOptions),
                 PravegaOptionsUtil.getPravegaConfig(tableOptions),
@@ -94,10 +92,10 @@ public class FlinkPravegaDynamicTableFactory implements
         helper.validate();
         PravegaOptionsUtil.validateTableSinkOptions(tableOptions);
 
-        TableSchema tableSchema = TableSchemaUtils.getPhysicalSchema(context.getCatalogTable().getSchema());
+        final DataType physicalDatatype = context.getPhysicalRowDataType();
 
         return new FlinkPravegaDynamicTableSink(
-                tableSchema,
+                physicalDatatype,
                 encodingFormat,
                 PravegaOptionsUtil.getPravegaConfig(tableOptions),
                 PravegaOptionsUtil.getSinkStream(tableOptions),
