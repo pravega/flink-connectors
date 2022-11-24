@@ -30,6 +30,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.metrics.groups.SinkWriterMetricGroup;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,8 @@ public class PravegaTransactionalWriter<T>
     @Nullable
     private transient Transaction<T> transaction;
 
+    private final SinkWriterMetricGroup metricGroup;
+
     /**
      * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
      *
@@ -110,11 +113,14 @@ public class PravegaTransactionalWriter<T>
         this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
+        this.metricGroup = context.metricGroup();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
 
         this.transaction = beginTransaction();
+
+        initFlinkMetrics();
     }
 
     @VisibleForTesting
@@ -227,6 +233,19 @@ public class PravegaTransactionalWriter<T>
     public String getTransactionId() {
         assert transaction != null;
         return transaction.getTxnId().toString();
+    }
+
+    private void initFlinkMetrics() {
+        metricGroup.setCurrentSendTimeGauge(this::computeSendTime);
+        registerMetricSync();
+    }
+
+    private long computeSendTime() {
+
+    }
+
+    private void registerMetricSync() {
+
     }
 
     @VisibleForTesting
