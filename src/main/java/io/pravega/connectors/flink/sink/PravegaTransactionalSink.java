@@ -64,10 +64,12 @@ public class PravegaTransactionalSink<T>
      * @param txnLeaseRenewalPeriod THe transaction timeout after any operations.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     PravegaTransactionalSink(ClientConfig clientConfig, Stream stream, long txnLeaseRenewalPeriod,
-                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        super(clientConfig, stream, serializationSchema, eventRouter);
+                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter,
+                             boolean enableMetrics) {
+        super(clientConfig, stream, serializationSchema, eventRouter, enableMetrics);
         Preconditions.checkArgument(txnLeaseRenewalPeriod > 0, "txnLeaseRenewalPeriod must be > 0");
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
     }
@@ -81,7 +83,8 @@ public class PravegaTransactionalSink<T>
                 stream,
                 txnLeaseRenewalPeriod,
                 serializationSchema,
-                eventRouter);
+                eventRouter,
+                enableMetrics);
     }
 
     @Override

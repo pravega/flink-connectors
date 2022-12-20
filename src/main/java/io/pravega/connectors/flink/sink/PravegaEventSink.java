@@ -51,11 +51,13 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
      * @param writerMode            The writer mode of the sink.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     public PravegaEventSink(ClientConfig clientConfig,
                             Stream stream, PravegaWriterMode writerMode,
-                            SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
-        super(clientConfig, stream, serializationSchema, eventRouter);
+                            SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter,
+                            boolean enableMetrics) {
+        super(clientConfig, stream, serializationSchema, eventRouter, enableMetrics);
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
     }
 
@@ -67,6 +69,7 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
                 stream,
                 writerMode,
                 serializationSchema,
-                eventRouter);
+                eventRouter,
+                enableMetrics);
     }
 }

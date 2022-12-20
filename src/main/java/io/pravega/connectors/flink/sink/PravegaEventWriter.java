@@ -28,6 +28,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +93,15 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     // The writer id
     private final String writerId;
 
+    // flag to enable/disable metrics
+    private final boolean enableMetrics;
+
+    // The total number of output records
+    private final Counter numRecordsOutCounter;
+
+    // The total number of records failed to send
+    private final Counter numRecordsOutErrorsCounter;
+
     /**
      * A Pravega non-transactional writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
      * {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
@@ -102,13 +112,15 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
      * @param writerMode            The Pravega writer mode.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
                               PravegaWriterMode writerMode,
                               SerializationSchema<T> serializationSchema,
-                              PravegaEventRouter<T> eventRouter) {
+                              PravegaEventRouter<T> eventRouter,
+                              boolean enableMetrics) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.writerMode = writerMode;
@@ -116,6 +128,9 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
+        this.enableMetrics = enableMetrics;
+        this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
+        this.numRecordsOutErrorsCounter = context.metricGroup().getNumRecordsOutErrorsCounter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
@@ -146,6 +161,9 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 (result, e) -> {
                     if (e != null) {
                         LOG.warn("Detected a write failure", e);
+                        if (enableMetrics) {
+                            numRecordsOutErrorsCounter.inc();
+                        }
 
                         // We will record only the first error detected, since this will mostly likely help with
                         // finding the root cause. Storing all errors will not be feasible.
@@ -158,6 +176,10 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 },
                 executorService
         );
+
+        if (enableMetrics) {
+            numRecordsOutCounter.inc();
+        }
     }
 
     @Override

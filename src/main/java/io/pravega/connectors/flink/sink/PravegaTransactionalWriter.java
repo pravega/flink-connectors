@@ -30,7 +30,7 @@ import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
-import org.apache.flink.metrics.groups.SinkWriterMetricGroup;
+import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -88,7 +88,11 @@ public class PravegaTransactionalWriter<T>
     @Nullable
     private transient Transaction<T> transaction;
 
-    private final SinkWriterMetricGroup metricGroup;
+    // flag to enable/disable metrics
+    private final boolean enableMetrics;
+
+    // The total number of output records
+    private final Counter numRecordsOutCounter;
 
     /**
      * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
@@ -99,13 +103,15 @@ public class PravegaTransactionalWriter<T>
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
+     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     public PravegaTransactionalWriter(Sink.InitContext context,
                                       ClientConfig clientConfig,
                                       Stream stream,
                                       long txnLeaseRenewalPeriod,
                                       SerializationSchema<T> serializationSchema,
-                                      PravegaEventRouter<T> eventRouter) {
+                                      PravegaEventRouter<T> eventRouter,
+                                      boolean enableMetrics) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -113,14 +119,13 @@ public class PravegaTransactionalWriter<T>
         this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
-        this.metricGroup = context.metricGroup();
+        this.enableMetrics = enableMetrics;
+        this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
 
         this.transaction = beginTransaction();
-
-        initFlinkMetrics();
     }
 
     @VisibleForTesting
@@ -164,6 +169,9 @@ public class PravegaTransactionalWriter<T>
             }
         } catch (TxnFailedException | AssertionError e) {
             throw new IOException(e);
+        }
+        if (enableMetrics) {
+            numRecordsOutCounter.inc();
         }
     }
 
@@ -233,19 +241,6 @@ public class PravegaTransactionalWriter<T>
     public String getTransactionId() {
         assert transaction != null;
         return transaction.getTxnId().toString();
-    }
-
-    private void initFlinkMetrics() {
-        metricGroup.setCurrentSendTimeGauge(this::computeSendTime);
-        registerMetricSync();
-    }
-
-    private long computeSendTime() {
-
-    }
-
-    private void registerMetricSync() {
-
     }
 
     @VisibleForTesting
