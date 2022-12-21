@@ -23,11 +23,11 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,10 +43,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A Pravega {@link org.apache.flink.api.connector.sink2.SinkWriter} implementation that is suitable for
- * {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE}.
+ * {@link DeliveryGuarantee#NONE} and {@link DeliveryGuarantee#AT_LEAST_ONCE}.
  *
  * <p>Note that the difference between these two modes is that {@link PravegaEventWriter#flushAndVerify()}
- * is called for each checkpoint in the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
+ * is called for each checkpoint in the {@link DeliveryGuarantee#AT_LEAST_ONCE} mode.
  *
  * @param <T> The type of the event to be written.
  */
@@ -77,7 +77,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     private final Stream stream;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    private final DeliveryGuarantee writerMode;
 
     // The supplied event serializer.
     private final SerializationSchema<T> serializationSchema;
@@ -93,8 +93,8 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     private final String writerId;
 
     /**
-     * A Pravega non-transactional writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
-     * {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+     * A Pravega non-transactional writer that handles {@link DeliveryGuarantee#NONE} and
+     * {@link DeliveryGuarantee#AT_LEAST_ONCE} writer mode.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.
@@ -106,7 +106,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
-                              PravegaWriterMode writerMode,
+                              DeliveryGuarantee writerMode,
                               SerializationSchema<T> serializationSchema,
                               PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
@@ -162,7 +162,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
 
     @Override
     public void flush(boolean endOfInput) throws IOException, InterruptedException {
-        if (writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+        if (writerMode == DeliveryGuarantee.AT_LEAST_ONCE) {
             flushAndVerify();
         }
     }
@@ -228,7 +228,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     }
 
     @VisibleForTesting
-    protected PravegaWriterMode getWriterMode() {
+    protected DeliveryGuarantee getWriterMode() {
         return writerMode;
     }
 

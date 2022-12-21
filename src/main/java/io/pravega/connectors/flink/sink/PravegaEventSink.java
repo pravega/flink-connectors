@@ -18,16 +18,16 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 
 /**
- * A Pravega sink for {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+ * A Pravega sink for {@link DeliveryGuarantee#NONE} and {@link DeliveryGuarantee#AT_LEAST_ONCE} writer mode.
  *
  * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaEventSink}.
  *
@@ -39,7 +39,7 @@ import java.io.IOException;
 @Experimental
 public class PravegaEventSink<T> extends PravegaSink<T> {
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    private final DeliveryGuarantee writerMode;
 
     /**
      * Creates a new Pravega Event Sink instance which can be added as a sink to a Flink job.
@@ -53,7 +53,7 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaEventSink(ClientConfig clientConfig,
-                            Stream stream, PravegaWriterMode writerMode,
+                            Stream stream, DeliveryGuarantee writerMode,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         super(clientConfig, stream, serializationSchema, eventRouter);
         this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");

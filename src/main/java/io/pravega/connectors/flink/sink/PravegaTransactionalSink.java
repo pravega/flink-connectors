@@ -19,18 +19,18 @@ import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Committer;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
 import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 
 /**
- * A Pravega sink for {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
+ * A Pravega sink for {@link DeliveryGuarantee#EXACTLY_ONCE} writer mode.
  *
  * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaTransactionalSink}.
  *

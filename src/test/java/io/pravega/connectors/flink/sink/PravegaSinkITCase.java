@@ -17,7 +17,6 @@ package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.stream.EventRead;
 import io.pravega.client.stream.EventStreamReader;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.FailingMapper;
 import io.pravega.connectors.flink.utils.IntegerSerializer;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
@@ -27,6 +26,7 @@ import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.flink.api.common.restartstrategy.RestartStrategies;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.streaming.api.CheckpointingMode;
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment;
 import org.apache.flink.test.util.AbstractTestBase;
@@ -82,7 +82,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(PravegaWriterMode.ATLEAST_ONCE)
+                .withWriterMode(DeliveryGuarantee.AT_LEAST_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -111,7 +111,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -139,7 +139,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -168,7 +168,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -198,7 +198,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(PravegaWriterMode.EXACTLY_ONCE)
+                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 

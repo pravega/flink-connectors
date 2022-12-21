@@ -18,9 +18,9 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
@@ -36,7 +36,7 @@ public class PravegaSinkBuilder<T> {
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;
-    private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
+    private DeliveryGuarantee writerMode = DeliveryGuarantee.AT_LEAST_ONCE;
     private Time txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     private SerializationSchema<T> serializationSchema;
     @Nullable
@@ -86,7 +86,7 @@ public class PravegaSinkBuilder<T> {
      * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
      * @return A builder to configure and create a sink.
      */
-    public PravegaSinkBuilder<T> withWriterMode(PravegaWriterMode writerMode) {
+    public PravegaSinkBuilder<T> withWriterMode(DeliveryGuarantee writerMode) {
         this.writerMode = writerMode;
         return this;
     }
@@ -147,14 +147,14 @@ public class PravegaSinkBuilder<T> {
      * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
     public PravegaSink<T> build() {
-        if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+        if (writerMode == DeliveryGuarantee.NONE || writerMode == DeliveryGuarantee.AT_LEAST_ONCE) {
             return new PravegaEventSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
                     writerMode,
                     serializationSchema,
                     eventRouter);
-        } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+        } else if (writerMode == DeliveryGuarantee.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),

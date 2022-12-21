@@ -25,11 +25,11 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,7 +43,7 @@ import java.util.UUID;
 
 /**
  * A Pravega {@link TwoPhaseCommittingSink.PrecommittingSinkWriter} implementation that is suitable
- * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode.
+ * for the {@link DeliveryGuarantee#EXACTLY_ONCE} mode.
  *
  * <p>Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
  * this writer only deals with the {@link PravegaTransactionalWriter#beginTransaction},
@@ -88,7 +88,7 @@ public class PravegaTransactionalWriter<T>
     private transient Transaction<T> transaction;
 
     /**
-     * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
+     * A Pravega writer that handles {@link DeliveryGuarantee#EXACTLY_ONCE} writer mode.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.

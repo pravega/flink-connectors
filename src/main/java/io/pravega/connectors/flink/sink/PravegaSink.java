@@ -18,22 +18,22 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
 
 /**
  * Pravega Sink writes data into a Pravega stream. It supports all writer mode
- * described by {@link PravegaWriterMode}.
+ * described by {@link DeliveryGuarantee}.
  *
- * <p>For {@link PravegaWriterMode#ATLEAST_ONCE} and {@link PravegaWriterMode#ATLEAST_ONCE},
+ * <p>For {@link DeliveryGuarantee#AT_LEAST_ONCE} and {@link DeliveryGuarantee#AT_LEAST_ONCE},
  * a {@link PravegaEventSink} will be returned after {@link PravegaSinkBuilder#build()}.
  *
- * <p>For {@link PravegaWriterMode#EXACTLY_ONCE}, a {@link PravegaTransactionalSink}
+ * <p>For {@link DeliveryGuarantee#EXACTLY_ONCE}, a {@link PravegaTransactionalSink}
  * will be returned after {@link PravegaSinkBuilder#build()}.
  *
  * @param <T> The type of the event to be written.
