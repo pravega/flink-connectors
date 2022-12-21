@@ -125,8 +125,7 @@ public class PravegaSinkWriterITCase {
                     stream,
                     Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS).toMilliseconds(),
                     new IntSerializer(),
-                    router,
-                    true);
+                    router);
         } else if (guarantee == PravegaWriterMode.ATLEAST_ONCE || guarantee == PravegaWriterMode.BEST_EFFORT) {
             return new PravegaEventWriter<>(
                     new SinkInitContext(sinkWriterMetricGroup),
@@ -134,8 +133,7 @@ public class PravegaSinkWriterITCase {
                     stream,
                     guarantee,
                     new IntSerializer(),
-                    router,
-                    true);
+                    router);
         } else {
             throw new IllegalStateException("Failed to build Pravega sink writer with unknown write mode: " + guarantee);
         }

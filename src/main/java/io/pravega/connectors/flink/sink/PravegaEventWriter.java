@@ -93,9 +93,6 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     // The writer id
     private final String writerId;
 
-    // flag to enable/disable metrics
-    private final boolean enableMetrics;
-
     // The total number of output records
     private final Counter numRecordsOutCounter;
 
@@ -112,15 +109,13 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
      * @param writerMode            The Pravega writer mode.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
-     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
                               PravegaWriterMode writerMode,
                               SerializationSchema<T> serializationSchema,
-                              PravegaEventRouter<T> eventRouter,
-                              boolean enableMetrics) {
+                              PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.writerMode = writerMode;
@@ -128,7 +123,6 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
-        this.enableMetrics = enableMetrics;
         this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
         this.numRecordsOutErrorsCounter = context.metricGroup().getNumRecordsOutErrorsCounter();
 
@@ -161,9 +155,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 (result, e) -> {
                     if (e != null) {
                         LOG.warn("Detected a write failure", e);
-                        if (enableMetrics) {
-                            numRecordsOutErrorsCounter.inc();
-                        }
+                        numRecordsOutErrorsCounter.inc();
 
                         // We will record only the first error detected, since this will mostly likely help with
                         // finding the root cause. Storing all errors will not be feasible.
@@ -176,10 +168,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 },
                 executorService
         );
-
-        if (enableMetrics) {
-            numRecordsOutCounter.inc();
-        }
+        numRecordsOutCounter.inc();
     }
 
     @Override

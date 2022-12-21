@@ -88,9 +88,6 @@ public class PravegaTransactionalWriter<T>
     @Nullable
     private transient Transaction<T> transaction;
 
-    // flag to enable/disable metrics
-    private final boolean enableMetrics;
-
     // The total number of output records
     private final Counter numRecordsOutCounter;
 
@@ -103,15 +100,13 @@ public class PravegaTransactionalWriter<T>
      * @param txnLeaseRenewalPeriod Transaction lease renewal period in milliseconds.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
-     * @param enableMetrics         Flag to indicate whether metrics needs to be enabled or not.
      */
     public PravegaTransactionalWriter(Sink.InitContext context,
                                       ClientConfig clientConfig,
                                       Stream stream,
                                       long txnLeaseRenewalPeriod,
                                       SerializationSchema<T> serializationSchema,
-                                      PravegaEventRouter<T> eventRouter,
-                                      boolean enableMetrics) {
+                                      PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
         this.txnLeaseRenewalPeriod = txnLeaseRenewalPeriod;
@@ -119,7 +114,6 @@ public class PravegaTransactionalWriter<T>
         this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
-        this.enableMetrics = enableMetrics;
         this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
@@ -170,9 +164,7 @@ public class PravegaTransactionalWriter<T>
         } catch (TxnFailedException | AssertionError e) {
             throw new IOException(e);
         }
-        if (enableMetrics) {
-            numRecordsOutCounter.inc();
-        }
+        numRecordsOutCounter.inc();
     }
 
     @Override

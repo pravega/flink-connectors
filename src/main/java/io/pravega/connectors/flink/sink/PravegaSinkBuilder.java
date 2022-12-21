@@ -41,7 +41,6 @@ public class PravegaSinkBuilder<T> {
     private SerializationSchema<T> serializationSchema;
     @Nullable
     private PravegaEventRouter<T> eventRouter;
-    private boolean enableMetrics = true;
 
     PravegaSinkBuilder() {
     }
@@ -132,17 +131,6 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * enable/disable sink metrics (default: enabled).
-     *
-     * @param enableMetrics boolean
-     * @return A builder to configure and create a sink.
-     */
-    public PravegaSinkBuilder<T> enableMetrics(boolean enableMetrics) {
-        this.enableMetrics = enableMetrics;
-        return this;
-    }
-
-    /**
      * Resolves the stream to be provided to the sink, based on the configured default scope.
      *
      * @return the resolved stream instance.
@@ -165,16 +153,14 @@ public class PravegaSinkBuilder<T> {
                     resolveStream(),
                     writerMode,
                     serializationSchema,
-                    eventRouter,
-                    enableMetrics);
+                    eventRouter);
         } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
                     txnLeaseRenewalPeriod.toMilliseconds(),
                     serializationSchema,
-                    eventRouter,
-                    enableMetrics);
+                    eventRouter);
         } else {
             throw new IllegalStateException("Failed to build Pravega sink with unknown write mode: " + writerMode);
         }
