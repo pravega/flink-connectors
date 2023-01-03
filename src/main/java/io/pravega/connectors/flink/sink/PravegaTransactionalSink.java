@@ -30,7 +30,7 @@ import org.apache.flink.util.Preconditions;
 import java.io.IOException;
 
 /**
- * A Pravega sink for {@link DeliveryGuarantee#EXACTLY_ONCE} writer mode.
+ * A Pravega sink for {@link DeliveryGuarantee#EXACTLY_ONCE} delivery guarantee.
  *
  * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaTransactionalSink}.
  *

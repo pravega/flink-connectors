@@ -27,7 +27,7 @@ import org.apache.flink.util.Preconditions;
 import javax.annotation.Nullable;
 
 /**
- * Pravega Sink writes data into a Pravega stream. It supports all writer mode
+ * Pravega Sink writes data into a Pravega stream. It supports all delivery guarantee
  * described by {@link DeliveryGuarantee}.
  *
  * <p>For {@link DeliveryGuarantee#AT_LEAST_ONCE} and {@link DeliveryGuarantee#AT_LEAST_ONCE},

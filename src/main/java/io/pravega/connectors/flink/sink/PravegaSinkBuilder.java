@@ -36,7 +36,7 @@ public class PravegaSinkBuilder<T> {
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;
-    private DeliveryGuarantee writerMode = DeliveryGuarantee.AT_LEAST_ONCE;
+    private DeliveryGuarantee deliveryGuarantee = DeliveryGuarantee.AT_LEAST_ONCE;
     private Time txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     private SerializationSchema<T> serializationSchema;
     @Nullable
@@ -81,20 +81,20 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * Sets the writer mode to provide at-least-once or exactly-once guarantees.
+     * Sets the delivery guarantee to provide at-least-once or exactly-once guarantees.
      *
-     * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
+     * @param deliveryGuarantee The delivery guarantee of {@code NONE}, {@code AT_LEAST_ONCE}, or {@code EXACTLY_ONCE}.
      * @return A builder to configure and create a sink.
      */
-    public PravegaSinkBuilder<T> withWriterMode(DeliveryGuarantee writerMode) {
-        this.writerMode = writerMode;
+    public PravegaSinkBuilder<T> withDeliveryGuarantee(DeliveryGuarantee deliveryGuarantee) {
+        this.deliveryGuarantee = deliveryGuarantee;
         return this;
     }
 
     /**
      * Sets the transaction lease renewal period.
      *
-     * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist
+     * When the delivery guarantee is set to {@code EXACTLY_ONCE}, transactions are used to persist
      * events to the Pravega stream. The transaction interval corresponds to the Flink checkpoint interval.
      * Throughout that interval, the transaction is kept alive with a lease that is periodically renewed.
      * This configuration setting sets the lease renewal period. The default value is 30 seconds.
@@ -147,14 +147,14 @@ public class PravegaSinkBuilder<T> {
      * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
     public PravegaSink<T> build() {
-        if (writerMode == DeliveryGuarantee.NONE || writerMode == DeliveryGuarantee.AT_LEAST_ONCE) {
+        if (deliveryGuarantee == DeliveryGuarantee.NONE || deliveryGuarantee == DeliveryGuarantee.AT_LEAST_ONCE) {
             return new PravegaEventSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
-                    writerMode,
+                    deliveryGuarantee,
                     serializationSchema,
                     eventRouter);
-        } else if (writerMode == DeliveryGuarantee.EXACTLY_ONCE) {
+        } else if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
@@ -162,7 +162,7 @@ public class PravegaSinkBuilder<T> {
                     serializationSchema,
                     eventRouter);
         } else {
-            throw new IllegalStateException("Failed to build Pravega sink with unknown write mode: " + writerMode);
+            throw new IllegalStateException("Failed to build Pravega sink with unknown delivery guarantee: " + deliveryGuarantee);
         }
     }
 }

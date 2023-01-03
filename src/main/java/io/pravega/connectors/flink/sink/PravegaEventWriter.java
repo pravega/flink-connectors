@@ -77,7 +77,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     private final Stream stream;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final DeliveryGuarantee writerMode;
+    private final DeliveryGuarantee deliveryGuarantee;
 
     // The supplied event serializer.
     private final SerializationSchema<T> serializationSchema;
@@ -94,24 +94,24 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
 
     /**
      * A Pravega non-transactional writer that handles {@link DeliveryGuarantee#NONE} and
-     * {@link DeliveryGuarantee#AT_LEAST_ONCE} writer mode.
+     * {@link DeliveryGuarantee#AT_LEAST_ONCE} delivery guarantee.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
-     * @param writerMode            The Pravega writer mode.
+     * @param deliveryGuarantee     The delivery guarantee.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
-                              DeliveryGuarantee writerMode,
+                              DeliveryGuarantee deliveryGuarantee,
                               SerializationSchema<T> serializationSchema,
                               PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
-        this.writerMode = writerMode;
+        this.deliveryGuarantee = deliveryGuarantee;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
@@ -162,7 +162,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
 
     @Override
     public void flush(boolean endOfInput) throws IOException, InterruptedException {
-        if (writerMode == DeliveryGuarantee.AT_LEAST_ONCE) {
+        if (deliveryGuarantee == DeliveryGuarantee.AT_LEAST_ONCE) {
             flushAndVerify();
         }
     }
@@ -228,8 +228,8 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     }
 
     @VisibleForTesting
-    protected DeliveryGuarantee getWriterMode() {
-        return writerMode;
+    protected DeliveryGuarantee getDeliveryGuarantee() {
+        return deliveryGuarantee;
     }
 
     @VisibleForTesting

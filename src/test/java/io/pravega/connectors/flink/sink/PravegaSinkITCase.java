@@ -82,7 +82,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(DeliveryGuarantee.AT_LEAST_ONCE)
+                .withDeliveryGuarantee(DeliveryGuarantee.AT_LEAST_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -111,7 +111,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
+                .withDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -139,7 +139,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .forStream(streamName)
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
-                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
+                .withDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -168,7 +168,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
+                .withDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 
@@ -198,7 +198,7 @@ public class PravegaSinkITCase extends AbstractTestBase {
                 .withPravegaConfig(PRAVEGA.operator().getPravegaConfig())
                 .withSerializationSchema(new IntSerializer())
                 .withEventRouter(event -> "fixedkey")
-                .withWriterMode(DeliveryGuarantee.EXACTLY_ONCE)
+                .withDeliveryGuarantee(DeliveryGuarantee.EXACTLY_ONCE)
                 .withTxnLeaseRenewalPeriod(Time.seconds(30))
                 .build();
 

@@ -88,7 +88,7 @@ public class PravegaTransactionalWriter<T>
     private transient Transaction<T> transaction;
 
     /**
-     * A Pravega writer that handles {@link DeliveryGuarantee#EXACTLY_ONCE} writer mode.
+     * A Pravega writer that handles {@link DeliveryGuarantee#EXACTLY_ONCE} delivery guarantee.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.
