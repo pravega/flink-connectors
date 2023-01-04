@@ -147,14 +147,7 @@ public class PravegaSinkBuilder<T> {
      * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
     public PravegaSink<T> build() {
-        if (deliveryGuarantee == DeliveryGuarantee.NONE || deliveryGuarantee == DeliveryGuarantee.AT_LEAST_ONCE) {
-            return new PravegaEventSink<>(
-                    pravegaConfig.getClientConfig(),
-                    resolveStream(),
-                    deliveryGuarantee,
-                    serializationSchema,
-                    eventRouter);
-        } else if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
+        if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
@@ -162,7 +155,12 @@ public class PravegaSinkBuilder<T> {
                     serializationSchema,
                     eventRouter);
         } else {
-            throw new IllegalStateException("Failed to build Pravega sink with unknown delivery guarantee: " + deliveryGuarantee);
+            return new PravegaEventSink<>(
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    deliveryGuarantee,
+                    serializationSchema,
+                    eventRouter);
         }
     }
 }
