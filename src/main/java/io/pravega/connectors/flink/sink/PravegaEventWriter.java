@@ -226,20 +226,4 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
             throw exception;
         }
     }
-
-    @VisibleForTesting
-    protected DeliveryGuarantee getDeliveryGuarantee() {
-        return deliveryGuarantee;
-    }
-
-    @VisibleForTesting
-    @Nullable
-    protected PravegaEventRouter<T> getEventRouter() {
-        return eventRouter;
-    }
-
-    @VisibleForTesting
-    protected EventStreamWriter<T> getInternalWriter() {
-        return writer;
-    }
 }

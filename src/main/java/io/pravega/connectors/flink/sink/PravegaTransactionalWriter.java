@@ -228,15 +228,4 @@ public class PravegaTransactionalWriter<T>
         assert transaction != null;
         return transaction.getTxnId().toString();
     }
-
-    @VisibleForTesting
-    @Nullable
-    protected PravegaEventRouter<T> getEventRouter() {
-        return eventRouter;
-    }
-
-    @VisibleForTesting
-    protected TransactionalEventStreamWriter<T> getInternalWriter() {
-        return transactionalWriter;
-    }
 }
