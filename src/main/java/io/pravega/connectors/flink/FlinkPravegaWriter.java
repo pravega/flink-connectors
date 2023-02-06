@@ -516,7 +516,7 @@ public class FlinkPravegaWriter<T>
         }
 
         this.clientFactory = createClientFactory(stream.getScope(), clientConfig);
-        LOG.debug("Creating internal writer with write mode: {}", this.writerMode);
+        LOG.info("Creating internal writer with write mode: {}", this.writerMode);
         createInternalWriter();
     }
 
