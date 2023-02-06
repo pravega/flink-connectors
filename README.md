@@ -16,7 +16,7 @@ limitations under the License.
 
 # Pravega Flink Connectors
 
-[![Build Status](https://img.shields.io/github/workflow/status/pravega/flink-connectors/build)](https://github.com/pravega/flink-connectors/actions/workflows/build.yml?query=branch%3Amaster) [![License](https://img.shields.io/github/license/pravega/flink-connectors)](https://github.com/pravega/flink-connectors/blob/master/LICENSE) [![Downloads](https://img.shields.io/github/downloads/pravega/flink-connectors/total)](https://github.com/pravega/flink-connectors/releases) [![Codecov](https://img.shields.io/codecov/c/github/pravega/flink-connectors)](https://app.codecov.io/gh/pravega/flink-connectors/)
+[![Build Status](https://github.com/pravega/flink-connectors/actions/workflows/build.yml/badge.svg)](https://github.com/pravega/flink-connectors/actions/workflows/build.yml?query=branch%3Amaster) [![License](https://img.shields.io/github/license/pravega/flink-connectors)](https://github.com/pravega/flink-connectors/blob/master/LICENSE) [![Downloads](https://img.shields.io/github/downloads/pravega/flink-connectors/total)](https://github.com/pravega/flink-connectors/releases) [![Codecov](https://img.shields.io/codecov/c/github/pravega/flink-connectors)](https://app.codecov.io/gh/pravega/flink-connectors/)
 
 This repository implements connectors to read and write [Pravega](http://pravega.io/) Streams with [Apache Flink](http://flink.apache.org/) stream processing framework.
 
