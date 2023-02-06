@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.PravegaEventRouter;
+import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.connector.base.DeliveryGuarantee;
@@ -88,6 +89,28 @@ public class PravegaSinkBuilder<T> {
      */
     public PravegaSinkBuilder<T> withDeliveryGuarantee(DeliveryGuarantee deliveryGuarantee) {
         this.deliveryGuarantee = deliveryGuarantee;
+        return this;
+    }
+
+    /**
+     * Sets the delivery guarantee from writer mode to provide at-least-once or exactly-once guarantees.
+     * This method is to keep the compatibility with the old {@code PravegaWriterMode} enum that will be deprecated soon.
+     *
+     * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
+     * @return A builder to configure and create a sink.
+     */
+    public PravegaSinkBuilder<T> withWriterMode(PravegaWriterMode writerMode) {
+        switch (writerMode) {
+            case EXACTLY_ONCE:
+                this.deliveryGuarantee = DeliveryGuarantee.EXACTLY_ONCE;
+                break;
+            case BEST_EFFORT:
+                this.deliveryGuarantee = DeliveryGuarantee.NONE;
+                break;
+            default:
+                this.deliveryGuarantee = DeliveryGuarantee.AT_LEAST_ONCE;
+                break;
+        }
         return this;
     }
 
