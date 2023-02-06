@@ -327,6 +327,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     protected void recoverAndCommit(PravegaTransactionState transaction) {
+        LOG.debug("Recover transaction {} from failure", transaction.transactionId);
         initializeInternalWriter();
         commit(transaction);
     }
@@ -354,6 +355,7 @@ public class FlinkPravegaWriter<T>
 
     @Override
     protected void recoverAndAbort(PravegaTransactionState transaction) {
+        LOG.debug("Abort transaction {} from failure", transaction.transactionId);
         initializeInternalWriter();
         abort(transaction);
     }
@@ -362,6 +364,7 @@ public class FlinkPravegaWriter<T>
     public void close() throws Exception {
         Exception exception = null;
 
+        LOG.info("{} - Close the Pravega writer", this.writerId());
         try {
             // Current transaction will be aborted with this method
             super.close();
@@ -370,6 +373,7 @@ public class FlinkPravegaWriter<T>
         }
 
         if (writer != null) {
+            LOG.debug("Closing internal event stream writer");
             try {
                 flushAndVerify();
             } catch (Exception e) {
@@ -390,6 +394,7 @@ public class FlinkPravegaWriter<T>
         }
 
         if (transactionalWriter != null) {
+            LOG.debug("Closing internal transactional writer");
             try {
                 transactionalWriter.close();
             } catch (Exception e) {
@@ -398,6 +403,7 @@ public class FlinkPravegaWriter<T>
         }
 
         if (clientFactory != null) {
+            LOG.debug("Closing client factory.");
             try {
                 clientFactory.close();
             } catch (Exception e) {
@@ -494,10 +500,12 @@ public class FlinkPravegaWriter<T>
     private void initializeInternalWriter() {
         if (this.writerMode == PravegaWriterMode.EXACTLY_ONCE) {
             if (this.transactionalWriter != null) {
+                LOG.debug("Internal transaction writer already initialized.");
                 return;
             }
         } else {
             if (this.writer != null) {
+                LOG.debug("Internal event stream writer already initialized");
                 return;
             }
         }
@@ -508,6 +516,7 @@ public class FlinkPravegaWriter<T>
         }
 
         this.clientFactory = createClientFactory(stream.getScope(), clientConfig);
+        LOG.info("Creating internal writer with write mode: {}", this.writerMode);
         createInternalWriter();
     }
 
