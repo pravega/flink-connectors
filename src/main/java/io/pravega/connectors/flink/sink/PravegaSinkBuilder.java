@@ -94,7 +94,7 @@ public class PravegaSinkBuilder<T> {
 
     /**
      * Sets the delivery guarantee from writer mode to provide at-least-once or exactly-once guarantees.
-     * @deprecated This method is to keep the compatibility with the old {@code PravegaWriterMode} enum that will be deprecated soon.
+     * @deprecated use {@link #withDeliveryGuarantee} instead.
      *
      * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
      * @return A builder to configure and create a sink.
