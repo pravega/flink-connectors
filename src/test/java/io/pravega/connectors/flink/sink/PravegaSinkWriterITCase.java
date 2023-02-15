@@ -17,7 +17,6 @@ package io.pravega.connectors.flink.sink;
 
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntimeOperator;
@@ -28,6 +27,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.metrics.groups.OperatorIOMetricGroup;
 import org.apache.flink.metrics.groups.SinkWriterMetricGroup;
@@ -78,8 +78,8 @@ public class PravegaSinkWriterITCase {
         final String stream = RandomStringUtils.randomAlphabetic(20);
         PRAVEGA.operator().createTestStream(stream, 1);
         try (final PravegaTransactionalWriter<Integer> writer =
-                     (PravegaTransactionalWriter<Integer>) createWriter(PRAVEGA.operator(), metricGroup, PravegaWriterMode.EXACTLY_ONCE,
-                             PRAVEGA.operator().getStream(stream))) {
+                     (PravegaTransactionalWriter<Integer>) createWriter(PRAVEGA.operator(), metricGroup,
+                             DeliveryGuarantee.EXACTLY_ONCE, PRAVEGA.operator().getStream(stream))) {
             final Counter numRecordsOut = metricGroup.getIOMetricGroup().getNumRecordsOutCounter();
             assertThat(numRecordsOut.getCount()).isEqualTo(0);
 
@@ -99,7 +99,7 @@ public class PravegaSinkWriterITCase {
         PRAVEGA.operator().createTestStream(stream, 1);
         try (final PravegaEventWriter<Integer> writer =
                      (PravegaEventWriter<Integer>) createWriter(PRAVEGA.operator(), metricGroup,
-                             PravegaWriterMode.ATLEAST_ONCE, PRAVEGA.operator().getStream(stream))) {
+                             DeliveryGuarantee.AT_LEAST_ONCE, PRAVEGA.operator().getStream(stream))) {
             final Counter numRecordsOut = metricGroup.getIOMetricGroup().getNumRecordsOutCounter();
             final Counter numRecordsOutErrors = metricGroup.getNumRecordsOutErrorsCounter();
             assertThat(numRecordsOut.getCount()).isEqualTo(0);
@@ -114,11 +114,11 @@ public class PravegaSinkWriterITCase {
     private SinkWriter<Integer> createWriter(
             PravegaRuntimeOperator operator,
             SinkWriterMetricGroup sinkWriterMetricGroup,
-            PravegaWriterMode guarantee,
+            DeliveryGuarantee guarantee,
             Stream stream) {
         PravegaEventRouter<Integer> router = event -> "fixedkey";
 
-        if (guarantee == PravegaWriterMode.EXACTLY_ONCE) {
+        if (guarantee == DeliveryGuarantee.EXACTLY_ONCE) {
             return new PravegaTransactionalWriter<>(
                     new SinkInitContext(sinkWriterMetricGroup),
                     operator.getClientConfig(),
@@ -126,7 +126,7 @@ public class PravegaSinkWriterITCase {
                     Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS).toMilliseconds(),
                     new IntSerializer(),
                     router);
-        } else if (guarantee == PravegaWriterMode.ATLEAST_ONCE || guarantee == PravegaWriterMode.BEST_EFFORT) {
+        } else if (guarantee == DeliveryGuarantee.AT_LEAST_ONCE || guarantee == DeliveryGuarantee.NONE) {
             return new PravegaEventWriter<>(
                     new SinkInitContext(sinkWriterMetricGroup),
                     operator.getClientConfig(),
