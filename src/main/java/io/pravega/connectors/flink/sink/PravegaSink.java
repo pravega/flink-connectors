@@ -61,8 +61,8 @@ public abstract class PravegaSink<T> implements Sink<T> {
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
-    PravegaSink(ClientConfig clientConfig, Stream stream,
-                SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
+    PravegaSink(ClientConfig clientConfig, Stream stream, SerializationSchema<T> serializationSchema,
+                PravegaEventRouter<T> eventRouter) {
         this.clientConfig = Preconditions.checkNotNull(clientConfig, "clientConfig");
         this.stream = Preconditions.checkNotNull(stream, "stream");
         this.serializationSchema = Preconditions.checkNotNull(serializationSchema, "serializationSchema");

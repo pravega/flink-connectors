@@ -28,6 +28,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -92,6 +93,12 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     // The writer id
     private final String writerId;
 
+    // The total number of output records
+    private final Counter numRecordsOutCounter;
+
+    // The total number of records failed to send
+    private final Counter numRecordsOutErrorsCounter;
+
     /**
      * A Pravega non-transactional writer that handles {@link DeliveryGuarantee#NONE} and
      * {@link DeliveryGuarantee#AT_LEAST_ONCE} delivery guarantee.
@@ -116,6 +123,8 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
+        this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
+        this.numRecordsOutErrorsCounter = context.metricGroup().getNumRecordsOutErrorsCounter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
@@ -146,6 +155,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 (result, e) -> {
                     if (e != null) {
                         LOG.warn("Detected a write failure", e);
+                        numRecordsOutErrorsCounter.inc();
 
                         // We will record only the first error detected, since this will mostly likely help with
                         // finding the root cause. Storing all errors will not be feasible.
@@ -158,6 +168,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
                 },
                 executorService
         );
+        numRecordsOutCounter.inc();
     }
 
     @Override

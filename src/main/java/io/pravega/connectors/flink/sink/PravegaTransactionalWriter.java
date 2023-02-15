@@ -30,6 +30,7 @@ import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
 import org.apache.flink.connector.base.DeliveryGuarantee;
+import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,6 +88,9 @@ public class PravegaTransactionalWriter<T>
     @Nullable
     private transient Transaction<T> transaction;
 
+    // The total number of output records
+    private final Counter numRecordsOutCounter;
+
     /**
      * A Pravega writer that handles {@link DeliveryGuarantee#EXACTLY_ONCE} delivery guarantee.
      *
@@ -110,6 +114,7 @@ public class PravegaTransactionalWriter<T>
         this.eventRouter = eventRouter;
         this.transactionalWriter = initializeInternalWriter();
         this.writerId = UUID.randomUUID() + "-" + context.getSubtaskId();
+        this.numRecordsOutCounter = context.metricGroup().getIOMetricGroup().getNumRecordsOutCounter();
 
         LOG.info("Initialized Pravega writer {} for stream: {} with controller URI: {}",
                 writerId, stream, clientConfig.getControllerURI());
@@ -159,6 +164,7 @@ public class PravegaTransactionalWriter<T>
         } catch (TxnFailedException | AssertionError e) {
             throw new IOException(e);
         }
+        numRecordsOutCounter.inc();
     }
 
     @Override
