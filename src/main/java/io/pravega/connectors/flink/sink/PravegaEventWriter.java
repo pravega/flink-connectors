@@ -23,11 +23,11 @@ import io.pravega.client.stream.EventWriterConfig;
 import io.pravega.client.stream.Serializer;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
@@ -44,10 +44,10 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * A Pravega {@link org.apache.flink.api.connector.sink2.SinkWriter} implementation that is suitable for
- * {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE}.
+ * {@link DeliveryGuarantee#NONE} and {@link DeliveryGuarantee#AT_LEAST_ONCE}.
  *
  * <p>Note that the difference between these two modes is that {@link PravegaEventWriter#flushAndVerify()}
- * is called for each checkpoint in the {@link PravegaWriterMode#ATLEAST_ONCE} mode.
+ * is called for each checkpoint in the {@link DeliveryGuarantee#AT_LEAST_ONCE} mode.
  *
  * @param <T> The type of the event to be written.
  */
@@ -78,7 +78,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     private final Stream stream;
 
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    private final DeliveryGuarantee deliveryGuarantee;
 
     // The supplied event serializer.
     private final SerializationSchema<T> serializationSchema;
@@ -100,25 +100,25 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
     private final Counter numRecordsOutErrorsCounter;
 
     /**
-     * A Pravega non-transactional writer that handles {@link PravegaWriterMode#BEST_EFFORT} and
-     * {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+     * A Pravega non-transactional writer that handles {@link DeliveryGuarantee#NONE} and
+     * {@link DeliveryGuarantee#AT_LEAST_ONCE} delivery guarantee.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
-     * @param writerMode            The Pravega writer mode.
+     * @param deliveryGuarantee     The delivery guarantee.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaEventWriter(Sink.InitContext context,
                               ClientConfig clientConfig,
                               Stream stream,
-                              PravegaWriterMode writerMode,
+                              DeliveryGuarantee deliveryGuarantee,
                               SerializationSchema<T> serializationSchema,
                               PravegaEventRouter<T> eventRouter) {
         this.clientConfig = clientConfig;
         this.stream = stream;
-        this.writerMode = writerMode;
+        this.deliveryGuarantee = deliveryGuarantee;
         this.serializationSchema = serializationSchema;
         this.eventRouter = eventRouter;
         this.writer = initializeInternalWriter();
@@ -173,7 +173,7 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
 
     @Override
     public void flush(boolean endOfInput) throws IOException, InterruptedException {
-        if (writerMode == PravegaWriterMode.ATLEAST_ONCE) {
+        if (deliveryGuarantee == DeliveryGuarantee.AT_LEAST_ONCE) {
             flushAndVerify();
         }
     }
@@ -236,21 +236,5 @@ public class PravegaEventWriter<T> implements SinkWriter<T> {
         if (exception != null) {
             throw exception;
         }
-    }
-
-    @VisibleForTesting
-    protected PravegaWriterMode getWriterMode() {
-        return writerMode;
-    }
-
-    @VisibleForTesting
-    @Nullable
-    protected PravegaEventRouter<T> getEventRouter() {
-        return eventRouter;
-    }
-
-    @VisibleForTesting
-    protected EventStreamWriter<T> getInternalWriter() {
-        return writer;
     }
 }

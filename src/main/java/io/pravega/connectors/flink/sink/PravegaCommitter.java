@@ -26,10 +26,10 @@ import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Committer;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +39,7 @@ import java.util.Collection;
 import java.util.UUID;
 
 /**
- * This committer only works under {@link PravegaWriterMode#EXACTLY_ONCE} and
+ * This committer only works under {@link DeliveryGuarantee#EXACTLY_ONCE} and
  * handles the final commit stage for the transaction.
  *
  * <p>The transaction is resumed via {@link PravegaTransactionState#getTransactionId()}

@@ -20,6 +20,9 @@ import java.io.Serializable;
 /**
  * The supported modes of operation for flink's pravega writer.
  * The different modes correspond to different guarantees for the write operations that the implementation provides.
+ *
+ * This enum is used in old sink API and in the new sink API we will use
+ * {@link org.apache.flink.connector.base.DeliveryGuarantee} provided by Flink.
  */
 public enum PravegaWriterMode implements Serializable {
     /*

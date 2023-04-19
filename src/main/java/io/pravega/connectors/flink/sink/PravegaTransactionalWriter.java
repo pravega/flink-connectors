@@ -25,11 +25,11 @@ import io.pravega.client.stream.Transaction;
 import io.pravega.client.stream.TransactionalEventStreamWriter;
 import io.pravega.client.stream.TxnFailedException;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.VisibleForTesting;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.TwoPhaseCommittingSink;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.metrics.Counter;
 import org.apache.flink.util.ExceptionUtils;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ import java.util.UUID;
 
 /**
  * A Pravega {@link TwoPhaseCommittingSink.PrecommittingSinkWriter} implementation that is suitable
- * for the {@link PravegaWriterMode#EXACTLY_ONCE} mode.
+ * for the {@link DeliveryGuarantee#EXACTLY_ONCE} mode.
  *
  * <p>Note that the transaction is committed in a reconstructed one from the {@link PravegaCommitter} and
  * this writer only deals with the {@link PravegaTransactionalWriter#beginTransaction},
@@ -92,7 +92,7 @@ public class PravegaTransactionalWriter<T>
     private final Counter numRecordsOutCounter;
 
     /**
-     * A Pravega writer that handles {@link PravegaWriterMode#EXACTLY_ONCE} writer mode.
+     * A Pravega writer that handles {@link DeliveryGuarantee#EXACTLY_ONCE} delivery guarantee.
      *
      * @param context               Some runtime info from sink.
      * @param clientConfig          The Pravega client configuration.
@@ -233,16 +233,5 @@ public class PravegaTransactionalWriter<T>
     public String getTransactionId() {
         assert transaction != null;
         return transaction.getTxnId().toString();
-    }
-
-    @VisibleForTesting
-    @Nullable
-    protected PravegaEventRouter<T> getEventRouter() {
-        return eventRouter;
-    }
-
-    @VisibleForTesting
-    protected TransactionalEventStreamWriter<T> getInternalWriter() {
-        return transactionalWriter;
     }
 }

@@ -18,16 +18,16 @@ package io.pravega.connectors.flink.sink;
 import io.pravega.client.ClientConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.connectors.flink.PravegaEventRouter;
-import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.annotation.Experimental;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.connector.sink2.SinkWriter;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.Preconditions;
 
 import java.io.IOException;
 
 /**
- * A Pravega sink for {@link PravegaWriterMode#BEST_EFFORT} and {@link PravegaWriterMode#ATLEAST_ONCE} writer mode.
+ * A Pravega sink for {@link DeliveryGuarantee#NONE} and {@link DeliveryGuarantee#AT_LEAST_ONCE} delivery guarantee.
  *
  * <p>Use {@link PravegaSinkBuilder} to construct a {@link PravegaEventSink}.
  *
@@ -39,7 +39,7 @@ import java.io.IOException;
 @Experimental
 public class PravegaEventSink<T> extends PravegaSink<T> {
     // The sink's mode of operation. This is used to provide different guarantees for the written events.
-    private final PravegaWriterMode writerMode;
+    private final DeliveryGuarantee deliveryGuarantee;
 
     /**
      * Creates a new Pravega Event Sink instance which can be added as a sink to a Flink job.
@@ -48,15 +48,15 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
      *
      * @param clientConfig          The Pravega client configuration.
      * @param stream                The destination stream.
-     * @param writerMode            The writer mode of the sink.
+     * @param deliveryGuarantee     The delivery guarantee.
      * @param serializationSchema   The implementation for serializing every event into pravega's storage format.
      * @param eventRouter           The implementation to extract the partition key from the event.
      */
     public PravegaEventSink(ClientConfig clientConfig,
-                            Stream stream, PravegaWriterMode writerMode,
+                            Stream stream, DeliveryGuarantee deliveryGuarantee,
                             SerializationSchema<T> serializationSchema, PravegaEventRouter<T> eventRouter) {
         super(clientConfig, stream, serializationSchema, eventRouter);
-        this.writerMode = Preconditions.checkNotNull(writerMode, "writerMode");
+        this.deliveryGuarantee = Preconditions.checkNotNull(deliveryGuarantee, "deliveryGuarantee");
     }
 
     @Override
@@ -65,7 +65,7 @@ public class PravegaEventSink<T> extends PravegaSink<T> {
                 context,
                 clientConfig,
                 stream,
-                writerMode,
+                deliveryGuarantee,
                 serializationSchema,
                 eventRouter);
     }

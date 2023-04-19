@@ -21,6 +21,7 @@ import io.pravega.connectors.flink.PravegaEventRouter;
 import io.pravega.connectors.flink.PravegaWriterMode;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.connector.base.DeliveryGuarantee;
 import org.apache.flink.util.Preconditions;
 
 import javax.annotation.Nullable;
@@ -36,7 +37,7 @@ public class PravegaSinkBuilder<T> {
 
     private PravegaConfig pravegaConfig = PravegaConfig.fromDefaults();
     private String stream;
-    private PravegaWriterMode writerMode = PravegaWriterMode.ATLEAST_ONCE;
+    private DeliveryGuarantee deliveryGuarantee = DeliveryGuarantee.AT_LEAST_ONCE;
     private Time txnLeaseRenewalPeriod = Time.milliseconds(DEFAULT_TXN_LEASE_RENEWAL_PERIOD_MILLIS);
     private SerializationSchema<T> serializationSchema;
     @Nullable
@@ -81,20 +82,43 @@ public class PravegaSinkBuilder<T> {
     }
 
     /**
-     * Sets the writer mode to provide at-least-once or exactly-once guarantees.
+     * Sets the delivery guarantee to provide at-least-once or exactly-once guarantees.
+     *
+     * @param deliveryGuarantee The delivery guarantee of {@code NONE}, {@code AT_LEAST_ONCE}, or {@code EXACTLY_ONCE}.
+     * @return A builder to configure and create a sink.
+     */
+    public PravegaSinkBuilder<T> withDeliveryGuarantee(DeliveryGuarantee deliveryGuarantee) {
+        this.deliveryGuarantee = deliveryGuarantee;
+        return this;
+    }
+
+    /**
+     * Sets the delivery guarantee from writer mode to provide at-least-once or exactly-once guarantees.
+     * @deprecated use {@link #withDeliveryGuarantee} instead.
      *
      * @param writerMode The writer mode of {@code BEST_EFFORT}, {@code ATLEAST_ONCE}, or {@code EXACTLY_ONCE}.
      * @return A builder to configure and create a sink.
      */
+    @Deprecated
     public PravegaSinkBuilder<T> withWriterMode(PravegaWriterMode writerMode) {
-        this.writerMode = writerMode;
+        switch (writerMode) {
+            case EXACTLY_ONCE:
+                this.deliveryGuarantee = DeliveryGuarantee.EXACTLY_ONCE;
+                break;
+            case BEST_EFFORT:
+                this.deliveryGuarantee = DeliveryGuarantee.NONE;
+                break;
+            default:
+                this.deliveryGuarantee = DeliveryGuarantee.AT_LEAST_ONCE;
+                break;
+        }
         return this;
     }
 
     /**
      * Sets the transaction lease renewal period.
      *
-     * When the writer mode is set to {@code EXACTLY_ONCE}, transactions are used to persist
+     * When the delivery guarantee is set to {@code EXACTLY_ONCE}, transactions are used to persist
      * events to the Pravega stream. The transaction interval corresponds to the Flink checkpoint interval.
      * Throughout that interval, the transaction is kept alive with a lease that is periodically renewed.
      * This configuration setting sets the lease renewal period. The default value is 30 seconds.
@@ -147,14 +171,7 @@ public class PravegaSinkBuilder<T> {
      * @return An instance of either {@link PravegaEventSink} or {@link PravegaTransactionalSink}.
      */
     public PravegaSink<T> build() {
-        if (writerMode == PravegaWriterMode.BEST_EFFORT || writerMode == PravegaWriterMode.ATLEAST_ONCE) {
-            return new PravegaEventSink<>(
-                    pravegaConfig.getClientConfig(),
-                    resolveStream(),
-                    writerMode,
-                    serializationSchema,
-                    eventRouter);
-        } else if (writerMode == PravegaWriterMode.EXACTLY_ONCE) {
+        if (deliveryGuarantee == DeliveryGuarantee.EXACTLY_ONCE) {
             return new PravegaTransactionalSink<>(
                     pravegaConfig.getClientConfig(),
                     resolveStream(),
@@ -162,7 +179,12 @@ public class PravegaSinkBuilder<T> {
                     serializationSchema,
                     eventRouter);
         } else {
-            throw new IllegalStateException("Failed to build Pravega sink with unknown write mode: " + writerMode);
+            return new PravegaEventSink<>(
+                    pravegaConfig.getClientConfig(),
+                    resolveStream(),
+                    deliveryGuarantee,
+                    serializationSchema,
+                    eventRouter);
         }
     }
 }
