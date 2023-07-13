@@ -113,7 +113,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         final String checkpointName = createCheckpointName(checkpointId);
 
         final CompletableFuture<Checkpoint> checkpointResult =
-                this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
+                this.readerGroup.initiateCheckpoint(checkpointName);
 
         // Add a timeout to the future, to prevent long blocking calls
         scheduledExecutorService.schedule(() -> checkpointResult.cancel(false), triggerTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
