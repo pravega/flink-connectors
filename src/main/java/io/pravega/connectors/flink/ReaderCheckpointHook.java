@@ -21,6 +21,7 @@ import io.pravega.client.stream.Checkpoint;
 import io.pravega.client.stream.ReaderGroup;
 import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.ReaderGroupNotFoundException;
+import io.pravega.client.stream.impl.MaxNumberOfCheckpointsExceededException;
 import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import org.apache.flink.api.common.time.Time;
 import org.apache.flink.core.io.SimpleVersionedSerializer;
@@ -113,7 +114,13 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         final String checkpointName = createCheckpointName(checkpointId);
 
         final CompletableFuture<Checkpoint> checkpointResult =
-                this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService);
+                this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService)
+                        .exceptionally(e -> {
+                            if (e instanceof MaxNumberOfCheckpointsExceededException) {
+                                readerGroup.cancelOutstandingCheckpoints();
+                            }
+                            return null;
+                        });
 
         // Add a timeout to the future, to prevent long blocking calls
         scheduledExecutorService.schedule(() -> checkpointResult.cancel(false), triggerTimeout.toMilliseconds(), TimeUnit.MILLISECONDS);
