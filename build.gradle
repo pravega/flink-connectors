@@ -124,6 +124,7 @@ dependencies {
 
     compileOnly group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     compileOnly group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
+    compileOnly group: 'org.apache.flink', name: 'flink-protobuf', version: flinkVersion
 
     testImplementation (group: 'io.pravega', name: 'pravega-standalone', version: pravegaVersion) {
         exclude group:  'org.slf4j', module: 'slf4j-api'
@@ -146,6 +147,7 @@ dependencies {
     testImplementation group: 'org.apache.flink', name: 'flink-table-planner_' + flinkScalaVersion, classifier: 'tests', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-json', version: flinkVersion
     testImplementation group: 'org.apache.flink', name: 'flink-avro', version: flinkVersion
+    testImplementation group: 'org.apache.flink', name: 'flink-protobuf', version: flinkVersion
     testImplementation group: 'org.hamcrest', name: 'hamcrest', version: hamcrestVersion
     testImplementation group: 'org.testcontainers', name: 'testcontainers', version: testcontainersVersion
     testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter', version: junit5Version
