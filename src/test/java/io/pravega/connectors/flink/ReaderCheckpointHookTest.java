@@ -66,10 +66,10 @@ public class ReaderCheckpointHookTest {
         CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
 
-        when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertThat(checkpointFuture).isNotNull();
-        verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
 
         // complete the checkpoint promise
         Checkpoint expectedCheckpoint = mock(Checkpoint.class);
@@ -85,11 +85,11 @@ public class ReaderCheckpointHookTest {
         CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
 
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
-        when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
 
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertThat(checkpointFuture).isNotNull();
-        verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
 
         // invoke the timeout callback
         hook.invokeScheduledCallables();
@@ -104,11 +104,11 @@ public class ReaderCheckpointHookTest {
         checkpointPromise.completeExceptionally(new MaxNumberOfCheckpointsExceededException("test"));
 
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
-        when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
 
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertThat(checkpointFuture).isNotNull();
-        verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
 
         // invoke the cancelOutstandingCheckpoints
         verify(hook.readerGroup).cancelOutstandingCheckpoints();
