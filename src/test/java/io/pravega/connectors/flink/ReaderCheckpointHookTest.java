@@ -24,6 +24,7 @@ import io.pravega.client.stream.ReaderGroupConfig;
 import io.pravega.client.stream.Stream;
 import io.pravega.client.stream.StreamCut;
 import io.pravega.client.stream.impl.CheckpointImpl;
+import io.pravega.client.stream.impl.MaxNumberOfCheckpointsExceededException;
 import io.pravega.client.stream.impl.StreamCutImpl;
 import io.pravega.connectors.flink.serialization.CheckpointSerializer;
 import org.apache.flink.api.common.time.Time;
@@ -65,10 +66,10 @@ public class ReaderCheckpointHookTest {
         CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
 
-        when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertThat(checkpointFuture).isNotNull();
-        verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
 
         // complete the checkpoint promise
         Checkpoint expectedCheckpoint = mock(Checkpoint.class);
@@ -84,15 +85,33 @@ public class ReaderCheckpointHookTest {
         CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
 
         TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
-        when(hook.readerGroup.initiateCheckpoint(anyString(), any())).thenReturn(checkpointPromise);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
 
         CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
         assertThat(checkpointFuture).isNotNull();
-        verify(hook.readerGroup).initiateCheckpoint(anyString(), any());
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
 
         // invoke the timeout callback
         hook.invokeScheduledCallables();
         assertThat(checkpointFuture.isCancelled()).isTrue();
+    }
+
+    @Test
+    public void testCancelWhenExceedingMaxOutstandingCheckpoints() throws Exception {
+        ReaderGroupConfig readerGroupConfig = mock(ReaderGroupConfig.class);
+        ClientConfig clientConfig = mock(ClientConfig.class);
+        CompletableFuture<Checkpoint> checkpointPromise = new CompletableFuture<>();
+        checkpointPromise.completeExceptionally(new MaxNumberOfCheckpointsExceededException("test"));
+
+        TestableReaderCheckpointHook hook = new TestableReaderCheckpointHook(HOOK_UID, READER_GROUP_NAME, SCOPE, Time.minutes(1), clientConfig, readerGroupConfig);
+        when(hook.readerGroup.initiateCheckpoint(anyString())).thenReturn(checkpointPromise);
+
+        CompletableFuture<Checkpoint> checkpointFuture = hook.triggerCheckpoint(1L, 1L, Executors.directExecutor());
+        assertThat(checkpointFuture).isNotNull();
+        verify(hook.readerGroup).initiateCheckpoint(anyString());
+
+        // invoke the cancelOutstandingCheckpoints
+        verify(hook.readerGroup).cancelOutstandingCheckpoints();
     }
 
     @Test
