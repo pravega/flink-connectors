@@ -18,6 +18,7 @@ package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
+import io.pravega.connectors.flink.util.MessageToRowConverter;
 import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
@@ -25,6 +26,7 @@ import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SchemaInfo;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
 import io.pravega.schemaregistry.serializer.avro.schemas.AvroSchema;
+import io.pravega.schemaregistry.serializer.protobuf.schemas.ProtobufSchema;
 import io.pravega.schemaregistry.serializer.shared.impl.AbstractDeserializer;
 import io.pravega.schemaregistry.serializer.shared.impl.EncodingCache;
 import io.pravega.schemaregistry.serializer.shared.impl.SerializerConfig;
@@ -36,6 +38,7 @@ import org.apache.flink.formats.avro.AvroToRowDataConverters;
 import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonToRowDataConverters;
+import org.apache.flink.formats.protobuf.PbFormatConfig.PbFormatConfigBuilder;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,6 +46,7 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
+import com.google.protobuf.GeneratedMessageV3;
 
 import javax.annotation.Nullable;
 import java.io.IOException;
@@ -51,12 +55,17 @@ import java.nio.ByteBuffer;
 import java.util.Objects;
 
 import static org.apache.flink.util.Preconditions.checkNotNull;
+
 /**
- * Deserialization schema from Pravega Schema Registry to Flink Table/SQL internal data structure {@link RowData}.
+ * Deserialization schema from Pravega Schema Registry to Flink Table/SQL
+ * internal data structure {@link RowData}.
  *
- * <p>Deserializes a <code>byte[]</code> message as a Pravega Schema Registry and reads the specified fields.
+ * <p>
+ * Deserializes a <code>byte[]</code> message as a Pravega Schema Registry and
+ * reads the specified fields.
  *
- * <p>Failures during deserialization are forwarded as wrapped IOExceptions.
+ * <p>
+ * Failures during deserialization are forwarded as wrapped IOExceptions.
  */
 public class PravegaRegistryRowDataDeserializationSchema implements DeserializationSchema<RowData> {
     private static final long serialVersionUID = 1L;
@@ -103,11 +112,24 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     /** Flag indicating whether to fail if a field is missing. */
     private final boolean failOnMissingField;
 
-    /** Flag indicating whether to ignore invalid fields/rows (default: throw an exception). */
+    /**
+     * Flag indicating whether to ignore invalid fields/rows (default: throw an
+     * exception).
+     */
     private final boolean ignoreParseErrors;
 
     /** Timestamp format specification which is used to parse timestamp. */
     private final TimestampFormat timestampFormat;
+
+    // --------------------------------------------------------------------------------------------
+    // Protobuf fields
+    // --------------------------------------------------------------------------------------------
+
+    /** Protobuf serialization schema. */
+    private transient ProtobufSchema pbSchema;
+
+    /** Protobuf Message Class generated from static .proto file. */
+    private GeneratedMessageV3 pbMessage;
 
     public PravegaRegistryRowDataDeserializationSchema(
             RowType rowType,
@@ -116,8 +138,7 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
             PravegaConfig pravegaConfig,
             boolean failOnMissingField,
             boolean ignoreParseErrors,
-            TimestampFormat timestampFormat
-            ) {
+            TimestampFormat timestampFormat) {
         if (ignoreParseErrors && failOnMissingField) {
             throw new IllegalArgumentException(
                     "JSON format doesn't support failOnMissingField and ignoreParseErrors are both enabled.");
@@ -135,8 +156,8 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
     @SuppressWarnings("unchecked")
     @Override
     public void open(InitializationContext context) throws Exception {
-        SchemaRegistryClientConfig schemaRegistryClientConfig =
-                SchemaRegistryUtils.getSchemaRegistryClientConfig(pravegaConfig);
+        SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryUtils
+                .getSchemaRegistryClientConfig(pravegaConfig);
         SchemaRegistryClient schemaRegistryClient = SchemaRegistryClientFactory.withNamespace(namespace,
                 schemaRegistryClientConfig);
         SerializerConfig config = SerializerConfig.builder()
@@ -153,8 +174,7 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
                 break;
             case Json:
                 ObjectMapper objectMapper = new ObjectMapper();
-                boolean hasDecimalType =
-                        LogicalTypeChecks.hasNested(rowType, t -> t instanceof DecimalType);
+                boolean hasDecimalType = LogicalTypeChecks.hasNested(rowType, t -> t instanceof DecimalType);
                 if (hasDecimalType) {
                     objectMapper.enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
                 }
@@ -165,6 +185,10 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
                         new EncodingCache(groupId, schemaRegistryClient),
                         config.isWriteEncodingHeader(),
                         objectMapper);
+                break;
+            case Protobuf:
+                pbSchema = ProtobufSchema.of(pbMessage.getClass());
+                deserializer = SerializerFactory.protobufDeserializer(config, pbSchema);
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");
@@ -190,19 +214,25 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         return deserializer.deserialize(ByteBuffer.wrap(message));
     }
 
-    public RowData convertToRowData(Object message) {
+    public RowData convertToRowData(Object message) throws Exception {
         Object o;
         switch (serializationFormat) {
             case Avro:
-                AvroToRowDataConverters.AvroToRowDataConverter avroConverter =
-                        AvroToRowDataConverters.createRowConverter(rowType);
+                AvroToRowDataConverters.AvroToRowDataConverter avroConverter = AvroToRowDataConverters
+                        .createRowConverter(rowType);
                 o = avroConverter.convert(message);
                 break;
             case Json:
-                JsonToRowDataConverters.JsonToRowDataConverter jsonConverter =
-                        new JsonToRowDataConverters(failOnMissingField, ignoreParseErrors, timestampFormat)
-                                .createConverter(checkNotNull(rowType));
+                JsonToRowDataConverters.JsonToRowDataConverter jsonConverter = new JsonToRowDataConverters(
+                        failOnMissingField, ignoreParseErrors, timestampFormat)
+                        .createConverter(checkNotNull(rowType));
                 o = jsonConverter.convert((JsonNode) message);
+                break;
+            case Protobuf:
+                PbFormatConfigBuilder pbConfigBuilder = new PbFormatConfigBuilder()
+                        .messageClassName(pbMessage.getClass().getName());
+                MessageToRowConverter pbMessageConverter = new MessageToRowConverter(rowType, pbConfigBuilder.build());
+                o = pbMessageConverter.convertMessageToRow(message);
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");
@@ -214,16 +244,16 @@ public class PravegaRegistryRowDataDeserializationSchema implements Deserializat
         private final ObjectMapper objectMapper;
 
         public FlinkJsonGenericDeserializer(String groupId, SchemaRegistryClient client,
-                                            SerializerConfig.Decoders decoders, EncodingCache encodingCache,
-                                            boolean encodeHeader, ObjectMapper objectMapper) {
+                SerializerConfig.Decoders decoders, EncodingCache encodingCache,
+                boolean encodeHeader, ObjectMapper objectMapper) {
             super(groupId, client, null, false, decoders, encodingCache, encodeHeader);
             this.objectMapper = objectMapper;
         }
 
         @Override
         public final JsonNode deserialize(InputStream inputStream,
-                                          SchemaInfo writerSchemaInfo,
-                                          SchemaInfo readerSchemaInfo) throws IOException {
+                SchemaInfo writerSchemaInfo,
+                SchemaInfo readerSchemaInfo) throws IOException {
             return objectMapper.readTree(inputStream);
         }
     }
