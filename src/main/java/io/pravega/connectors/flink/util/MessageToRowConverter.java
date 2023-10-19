@@ -48,7 +48,7 @@ public class MessageToRowConverter {
                     formatConfig.getMessageClassName(),
                     true,
                     Thread.currentThread().getContextClassLoader());
-            String fullMessageClassName = PbFormatUtils.getFullJavaName(descriptor, "");
+            String fullMessageClassName = PbFormatUtils.getFullJavaName(descriptor);
             if (descriptor.getFile().getSyntax() == Syntax.PROTO3) {
                 // pb3 always read default values
                 formatConfig = new PbFormatConfig(
@@ -58,7 +58,7 @@ public class MessageToRowConverter {
                         formatConfig.getWriteNullStringLiterals());
             }
             PbCodegenAppender codegenAppender = new PbCodegenAppender();
-            PbFormatContext pbFormatContext = new PbFormatContext("", formatConfig);
+            PbFormatContext pbFormatContext = new PbFormatContext(formatConfig);
             String uuid = UUID.randomUUID().toString().replaceAll("\\-", "");
             String generatedClassName = "GeneratedProtoToRow_" + uuid;
             String generatedPackageName = MessageToRowConverter.class.getPackage().getName();
