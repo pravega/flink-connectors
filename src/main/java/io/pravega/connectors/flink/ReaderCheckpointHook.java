@@ -114,7 +114,7 @@ class ReaderCheckpointHook implements MasterTriggerRestoreHook<Checkpoint> {
         final String checkpointName = createCheckpointName(checkpointId);
 
         final CompletableFuture<Checkpoint> checkpointResult =
-                this.readerGroup.initiateCheckpoint(checkpointName, scheduledExecutorService)
+                this.readerGroup.initiateCheckpoint(checkpointName)
                         .exceptionally(e -> {
                             if (e instanceof MaxNumberOfCheckpointsExceededException) {
                                 readerGroup.cancelOutstandingCheckpoints();

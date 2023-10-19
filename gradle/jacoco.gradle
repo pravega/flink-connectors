@@ -27,4 +27,9 @@ jacocoTestReport {
     }
 }
 
-test { finalizedBy jacocoTestReport }
+test {
+    jacoco {
+        excludes = ['**Metadata**$Handler']
+    }
+    finalizedBy jacocoTestReport
+}
