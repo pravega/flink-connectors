@@ -129,15 +129,10 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     // --------------------------------------------------------------------------------------------
     // private final boolean pbIgnoreParseErrors;
 
-    private transient RowToMessageConverter rowToMessageConverter;
-
     private final String pbMessageClassName;
     private final boolean pbIgnoreParseErrors;
     private final boolean pbReadDefaultValues;
     private final String pbWriteNullStringLiterals;
-
-    /** Protobuf Message Class generated from static .proto file. */
-    private GeneratedMessageV3 pbMessage;
 
     public PravegaRegistryRowDataSerializationSchema(
             RowType rowType,
