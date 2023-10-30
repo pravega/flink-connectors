@@ -16,6 +16,8 @@
 
 package io.pravega.connectors.flink.formats.registry;
 
+import com.google.protobuf.AbstractMessage;
+import com.google.protobuf.GeneratedMessageV3;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
@@ -44,20 +46,14 @@ import org.apache.flink.formats.avro.typeutils.AvroSchemaConverter;
 import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.formats.json.RowDataToJsonConverters;
-import org.apache.flink.formats.protobuf.PbCodegenException;
 import org.apache.flink.formats.protobuf.PbFormatConfig;
 import org.apache.flink.formats.protobuf.PbFormatConfig.PbFormatConfigBuilder;
-import org.apache.flink.formats.protobuf.deserialize.ProtoToRowConverter;
-import org.apache.flink.formats.protobuf.serialize.RowToProtoConverter;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.node.ObjectNode;
 import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.RowType;
-
-import com.google.protobuf.AbstractMessage;
-import com.google.protobuf.GeneratedMessageV3;
 
 import java.io.IOException;
 import java.io.OutputStream;
@@ -258,16 +254,8 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
 
     @SuppressWarnings("unchecked")
     public byte[] convertToByteArray(Object message) {
-        switch (serializationFormat) {
-            case Avro:
-            case Json:
-                serializer.serialize(message).array();
-            case Protobuf:
-                return FlinkPravegaUtils
-                        .byteBufferToArray(serializer.serialize(message));
-            default:
-                throw new NotImplementedException("Not supporting deserialization format");
-        }
+        return FlinkPravegaUtils
+                .byteBufferToArray(serializer.serialize(message));
     }
 
     @VisibleForTesting

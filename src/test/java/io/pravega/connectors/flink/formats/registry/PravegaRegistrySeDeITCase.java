@@ -17,13 +17,13 @@
 package io.pravega.connectors.flink.formats.registry;
 
 import io.pravega.client.stream.Serializer;
+import io.pravega.connectors.flink.formats.registry.testProto.testMessage;
 import io.pravega.connectors.flink.table.catalog.pravega.PravegaCatalog;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.utils.SchemaRegistryTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
-import io.pravega.connectors.flink.util.FlinkPravegaUtils;
-import io.pravega.connectors.flink.formats.registry.testProto.testMessage;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;

@@ -16,6 +16,7 @@
 
 package io.pravega.connectors.flink.formats.registry;
 
+import com.google.protobuf.GeneratedMessageV3;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.util.MessageToRowConverter;
@@ -40,7 +41,6 @@ import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonToRowDataConverters;
 import org.apache.flink.formats.protobuf.PbFormatConfig;
 import org.apache.flink.formats.protobuf.PbFormatConfig.PbFormatConfigBuilder;
-import org.apache.flink.formats.protobuf.deserialize.ProtoToRowConverter;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.DeserializationFeature;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,7 +48,6 @@ import org.apache.flink.table.data.RowData;
 import org.apache.flink.table.types.logical.DecimalType;
 import org.apache.flink.table.types.logical.RowType;
 import org.apache.flink.table.types.logical.utils.LogicalTypeChecks;
-import com.google.protobuf.GeneratedMessageV3;
 
 import javax.annotation.Nullable;
 import java.io.IOException;

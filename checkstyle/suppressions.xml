@@ -13,5 +13,6 @@
     <suppress checks="JavadocMethod" files=".+(Test|Tests|ITCase)\.java" />
     <suppress checks="IllegalThrows" files=".+(Test|Tests|ITCase)\.java" />
     <suppress files="[\\/]generated[\\/]" checks="[a-zA-Z0-9]*"/>
+    <suppress files="src[\\/]test[\\/]java[\\/]io[\\/]pravega[\\/]connectors[\\/]flink[\\/]formats[\\/]registry[\\/]testProto[\\/].*\.java" checks=".*" />
 </suppressions>
 
