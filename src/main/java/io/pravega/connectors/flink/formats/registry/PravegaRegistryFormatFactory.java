@@ -26,6 +26,7 @@ import org.apache.flink.configuration.ReadableConfig;
 import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.formats.json.JsonFormatOptionsUtil;
+import org.apache.flink.formats.protobuf.PbFormatOptions;
 import org.apache.flink.table.connector.ChangelogMode;
 import org.apache.flink.table.connector.format.DecodingFormat;
 import org.apache.flink.table.connector.format.EncodingFormat;
@@ -44,7 +45,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Table format factory for providing configured instances of Pravega-Registry to Flink RowData {@link
+ * Table format factory for providing configured instances of Pravega-Registry
+ * to Flink RowData {@link
  * SerializationSchema} and {@link DeserializationSchema}.
  */
 public class PravegaRegistryFormatFactory implements DeserializationFormatFactory, SerializationFormatFactory {
@@ -63,6 +65,12 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
 
         final boolean failOnMissingField = formatOptions.get(PravegaRegistryOptions.FAIL_ON_MISSING_FIELD);
         final boolean ignoreParseErrors = formatOptions.get(PravegaRegistryOptions.IGNORE_PARSE_ERRORS);
+
+        final boolean pbIgnoreParseErrors = formatOptions.get(PravegaRegistryOptions.PB_IGNORE_PARSE_ERRORS);
+        final String pbMessageClassName = formatOptions.get(PravegaRegistryOptions.PB_MESSAGE_CLASS_NAME);
+        final boolean pbReadDefaultValues = formatOptions.get(PravegaRegistryOptions.PB_READ_DEFAULT_VALUES);
+        final String pbWriteNullStringLiterals = formatOptions.get(PravegaRegistryOptions.PB_WRITE_NULL_STRING_LITERAL);
+
         TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
 
         return new DecodingFormat<DeserializationSchema<RowData>>() {
@@ -70,8 +78,7 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
             public DeserializationSchema<RowData> createRuntimeDecoder(
                     DynamicTableSource.Context context, DataType producedDatatype) {
                 final RowType rowType = (RowType) producedDatatype.getLogicalType();
-                final TypeInformation<RowData> rowDataTypeInfo =
-                        context.createTypeInformation(producedDatatype);
+                final TypeInformation<RowData> rowDataTypeInfo = context.createTypeInformation(producedDatatype);
                 return new PravegaRegistryRowDataDeserializationSchema(
                         rowType,
                         rowDataTypeInfo,
@@ -79,7 +86,11 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                         pravegaConfig,
                         failOnMissingField,
                         ignoreParseErrors,
-                        timestampOption);
+                        timestampOption,
+                        pbMessageClassName,
+                        pbIgnoreParseErrors,
+                        pbReadDefaultValues,
+                        pbWriteNullStringLiterals);
             }
 
             @Override
@@ -102,10 +113,15 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                 .withSchemaRegistryURI(URI.create(formatOptions.get(PravegaRegistryOptions.URI)));
 
         TimestampFormat timestampOption = JsonFormatOptionsUtil.getTimestampFormat(formatOptions);
-        final JsonFormatOptions.MapNullKeyMode mapNullKeyMode =
-                JsonFormatOptionsUtil.getMapNullKeyMode(formatOptions);
+        final JsonFormatOptions.MapNullKeyMode mapNullKeyMode = JsonFormatOptionsUtil.getMapNullKeyMode(formatOptions);
         final String mapNullKeyLiteral = formatOptions.get(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
-        final boolean encodeDecimalAsPlainNumber = formatOptions.get(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+        final boolean encodeDecimalAsPlainNumber = formatOptions
+                .get(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+
+        final boolean pbIgnoreParseErrors = formatOptions.get(PravegaRegistryOptions.PB_IGNORE_PARSE_ERRORS);
+        final String pbMessageClassName = formatOptions.get(PravegaRegistryOptions.PB_MESSAGE_CLASS_NAME);
+        final boolean pbReadDefaultValues = formatOptions.get(PravegaRegistryOptions.PB_READ_DEFAULT_VALUES);
+        final String pbWriteNullStringLiterals = formatOptions.get(PravegaRegistryOptions.PB_WRITE_NULL_STRING_LITERAL);
 
         return new EncodingFormat<SerializationSchema<RowData>>() {
             @Override
@@ -120,7 +136,11 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
                         timestampOption,
                         mapNullKeyMode,
                         mapNullKeyLiteral,
-                        encodeDecimalAsPlainNumber);
+                        encodeDecimalAsPlainNumber,
+                        pbMessageClassName,
+                        pbIgnoreParseErrors,
+                        pbReadDefaultValues,
+                        pbWriteNullStringLiterals);
             }
 
             @Override
@@ -154,6 +174,12 @@ public class PravegaRegistryFormatFactory implements DeserializationFormatFactor
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_MODE);
         options.add(PravegaRegistryOptions.MAP_NULL_KEY_LITERAL);
         options.add(PravegaRegistryOptions.ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+
+        options.add(PravegaRegistryOptions.PB_MESSAGE_CLASS_NAME);
+        options.add(PravegaRegistryOptions.PB_IGNORE_PARSE_ERRORS);
+        options.add(PravegaRegistryOptions.PB_READ_DEFAULT_VALUES);
+        options.add(PravegaRegistryOptions.PB_WRITE_NULL_STRING_LITERAL);
+
         options.add(PravegaRegistryOptions.SECURITY_AUTH_TYPE);
         options.add(PravegaRegistryOptions.SECURITY_AUTH_TOKEN);
         options.add(PravegaRegistryOptions.SECURITY_VALIDATE_HOSTNAME);

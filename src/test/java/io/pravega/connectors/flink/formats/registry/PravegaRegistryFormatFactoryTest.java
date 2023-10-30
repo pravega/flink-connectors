@@ -53,127 +53,128 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Tests for the {@link PravegaRegistryFormatFactory}. */
 public class PravegaRegistryFormatFactoryTest extends TestLogger {
 
-    private static final ResolvedSchema RESOLVED_SCHEMA =
-            ResolvedSchema.of(
-                    Column.physical("a", DataTypes.STRING()),
-                    Column.physical("b", DataTypes.INT()),
-                    Column.physical("c", DataTypes.BOOLEAN()));
+        private static final ResolvedSchema RESOLVED_SCHEMA = ResolvedSchema.of(
+                        Column.physical("a", DataTypes.STRING()),
+                        Column.physical("b", DataTypes.INT()),
+                        Column.physical("c", DataTypes.BOOLEAN()));
 
-    private static final RowType ROW_TYPE = (RowType) RESOLVED_SCHEMA.toPhysicalRowDataType().getLogicalType();
+        private static final RowType ROW_TYPE = (RowType) RESOLVED_SCHEMA.toPhysicalRowDataType().getLogicalType();
 
-    private static final String SCOPE = "test-scope";
-    private static final String STREAM = "test-stream";
-    private static final String TOKEN = RandomStringUtils.randomAlphabetic(10);
-    private static final String TRUST_STORE = RandomStringUtils.randomAlphabetic(10);
-    private static final PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults().
-            withSchemaRegistryURI(URI.create("http://localhost:10092")).
-            withDefaultScope(SCOPE).
-            withCredentials(new FlinkPravegaUtils.SimpleCredentials("Basic", TOKEN)).
-            withHostnameValidation(false).
-            withTrustStore(TRUST_STORE);
+        private static final String SCOPE = "test-scope";
+        private static final String STREAM = "test-stream";
+        private static final String TOKEN = RandomStringUtils.randomAlphabetic(10);
+        private static final String TRUST_STORE = RandomStringUtils.randomAlphabetic(10);
+        private static final PravegaConfig PRAVEGA_CONFIG = PravegaConfig.fromDefaults()
+                        .withSchemaRegistryURI(URI.create("http://localhost:10092")).withDefaultScope(SCOPE)
+                        .withCredentials(new FlinkPravegaUtils.SimpleCredentials("Basic", TOKEN))
+                        .withHostnameValidation(false).withTrustStore(TRUST_STORE);
 
-    private static final SerializationFormat SERIALIZATIONFORMAT = SerializationFormat.Avro;
-    private static final boolean FAIL_ON_MISSING_FIELD = false;
-    private static final boolean IGNORE_PARSE_ERRORS = false;
-    private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
-    private static final JsonFormatOptions.MapNullKeyMode MAP_NULL_KEY_MODE =
-            JsonFormatOptions.MapNullKeyMode.FAIL;
-    private static final String MAP_NULL_KEY_LITERAL = "null";
-    private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
+        private static final SerializationFormat SERIALIZATIONFORMAT = SerializationFormat.Avro;
+        private static final boolean FAIL_ON_MISSING_FIELD = false;
+        private static final boolean IGNORE_PARSE_ERRORS = false;
+        private static final TimestampFormat TIMESTAMP_FORMAT = TimestampFormat.SQL;
+        private static final JsonFormatOptions.MapNullKeyMode MAP_NULL_KEY_MODE = JsonFormatOptions.MapNullKeyMode.FAIL;
+        private static final String MAP_NULL_KEY_LITERAL = "null";
+        private static final boolean ENCODE_DECIMAL_AS_PLAIN_NUMBER = false;
 
-    @Test
-    public void testSeDeSchema() {
-        final PravegaRegistryRowDataDeserializationSchema expectedDeser =
-                new PravegaRegistryRowDataDeserializationSchema(
-                        ROW_TYPE,
-                        InternalTypeInfo.of(ROW_TYPE),
-                        STREAM,
-                        PRAVEGA_CONFIG,
-                        FAIL_ON_MISSING_FIELD,
-                        IGNORE_PARSE_ERRORS,
-                        TIMESTAMP_FORMAT);
+        private static final String PB_MESSAGE_CLASS_NAME = "test.pb.Message";
+        private static final Boolean PB_IGNORE_PARSE_ERRORS = false;
+        private static final Boolean PB_READ_DEFAULT_VALUES = false;
+        private static final String PB_WRITE_NULL_STRING_LITERAL = "null";
 
-        final Map<String, String> options = getAllOptions();
+        @Test
+        public void testSeDeSchema() {
+                final PravegaRegistryRowDataDeserializationSchema expectedDeser = new PravegaRegistryRowDataDeserializationSchema(
+                                ROW_TYPE,
+                                InternalTypeInfo.of(ROW_TYPE),
+                                STREAM,
+                                PRAVEGA_CONFIG,
+                                FAIL_ON_MISSING_FIELD,
+                                IGNORE_PARSE_ERRORS,
+                                TIMESTAMP_FORMAT,
+                                PB_MESSAGE_CLASS_NAME, PB_IGNORE_PARSE_ERRORS, PB_READ_DEFAULT_VALUES,
+                                PB_WRITE_NULL_STRING_LITERAL);
 
-        final DynamicTableSource actualSource = createTableSource(options);
-        assertThat(actualSource instanceof TestDynamicTableFactory.DynamicTableSourceMock).isTrue();
-        TestDynamicTableFactory.DynamicTableSourceMock sourceMock =
-                (TestDynamicTableFactory.DynamicTableSourceMock) actualSource;
+                final Map<String, String> options = getAllOptions();
 
-        DeserializationSchema<RowData> actualDeser =
-                sourceMock.valueFormat.createRuntimeDecoder(
-                        ScanRuntimeProviderContext.INSTANCE, RESOLVED_SCHEMA.toPhysicalRowDataType());
+                final DynamicTableSource actualSource = createTableSource(options);
+                assertThat(actualSource instanceof TestDynamicTableFactory.DynamicTableSourceMock).isTrue();
+                TestDynamicTableFactory.DynamicTableSourceMock sourceMock = (TestDynamicTableFactory.DynamicTableSourceMock) actualSource;
 
-        assertThat(actualDeser).isEqualTo(expectedDeser);
+                DeserializationSchema<RowData> actualDeser = sourceMock.valueFormat.createRuntimeDecoder(
+                                ScanRuntimeProviderContext.INSTANCE, RESOLVED_SCHEMA.toPhysicalRowDataType());
 
-        final PravegaRegistryRowDataSerializationSchema expectedSer =
-                new PravegaRegistryRowDataSerializationSchema(
-                        ROW_TYPE,
-                        STREAM,
-                        SERIALIZATIONFORMAT,
-                        PRAVEGA_CONFIG,
-                        TIMESTAMP_FORMAT,
-                        MAP_NULL_KEY_MODE,
-                        MAP_NULL_KEY_LITERAL,
-                        ENCODE_DECIMAL_AS_PLAIN_NUMBER);
+                assertThat(actualDeser).isEqualTo(expectedDeser);
 
-        final DynamicTableSink actualSink = createTableSink(options);
-        assertThat(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock).isTrue();
-        TestDynamicTableFactory.DynamicTableSinkMock sinkMock =
-                (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
+                final PravegaRegistryRowDataSerializationSchema expectedSer = new PravegaRegistryRowDataSerializationSchema(
+                                ROW_TYPE,
+                                STREAM,
+                                SERIALIZATIONFORMAT,
+                                PRAVEGA_CONFIG,
+                                TIMESTAMP_FORMAT,
+                                MAP_NULL_KEY_MODE,
+                                MAP_NULL_KEY_LITERAL,
+                                ENCODE_DECIMAL_AS_PLAIN_NUMBER, PB_MESSAGE_CLASS_NAME, PB_IGNORE_PARSE_ERRORS,
+                                PB_READ_DEFAULT_VALUES, PB_WRITE_NULL_STRING_LITERAL);
 
-        SerializationSchema<RowData> actualSer =
-                sinkMock.valueFormat.createRuntimeEncoder(null, RESOLVED_SCHEMA.toPhysicalRowDataType());
+                final DynamicTableSink actualSink = createTableSink(options);
+                assertThat(actualSink instanceof TestDynamicTableFactory.DynamicTableSinkMock).isTrue();
+                TestDynamicTableFactory.DynamicTableSinkMock sinkMock = (TestDynamicTableFactory.DynamicTableSinkMock) actualSink;
 
-        assertThat(actualSer).isEqualTo(expectedSer);
-    }
+                SerializationSchema<RowData> actualSer = sinkMock.valueFormat.createRuntimeEncoder(null,
+                                RESOLVED_SCHEMA.toPhysicalRowDataType());
 
-    // ------------------------------------------------------------------------
-    //  Utilities
-    // ------------------------------------------------------------------------
+                assertThat(actualSer).isEqualTo(expectedSer);
+        }
 
-    private Map<String, String> getAllOptions() {
-        final Map<String, String> options = new HashMap<>();
-        options.put("connector", "test-connector");
-        options.put("target", "MyTarget");
+        // ------------------------------------------------------------------------
+        // Utilities
+        // ------------------------------------------------------------------------
 
-        options.put("format", PravegaRegistryFormatFactory.IDENTIFIER);
-        options.put("pravega-registry.uri", "http://localhost:10092");
-        options.put("pravega-registry.namespace", SCOPE);
-        options.put("pravega-registry.group-id", STREAM);
-        options.put("pravega-registry.format", SERIALIZATIONFORMAT.name());
-        options.put("pravega-registry.fail-on-missing-field", "false");
-        options.put("pravega-registry.ignore-parse-errors", "false");
-        options.put("pravega-registry.timestamp-format.standard", "SQL");
-        options.put("pravega-registry.map-null-key.mode", "FAIL");
-        options.put("pravega-registry.map-null-key.literal", "null");
+        private Map<String, String> getAllOptions() {
+                final Map<String, String> options = new HashMap<>();
+                options.put("connector", "test-connector");
+                options.put("target", "MyTarget");
 
-        options.put("pravega-registry.security.auth-type", "Basic");
-        options.put("pravega-registry.security.auth-token", TOKEN);
-        options.put("pravega-registry.security.validate-hostname", "false");
-        options.put("pravega-registry.security.trust-store", TRUST_STORE);
-        return options;
-    }
+                options.put("format", PravegaRegistryFormatFactory.IDENTIFIER);
+                options.put("pravega-registry.uri", "http://localhost:10092");
+                options.put("pravega-registry.namespace", SCOPE);
+                options.put("pravega-registry.group-id", STREAM);
+                options.put("pravega-registry.format", SERIALIZATIONFORMAT.name());
+                options.put("pravega-registry.fail-on-missing-field", "false");
+                options.put("pravega-registry.ignore-parse-errors", "false");
+                options.put("pravega-registry.timestamp-format.standard", "SQL");
+                options.put("pravega-registry.map-null-key.mode", "FAIL");
+                options.put("pravega-registry.map-null-key.literal", "null");
 
-    private static DynamicTableSource createTableSource(Map<String, String> options) {
-        CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options, "scanTable");
-        return FactoryUtil.createTableSource(
-                null,
-                ObjectIdentifier.of("default", "default", "scanTable"),
-                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
-    }
+                options.put("pravega-registry.security.auth-type", "Basic");
+                options.put("pravega-registry.security.auth-token", TOKEN);
+                options.put("pravega-registry.security.validate-hostname", "false");
+                options.put("pravega-registry.security.trust-store", TRUST_STORE);
+                return options;
+        }
 
-    private static DynamicTableSink createTableSink(Map<String, String> options) {
-        CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options, "scanTable");
-        return FactoryUtil.createTableSink(
-                null,
-                ObjectIdentifier.of("default", "default", "scanTable"),
-                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
-                new Configuration(),
-                Thread.currentThread().getContextClassLoader(),
-                false);
-    }
+        private static DynamicTableSource createTableSource(Map<String, String> options) {
+                CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options,
+                                "scanTable");
+                return FactoryUtil.createTableSource(
+                                null,
+                                ObjectIdentifier.of("default", "default", "scanTable"),
+                                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
+                                new Configuration(),
+                                Thread.currentThread().getContextClassLoader(),
+                                false);
+        }
+
+        private static DynamicTableSink createTableSink(Map<String, String> options) {
+                CatalogTable table = new CatalogTableImpl(TableSchema.fromResolvedSchema(RESOLVED_SCHEMA), options,
+                                "scanTable");
+                return FactoryUtil.createTableSink(
+                                null,
+                                ObjectIdentifier.of("default", "default", "scanTable"),
+                                new ResolvedCatalogTable(table, RESOLVED_SCHEMA),
+                                new Configuration(),
+                                Thread.currentThread().getContextClassLoader(),
+                                false);
+        }
 }

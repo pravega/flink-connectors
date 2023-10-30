@@ -44,7 +44,10 @@ import org.apache.flink.formats.common.TimestampFormat;
 import org.apache.flink.formats.json.JsonFormatOptions;
 import org.apache.flink.formats.json.RowDataToJsonConverters;
 import org.apache.flink.formats.protobuf.PbCodegenException;
+import org.apache.flink.formats.protobuf.PbFormatConfig;
 import org.apache.flink.formats.protobuf.PbFormatConfig.PbFormatConfigBuilder;
+import org.apache.flink.formats.protobuf.deserialize.ProtoToRowConverter;
+import org.apache.flink.formats.protobuf.serialize.RowToProtoConverter;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.JsonGenerator;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.JsonNode;
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper;
@@ -127,9 +130,14 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     // --------------------------------------------------------------------------------------------
     // Protobuf fields
     // --------------------------------------------------------------------------------------------
+    // private final boolean pbIgnoreParseErrors;
 
-    /** Protobuf serialization schema. */
-    private transient ProtobufSchema pbSchema;
+    private transient RowToProtoConverter rowToProtoConverter;
+
+    private final String pbMessageClassName;
+    private final boolean pbIgnoreParseErrors;
+    private final boolean pbReadDefaultValues;
+    private final String pbWriteNullStringLiterals;
 
     /** Protobuf Message Class generated from static .proto file. */
     private GeneratedMessageV3 pbMessage;
@@ -142,7 +150,11 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
             TimestampFormat timestampOption,
             JsonFormatOptions.MapNullKeyMode mapNullKeyMode,
             String mapNullKeyLiteral,
-            boolean encodeDecimalAsPlainNumber) {
+            boolean encodeDecimalAsPlainNumber,
+            String pbMessageClassName,
+            boolean pbIgnoreParseErrors,
+            boolean pbReadDefaultValues,
+            String pbWriteNullStringLiterals) {
         this.rowType = rowType;
         this.serializer = null;
         this.namespace = pravegaConfig.getDefaultScope();
@@ -153,6 +165,10 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
         this.mapNullKeyMode = mapNullKeyMode;
         this.mapNullKeyLiteral = mapNullKeyLiteral;
         this.encodeDecimalAsPlainNumber = encodeDecimalAsPlainNumber;
+        this.pbMessageClassName = pbMessageClassName;
+        this.pbIgnoreParseErrors = pbIgnoreParseErrors;
+        this.pbReadDefaultValues = pbReadDefaultValues;
+        this.pbWriteNullStringLiterals = pbWriteNullStringLiterals;
     }
 
     @SuppressWarnings("unchecked")
@@ -184,8 +200,13 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
                         config.isWriteEncodingHeader());
                 break;
             case Protobuf:
-                pbSchema = ProtobufSchema.of(pbMessage.getClass());
-                serializer = SerializerFactory.protobufSerializer(config, pbSchema);
+                PbFormatConfig pbFormatConfig = new PbFormatConfigBuilder()
+                        .messageClassName(pbMessageClassName)
+                        .ignoreParseErrors(pbIgnoreParseErrors)
+                        .readDefaultValues(pbReadDefaultValues)
+                        .writeNullStringLiterals(pbWriteNullStringLiterals)
+                        .build();
+                rowToProtoConverter = new RowToProtoConverter(rowType, pbFormatConfig);
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");
@@ -202,7 +223,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
                 case Json:
                     return convertToByteArray(serializaToJsonNode(row));
                 case Protobuf:
-                    return convertToByteArray(serializeToMessage(row));
+                    return rowToProtoConverter.convertRowToProtoBinary(row);
                 default:
                     throw new NotImplementedException("Not supporting deserialization format");
             }
