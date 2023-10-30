@@ -15,25 +15,10 @@ public final class ProtobufTest {
         (com.google.protobuf.ExtensionRegistryLite) registry);
   }
   static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_InternalMessage_descriptor;
+    internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor;
   static final 
     com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_io_pravega_connectors_flink_formats_registry_testProto_InternalMessage_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message1_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message1_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message2_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message2_fieldAccessorTable;
-  static final com.google.protobuf.Descriptors.Descriptor
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor;
-  static final 
-    com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
-      internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_fieldAccessorTable;
+      internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_fieldAccessorTable;
 
   public static com.google.protobuf.Descriptors.FileDescriptor
       getDescriptor() {
@@ -45,47 +30,21 @@ public final class ProtobufTest {
     java.lang.String[] descriptorData = {
       "\n\"resources/proto/protobufTest.proto\0226io" +
       ".pravega.connectors.flink.formats.regist" +
-      "ry.testProto\"\242\001\n\017InternalMessage\022]\n\005valu" +
-      "e\030\001 \001(\0162N.io.pravega.connectors.flink.fo" +
-      "rmats.registry.testProto.InternalMessage" +
-      ".Values\"0\n\006Values\022\010\n\004val1\020\000\022\010\n\004val2\020\001\022\010\n" +
-      "\004val3\020\002\022\010\n\004val4\020\003\"s\n\010Message1\022Y\n\010interna" +
-      "l\030\001 \001(\0132G.io.pravega.connectors.flink.fo" +
-      "rmats.registry.testProto.InternalMessage" +
-      "\022\014\n\004name\030\002 \001(\t\"(\n\010Message2\022\014\n\004name\030\001 \001(\t" +
-      "\022\016\n\006field1\030\002 \001(\005\"8\n\010Message3\022\014\n\004name\030\001 \001" +
-      "(\t\022\016\n\006field1\030\002 \001(\005\022\016\n\006field2\030\003 \001(\005B:\n6io" +
-      ".pravega.connectors.flink.formats.regist" +
-      "ry.testProtoP\001b\006proto3"
+      "ry.testProto\"+\n\013testMessage\022\014\n\004name\030\001 \001(" +
+      "\t\022\016\n\006field1\030\002 \001(\005B:\n6io.pravega.connecto" +
+      "rs.flink.formats.registry.testProtoP\001b\006p" +
+      "roto3"
     };
     descriptor = com.google.protobuf.Descriptors.FileDescriptor
       .internalBuildGeneratedFileFrom(descriptorData,
         new com.google.protobuf.Descriptors.FileDescriptor[] {
         });
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_InternalMessage_descriptor =
+    internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor =
       getDescriptor().getMessageTypes().get(0);
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_InternalMessage_fieldAccessorTable = new
+    internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_pravega_connectors_flink_formats_registry_testProto_InternalMessage_descriptor,
-        new java.lang.String[] { "Value", });
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message1_descriptor =
-      getDescriptor().getMessageTypes().get(1);
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message1_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message1_descriptor,
-        new java.lang.String[] { "Internal", "Name", });
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message2_descriptor =
-      getDescriptor().getMessageTypes().get(2);
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message2_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message2_descriptor,
+        internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor,
         new java.lang.String[] { "Name", "Field1", });
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor =
-      getDescriptor().getMessageTypes().get(3);
-    internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_fieldAccessorTable = new
-      com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
-        internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor,
-        new java.lang.String[] { "Name", "Field1", "Field2", });
   }
 
   // @@protoc_insertion_point(outer_class_scope)

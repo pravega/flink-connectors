@@ -3,8 +3,8 @@
 
 package io.pravega.connectors.flink.formats.registry.testProto;
 
-public interface Message3OrBuilder extends
-    // @@protoc_insertion_point(interface_extends:io.pravega.connectors.flink.formats.registry.testProto.Message3)
+public interface testMessageOrBuilder extends
+    // @@protoc_insertion_point(interface_extends:io.pravega.connectors.flink.formats.registry.testProto.testMessage)
     com.google.protobuf.MessageOrBuilder {
 
   /**
@@ -24,10 +24,4 @@ public interface Message3OrBuilder extends
    * @return The field1.
    */
   int getField1();
-
-  /**
-   * <code>int32 field2 = 3;</code>
-   * @return The field2.
-   */
-  int getField2();
 }

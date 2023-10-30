@@ -4,18 +4,18 @@
 package io.pravega.connectors.flink.formats.registry.testProto;
 
 /**
- * Protobuf type {@code io.pravega.connectors.flink.formats.registry.testProto.Message3}
+ * Protobuf type {@code io.pravega.connectors.flink.formats.registry.testProto.testMessage}
  */
-public final class Message3 extends
+public final class testMessage extends
     com.google.protobuf.GeneratedMessageV3 implements
-    // @@protoc_insertion_point(message_implements:io.pravega.connectors.flink.formats.registry.testProto.Message3)
-    Message3OrBuilder {
+    // @@protoc_insertion_point(message_implements:io.pravega.connectors.flink.formats.registry.testProto.testMessage)
+    testMessageOrBuilder {
 private static final long serialVersionUID = 0L;
-  // Use Message3.newBuilder() to construct.
-  private Message3(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
+  // Use testMessage.newBuilder() to construct.
+  private testMessage(com.google.protobuf.GeneratedMessageV3.Builder<?> builder) {
     super(builder);
   }
-  private Message3() {
+  private testMessage() {
     name_ = "";
   }
 
@@ -23,7 +23,7 @@ private static final long serialVersionUID = 0L;
   @SuppressWarnings({"unused"})
   protected java.lang.Object newInstance(
       UnusedPrivateParameter unused) {
-    return new Message3();
+    return new testMessage();
   }
 
   @java.lang.Override
@@ -31,7 +31,7 @@ private static final long serialVersionUID = 0L;
   getUnknownFields() {
     return this.unknownFields;
   }
-  private Message3(
+  private testMessage(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
@@ -60,11 +60,6 @@ private static final long serialVersionUID = 0L;
             field1_ = input.readInt32();
             break;
           }
-          case 24: {
-
-            field2_ = input.readInt32();
-            break;
-          }
           default: {
             if (!parseUnknownField(
                 input, unknownFields, extensionRegistry, tag)) {
@@ -86,15 +81,15 @@ private static final long serialVersionUID = 0L;
   }
   public static final com.google.protobuf.Descriptors.Descriptor
       getDescriptor() {
-    return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor;
+    return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor;
   }
 
   @java.lang.Override
   protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
       internalGetFieldAccessorTable() {
-    return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_fieldAccessorTable
+    return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_fieldAccessorTable
         .ensureFieldAccessorsInitialized(
-            io.pravega.connectors.flink.formats.registry.testProto.Message3.class, io.pravega.connectors.flink.formats.registry.testProto.Message3.Builder.class);
+            io.pravega.connectors.flink.formats.registry.testProto.testMessage.class, io.pravega.connectors.flink.formats.registry.testProto.testMessage.Builder.class);
   }
 
   public static final int NAME_FIELD_NUMBER = 1;
@@ -146,17 +141,6 @@ private static final long serialVersionUID = 0L;
     return field1_;
   }
 
-  public static final int FIELD2_FIELD_NUMBER = 3;
-  private int field2_;
-  /**
-   * <code>int32 field2 = 3;</code>
-   * @return The field2.
-   */
-  @java.lang.Override
-  public int getField2() {
-    return field2_;
-  }
-
   private byte memoizedIsInitialized = -1;
   @java.lang.Override
   public final boolean isInitialized() {
@@ -177,9 +161,6 @@ private static final long serialVersionUID = 0L;
     if (field1_ != 0) {
       output.writeInt32(2, field1_);
     }
-    if (field2_ != 0) {
-      output.writeInt32(3, field2_);
-    }
     unknownFields.writeTo(output);
   }
 
@@ -196,10 +177,6 @@ private static final long serialVersionUID = 0L;
       size += com.google.protobuf.CodedOutputStream
         .computeInt32Size(2, field1_);
     }
-    if (field2_ != 0) {
-      size += com.google.protobuf.CodedOutputStream
-        .computeInt32Size(3, field2_);
-    }
     size += unknownFields.getSerializedSize();
     memoizedSize = size;
     return size;
@@ -210,17 +187,15 @@ private static final long serialVersionUID = 0L;
     if (obj == this) {
      return true;
     }
-    if (!(obj instanceof io.pravega.connectors.flink.formats.registry.testProto.Message3)) {
+    if (!(obj instanceof io.pravega.connectors.flink.formats.registry.testProto.testMessage)) {
       return super.equals(obj);
     }
-    io.pravega.connectors.flink.formats.registry.testProto.Message3 other = (io.pravega.connectors.flink.formats.registry.testProto.Message3) obj;
+    io.pravega.connectors.flink.formats.registry.testProto.testMessage other = (io.pravega.connectors.flink.formats.registry.testProto.testMessage) obj;
 
     if (!getName()
         .equals(other.getName())) return false;
     if (getField1()
         != other.getField1()) return false;
-    if (getField2()
-        != other.getField2()) return false;
     if (!unknownFields.equals(other.unknownFields)) return false;
     return true;
   }
@@ -236,76 +211,74 @@ private static final long serialVersionUID = 0L;
     hash = (53 * hash) + getName().hashCode();
     hash = (37 * hash) + FIELD1_FIELD_NUMBER;
     hash = (53 * hash) + getField1();
-    hash = (37 * hash) + FIELD2_FIELD_NUMBER;
-    hash = (53 * hash) + getField2();
     hash = (29 * hash) + unknownFields.hashCode();
     memoizedHashCode = hash;
     return hash;
   }
 
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       java.nio.ByteBuffer data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       java.nio.ByteBuffer data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       com.google.protobuf.ByteString data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       com.google.protobuf.ByteString data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(byte[] data)
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(byte[] data)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       byte[] data,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws com.google.protobuf.InvalidProtocolBufferException {
     return PARSER.parseFrom(data, extensionRegistry);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(java.io.InputStream input)
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseDelimitedFrom(java.io.InputStream input)
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseDelimitedFrom(java.io.InputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseDelimitedFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseDelimitedFrom(
       java.io.InputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseDelimitedWithIOException(PARSER, input, extensionRegistry);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       com.google.protobuf.CodedInputStream input)
       throws java.io.IOException {
     return com.google.protobuf.GeneratedMessageV3
         .parseWithIOException(PARSER, input);
   }
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 parseFrom(
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage parseFrom(
       com.google.protobuf.CodedInputStream input,
       com.google.protobuf.ExtensionRegistryLite extensionRegistry)
       throws java.io.IOException {
@@ -318,7 +291,7 @@ private static final long serialVersionUID = 0L;
   public static Builder newBuilder() {
     return DEFAULT_INSTANCE.toBuilder();
   }
-  public static Builder newBuilder(io.pravega.connectors.flink.formats.registry.testProto.Message3 prototype) {
+  public static Builder newBuilder(io.pravega.connectors.flink.formats.registry.testProto.testMessage prototype) {
     return DEFAULT_INSTANCE.toBuilder().mergeFrom(prototype);
   }
   @java.lang.Override
@@ -334,26 +307,26 @@ private static final long serialVersionUID = 0L;
     return builder;
   }
   /**
-   * Protobuf type {@code io.pravega.connectors.flink.formats.registry.testProto.Message3}
+   * Protobuf type {@code io.pravega.connectors.flink.formats.registry.testProto.testMessage}
    */
   public static final class Builder extends
       com.google.protobuf.GeneratedMessageV3.Builder<Builder> implements
-      // @@protoc_insertion_point(builder_implements:io.pravega.connectors.flink.formats.registry.testProto.Message3)
-      io.pravega.connectors.flink.formats.registry.testProto.Message3OrBuilder {
+      // @@protoc_insertion_point(builder_implements:io.pravega.connectors.flink.formats.registry.testProto.testMessage)
+      io.pravega.connectors.flink.formats.registry.testProto.testMessageOrBuilder {
     public static final com.google.protobuf.Descriptors.Descriptor
         getDescriptor() {
-      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor;
+      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor;
     }
 
     @java.lang.Override
     protected com.google.protobuf.GeneratedMessageV3.FieldAccessorTable
         internalGetFieldAccessorTable() {
-      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_fieldAccessorTable
+      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_fieldAccessorTable
           .ensureFieldAccessorsInitialized(
-              io.pravega.connectors.flink.formats.registry.testProto.Message3.class, io.pravega.connectors.flink.formats.registry.testProto.Message3.Builder.class);
+              io.pravega.connectors.flink.formats.registry.testProto.testMessage.class, io.pravega.connectors.flink.formats.registry.testProto.testMessage.Builder.class);
     }
 
-    // Construct using io.pravega.connectors.flink.formats.registry.testProto.Message3.newBuilder()
+    // Construct using io.pravega.connectors.flink.formats.registry.testProto.testMessage.newBuilder()
     private Builder() {
       maybeForceBuilderInitialization();
     }
@@ -375,25 +348,23 @@ private static final long serialVersionUID = 0L;
 
       field1_ = 0;
 
-      field2_ = 0;
-
       return this;
     }
 
     @java.lang.Override
     public com.google.protobuf.Descriptors.Descriptor
         getDescriptorForType() {
-      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_Message3_descriptor;
+      return io.pravega.connectors.flink.formats.registry.testProto.ProtobufTest.internal_static_io_pravega_connectors_flink_formats_registry_testProto_testMessage_descriptor;
     }
 
     @java.lang.Override
-    public io.pravega.connectors.flink.formats.registry.testProto.Message3 getDefaultInstanceForType() {
-      return io.pravega.connectors.flink.formats.registry.testProto.Message3.getDefaultInstance();
+    public io.pravega.connectors.flink.formats.registry.testProto.testMessage getDefaultInstanceForType() {
+      return io.pravega.connectors.flink.formats.registry.testProto.testMessage.getDefaultInstance();
     }
 
     @java.lang.Override
-    public io.pravega.connectors.flink.formats.registry.testProto.Message3 build() {
-      io.pravega.connectors.flink.formats.registry.testProto.Message3 result = buildPartial();
+    public io.pravega.connectors.flink.formats.registry.testProto.testMessage build() {
+      io.pravega.connectors.flink.formats.registry.testProto.testMessage result = buildPartial();
       if (!result.isInitialized()) {
         throw newUninitializedMessageException(result);
       }
@@ -401,11 +372,10 @@ private static final long serialVersionUID = 0L;
     }
 
     @java.lang.Override
-    public io.pravega.connectors.flink.formats.registry.testProto.Message3 buildPartial() {
-      io.pravega.connectors.flink.formats.registry.testProto.Message3 result = new io.pravega.connectors.flink.formats.registry.testProto.Message3(this);
+    public io.pravega.connectors.flink.formats.registry.testProto.testMessage buildPartial() {
+      io.pravega.connectors.flink.formats.registry.testProto.testMessage result = new io.pravega.connectors.flink.formats.registry.testProto.testMessage(this);
       result.name_ = name_;
       result.field1_ = field1_;
-      result.field2_ = field2_;
       onBuilt();
       return result;
     }
@@ -444,25 +414,22 @@ private static final long serialVersionUID = 0L;
     }
     @java.lang.Override
     public Builder mergeFrom(com.google.protobuf.Message other) {
-      if (other instanceof io.pravega.connectors.flink.formats.registry.testProto.Message3) {
-        return mergeFrom((io.pravega.connectors.flink.formats.registry.testProto.Message3)other);
+      if (other instanceof io.pravega.connectors.flink.formats.registry.testProto.testMessage) {
+        return mergeFrom((io.pravega.connectors.flink.formats.registry.testProto.testMessage)other);
       } else {
         super.mergeFrom(other);
         return this;
       }
     }
 
-    public Builder mergeFrom(io.pravega.connectors.flink.formats.registry.testProto.Message3 other) {
-      if (other == io.pravega.connectors.flink.formats.registry.testProto.Message3.getDefaultInstance()) return this;
+    public Builder mergeFrom(io.pravega.connectors.flink.formats.registry.testProto.testMessage other) {
+      if (other == io.pravega.connectors.flink.formats.registry.testProto.testMessage.getDefaultInstance()) return this;
       if (!other.getName().isEmpty()) {
         name_ = other.name_;
         onChanged();
       }
       if (other.getField1() != 0) {
         setField1(other.getField1());
-      }
-      if (other.getField2() != 0) {
-        setField2(other.getField2());
       }
       this.mergeUnknownFields(other.unknownFields);
       onChanged();
@@ -479,11 +446,11 @@ private static final long serialVersionUID = 0L;
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws java.io.IOException {
-      io.pravega.connectors.flink.formats.registry.testProto.Message3 parsedMessage = null;
+      io.pravega.connectors.flink.formats.registry.testProto.testMessage parsedMessage = null;
       try {
         parsedMessage = PARSER.parsePartialFrom(input, extensionRegistry);
       } catch (com.google.protobuf.InvalidProtocolBufferException e) {
-        parsedMessage = (io.pravega.connectors.flink.formats.registry.testProto.Message3) e.getUnfinishedMessage();
+        parsedMessage = (io.pravega.connectors.flink.formats.registry.testProto.testMessage) e.getUnfinishedMessage();
         throw e.unwrapIOException();
       } finally {
         if (parsedMessage != null) {
@@ -599,37 +566,6 @@ private static final long serialVersionUID = 0L;
       onChanged();
       return this;
     }
-
-    private int field2_ ;
-    /**
-     * <code>int32 field2 = 3;</code>
-     * @return The field2.
-     */
-    @java.lang.Override
-    public int getField2() {
-      return field2_;
-    }
-    /**
-     * <code>int32 field2 = 3;</code>
-     * @param value The field2 to set.
-     * @return This builder for chaining.
-     */
-    public Builder setField2(int value) {
-      
-      field2_ = value;
-      onChanged();
-      return this;
-    }
-    /**
-     * <code>int32 field2 = 3;</code>
-     * @return This builder for chaining.
-     */
-    public Builder clearField2() {
-      
-      field2_ = 0;
-      onChanged();
-      return this;
-    }
     @java.lang.Override
     public final Builder setUnknownFields(
         final com.google.protobuf.UnknownFieldSet unknownFields) {
@@ -643,41 +579,41 @@ private static final long serialVersionUID = 0L;
     }
 
 
-    // @@protoc_insertion_point(builder_scope:io.pravega.connectors.flink.formats.registry.testProto.Message3)
+    // @@protoc_insertion_point(builder_scope:io.pravega.connectors.flink.formats.registry.testProto.testMessage)
   }
 
-  // @@protoc_insertion_point(class_scope:io.pravega.connectors.flink.formats.registry.testProto.Message3)
-  private static final io.pravega.connectors.flink.formats.registry.testProto.Message3 DEFAULT_INSTANCE;
+  // @@protoc_insertion_point(class_scope:io.pravega.connectors.flink.formats.registry.testProto.testMessage)
+  private static final io.pravega.connectors.flink.formats.registry.testProto.testMessage DEFAULT_INSTANCE;
   static {
-    DEFAULT_INSTANCE = new io.pravega.connectors.flink.formats.registry.testProto.Message3();
+    DEFAULT_INSTANCE = new io.pravega.connectors.flink.formats.registry.testProto.testMessage();
   }
 
-  public static io.pravega.connectors.flink.formats.registry.testProto.Message3 getDefaultInstance() {
+  public static io.pravega.connectors.flink.formats.registry.testProto.testMessage getDefaultInstance() {
     return DEFAULT_INSTANCE;
   }
 
-  private static final com.google.protobuf.Parser<Message3>
-      PARSER = new com.google.protobuf.AbstractParser<Message3>() {
+  private static final com.google.protobuf.Parser<testMessage>
+      PARSER = new com.google.protobuf.AbstractParser<testMessage>() {
     @java.lang.Override
-    public Message3 parsePartialFrom(
+    public testMessage parsePartialFrom(
         com.google.protobuf.CodedInputStream input,
         com.google.protobuf.ExtensionRegistryLite extensionRegistry)
         throws com.google.protobuf.InvalidProtocolBufferException {
-      return new Message3(input, extensionRegistry);
+      return new testMessage(input, extensionRegistry);
     }
   };
 
-  public static com.google.protobuf.Parser<Message3> parser() {
+  public static com.google.protobuf.Parser<testMessage> parser() {
     return PARSER;
   }
 
   @java.lang.Override
-  public com.google.protobuf.Parser<Message3> getParserForType() {
+  public com.google.protobuf.Parser<testMessage> getParserForType() {
     return PARSER;
   }
 
   @java.lang.Override
-  public io.pravega.connectors.flink.formats.registry.testProto.Message3 getDefaultInstanceForType() {
+  public io.pravega.connectors.flink.formats.registry.testProto.testMessage getDefaultInstanceForType() {
     return DEFAULT_INSTANCE;
   }
 
