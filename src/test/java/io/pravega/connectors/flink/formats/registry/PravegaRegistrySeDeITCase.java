@@ -231,7 +231,8 @@ public class PravegaRegistrySeDeITCase {
                                                 .withSchemaRegistryURI(SCHEMA_REGISTRY.schemaRegistryOperator()
                                                                 .getSchemaRegistryUri()),
                                 FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT, PB_MESSAGE_CLASS_NAME,
-                                PB_IGNORE_PARSE_ERRORS, PB_READ_DEFAULT_VALUES, PB_WRITE_NULL_STRING_LITERAL);
+                                PB_IGNORE_PARSE_ERRORS,
+                                PB_READ_DEFAULT_VALUES, PB_WRITE_NULL_STRING_LITERAL);
                 deserializationSchema.open(null);
 
                 SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
@@ -245,7 +246,8 @@ public class PravegaRegistrySeDeITCase {
                 Serializer<GenericRecord> serializer = SerializerFactory.avroSerializer(config,
                                 AvroSchema.ofRecord(avroSchema));
 
-                byte[] input = serializer.serialize(record).array();
+                byte[] input = FlinkPravegaUtils
+                                .byteBufferToArray(serializer.serialize(record));
                 RowData rowData = deserializationSchema.deserialize(input);
                 byte[] output = serializationSchema.serialize(rowData);
 
