@@ -19,6 +19,7 @@ package io.pravega.connectors.flink.formats.registry;
 import io.pravega.client.stream.Serializer;
 import io.pravega.connectors.flink.PravegaConfig;
 import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
 import io.pravega.connectors.flink.util.RowToMessageConverter;
 import io.pravega.connectors.flink.util.SchemaRegistryUtils;
 import io.pravega.schemaregistry.client.SchemaRegistryClient;
@@ -132,7 +133,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     // --------------------------------------------------------------------------------------------
     // private final boolean pbIgnoreParseErrors;
 
-    private transient RowToProtoConverter rowToProtoConverter;
+    private transient RowToMessageConverter rowToMessageConverter;
 
     private final String pbMessageClassName;
     private final boolean pbIgnoreParseErrors;
@@ -200,14 +201,9 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
                         config.isWriteEncodingHeader());
                 break;
             case Protobuf:
-                PbFormatConfig pbFormatConfig = new PbFormatConfigBuilder()
-                        .messageClassName(pbMessageClassName)
-                        .ignoreParseErrors(pbIgnoreParseErrors)
-                        .readDefaultValues(pbReadDefaultValues)
-                        .writeNullStringLiterals(pbWriteNullStringLiterals)
-                        .build();
-                rowToProtoConverter = new RowToProtoConverter(rowType, pbFormatConfig);
-
+                ProtobufSchema protobufSchema = ProtobufSchema
+                        .of((Class<GeneratedMessageV3>) Class.forName(pbMessageClassName));
+                serializer = SerializerFactory.protobufSerializer(config, protobufSchema);
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");
@@ -224,7 +220,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
                 case Json:
                     return convertToByteArray(serializaToJsonNode(row));
                 case Protobuf:
-                    return rowToProtoConverter.convertRowToProtoBinary(row);
+                    return convertToByteArray(serializeToMessage(row));
                 default:
                     throw new NotImplementedException("Not supporting deserialization format");
             }
@@ -250,15 +246,28 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
     }
 
     public AbstractMessage serializeToMessage(RowData row) throws Exception {
-        PbFormatConfigBuilder pbConfigBuilder = new PbFormatConfigBuilder()
-                .messageClassName(pbMessage.getClass().getName());
-        RowToMessageConverter runtimeConverter = new RowToMessageConverter(rowType, pbConfigBuilder.build());
+        PbFormatConfig pbConfig = new PbFormatConfigBuilder()
+                .ignoreParseErrors(pbIgnoreParseErrors)
+                .readDefaultValues(pbReadDefaultValues)
+                .writeNullStringLiterals(pbWriteNullStringLiterals)
+                .messageClassName(pbMessageClassName)
+                .build();
+        RowToMessageConverter runtimeConverter = new RowToMessageConverter(rowType, pbConfig);
         return runtimeConverter.convertRowToProtoMessage(row);
     }
 
     @SuppressWarnings("unchecked")
     public byte[] convertToByteArray(Object message) {
-        return serializer.serialize(message).array();
+        switch (serializationFormat) {
+            case Avro:
+            case Json:
+                serializer.serialize(message).array();
+            case Protobuf:
+                return FlinkPravegaUtils
+                        .byteBufferToArray(serializer.serialize(message));
+            default:
+                throw new NotImplementedException("Not supporting deserialization format");
+        }
     }
 
     @VisibleForTesting
