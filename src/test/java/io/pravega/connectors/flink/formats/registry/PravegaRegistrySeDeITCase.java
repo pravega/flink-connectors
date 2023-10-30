@@ -95,6 +95,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class PravegaRegistrySeDeITCase {
         private static final String TEST_AVRO_CATALOG_NAME = "mycatalog1";
         private static final String TEST_JSON_CATALOG_NAME = "mycatalog2";
+        private static final String TEST_PROTOBUF_CATALOG_NAME = "mycatalog3";
 
         /** Avro fields */
         private static final String AVRO_TEST_STREAM = "stream1";
@@ -395,6 +396,77 @@ public class PravegaRegistrySeDeITCase {
                 jsonCatalog.close();
         }
 
+        @Test
+        public void testProtobufDEserialize() throws Exception {
+
+                Map<String, String> properties = new HashMap<>();
+                properties.put("connector", "pravega");
+                properties.put("controller-uri", SCHEMA_REGISTRY.operator().getControllerUri().toString());
+                properties.put("format", "pravega-registry");
+                properties.put("pravega-registry.uri",
+                                SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri().toString());
+                properties.put("pravega-registry.format", "Protobuf");
+                final PravegaCatalog protobufCatalog = new PravegaCatalog(TEST_PROTOBUF_CATALOG_NAME,
+                                SCHEMA_REGISTRY.operator().getScope(), properties,
+                                SCHEMA_REGISTRY.operator().getPravegaConfig()
+                                                .withDefaultScope(SCHEMA_REGISTRY.operator().getScope())
+                                                .withSchemaRegistryURI(SCHEMA_REGISTRY.schemaRegistryOperator()
+                                                                .getSchemaRegistryUri()),
+                                "Protobuf");
+                initProtobuf();
+                protobufCatalog.open();
+
+                byte tinyint = 'c';
+                short smallint = 128;
+                int intValue = 45536;
+
+                SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
+                                .schemaRegistryUri(SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri())
+                                .build();
+                SerializerConfig serializerConfig = SerializerConfig.builder()
+                                .registryConfig(schemaRegistryClientConfig)
+                                .namespace(SCHEMA_REGISTRY.operator().getScope())
+                                .groupId(PROTOBUF_TEST_STREAM)
+                                .build();
+
+                PravegaRegistryRowDataSerializationSchema serializationSchema = new PravegaRegistryRowDataSerializationSchema(
+                                protobufRowType,
+                                PROTOBUF_TEST_STREAM, SerializationFormat.Protobuf,
+                                SCHEMA_REGISTRY.operator().getPravegaConfig()
+                                                .withDefaultScope(SCHEMA_REGISTRY.operator().getScope())
+                                                .withSchemaRegistryURI(SCHEMA_REGISTRY.schemaRegistryOperator()
+                                                                .getSchemaRegistryUri()),
+                                TIMESTAMP_FORMAT, MAP_NULL_KEY_MODE, MAP_NULL_KEY_LITERAL,
+                                ENCODE_DECIMAL_AS_PLAIN_NUMBER, PB_MESSAGE_CLASS_NAME, PB_IGNORE_PARSE_ERRORS,
+                                PB_READ_DEFAULT_VALUES, PB_WRITE_NULL_STRING_LITERAL);
+                serializationSchema.open(null);
+                PravegaRegistryRowDataDeserializationSchema deserializationSchema = new PravegaRegistryRowDataDeserializationSchema(
+                                protobufRowType, protobufTypeInfo,
+                                PROTOBUF_TEST_STREAM,
+                                SCHEMA_REGISTRY.operator().getPravegaConfig()
+                                                .withDefaultScope(SCHEMA_REGISTRY.operator().getScope())
+                                                .withSchemaRegistryURI(SCHEMA_REGISTRY.schemaRegistryOperator()
+                                                                .getSchemaRegistryUri()),
+                                FAIL_ON_MISSING_FIELD, IGNORE_PARSE_ERRORS, TIMESTAMP_FORMAT, PB_MESSAGE_CLASS_NAME,
+                                PB_IGNORE_PARSE_ERRORS, PB_READ_DEFAULT_VALUES, PB_WRITE_NULL_STRING_LITERAL);
+                deserializationSchema.open(null);
+
+                SerializerConfig config = SerializerConfig.builder()
+                                .registryConfig(schemaRegistryClientConfig)
+                                .namespace(SCHEMA_REGISTRY.operator().getScope())
+                                .groupId(PROTOBUF_TEST_STREAM)
+                                .build();
+
+                byte[] input = null;
+                RowData rowData = deserializationSchema.deserialize(input);
+                byte[] output = serializationSchema.serialize(rowData);
+
+                assertThat(output).isEqualTo(input);
+
+                protobufCatalog.close();
+
+        }
+
         private static void initAvro() throws Exception {
                 final DataType dataType = ROW(
                                 FIELD("bool", BOOLEAN()),
@@ -452,6 +524,23 @@ public class PravegaRegistrySeDeITCase {
                 SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(JSON_TEST_STREAM, jsonSchema,
                                 SerializationFormat.Json);
                 SCHEMA_REGISTRY.operator().createTestStream(JSON_TEST_STREAM, 3);
+        }
+
+        private static void initProtobuf() throws Exception {
+                protobufDataType = ROW(
+                                FIELD("bool", BOOLEAN()),
+                                FIELD("tinyint", TINYINT()),
+                                FIELD("smallint", SMALLINT()),
+                                FIELD("int", INT())).notNull();
+                protobufRowType = (RowType) protobufDataType.getLogicalType();
+                protobufTypeInfo = InternalTypeInfo.of(protobufRowType);
+
+                protobufSchema = ProtobufSchema.of(null);
+
+                SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(PROTOBUF_TEST_STREAM,
+                                null, SerializationFormat.Protobuf);
+                SCHEMA_REGISTRY.operator().createTestStream(PROTOBUF_TEST_STREAM, 3);
+
         }
 
         @SuppressWarnings("unchecked")
