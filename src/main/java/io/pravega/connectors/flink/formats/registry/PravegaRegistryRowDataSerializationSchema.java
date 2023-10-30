@@ -207,6 +207,7 @@ public class PravegaRegistryRowDataSerializationSchema implements SerializationS
                         .writeNullStringLiterals(pbWriteNullStringLiterals)
                         .build();
                 rowToProtoConverter = new RowToProtoConverter(rowType, pbFormatConfig);
+
                 break;
             default:
                 throw new NotImplementedException("Not supporting deserialization format");

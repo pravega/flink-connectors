@@ -22,6 +22,8 @@ import io.pravega.connectors.flink.table.catalog.pravega.util.PravegaSchemaUtils
 import io.pravega.connectors.flink.utils.SchemaRegistryTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.SchemaRegistryRuntime;
+import io.pravega.connectors.flink.util.FlinkPravegaUtils;
+import io.pravega.connectors.flink.formats.registry.testProto.Message2;
 import io.pravega.schemaregistry.client.SchemaRegistryClientConfig;
 import io.pravega.schemaregistry.client.SchemaRegistryClientFactory;
 import io.pravega.schemaregistry.contract.data.SerializationFormat;
@@ -50,6 +52,8 @@ import org.apache.flink.types.Row;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import com.google.protobuf.ProtobufInternalUtils;
 
 import java.math.BigDecimal;
 import java.nio.ByteBuffer;
@@ -119,13 +123,13 @@ public class PravegaRegistrySeDeITCase {
 
         /** Protobuf fields */
         private static final String PROTOBUF_TEST_STREAM = "stream3";
-        private static ProtobufSchema protobufSchema = null;
+        private static ProtobufSchema<?> protobufSchema = null;
         private static RowType protobufRowType = null;
         private static TypeInformation<RowData> protobufTypeInfo = null;
         private static DataType protobufDataType = null;
 
         private static final boolean PB_IGNORE_PARSE_ERRORS = false;
-        private static final String PB_MESSAGE_CLASS_NAME = "io.pravega.connectors.flink.formats.registry.TestMessage";
+        private static final String PB_MESSAGE_CLASS_NAME = "io.pravega.connectors.flink.formats.registry.testProto.Message2";
         private static final boolean PB_READ_DEFAULT_VALUES = false;
         private static final String PB_WRITE_NULL_STRING_LITERAL = "null";
 
@@ -397,7 +401,7 @@ public class PravegaRegistrySeDeITCase {
         }
 
         @Test
-        public void testProtobufDEserialize() throws Exception {
+        public void testProtobufDeserialize() throws Exception {
 
                 Map<String, String> properties = new HashMap<>();
                 properties.put("connector", "pravega");
@@ -416,17 +420,8 @@ public class PravegaRegistrySeDeITCase {
                 initProtobuf();
                 protobufCatalog.open();
 
-                byte tinyint = 'c';
-                short smallint = 128;
-                int intValue = 45536;
-
                 SchemaRegistryClientConfig schemaRegistryClientConfig = SchemaRegistryClientConfig.builder()
                                 .schemaRegistryUri(SCHEMA_REGISTRY.schemaRegistryOperator().getSchemaRegistryUri())
-                                .build();
-                SerializerConfig serializerConfig = SerializerConfig.builder()
-                                .registryConfig(schemaRegistryClientConfig)
-                                .namespace(SCHEMA_REGISTRY.operator().getScope())
-                                .groupId(PROTOBUF_TEST_STREAM)
                                 .build();
 
                 PravegaRegistryRowDataSerializationSchema serializationSchema = new PravegaRegistryRowDataSerializationSchema(
@@ -457,7 +452,13 @@ public class PravegaRegistrySeDeITCase {
                                 .groupId(PROTOBUF_TEST_STREAM)
                                 .build();
 
-                byte[] input = null;
+                Serializer<Message2> serializer = SerializerFactory.protobufSerializer(config,
+                                ProtobufSchema.of(Message2.class));
+                byte[] input = FlinkPravegaUtils
+                                .byteBufferToArray(serializer.serialize(Message2.newBuilder()
+                                                .setName("name")
+                                                .setField1(1)
+                                                .build()));
                 RowData rowData = deserializationSchema.deserialize(input);
                 byte[] output = serializationSchema.serialize(rowData);
 
@@ -528,17 +529,15 @@ public class PravegaRegistrySeDeITCase {
 
         private static void initProtobuf() throws Exception {
                 protobufDataType = ROW(
-                                FIELD("bool", BOOLEAN()),
-                                FIELD("tinyint", TINYINT()),
-                                FIELD("smallint", SMALLINT()),
+                                FIELD("string", STRING()),
                                 FIELD("int", INT())).notNull();
                 protobufRowType = (RowType) protobufDataType.getLogicalType();
                 protobufTypeInfo = InternalTypeInfo.of(protobufRowType);
 
-                protobufSchema = ProtobufSchema.of(null);
+                protobufSchema = ProtobufSchema.of(Message2.class);
 
                 SCHEMA_REGISTRY.schemaRegistryOperator().registerSchema(PROTOBUF_TEST_STREAM,
-                                null, SerializationFormat.Protobuf);
+                                protobufSchema, SerializationFormat.Protobuf);
                 SCHEMA_REGISTRY.operator().createTestStream(PROTOBUF_TEST_STREAM, 3);
 
         }

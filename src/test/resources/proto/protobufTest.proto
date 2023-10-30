@@ -1,0 +1,30 @@
+syntax = "proto3";
+package io.pravega.connectors.flink.formats.registry.testProto;
+option java_package = "io.pravega.connectors.flink.formats.registry.testProto";
+option java_multiple_files = true;
+
+message InternalMessage {
+    enum Values {
+        val1 = 0;
+        val2 = 1;
+        val3 = 2;
+        val4 = 3;
+    }
+    Values value = 1;
+}
+
+message Message1 {
+    InternalMessage internal = 1;
+    string name = 2;
+}
+
+message Message2 {
+    string name = 1;
+    int32 field1 = 2;
+}
+
+message Message3 {
+    string name = 1;
+    int32 field1 = 2;
+    int32 field2 = 3;
+}
