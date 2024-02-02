@@ -135,7 +135,7 @@ public class PravegaCatalogITCase {
         assertThat(actualCatalog instanceof PravegaCatalog).isTrue();
         assertThat(((PravegaCatalog) actualCatalog).getName()).isEqualTo(CATALOG.getName());
         assertThat(((PravegaCatalog) actualCatalog).getDefaultDatabase()).isEqualTo(CATALOG.getDefaultDatabase());
-        assertThat(Whitebox.getInternalState(actualCatalog, "properties"))
+        org.assertj.core.api.Assertions.assertThat((Map) Whitebox.getInternalState(actualCatalog, "properties"))
                 .isEqualTo(Whitebox.getInternalState(CATALOG, "properties"));
     }
 
