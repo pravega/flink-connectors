@@ -21,10 +21,12 @@ import io.pravega.connectors.flink.utils.PravegaTestEnvironment;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntime;
 import io.pravega.connectors.flink.utils.runtime.PravegaRuntimeOperator;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.flink.api.common.JobID;
 import org.apache.flink.api.common.operators.MailboxExecutor;
 import org.apache.flink.api.common.operators.ProcessingTimeService;
 import org.apache.flink.api.common.serialization.SerializationSchema;
 import org.apache.flink.api.common.time.Time;
+import org.apache.flink.api.common.typeutils.TypeSerializer;
 import org.apache.flink.api.connector.sink2.Sink;
 import org.apache.flink.api.connector.sink2.SinkWriter;
 import org.apache.flink.connector.base.DeliveryGuarantee;
@@ -146,6 +148,21 @@ public class PravegaSinkWriterITCase {
         SinkInitContext(
                 SinkWriterMetricGroup metricGroup) {
             this.metricGroup = metricGroup;
+                }
+
+        @Override
+        public JobID getJobId() {
+            return null;
+        }
+
+        @Override
+        public <T> TypeSerializer<T> createInputSerializer() {
+            return null;
+        }
+
+        @Override
+        public boolean isObjectReuseEnabled() {
+            return false;
         }
 
         @Override
