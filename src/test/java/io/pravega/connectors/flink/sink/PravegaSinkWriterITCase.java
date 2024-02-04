@@ -148,7 +148,7 @@ public class PravegaSinkWriterITCase {
         SinkInitContext(
                 SinkWriterMetricGroup metricGroup) {
             this.metricGroup = metricGroup;
-                }
+        }
 
         @Override
         public JobID getJobId() {
