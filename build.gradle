@@ -54,6 +54,7 @@ version = getProjectVersion()
 
 repositories {
     mavenCentral()
+    maven { url "https://nautilus.artifactory.cec.lab.emc.com/artifactory/nautilus-prerelease-scratch-local" }
     maven {
         url "https://maven.pkg.github.com/pravega/pravega"
         credentials {
